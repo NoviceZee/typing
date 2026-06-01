@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  background: #070807;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: #070807;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background:
+    linear-gradient(90deg, rgba(236, 231, 215, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(236, 231, 215, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 30% 20%, rgba(202, 164, 93, 0.11), transparent 30rem),
+    #070807;
+  background-size: 56px 56px, 56px 56px, auto, auto;
+  color: #ece7d7;
+  font-family:
+    "Avenir Next",
+    Avenir,
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(202, 164, 93, 0.35);
+  color: #fff8df;
+}
