@@ -1,7 +1,7 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { Check, FileText, Sparkles, Trash2, Upload } from "lucide-react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Download, FileText, Sparkles, Trash2, Upload } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { PracticeCategory, buildPracticePassage } from "@/lib/typing-engine";
 import {
@@ -14,10 +14,12 @@ import {
   StyleFilter,
   addPassagesToLibrary,
   clearPassageLibrary,
+  createPassageLibraryExport,
   createLibraryPassage,
   deleteLibraryPassage,
   extractPassageTitle,
   filterLibraryPassages,
+  importPassageLibraryExport,
   readActivePassageId,
   readPassageLibrary,
   readPassageSelectionMode,
@@ -43,6 +45,7 @@ type UploadPreview = {
 type SelectOption = string | [string, string] | { value: string; label: string; disabled?: boolean };
 
 export default function PassagesPage() {
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [library, setLibrary] = useState<LibraryPassage[]>([]);
   const [activePassageId, setActivePassageId] = useState<string | null>(null);
   const [category, setCategory] = useState<CategoryFilter>(ALL_FILTER);
@@ -53,6 +56,7 @@ export default function PassagesPage() {
   const [message, setMessage] = useState("");
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
   const [selectionMode, setSelectionMode] = useState<PassageSelectionMode>("specific");
+  const [replaceExistingLibrary, setReplaceExistingLibrary] = useState(false);
 
   const activeLibrary = useMemo(() => library.filter((passage) => passage.isActive), [library]);
   const activePassage = useMemo(
@@ -250,6 +254,42 @@ export default function PassagesPage() {
     setMessage("Passage library cleared.");
   }
 
+  function exportLibrary() {
+    const exportData = createPassageLibraryExport();
+    const fileDate = new Date().toISOString().slice(0, 10);
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `formaltype-passage-library-${fileDate}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setMessage(`Exported ${exportData.passages.length} passages.`);
+  }
+
+  async function importLibrary(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const parsed = JSON.parse(await file.text());
+      const summary = importPassageLibraryExport(parsed, replaceExistingLibrary);
+      refreshLibrary();
+      setMessage(
+        `Imported ${summary.imported} passages. Skipped ${summary.skippedDuplicates} duplicates. Failed ${summary.failedInvalidItems} invalid items.`
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Import failed. Please choose a valid FormalType JSON export.");
+    } finally {
+      if (importInputRef.current) {
+        importInputRef.current.value = "";
+      }
+    }
+  }
+
   return (
     <AppShell>
       <section className="mx-auto max-w-6xl">
@@ -328,6 +368,43 @@ export default function PassagesPage() {
                 <Sparkles className="h-4 w-4" />
                 Generate and save
               </button>
+            </section>
+
+            <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow">
+              <h2 className="font-mono text-sm uppercase text-paper/65">Backup JSON</h2>
+              <div className="mt-4 grid gap-2">
+                <button
+                  type="button"
+                  onClick={exportLibrary}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-4 py-3 font-mono text-sm text-brass transition hover:bg-brass/15"
+                >
+                  <Download className="h-4 w-4" />
+                  Export library
+                </button>
+                <button
+                  type="button"
+                  onClick={() => importInputRef.current?.click()}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-4 py-3 font-mono text-sm text-paper/70 transition hover:border-brass/50 hover:text-paper"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import library
+                </button>
+              </div>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={importLibrary}
+                className="sr-only"
+              />
+              <label className="mt-4 flex items-center gap-2 font-mono text-xs text-paper/55">
+                <input
+                  type="checkbox"
+                  checked={replaceExistingLibrary}
+                  onChange={(event) => setReplaceExistingLibrary(event.target.checked)}
+                />
+                Replace existing library
+              </label>
             </section>
           </aside>
 
