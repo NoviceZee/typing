@@ -13,6 +13,9 @@ const NAV_ITEMS = [
 ];
 
 export function AppShell({ children, sideAd = true }: { children: ReactNode; sideAd?: boolean }) {
+  const { user } = useAuth();
+  const navItems = user ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.href !== "/passages/manage");
+
   return (
     <main className="min-h-screen px-5 py-5 text-paper md:px-8">
       <div className="mx-auto max-w-7xl">
@@ -22,7 +25,7 @@ export function AppShell({ children, sideAd = true }: { children: ReactNode; sid
           </Link>
           <div className="flex flex-wrap items-center gap-3">
             <nav className="flex flex-wrap gap-2 font-mono text-sm text-paper/60">
-              {NAV_ITEMS.map((item) => (
+              {navItems.map((item) => (
                 <NavLink key={item.href} href={item.href} label={item.label} />
               ))}
             </nav>
