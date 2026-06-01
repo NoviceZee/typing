@@ -74,9 +74,7 @@ function HeaderAuthAction() {
 
   async function handleLogout() {
     await signOut();
-    if (router.pathname.startsWith("/passages/manage")) {
-      router.push(`/login?redirectTo=${encodeURIComponent(router.asPath)}`);
-    }
+    router.push("/practice");
   }
 
   return (
