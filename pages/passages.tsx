@@ -13,19 +13,21 @@ import {
   STYLES,
   StyleFilter,
   filterLibraryPassages,
-  readActivePassageId,
-  readPassageLibrary,
-  readPassageSelectionMode,
-  readSelectedCategory,
-  readSelectedStyle,
   selectRandomLibraryPassage,
   toStoredPassage,
-  writeActivePassageId,
-  writePassageSelectionMode,
-  writeSelectedCategory,
-  writeSelectedStyle,
   writeStoredPassage
 } from "@/lib/app-storage";
+import {
+  getActivePassageId,
+  getPassageLibrary,
+  getPassageSelectionMode,
+  getSelectedCategory,
+  getSelectedStyle,
+  setPassageSelectionMode,
+  setSelectedCategory,
+  setSelectedStyle,
+  setActivePassageId as setStoredActivePassageId
+} from "@/lib/passageStorage";
 
 type SelectOption = string | [string, string] | { value: string; label: string; disabled?: boolean };
 
@@ -55,17 +57,17 @@ export default function PassagesPage() {
   }, []);
 
   function refreshLibrary() {
-    setLibrary(readPassageLibrary());
-    setActivePassageId(readActivePassageId());
-    setSelectionMode(readPassageSelectionMode());
-    setCategory(readSelectedCategory());
-    setStyle(readSelectedStyle());
+    setLibrary(getPassageLibrary());
+    setActivePassageId(getActivePassageId());
+    setSelectionMode(getPassageSelectionMode());
+    setCategory(getSelectedCategory());
+    setStyle(getSelectedStyle());
     setHasLoadedLibrary(true);
   }
 
   function selectPracticePassage(passage: LibraryPassage, sourceLibrary = filteredLibrary.length > 0 ? filteredLibrary : activeLibrary) {
-    writePassageSelectionMode("specific");
-    writeActivePassageId(passage.id);
+    setPassageSelectionMode("specific");
+    setStoredActivePassageId(passage.id);
     writeStoredPassage(toStoredPassage(passage, 60, sourceLibrary));
     setActivePassageId(passage.id);
     setSelectionMode("specific");
@@ -73,7 +75,7 @@ export default function PassagesPage() {
   }
 
   function setRandomPassageMode() {
-    writePassageSelectionMode("random");
+    setPassageSelectionMode("random");
     setSelectionMode("random");
 
     if (filteredLibrary.length === 0) {
@@ -86,7 +88,7 @@ export default function PassagesPage() {
     }
 
     const randomPassage = selectRandomLibraryPassage(activePassageId ?? undefined, filteredLibrary) ?? filteredLibrary[0];
-    writeActivePassageId(randomPassage.id);
+    setStoredActivePassageId(randomPassage.id);
     writeStoredPassage(toStoredPassage(randomPassage, 60, filteredLibrary));
     setActivePassageId(randomPassage.id);
     setMessage("Random passage mode is selected for practice.");
@@ -116,12 +118,12 @@ export default function PassagesPage() {
   function updateCategory(value: string) {
     const nextCategory = value as CategoryFilter;
     setCategory(nextCategory);
-    writeSelectedCategory(nextCategory);
+    setSelectedCategory(nextCategory);
   }
 
   function updateStyle(value: string) {
     setStyle(value);
-    writeSelectedStyle(value);
+    setSelectedStyle(value);
   }
 
   return (

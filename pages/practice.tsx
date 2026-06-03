@@ -21,21 +21,23 @@ import {
   StoredPassage,
   filterLibraryPassages,
   getDefaultPassage,
-  readActivePassageLibrary,
-  readPassageSelectionMode,
   readPreviousResult,
-  readSelectedCategory,
-  readSelectedStyle,
   readStoredPassage,
   readStoredRules,
   selectDifferentLibraryPassage,
   selectRandomLibraryPassage,
   toStoredPassage,
-  writeActivePassageId,
-  writePassageSelectionMode,
   writePreviousResult,
   writeStoredPassage
 } from "@/lib/app-storage";
+import {
+  getActivePassageLibrary,
+  getPassageSelectionMode,
+  getSelectedCategory,
+  getSelectedStyle,
+  setActivePassageId,
+  setPassageSelectionMode
+} from "@/lib/passageStorage";
 
 const DURATIONS = [
   { label: "1 min", seconds: 60 },
@@ -330,7 +332,7 @@ export default function PracticePage() {
     const library = getFilteredLibrary();
 
     if (library.length > 0) {
-      const isRandomMode = readPassageSelectionMode() === "random";
+      const isRandomMode = getPassageSelectionMode() === "random";
       const nextLibraryPassage = isRandomMode
         ? selectRandomLibraryPassage(passage.id, library)
         : selectDifferentLibraryPassage(passage.id, library);
@@ -344,8 +346,8 @@ export default function PracticePage() {
         setPassageNotice("");
       }
 
-      writePassageSelectionMode(isRandomMode ? "random" : "specific");
-      writeActivePassageId(nextLibraryPassage.id);
+      setPassageSelectionMode(isRandomMode ? "random" : "specific");
+      setActivePassageId(nextLibraryPassage.id);
       const nextPassage = toStoredPassage(nextLibraryPassage, durationSeconds, library);
       setPassage(nextPassage);
       setPreviousResult(readPreviousResult(nextPassage.id));
@@ -370,7 +372,7 @@ export default function PracticePage() {
 
   function loadRandomPassage() {
     resetSession();
-    writePassageSelectionMode("random");
+    setPassageSelectionMode("random");
     const library = getFilteredLibrary();
 
     if (library.length === 0) {
@@ -393,7 +395,7 @@ export default function PracticePage() {
       setPassageNotice("");
     }
 
-    writeActivePassageId(randomLibraryPassage.id);
+    setActivePassageId(randomLibraryPassage.id);
     const randomPassage = toStoredPassage(randomLibraryPassage, durationSeconds, library);
     setPassage(randomPassage);
     setPreviousResult(readPreviousResult(randomPassage.id));
@@ -401,7 +403,7 @@ export default function PracticePage() {
   }
 
   function getFilteredLibrary() {
-    return filterLibraryPassages(readActivePassageLibrary(), readSelectedCategory(), readSelectedStyle());
+    return filterLibraryPassages(getActivePassageLibrary(), getSelectedCategory(), getSelectedStyle());
   }
 
   return (

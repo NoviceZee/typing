@@ -12,18 +12,20 @@ import {
   LibraryPassage,
   STYLES,
   StyleFilter,
-  addPassagesToLibrary,
   createLibraryPassage,
-  createPassageLibraryExport,
-  deleteLibraryPassage,
   extractPassageTitle,
   filterLibraryPassages,
-  importPassageLibraryExport,
-  readPassageLibrary,
   splitPastedPassages,
-  splitTextIntoPassages,
-  updateLibraryPassage
+  splitTextIntoPassages
 } from "@/lib/app-storage";
+import {
+  addPassages,
+  deletePassage as deleteStoredPassage,
+  exportPassageLibrary,
+  getPassageLibrary,
+  importPassageLibrary,
+  updatePassage
+} from "@/lib/passageStorage";
 
 type StatusFilter = "All" | "Active" | "Hidden";
 
@@ -72,17 +74,17 @@ function ManagePassages() {
   }, []);
 
   function refreshLibrary() {
-    setLibrary(readPassageLibrary());
+    setLibrary(getPassageLibrary());
   }
 
   function deletePassage(id: string) {
-    deleteLibraryPassage(id);
+    deleteStoredPassage(id);
     refreshLibrary();
     setMessage("Passage deleted.");
   }
 
   function savePassage(passage: LibraryPassage) {
-    updateLibraryPassage(passage);
+    updatePassage(passage.id, passage);
     setEditingPassage(null);
     refreshLibrary();
     setMessage("Passage saved.");
@@ -110,7 +112,7 @@ function ManagePassages() {
       });
     });
 
-    addPassagesToLibrary(passages);
+    addPassages(passages);
     setNewPassageTitle("");
     setNewPassageContent("");
     refreshLibrary();
@@ -156,7 +158,7 @@ function ManagePassages() {
         return;
       }
 
-      addPassagesToLibrary(uploadedPassages);
+      addPassages(uploadedPassages);
       refreshLibrary();
       setMessage(`Uploaded ${uploadedPassages.length} passage${uploadedPassages.length === 1 ? "" : "s"}.`);
     } catch (error) {
@@ -169,7 +171,7 @@ function ManagePassages() {
   }
 
   function exportLibrary() {
-    const exportData = createPassageLibraryExport();
+    const exportData = exportPassageLibrary();
     const fileDate = new Date().toISOString().slice(0, 10);
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -190,7 +192,7 @@ function ManagePassages() {
 
     try {
       const parsed = JSON.parse(await file.text());
-      const summary = importPassageLibraryExport(parsed, replaceExistingLibrary);
+      const summary = importPassageLibrary(parsed, replaceExistingLibrary);
       refreshLibrary();
       setMessage(
         `Imported ${summary.imported} passages. Skipped ${summary.skippedDuplicates} duplicates. Failed ${summary.failedInvalidItems} invalid items.`
