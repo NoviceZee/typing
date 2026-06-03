@@ -37,6 +37,7 @@ export default function PassagesPage() {
   const [style, setStyle] = useState<StyleFilter>(ALL_FILTER);
   const [message, setMessage] = useState("");
   const [selectionMode, setSelectionMode] = useState<PassageSelectionMode>("specific");
+  const [hasLoadedLibrary, setHasLoadedLibrary] = useState(false);
 
   const activeLibrary = useMemo(() => library.filter((passage) => passage.isActive), [library]);
   const activePassage = useMemo(
@@ -59,6 +60,7 @@ export default function PassagesPage() {
     setSelectionMode(readPassageSelectionMode());
     setCategory(readSelectedCategory());
     setStyle(readSelectedStyle());
+    setHasLoadedLibrary(true);
   }
 
   function selectPracticePassage(passage: LibraryPassage, sourceLibrary = filteredLibrary.length > 0 ? filteredLibrary : activeLibrary) {
@@ -168,13 +170,19 @@ export default function PassagesPage() {
               </div>
 
               <div className="mt-5 space-y-3">
-                {library.length === 0 && (
+                {!hasLoadedLibrary && (
+                  <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-sm text-paper/45">
+                    Loading passages...
+                  </div>
+                )}
+
+                {hasLoadedLibrary && library.length === 0 && (
                   <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-sm text-paper/45">
                     No passages are available yet.
                   </div>
                 )}
 
-                {library.length > 0 && filteredLibrary.length === 0 && (
+                {hasLoadedLibrary && library.length > 0 && filteredLibrary.length === 0 && (
                   <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-sm text-paper/45">
                     No passages match this category/style. Please choose All or another filter.
                   </div>
