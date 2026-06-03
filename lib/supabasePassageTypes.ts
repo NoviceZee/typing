@@ -1,5 +1,16 @@
-import { CATEGORIES, LibraryPassage } from "@/lib/app-storage";
-import { PracticeCategory } from "@/lib/typing-engine";
+import type { LibraryPassage } from "./app-storage";
+import type { PracticeCategory } from "./typing-engine";
+
+const PRACTICE_CATEGORIES = [
+  "Business email",
+  "Tender / proposal writing",
+  "Government / formal English",
+  "News article",
+  "Casual writing",
+  "Legal / contract style",
+  "Random paragraph",
+  "Uncategorised"
+];
 
 export type SupabasePassageRow = {
   id: string;
@@ -77,5 +88,5 @@ function countWords(text: string): number {
 
 function toPracticeCategory(category: string | null): PracticeCategory {
   const cleanCategory = category?.trim();
-  return CATEGORIES.find((knownCategory) => knownCategory === cleanCategory) ?? "Uncategorised";
+  return (PRACTICE_CATEGORIES.find((knownCategory) => knownCategory === cleanCategory) ?? "Uncategorised") as PracticeCategory;
 }

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "next lint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:supabase-passages": "node --experimental-strip-types scripts/testSupabasePassages.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",

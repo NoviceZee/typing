@@ -20,14 +20,14 @@ import {
   writePassageSelectionMode,
   writeSelectedCategory,
   writeSelectedStyle
-} from "@/lib/app-storage";
-import { supabase } from "@/lib/supabaseClient";
+} from "./app-storage";
+import { supabase } from "./supabaseClient";
 import {
   SupabasePassageInsert,
   SupabasePassageUpdate,
   libraryPassageToSupabaseInsert,
   supabasePassageRowToLibraryPassage
-} from "@/lib/supabasePassageTypes";
+} from "./supabasePassageTypes";
 
 export type PassageUpdates = Partial<Omit<LibraryPassage, "id" | "createdAt">>;
 
@@ -137,6 +137,20 @@ export async function getSupabasePassageLibrary(): Promise<LibraryPassage[]> {
   }
 
   return (data ?? []).map(supabasePassageRowToLibraryPassage);
+}
+
+export async function getSupabasePassageById(id: string): Promise<LibraryPassage | null> {
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.from("passages").select("*").eq("id", id).maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? supabasePassageRowToLibraryPassage(data) : null;
 }
 
 export async function addSupabasePassage(passage: LibraryPassage, createdBy: string | null): Promise<LibraryPassage> {
