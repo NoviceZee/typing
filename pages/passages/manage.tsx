@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Eye, Pencil, Search, Trash2, Upload } from "lucide-react";
+import { Download, Eye, FilePlus, Pencil, Search, Trash2, Upload } from "lucide-react";
 import { AdminOnly } from "@/components/AdminOnly";
 import { AppShell } from "@/components/AppShell";
 import { PracticeCategory } from "@/lib/typing-engine";
@@ -12,11 +12,16 @@ import {
   LibraryPassage,
   STYLES,
   StyleFilter,
+  addPassagesToLibrary,
+  createLibraryPassage,
   createPassageLibraryExport,
   deleteLibraryPassage,
+  extractPassageTitle,
   filterLibraryPassages,
   importPassageLibraryExport,
   readPassageLibrary,
+  splitPastedPassages,
+  splitTextIntoPassages,
   updateLibraryPassage
 } from "@/lib/app-storage";
 
@@ -34,15 +39,23 @@ export default function ManagePassagesPage() {
 
 function ManagePassages() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const [library, setLibrary] = useState<LibraryPassage[]>([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryFilter>(ALL_FILTER);
   const [style, setStyle] = useState<StyleFilter>(ALL_FILTER);
   const [status, setStatus] = useState<StatusFilter>("All");
   const [replaceExistingLibrary, setReplaceExistingLibrary] = useState(false);
+  const [newPassageTitle, setNewPassageTitle] = useState("");
+  const [newPassageCategory, setNewPassageCategory] = useState<PracticeCategory>("Business email");
+  const [newPassageStyle, setNewPassageStyle] = useState("Formal");
+  const [newPassageContent, setNewPassageContent] = useState("");
   const [editingPassage, setEditingPassage] = useState<LibraryPassage | null>(null);
   const [previewPassage, setPreviewPassage] = useState<LibraryPassage | null>(null);
   const [message, setMessage] = useState("");
+
+  const activeCount = useMemo(() => library.filter((passage) => passage.isActive).length, [library]);
+  const hiddenCount = library.length - activeCount;
 
   const filteredLibrary = useMemo(() => {
     const categoryStyleMatches = filterLibraryPassages(library, category, style);
@@ -73,6 +86,86 @@ function ManagePassages() {
     setEditingPassage(null);
     refreshLibrary();
     setMessage("Passage saved.");
+  }
+
+  function addManualPassages() {
+    const passageParts = splitPastedPassages(newPassageContent).filter((part) => part.length >= 20);
+
+    if (passageParts.length === 0) {
+      setMessage("Add at least 20 characters of passage content.");
+      return;
+    }
+
+    const passages = passageParts.map((part, index) => {
+      const fallbackTitle =
+        newPassageTitle.trim() || (passageParts.length > 1 ? `Admin passage ${index + 1}` : "Admin passage");
+      const extracted = extractPassageTitle(part, fallbackTitle);
+
+      return createLibraryPassage({
+        title: extracted.title,
+        content: extracted.content,
+        category: newPassageCategory,
+        style: newPassageStyle.trim() || "General",
+        source: "pasted"
+      });
+    });
+
+    addPassagesToLibrary(passages);
+    setNewPassageTitle("");
+    setNewPassageContent("");
+    refreshLibrary();
+    setMessage(`Added ${passages.length} passage${passages.length === 1 ? "" : "s"}.`);
+  }
+
+  async function uploadTextPassages(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []).filter((file) => file.name.toLowerCase().endsWith(".txt"));
+
+    if (files.length === 0) {
+      setMessage("Choose one or more .txt files to upload.");
+      return;
+    }
+
+    try {
+      const uploadedPassages: LibraryPassage[] = [];
+
+      for (const file of files) {
+        const text = await file.text();
+        const fallbackTitle = file.name.replace(/\.txt$/i, "").trim() || "Uploaded passage";
+        const parts = splitTextIntoPassages(text).filter((part) => part.length >= 20);
+
+        parts.forEach((part, index) => {
+          const extracted = extractPassageTitle(
+            part,
+            parts.length > 1 ? `${fallbackTitle} ${index + 1}` : fallbackTitle
+          );
+
+          uploadedPassages.push(
+            createLibraryPassage({
+              title: extracted.title,
+              content: extracted.content,
+              category: newPassageCategory,
+              style: newPassageStyle.trim() || "General",
+              source: "uploaded"
+            })
+          );
+        });
+      }
+
+      if (uploadedPassages.length === 0) {
+        setMessage("No uploadable passages found. Use separators like --- between passages if needed.");
+        return;
+      }
+
+      addPassagesToLibrary(uploadedPassages);
+      refreshLibrary();
+      setMessage(`Uploaded ${uploadedPassages.length} passage${uploadedPassages.length === 1 ? "" : "s"}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Upload failed. Please try another .txt file.");
+    } finally {
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = "";
+      }
+    }
   }
 
   function exportLibrary() {
@@ -114,14 +207,93 @@ function ManagePassages() {
   return (
     <>
       <section className="mx-auto max-w-6xl">
-        <p className="font-mono text-xs uppercase text-brass">Manage</p>
-        <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Manage passages</h1>
+        <p className="font-mono text-xs uppercase text-brass">Admin</p>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold text-paper md:text-4xl">Admin Passage Console</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/55">
+              Add, edit, import, export, and remove passages from this browser&apos;s local FormalType library.
+            </p>
+          </div>
+          <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 text-right shadow-glow">
+            <p className="font-mono text-2xl text-paper">{library.length}</p>
+            <p className="font-mono text-xs uppercase text-paper/45">passages</p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <StatCard label="Total passages" value={library.length} />
+          <StatCard label="Active" value={activeCount} />
+          <StatCard label="Hidden" value={hiddenCount} />
+        </div>
 
         {message && (
           <div className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
             {message}
           </div>
         )}
+
+        <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-paper">Add passages</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/55">
+                Create a passage manually or upload one or more .txt files. Separators such as --- split long uploads
+                into multiple passages.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => uploadInputRef.current?.click()}
+              className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-4 py-2 font-mono text-sm text-paper/70 transition hover:border-brass/50 hover:text-paper"
+            >
+              <Upload className="h-4 w-4" />
+              Upload .txt
+            </button>
+          </div>
+
+          <input
+            ref={uploadInputRef}
+            type="file"
+            accept=".txt,text/plain"
+            multiple
+            onChange={uploadTextPassages}
+            className="sr-only"
+          />
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <TextInput label="Title" value={newPassageTitle} onChange={setNewPassageTitle} />
+            <Select
+              label="Category"
+              value={newPassageCategory}
+              onChange={(value) => setNewPassageCategory(value as PracticeCategory)}
+              options={CATEGORIES}
+            />
+            <TextInput label="Style" value={newPassageStyle} onChange={setNewPassageStyle} />
+          </div>
+
+          <label className="mt-4 block">
+            <span className="font-mono text-xs uppercase text-paper/45">Content</span>
+            <textarea
+              value={newPassageContent}
+              onChange={(event) => setNewPassageContent(event.target.value)}
+              rows={8}
+              className="mt-2 w-full resize-y rounded-md border border-paper/10 bg-ink-950 px-4 py-4 font-mono text-sm leading-6 text-paper/80 outline-none transition focus:border-brass"
+              placeholder="Paste passage content here"
+            />
+          </label>
+
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={addManualPassages}
+              className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-sm text-brass transition hover:bg-brass/15"
+            >
+              <FilePlus className="h-4 w-4" />
+              Add passage
+            </button>
+          </div>
+        </section>
 
         <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -267,6 +439,15 @@ function ManagePassages() {
       )}
       {previewPassage && <PreviewModal passage={previewPassage} onClose={() => setPreviewPassage(null)} />}
     </>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3">
+      <p className="font-mono text-2xl text-paper">{value}</p>
+      <p className="mt-1 font-mono text-xs uppercase text-paper/45">{label}</p>
+    </div>
   );
 }
 
