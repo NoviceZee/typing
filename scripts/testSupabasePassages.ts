@@ -31,7 +31,6 @@ const UPDATED_TITLE = "FormalType Supabase CRUD Test Updated";
 const require = createRequire(import.meta.url);
 
 let insertedPassageId: string | null = null;
-let directDiagnosticPassageId: string | null = null;
 let supabaseClient: any;
 let supabaseCrudClient: any;
 let createClient: any;
@@ -59,8 +58,6 @@ async function main() {
 
   try {
     await assertAuthenticatedUser(authContext.userId);
-    await runDebugAuthUidRpc();
-    await runDirectInsertDiagnostic(authContext);
 
     logStep("Inserting test passage");
     const insertPayload = { ...testPassage, created_by: authContext.userId };
@@ -109,7 +106,6 @@ async function main() {
     logResult("Deleted test passage and confirmed it is no longer readable.");
     await assertNoTestRowsRemain();
   } finally {
-    await cleanupDirectDiagnosticPassage();
     await cleanupInsertedPassage();
   }
 }
@@ -166,14 +162,6 @@ async function assertAuthenticatedUser(expectedUserId: string | null) {
   logResult(`Authenticated session confirmed for ${data.user.id}`);
 }
 
-async function runDebugAuthUidRpc() {
-  logStep("Checking debug_auth_uid RPC");
-  const { data: debugUid, error: debugUidError } = await (supabaseCrudClient ?? supabaseClient).rpc("debug_auth_uid");
-
-  console.log("debug_auth_uid data:", debugUid);
-  console.log("debug_auth_uid error:", debugUidError);
-}
-
 async function cleanupInsertedPassage() {
   if (!insertedPassageId) {
     return;
@@ -188,62 +176,6 @@ async function cleanupInsertedPassage() {
     logError("Cleanup failed. Delete this test row manually if it remains in Supabase.", error);
   } finally {
     insertedPassageId = null;
-  }
-}
-
-async function runDirectInsertDiagnostic(authContext: { userId: string | null; accessToken: string | null }) {
-  if (!authContext.userId) {
-    return;
-  }
-
-  const directPayload = {
-    title: TEST_TITLE,
-    category: "Test",
-    style: "Formal",
-    content: "This is a temporary CRUD verification passage.",
-    is_active: true,
-    is_public: true,
-    created_by: authContext.userId
-  };
-
-  logStep("Running direct authenticated insert diagnostic");
-  logResult(`Signed-in user id: ${authContext.userId}`);
-  logResult(`Session exists: ${Boolean(authContext.userId && authContext.accessToken)}`);
-  logResult(`Access token exists: ${Boolean(authContext.accessToken)}`);
-  logResult(`Direct insert payload created_by: ${directPayload.created_by}`);
-
-  const { data, error } = await supabaseClient.from("passages").insert(directPayload).select("*").single();
-
-  if (error) {
-    logError("Direct authenticated insert failed.", error);
-    printSqlDiagnostics();
-    throw error;
-  }
-
-  directDiagnosticPassageId = data.id;
-  logResult(`Direct authenticated insert passed for ${data.id}; cleaning up diagnostic row before helper CRUD.`);
-  await cleanupDirectDiagnosticPassage();
-}
-
-async function cleanupDirectDiagnosticPassage() {
-  if (!directDiagnosticPassageId) {
-    return;
-  }
-
-  logStep(`Cleaning up direct diagnostic passage ${directDiagnosticPassageId}`);
-
-  try {
-    const { error } = await supabaseClient.from("passages").delete().eq("id", directDiagnosticPassageId);
-
-    if (error) {
-      throw error;
-    }
-
-    logResult("Direct diagnostic cleanup delete completed.");
-  } catch (error) {
-    logError("Direct diagnostic cleanup failed. Delete this test row manually if it remains in Supabase.", error);
-  } finally {
-    directDiagnosticPassageId = null;
   }
 }
 
@@ -374,30 +306,6 @@ function logError(message: string, error: unknown) {
   }
 
   console.error(error);
-}
-
-function printSqlDiagnostics() {
-  console.error(`
-Temporary Supabase SQL diagnostic to run in SQL Editor:
-
-create or replace function public.debug_auth_uid()
-returns uuid
-language sql
-stable
-as $$
-  select auth.uid();
-$$;
-
-grant execute on function public.debug_auth_uid() to authenticated;
-
-Then call this from the authenticated client:
-
-const { data, error } = await supabase.rpc("debug_auth_uid");
-
-Expected: data should equal the signed-in user id. Remove the function after testing:
-
-drop function if exists public.debug_auth_uid();
-`);
 }
 
 main().catch((error) => {
