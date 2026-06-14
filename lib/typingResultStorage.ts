@@ -20,6 +20,7 @@ export type SupabaseTypingResultRow = SupabaseTypingResultInsert & {
 
 export type SupabaseLeaderboardResultRow = {
   id: string;
+  display_name: string;
   passage_title: string;
   duration_seconds: number;
   wpm: number;
@@ -78,7 +79,7 @@ export async function getSupabaseLeaderboardResults(limit = 25): Promise<Supabas
 
   const { data, error } = await supabase
     .from("typing_results_leaderboard")
-    .select("id,passage_title,duration_seconds,wpm,accuracy,created_at")
+    .select("id,display_name,passage_title,duration_seconds,wpm,accuracy,created_at")
     .order("wpm", { ascending: false })
     .order("accuracy", { ascending: false })
     .order("created_at", { ascending: false })

@@ -45,7 +45,7 @@ export default function LeaderboardPage() {
         </div>
 
         <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/55">
-          Ranked by WPM, then accuracy. Player identities stay private.
+          Ranked by WPM, then accuracy. Only public display names are shown.
         </p>
 
         {message && (
@@ -55,8 +55,9 @@ export default function LeaderboardPage() {
         )}
 
         <section className="mt-6 overflow-hidden rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
-          <div className="grid grid-cols-[4rem_minmax(0,1fr)_7rem_6rem_7rem_10rem] border-b border-paper/10 px-4 py-3 font-mono text-xs uppercase text-paper/40 max-md:hidden">
+          <div className="grid grid-cols-[4rem_minmax(0,0.85fr)_minmax(0,1fr)_7rem_6rem_7rem_10rem] border-b border-paper/10 px-4 py-3 font-mono text-xs uppercase text-paper/40 max-md:hidden">
             <span>Rank</span>
+            <span>Name</span>
             <span>Passage</span>
             <span>Duration</span>
             <span>WPM</span>
@@ -78,9 +79,13 @@ export default function LeaderboardPage() {
             results.map((result, index) => (
               <article
                 key={result.id}
-                className="grid gap-3 border-b border-paper/10 px-4 py-4 last:border-b-0 md:grid-cols-[4rem_minmax(0,1fr)_7rem_6rem_7rem_10rem] md:items-center"
+                className="grid gap-3 border-b border-paper/10 px-4 py-4 last:border-b-0 md:grid-cols-[4rem_minmax(0,0.85fr)_minmax(0,1fr)_7rem_6rem_7rem_10rem] md:items-center"
               >
                 <div className="font-mono text-lg font-semibold text-brass md:text-base">#{index + 1}</div>
+                <div>
+                  <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">Name</div>
+                  <div className="font-semibold text-paper">{result.display_name}</div>
+                </div>
                 <div>
                   <h2 className="font-semibold text-paper">{result.passage_title}</h2>
                   <p className="mt-1 font-mono text-xs text-paper/40 md:hidden">
