@@ -31,7 +31,10 @@ const UPDATED_TITLE = "FormalType Supabase CRUD Test Updated";
 const require = createRequire(import.meta.url);
 
 let insertedPassageId: string | null = null;
+let directDiagnosticPassageId: string | null = null;
 let supabaseClient: any;
+let supabaseCrudClient: any;
+let createClient: any;
 let insertSupabasePassageRow: (payload: SupabasePassageInsert, client?: any) => Promise<SupabasePassageRow>;
 let deleteSupabasePassageRow: (id: string, client?: any) => Promise<void>;
 let getSupabasePassageRowById: (id: string, client?: any) => Promise<SupabasePassageRow | null>;
@@ -51,19 +54,25 @@ async function main() {
     throw new Error("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
   }
 
-  const createdBy = await signInForRls();
+  const authContext = await signInForRls();
   const testPassage = makeTestPassage();
 
   try {
-    await assertAuthenticatedUser(createdBy);
+    await assertAuthenticatedUser(authContext.userId);
+    await runDebugAuthUidRpc();
+    await runDirectInsertDiagnostic(authContext);
 
     logStep("Inserting test passage");
-    const insertedPassage = await insertSupabasePassageRow({ ...testPassage, created_by: createdBy }, supabaseClient);
+    const insertPayload = { ...testPassage, created_by: authContext.userId };
+    logResult(`Signed-in user id: ${authContext.userId ?? "none"}`);
+    logResult(`Session access token exists: ${Boolean(authContext.accessToken)}`);
+    logResult(`Insert payload created_by: ${insertPayload.created_by ?? "null"}`);
+    const insertedPassage = await insertSupabasePassageRow(insertPayload, supabaseCrudClient);
     insertedPassageId = insertedPassage.id;
     logResult(`Inserted ${insertedPassage.id}: ${insertedPassage.title}`);
 
     logStep("Fetching inserted passage");
-    const fetchedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseClient);
+    const fetchedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseCrudClient);
     assertPassage(fetchedPassage, "Inserted passage was not readable after insert.");
     logResult(`Fetched ${fetchedPassage.id}: ${fetchedPassage.title}`);
 
@@ -74,12 +83,12 @@ async function main() {
         title: UPDATED_TITLE,
         content: "Updated FormalType Supabase CRUD verification content."
       },
-      supabaseClient
+      supabaseCrudClient
     );
     logResult(`Updated ${updatedPassage.id}: ${updatedPassage.title}`);
 
     logStep("Fetching updated passage");
-    const refetchedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseClient);
+    const refetchedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseCrudClient);
     assertPassage(refetchedPassage, "Updated passage was not readable after update.");
 
     if (refetchedPassage.title !== UPDATED_TITLE) {
@@ -89,10 +98,10 @@ async function main() {
     logResult(`Confirmed update for ${refetchedPassage.id}`);
 
     logStep("Deleting test passage");
-    await deleteSupabasePassageRow(insertedPassage.id, supabaseClient);
+    await deleteSupabasePassageRow(insertedPassage.id, supabaseCrudClient);
     insertedPassageId = null;
 
-    const deletedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseClient);
+    const deletedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseCrudClient);
     if (deletedPassage) {
       throw new Error(`Delete verification failed. Passage ${insertedPassage.id} is still readable.`);
     }
@@ -100,11 +109,12 @@ async function main() {
     logResult("Deleted test passage and confirmed it is no longer readable.");
     await assertNoTestRowsRemain();
   } finally {
+    await cleanupDirectDiagnosticPassage();
     await cleanupInsertedPassage();
   }
 }
 
-async function signInForRls(): Promise<string | null> {
+async function signInForRls(): Promise<{ userId: string | null; accessToken: string | null }> {
   const email = process.env.SUPABASE_TEST_EMAIL;
   const password = process.env.SUPABASE_TEST_PASSWORD;
 
@@ -112,7 +122,8 @@ async function signInForRls(): Promise<string | null> {
     logResult(
       "No SUPABASE_TEST_EMAIL/SUPABASE_TEST_PASSWORD provided. Trying anon access; RLS may block insert if created_by is required."
     );
-    return null;
+    supabaseCrudClient = supabaseClient;
+    return { userId: null, accessToken: null };
   }
 
   logStep("Signing in test user for RLS");
@@ -126,8 +137,14 @@ async function signInForRls(): Promise<string | null> {
     throw new Error("Supabase sign-in succeeded without a user.");
   }
 
+  if (!data.session?.access_token) {
+    throw new Error("Supabase sign-in succeeded without a session access token.");
+  }
+
+  supabaseCrudClient = createAuthenticatedCrudClient(data.session.access_token);
   logResult(`Signed in test user ${data.user.id}`);
-  return data.user.id;
+  logResult(`Session access token exists: ${Boolean(data.session.access_token)}`);
+  return { userId: data.user.id, accessToken: data.session.access_token };
 }
 
 async function assertAuthenticatedUser(expectedUserId: string | null) {
@@ -149,6 +166,14 @@ async function assertAuthenticatedUser(expectedUserId: string | null) {
   logResult(`Authenticated session confirmed for ${data.user.id}`);
 }
 
+async function runDebugAuthUidRpc() {
+  logStep("Checking debug_auth_uid RPC");
+  const { data: debugUid, error: debugUidError } = await (supabaseCrudClient ?? supabaseClient).rpc("debug_auth_uid");
+
+  console.log("debug_auth_uid data:", debugUid);
+  console.log("debug_auth_uid error:", debugUidError);
+}
+
 async function cleanupInsertedPassage() {
   if (!insertedPassageId) {
     return;
@@ -157,7 +182,7 @@ async function cleanupInsertedPassage() {
   logStep(`Cleaning up test passage ${insertedPassageId}`);
 
   try {
-    await deleteSupabasePassageRow(insertedPassageId, supabaseClient);
+    await deleteSupabasePassageRow(insertedPassageId, supabaseCrudClient ?? supabaseClient);
     logResult("Cleanup delete completed.");
   } catch (error) {
     logError("Cleanup failed. Delete this test row manually if it remains in Supabase.", error);
@@ -166,9 +191,65 @@ async function cleanupInsertedPassage() {
   }
 }
 
+async function runDirectInsertDiagnostic(authContext: { userId: string | null; accessToken: string | null }) {
+  if (!authContext.userId) {
+    return;
+  }
+
+  const directPayload = {
+    title: TEST_TITLE,
+    category: "Test",
+    style: "Formal",
+    content: "This is a temporary CRUD verification passage.",
+    is_active: true,
+    is_public: true,
+    created_by: authContext.userId
+  };
+
+  logStep("Running direct authenticated insert diagnostic");
+  logResult(`Signed-in user id: ${authContext.userId}`);
+  logResult(`Session exists: ${Boolean(authContext.userId && authContext.accessToken)}`);
+  logResult(`Access token exists: ${Boolean(authContext.accessToken)}`);
+  logResult(`Direct insert payload created_by: ${directPayload.created_by}`);
+
+  const { data, error } = await supabaseClient.from("passages").insert(directPayload).select("*").single();
+
+  if (error) {
+    logError("Direct authenticated insert failed.", error);
+    printSqlDiagnostics();
+    throw error;
+  }
+
+  directDiagnosticPassageId = data.id;
+  logResult(`Direct authenticated insert passed for ${data.id}; cleaning up diagnostic row before helper CRUD.`);
+  await cleanupDirectDiagnosticPassage();
+}
+
+async function cleanupDirectDiagnosticPassage() {
+  if (!directDiagnosticPassageId) {
+    return;
+  }
+
+  logStep(`Cleaning up direct diagnostic passage ${directDiagnosticPassageId}`);
+
+  try {
+    const { error } = await supabaseClient.from("passages").delete().eq("id", directDiagnosticPassageId);
+
+    if (error) {
+      throw error;
+    }
+
+    logResult("Direct diagnostic cleanup delete completed.");
+  } catch (error) {
+    logError("Direct diagnostic cleanup failed. Delete this test row manually if it remains in Supabase.", error);
+  } finally {
+    directDiagnosticPassageId = null;
+  }
+}
+
 async function assertNoTestRowsRemain() {
   logStep("Confirming no CRUD test rows remain");
-  const { data, error } = await supabaseClient
+  const { data, error } = await (supabaseCrudClient ?? supabaseClient)
     .from("passages")
     .select("id,title")
     .in("title", [TEST_TITLE, UPDATED_TITLE]);
@@ -227,6 +308,7 @@ function loadEnvLocal() {
 
 function loadRuntimeModules() {
   const supabaseModule = require("../lib/supabaseClient.ts");
+  const supabaseJsModule = require("@supabase/supabase-js");
   const passageStorageModule = require("../lib/supabasePassageStorage.ts");
 
   if (!supabaseModule.isSupabaseConfigured || !supabaseModule.supabase) {
@@ -234,10 +316,33 @@ function loadRuntimeModules() {
   }
 
   supabaseClient = supabaseModule.supabase;
+  supabaseCrudClient = supabaseModule.supabase;
+  createClient = supabaseJsModule.createClient;
   insertSupabasePassageRow = passageStorageModule.insertSupabasePassageRow;
   deleteSupabasePassageRow = passageStorageModule.deleteSupabasePassageRow;
   getSupabasePassageRowById = passageStorageModule.getSupabasePassageRowById;
   updateSupabasePassageRow = passageStorageModule.updateSupabasePassageRow;
+}
+
+function createAuthenticatedCrudClient(accessToken: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  });
 }
 
 function assertPassage(passage: SupabasePassageRow | null, message: string): asserts passage is SupabasePassageRow {
@@ -269,6 +374,30 @@ function logError(message: string, error: unknown) {
   }
 
   console.error(error);
+}
+
+function printSqlDiagnostics() {
+  console.error(`
+Temporary Supabase SQL diagnostic to run in SQL Editor:
+
+create or replace function public.debug_auth_uid()
+returns uuid
+language sql
+stable
+as $$
+  select auth.uid();
+$$;
+
+grant execute on function public.debug_auth_uid() to authenticated;
+
+Then call this from the authenticated client:
+
+const { data, error } = await supabase.rpc("debug_auth_uid");
+
+Expected: data should equal the signed-in user id. Remove the function after testing:
+
+drop function if exists public.debug_auth_uid();
+`);
 }
 
 main().catch((error) => {
