@@ -31,10 +31,9 @@ import {
 
 export type PassageUpdates = Partial<Omit<LibraryPassage, "id" | "createdAt">>;
 
-// Active backend for FormalType today: localStorage.
-// Future Supabase migration should replace the implementations below at this
-// boundary so /passages, /practice, and /passages/manage do not need to learn a
-// second storage API.
+// localStorage remains the offline/unconfigured fallback. Supabase-backed
+// screens should call the async helpers below and fall back here only when
+// Supabase is unavailable.
 export function getPassageLibrary(): LibraryPassage[] {
   return readPassageLibrary();
 }

@@ -19,6 +19,7 @@ import {
 } from "@/lib/typing-engine";
 import {
   PreviousTypingResult,
+  LibraryPassage,
   StoredPassage,
   filterLibraryPassages,
   getDefaultPassage,
@@ -29,6 +30,7 @@ import {
   selectRandomLibraryPassage,
   toStoredPassage,
   writePreviousResult,
+  writePassageLibrary,
   writeStoredPassage
 } from "@/lib/app-storage";
 import {
@@ -36,6 +38,7 @@ import {
   getPassageSelectionMode,
   getSelectedCategory,
   getSelectedStyle,
+  getSupabasePassageLibrary,
   setActivePassageId,
   setPassageSelectionMode
 } from "@/lib/passageStorage";
@@ -73,6 +76,7 @@ export default function PracticePage() {
   const startedAtRef = useRef<number | null>(null);
   const typedTextRef = useRef("");
   const elapsedSecondsRef = useRef(0);
+  const libraryRef = useRef<LibraryPassage[]>([]);
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
@@ -124,13 +128,31 @@ export default function PracticePage() {
       : "";
 
   useEffect(() => {
-    setRules(readStoredRules());
-    const storedPassage = readStoredPassage(60);
-    setPassage(storedPassage);
-    setPreviousResult(readPreviousResult(storedPassage.id));
-    if (getFilteredLibrary().length === 0) {
-      setPassageNotice("No active saved passages found. Using a sample passage.");
+    let isMounted = true;
+
+    async function loadInitialPracticeState() {
+      const activeLibrary = await loadActivePassageLibrary();
+
+      if (!isMounted) {
+        return;
+      }
+
+      const storedPassage = readStoredPassage(60);
+      setPassage(storedPassage);
+      setPreviousResult(readPreviousResult(storedPassage.id));
+      if (activeLibrary.length === 0) {
+        setPassageNotice("No active saved passages found. Using a sample passage.");
+      } else {
+        setPassageNotice("");
+      }
     }
+
+    setRules(readStoredRules());
+    loadInitialPracticeState();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -325,10 +347,11 @@ export default function PracticePage() {
     });
   }
 
-  function handleDuration(seconds: number) {
+  async function handleDuration(seconds: number) {
     resetSession();
     setDurationSeconds(seconds);
     setRemainingSeconds(seconds);
+    await loadActivePassageLibrary();
     const nextPassage = readStoredPassage(seconds);
     setPassage(nextPassage);
     setPreviousResult(readPreviousResult(nextPassage.id));
@@ -416,8 +439,22 @@ export default function PracticePage() {
     writeStoredPassage(randomPassage);
   }
 
+  async function loadActivePassageLibrary(): Promise<LibraryPassage[]> {
+    try {
+      const supabaseLibrary = await getSupabasePassageLibrary();
+      libraryRef.current = supabaseLibrary;
+      writePassageLibrary(supabaseLibrary);
+      return supabaseLibrary;
+    } catch {
+      const localLibrary = getActivePassageLibrary();
+      libraryRef.current = localLibrary;
+      return localLibrary;
+    }
+  }
+
   function getFilteredLibrary() {
-    return filterLibraryPassages(getActivePassageLibrary(), getSelectedCategory(), getSelectedStyle());
+    const activeLibrary = libraryRef.current.length > 0 ? libraryRef.current : getActivePassageLibrary();
+    return filterLibraryPassages(activeLibrary, getSelectedCategory(), getSelectedStyle());
   }
 
   return (

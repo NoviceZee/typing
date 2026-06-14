@@ -23,6 +23,7 @@ import {
   getPassageSelectionMode,
   getSelectedCategory,
   getSelectedStyle,
+  getSupabasePassageLibrary,
   setPassageSelectionMode,
   setSelectedCategory,
   setSelectedStyle,
@@ -56,8 +57,13 @@ export default function PassagesPage() {
     refreshLibrary();
   }, []);
 
-  function refreshLibrary() {
-    setLibrary(getPassageLibrary());
+  async function refreshLibrary() {
+    try {
+      setLibrary(await getSupabasePassageLibrary());
+    } catch {
+      setLibrary(getPassageLibrary());
+    }
+
     setActivePassageId(getActivePassageId());
     setSelectionMode(getPassageSelectionMode());
     setCategory(getSelectedCategory());

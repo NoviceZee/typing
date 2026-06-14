@@ -592,7 +592,7 @@ function toLibraryPassageFromImport(item: unknown): LibraryPassage | null {
 
   return {
     ...passage,
-    isActive: typeof item.isActive === "boolean" ? item.isActive : passage.isActive
+    isActive: true
   };
 }
 

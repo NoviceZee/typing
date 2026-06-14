@@ -28,9 +28,11 @@ type SupabasePassageRow = {
 
 const TEST_TITLE = "FormalType Supabase CRUD Test";
 const UPDATED_TITLE = "FormalType Supabase CRUD Test Updated";
+const IMPORT_TEST_TITLES = ["FormalType Supabase Import Test A", "FormalType Supabase Import Test B"];
 const require = createRequire(import.meta.url);
 
 let insertedPassageId: string | null = null;
+let importedPassageIds: string[] = [];
 let supabaseClient: any;
 let supabaseCrudClient: any;
 let createClient: any;
@@ -134,9 +136,39 @@ async function main() {
     }
 
     logResult("Deleted test passage and confirmed it is no longer readable.");
+
+    logStep("Importing active public test passages");
+    const importedPassages = await insertSupabasePassageRows(
+      IMPORT_TEST_TITLES.map((title, index) => ({
+        title,
+        category: "News article",
+        style: "Simple",
+        content: `FormalType Supabase import verification content ${index + 1}.`,
+        is_active: true,
+        is_public: true,
+        created_by: authContext.userId
+      })),
+      supabaseCrudClient
+    );
+    importedPassageIds = importedPassages.map((passage) => passage.id);
+    logResult(`Imported ${importedPassageIds.length} active public passage rows.`);
+
+    logStep("Reading imported passages through public active query");
+    const publicImportedPassages = await getPublicActiveImportedPassages();
+
+    if (publicImportedPassages.length !== IMPORT_TEST_TITLES.length) {
+      throw new Error(
+        `Expected ${IMPORT_TEST_TITLES.length} public active imported passages, got ${publicImportedPassages.length}.`
+      );
+    }
+
+    logResult("Imported passages are readable through the public active passage filter.");
+
+    await cleanupImportedPassages();
     await assertNoTestRowsRemain();
   } finally {
     await cleanupInsertedPassage();
+    await cleanupImportedPassages();
   }
 }
 
@@ -209,12 +241,27 @@ async function cleanupInsertedPassage() {
   }
 }
 
+async function cleanupImportedPassages() {
+  if (importedPassageIds.length === 0) {
+    return;
+  }
+
+  logStep(`Cleaning up ${importedPassageIds.length} imported test passage row(s)`);
+
+  for (const passageId of importedPassageIds) {
+    await deleteSupabasePassageRow(passageId, supabaseCrudClient ?? supabaseClient);
+  }
+
+  importedPassageIds = [];
+  logResult("Imported passage cleanup completed.");
+}
+
 async function assertNoTestRowsRemain() {
   logStep("Confirming no CRUD test rows remain");
   const { data, error } = await (supabaseCrudClient ?? supabaseClient)
     .from("passages")
     .select("id,title")
-    .in("title", [TEST_TITLE, UPDATED_TITLE]);
+    .in("title", [TEST_TITLE, UPDATED_TITLE, ...IMPORT_TEST_TITLES]);
 
   if (error) {
     throw error;
@@ -225,6 +272,35 @@ async function assertNoTestRowsRemain() {
   }
 
   logResult("No FormalType Supabase CRUD Test rows remain.");
+}
+
+async function insertSupabasePassageRows(
+  payloads: SupabasePassageInsert[],
+  client: any
+): Promise<SupabasePassageRow[]> {
+  const { data, error } = await client.from("passages").insert(payloads).select("*");
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+async function getPublicActiveImportedPassages(): Promise<Array<{ id: string; title: string }>> {
+  const anonClient = createAnonClient();
+  const { data, error } = await anonClient
+    .from("passages")
+    .select("id,title")
+    .eq("is_public", true)
+    .eq("is_active", true)
+    .in("title", IMPORT_TEST_TITLES);
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
 }
 
 function makeTestPassage(): SupabasePassageInsert {
@@ -303,6 +379,22 @@ function createAuthenticatedCrudClient(accessToken: string) {
       headers: {
         Authorization: `Bearer ${accessToken}`
       }
+    }
+  });
+}
+
+function createAnonClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
     }
   });
 }
