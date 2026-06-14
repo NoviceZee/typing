@@ -4,6 +4,7 @@ import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from
 import { RefreshCw, RotateCcw, Shuffle } from "lucide-react";
 import { clsx } from "clsx";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/components/AuthProvider";
 import {
   CompletionReason,
   DEFAULT_RULES,
@@ -38,6 +39,7 @@ import {
   setActivePassageId,
   setPassageSelectionMode
 } from "@/lib/passageStorage";
+import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 
 const DURATIONS = [
   { label: "1 min", seconds: 60 },
@@ -48,6 +50,7 @@ const DURATIONS = [
 type SessionStatus = "idle" | "running" | "finished";
 
 export default function PracticePage() {
+  const { user } = useAuth();
   const [rules, setRules] = useState<TypingRules>(DEFAULT_RULES);
   const [passage, setPassage] = useState<StoredPassage>(() => getDefaultPassage(60));
   const [typedText, setTypedText] = useState("");
@@ -199,8 +202,19 @@ export default function PracticePage() {
       setPreviousResult(readPreviousResult(passage.id));
       setLastResult(finalResult);
       writePreviousResult(passage, finalResult, typedTextRef.current.length);
+
+      if (user) {
+        void saveSupabaseTypingResult({
+          userId: user.id,
+          passage,
+          result: finalResult,
+          typedCharacters: typedTextRef.current.length
+        }).catch((error) => {
+          console.warn("Supabase typing result save failed", error);
+        });
+      }
     },
-    [durationSeconds, passage, rules, sourceText]
+    [durationSeconds, passage, rules, sourceText, user]
   );
 
   const startSession = useCallback(() => {
