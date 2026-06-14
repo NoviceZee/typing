@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/components/AuthProvider";
 import {
   SupabaseLeaderboardResultRow,
   getSupabaseLeaderboardCategories,
+  getSupabaseOwnTypingResultIds,
   getSupabaseLeaderboardResults
 } from "@/lib/typingResultStorage";
 
@@ -14,7 +16,9 @@ const DURATION_OPTIONS = [
 ];
 
 export default function LeaderboardPage() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [results, setResults] = useState<SupabaseLeaderboardResultRow[]>([]);
+  const [ownResultIds, setOwnResultIds] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<string[]>([]);
   const [durationFilter, setDurationFilter] = useState(ALL_FILTER);
   const [categoryFilter, setCategoryFilter] = useState(ALL_FILTER);
@@ -45,6 +49,7 @@ export default function LeaderboardPage() {
     const category = categoryFilter === ALL_FILTER ? null : categoryFilter;
 
     setIsLoading(true);
+    setOwnResultIds(new Set());
     getSupabaseLeaderboardResults({ durationSeconds, category })
       .then((leaderboardResults) => {
         if (!isMounted) return;
@@ -64,6 +69,40 @@ export default function LeaderboardPage() {
       isMounted = false;
     };
   }, [categoryFilter, durationFilter]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (isAuthLoading) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    if (!user || results.length === 0) {
+      setOwnResultIds(new Set());
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    getSupabaseOwnTypingResultIds(
+      results.map((result) => result.id),
+      user.id
+    )
+      .then((ids) => {
+        if (!isMounted) return;
+        setOwnResultIds(ids);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setOwnResultIds(new Set());
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthLoading, results, user]);
 
   return (
     <AppShell>
@@ -126,28 +165,41 @@ export default function LeaderboardPage() {
           )}
 
           {!isLoading &&
-            results.map((result, index) => (
-              <article
-                key={result.id}
-                className="grid gap-3 border-b border-paper/10 px-4 py-4 last:border-b-0 md:grid-cols-[4rem_minmax(0,0.85fr)_minmax(0,1fr)_7rem_6rem_7rem_10rem] md:items-center"
-              >
-                <div className="font-mono text-lg font-semibold text-brass md:text-base">#{index + 1}</div>
-                <div>
-                  <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">Name</div>
-                  <div className="font-semibold text-paper">{result.display_name}</div>
-                </div>
-                <div>
-                  <h2 className="font-semibold text-paper">{result.passage_title}</h2>
-                  <p className="mt-1 font-mono text-xs text-paper/40 md:hidden">
-                    {formatDuration(result.duration_seconds)} · {formatDate(result.created_at)}
-                  </p>
-                </div>
-                <Metric label="Duration" value={formatDuration(result.duration_seconds)} />
-                <Metric label="WPM" value={formatNumber(result.wpm)} strong />
-                <Metric label="Accuracy" value={`${formatNumber(result.accuracy)}%`} />
-                <div className="font-mono text-sm text-paper/55 max-md:hidden">{formatDate(result.created_at)}</div>
-              </article>
-            ))}
+            results.map((result, index) => {
+              const isOwnResult = ownResultIds.has(result.id);
+
+              return (
+                <article
+                  key={result.id}
+                  className={`grid gap-3 border-b px-4 py-4 last:border-b-0 md:grid-cols-[4rem_minmax(0,0.85fr)_minmax(0,1fr)_7rem_6rem_7rem_10rem] md:items-center ${
+                    isOwnResult ? "border-brass/25 bg-brass/10" : "border-paper/10"
+                  }`}
+                >
+                  <div className="font-mono text-lg font-semibold text-brass md:text-base">#{index + 1}</div>
+                  <div>
+                    <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">Name</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-paper">{result.display_name}</span>
+                      {isOwnResult && (
+                        <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-[0.65rem] font-semibold uppercase text-ink-950">
+                          You
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-paper">{result.passage_title}</h2>
+                    <p className="mt-1 font-mono text-xs text-paper/40 md:hidden">
+                      {formatDuration(result.duration_seconds)} · {formatDate(result.created_at)}
+                    </p>
+                  </div>
+                  <Metric label="Duration" value={formatDuration(result.duration_seconds)} />
+                  <Metric label="WPM" value={formatNumber(result.wpm)} strong />
+                  <Metric label="Accuracy" value={`${formatNumber(result.accuracy)}%`} />
+                  <div className="font-mono text-sm text-paper/55 max-md:hidden">{formatDate(result.created_at)}</div>
+                </article>
+              );
+            })}
         </section>
       </section>
     </AppShell>

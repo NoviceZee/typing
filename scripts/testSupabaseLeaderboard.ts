@@ -33,6 +33,8 @@ async function main() {
     await insertTestPassage(authContext.userId);
     await insertTestResult(authContext.userId);
     await verifyAnonymousLeaderboardRead();
+    await verifyOwnerResultIdRead(authContext.userId);
+    await verifySharedClientOwnerResultIdRead(authContext.userId);
   } finally {
     await cleanupTestResult();
     await cleanupTestPassage();
@@ -181,6 +183,59 @@ async function verifyAnonymousLeaderboardRead() {
   logResult(`Read leaderboard display name "${row.display_name}".`);
   logResult(`Read leaderboard category "${row.passage_category}" with duration filter.`);
   logResult("Selected columns exclude user_id and email/profile data.");
+}
+
+async function verifyOwnerResultIdRead(userId: string) {
+  if (!insertedResultId) {
+    throw new Error("Cannot verify owner result id before inserting a result.");
+  }
+
+  logStep("Reading current user's own result id through owner RLS");
+  const { data, error } = await supabaseCrudClient
+    .from("typing_results")
+    .select("id")
+    .eq("user_id", userId)
+    .in("id", [insertedResultId]);
+
+  if (error) {
+    throw error;
+  }
+
+  if (data?.[0]?.id !== insertedResultId) {
+    throw new Error("Owner result id lookup did not return the inserted result.");
+  }
+
+  const selectedColumns = Object.keys(data[0] ?? {});
+  if (selectedColumns.includes("user_id") || selectedColumns.includes("email")) {
+    throw new Error("Owner result id lookup selected user_id or email.");
+  }
+
+  logResult("Owner result id lookup returned only the matching result id.");
+}
+
+async function verifySharedClientOwnerResultIdRead(userId: string) {
+  if (!insertedResultId) {
+    throw new Error("Cannot verify shared client owner result id before inserting a result.");
+  }
+
+  logStep("Reading current user's own result id through the shared signed-in client");
+  const { data, error } = await supabaseClient
+    .from("typing_results")
+    .select("id")
+    .eq("user_id", userId)
+    .in("id", [insertedResultId]);
+
+  if (error) {
+    throw error;
+  }
+
+  const ownResultIds = new Set((data ?? []).map((row: { id: string }) => row.id));
+
+  if (!ownResultIds.has(insertedResultId)) {
+    throw new Error("Shared signed-in client did not match the inserted public leaderboard result id.");
+  }
+
+  logResult("Shared signed-in client matched the public leaderboard row id.");
 }
 
 async function cleanupTestResult() {

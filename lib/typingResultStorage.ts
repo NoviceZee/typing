@@ -141,6 +141,22 @@ export async function getSupabaseLeaderboardCategories(limit = 200): Promise<str
   return Array.from(new Set((data ?? []).map((row) => row.passage_category).filter(Boolean) as string[]));
 }
 
+export async function getSupabaseOwnTypingResultIds(resultIds: string[], userId: string): Promise<Set<string>> {
+  const ids = resultIds.filter(Boolean);
+
+  if (!supabase || ids.length === 0) {
+    return new Set();
+  }
+
+  const { data, error } = await supabase.from("typing_results").select("id").eq("user_id", userId).in("id", ids);
+
+  if (error) {
+    throw error;
+  }
+
+  return new Set((data ?? []).map((row) => row.id));
+}
+
 export async function getSupabaseOwnTypingResults(
   userId: string,
   limit = 50
