@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { getSupabaseProfile, upsertSupabaseProfile } from "@/lib/profileStorage";
 import { DEFAULT_RULES, TypingRules } from "@/lib/typing-engine";
 import { readStoredRules, writeStoredRules } from "@/lib/app-storage";
+import { SupabaseOwnTypingResultRow, getSupabaseOwnTypingResults } from "@/lib/typingResultStorage";
 
 const SETTINGS: Array<{ key: keyof TypingRules; label: string; description: string }> = [
   { key: "requireTabToStart", label: "Require Tab to start", description: "Typing is locked until Tab starts the test." },
@@ -24,6 +26,9 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [results, setResults] = useState<SupabaseOwnTypingResultRow[]>([]);
+  const [resultsMessage, setResultsMessage] = useState("");
+  const [isLoadingResults, setIsLoadingResults] = useState(false);
 
   useEffect(() => {
     setRules(readStoredRules());
@@ -34,6 +39,9 @@ export default function SettingsPage() {
 
     if (!user) {
       setDisplayName("");
+      setResults([]);
+      setResultsMessage("");
+      setIsLoadingResults(false);
       return;
     }
 
@@ -45,6 +53,35 @@ export default function SettingsPage() {
       .catch((error) => {
         if (!isMounted) return;
         setProfileMessage(error instanceof Error ? error.message : "Display name could not be loaded.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!user) {
+      return;
+    }
+
+    setIsLoadingResults(true);
+    setResultsMessage("");
+
+    getSupabaseOwnTypingResults(user.id)
+      .then((typingResults) => {
+        if (!isMounted) return;
+        setResults(typingResults);
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        setResultsMessage(error instanceof Error ? error.message : "Results could not be loaded.");
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsLoadingResults(false);
       });
 
     return () => {
@@ -131,6 +168,88 @@ export default function SettingsPage() {
         </section>
 
         <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-paper">My Results</h2>
+              <p className="mt-2 text-sm leading-6 text-paper/55">
+                Your recent typing history is private to your account.
+              </p>
+            </div>
+          </div>
+
+          {!user && (
+            <div className="mt-5 rounded-md border border-paper/10 bg-ink-900 px-4 py-3 font-mono text-sm text-paper/55">
+              <Link href="/login?redirectTo=/settings" className="text-brass hover:text-brass/80">
+                Log in
+              </Link>{" "}
+              to view your typing history.
+            </div>
+          )}
+
+          {user && resultsMessage && (
+            <div className="mt-5 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
+              {resultsMessage}
+            </div>
+          )}
+
+          {user && isLoadingResults && (
+            <div className="mt-5 rounded-md border border-paper/10 bg-ink-900 px-4 py-3 font-mono text-sm text-paper/45">
+              Loading results...
+            </div>
+          )}
+
+          {user && !isLoadingResults && results.length === 0 && !resultsMessage && (
+            <div className="mt-5 rounded-md border border-paper/10 bg-ink-900 px-4 py-5 font-mono text-sm text-paper/55">
+              No results yet.{" "}
+              <Link href="/practice" className="text-brass hover:text-brass/80">
+                Start a practice session
+              </Link>
+              .
+            </div>
+          )}
+
+          {user && results.length > 0 && (
+            <>
+              <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <ResultStat label="Sessions" value={results.length} />
+                <ResultStat label="Best WPM" value={formatNumber(getBestWpm(results))} />
+                <ResultStat label="Average WPM" value={formatNumber(getAverage(results.map((result) => result.wpm)))} />
+                <ResultStat
+                  label="Average accuracy"
+                  value={`${formatNumber(getAverage(results.map((result) => result.accuracy)))}%`}
+                />
+              </div>
+
+              <div className="mt-5 overflow-hidden rounded-md border border-paper/10 bg-ink-900">
+                <div className="grid grid-cols-[9rem_minmax(0,1fr)_7rem_6rem_7rem] border-b border-paper/10 px-4 py-3 font-mono text-xs uppercase text-paper/40 max-md:hidden">
+                  <span>Date</span>
+                  <span>Passage</span>
+                  <span>Duration</span>
+                  <span>WPM</span>
+                  <span>Accuracy</span>
+                </div>
+
+                {results.map((result) => (
+                  <article
+                    key={result.id}
+                    className="grid gap-3 border-b border-paper/10 px-4 py-4 last:border-b-0 md:grid-cols-[9rem_minmax(0,1fr)_7rem_6rem_7rem] md:items-center"
+                  >
+                    <ResultMetric label="Date" value={formatDate(result.created_at)} />
+                    <div>
+                      <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">Passage</div>
+                      <div className="text-sm font-semibold text-paper">{result.passage_title}</div>
+                    </div>
+                    <ResultMetric label="Duration" value={formatDuration(result.duration_seconds)} />
+                    <ResultMetric label="WPM" value={formatNumber(result.wpm)} strong />
+                    <ResultMetric label="Accuracy" value={`${formatNumber(result.accuracy)}%`} />
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-6">
           <h2 className="text-xl font-semibold text-paper">Typing rules</h2>
           <div className="space-y-3">
             {SETTINGS.map((setting) => (
@@ -155,4 +274,51 @@ export default function SettingsPage() {
       </section>
     </AppShell>
   );
+}
+
+function ResultStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-md border border-paper/10 bg-ink-900 px-4 py-3">
+      <div className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</div>
+      <div className="mt-1 font-mono text-xl font-semibold text-paper">{value}</div>
+    </div>
+  );
+}
+
+function ResultMetric({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div>
+      <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">{label}</div>
+      <div className={`font-mono text-sm ${strong ? "font-semibold text-paper" : "text-paper/65"}`}>{value}</div>
+    </div>
+  );
+}
+
+function getBestWpm(results: SupabaseOwnTypingResultRow[]) {
+  return Math.max(...results.map((result) => result.wpm));
+}
+
+function getAverage(values: number[]) {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function formatDuration(seconds: number) {
+  const minutes = Math.round(seconds / 60);
+  return `${minutes} min`;
+}
+
+function formatNumber(value: number) {
+  return Number(value).toFixed(1);
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  }).format(new Date(value));
 }

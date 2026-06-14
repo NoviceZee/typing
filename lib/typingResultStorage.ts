@@ -28,6 +28,15 @@ export type SupabaseLeaderboardResultRow = {
   created_at: string;
 };
 
+export type SupabaseOwnTypingResultRow = {
+  id: string;
+  passage_title: string;
+  duration_seconds: number;
+  wpm: number;
+  accuracy: number;
+  created_at: string;
+};
+
 export type SaveTypingResultInput = {
   userId: string;
   passage: StoredPassage;
@@ -82,6 +91,28 @@ export async function getSupabaseLeaderboardResults(limit = 25): Promise<Supabas
     .select("id,display_name,passage_title,duration_seconds,wpm,accuracy,created_at")
     .order("wpm", { ascending: false })
     .order("accuracy", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+export async function getSupabaseOwnTypingResults(
+  userId: string,
+  limit = 50
+): Promise<SupabaseOwnTypingResultRow[]> {
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("typing_results")
+    .select("id,passage_title,duration_seconds,wpm,accuracy,created_at")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
 

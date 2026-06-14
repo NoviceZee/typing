@@ -9,7 +9,8 @@
     "test": "vitest run",
     "test:supabase-passages": "node --experimental-strip-types scripts/testSupabasePassages.ts",
     "test:supabase-typing-results": "node --experimental-strip-types scripts/testSupabaseTypingResults.ts",
-    "test:supabase-leaderboard": "node --experimental-strip-types scripts/testSupabaseLeaderboard.ts"
+    "test:supabase-leaderboard": "node --experimental-strip-types scripts/testSupabaseLeaderboard.ts",
+    "test:supabase-own-results": "node --experimental-strip-types scripts/testSupabaseOwnResults.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
