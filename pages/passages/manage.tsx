@@ -1,9 +1,10 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, Eye, FilePlus, Pencil, Search, Trash2, Upload } from "lucide-react";
 import { AdminOnly } from "@/components/AdminOnly";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/components/AuthProvider";
 import { PracticeCategory } from "@/lib/typing-engine";
 import {
   ALL_FILTER,
@@ -20,14 +21,20 @@ import {
 } from "@/lib/app-storage";
 import {
   addPassages,
+  addSupabasePassage,
   deletePassage as deleteStoredPassage,
+  deleteSupabasePassage,
   exportPassageLibrary,
   getPassageLibrary,
+  getSupabaseAdminPassageLibrary,
   importPassageLibrary,
+  importSupabasePassageLibrary,
+  updateSupabasePassage,
   updatePassage
 } from "@/lib/passageStorage";
 
 type StatusFilter = "All" | "Active" | "Hidden";
+type StorageMode = "supabase" | "local";
 
 export default function ManagePassagesPage() {
   return (
@@ -40,9 +47,12 @@ export default function ManagePassagesPage() {
 }
 
 function ManagePassages() {
+  const { user } = useAuth();
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const [library, setLibrary] = useState<LibraryPassage[]>([]);
+  const [storageMode, setStorageMode] = useState<StorageMode>("local");
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryFilter>(ALL_FILTER);
   const [style, setStyle] = useState<StyleFilter>(ALL_FILTER);
@@ -69,28 +79,66 @@ function ManagePassages() {
     });
   }, [category, library, search, status, style]);
 
+  const refreshLibrary = useCallback(async () => {
+    setIsLoadingLibrary(true);
+
+    if (user) {
+      try {
+        const supabaseLibrary = await getSupabaseAdminPassageLibrary();
+        setLibrary(supabaseLibrary);
+        setStorageMode("supabase");
+        setIsLoadingLibrary(false);
+        return;
+      } catch (error) {
+        setStorageMode("local");
+        setMessage(
+          `Supabase passage load failed. Showing localStorage fallback. ${
+            error instanceof Error ? error.message : "Please try again."
+          }`
+        );
+      }
+    }
+
+    setLibrary(getPassageLibrary());
+    setIsLoadingLibrary(false);
+  }, [user]);
+
   useEffect(() => {
     refreshLibrary();
-  }, []);
+  }, [refreshLibrary]);
 
-  function refreshLibrary() {
-    setLibrary(getPassageLibrary());
+  async function deletePassage(id: string) {
+    try {
+      if (storageMode === "supabase") {
+        await deleteSupabasePassage(id);
+      } else {
+        deleteStoredPassage(id);
+      }
+
+      await refreshLibrary();
+      setMessage("Passage deleted.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Passage delete failed.");
+    }
   }
 
-  function deletePassage(id: string) {
-    deleteStoredPassage(id);
-    refreshLibrary();
-    setMessage("Passage deleted.");
+  async function savePassage(passage: LibraryPassage) {
+    try {
+      if (storageMode === "supabase") {
+        await updateSupabasePassage(passage.id, passage);
+      } else {
+        updatePassage(passage.id, passage);
+      }
+
+      setEditingPassage(null);
+      await refreshLibrary();
+      setMessage("Passage saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Passage save failed.");
+    }
   }
 
-  function savePassage(passage: LibraryPassage) {
-    updatePassage(passage.id, passage);
-    setEditingPassage(null);
-    refreshLibrary();
-    setMessage("Passage saved.");
-  }
-
-  function addManualPassages() {
+  async function addManualPassages() {
     const passageParts = splitPastedPassages(newPassageContent).filter((part) => part.length >= 20);
 
     if (passageParts.length === 0) {
@@ -112,11 +160,15 @@ function ManagePassages() {
       });
     });
 
-    addPassages(passages);
-    setNewPassageTitle("");
-    setNewPassageContent("");
-    refreshLibrary();
-    setMessage(`Added ${passages.length} passage${passages.length === 1 ? "" : "s"}.`);
+    try {
+      await addPassagesForCurrentStorage(passages);
+      setNewPassageTitle("");
+      setNewPassageContent("");
+      await refreshLibrary();
+      setMessage(`Added ${passages.length} passage${passages.length === 1 ? "" : "s"}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Passage add failed.");
+    }
   }
 
   async function uploadTextPassages(event: ChangeEvent<HTMLInputElement>) {
@@ -158,8 +210,8 @@ function ManagePassages() {
         return;
       }
 
-      addPassages(uploadedPassages);
-      refreshLibrary();
+      await addPassagesForCurrentStorage(uploadedPassages);
+      await refreshLibrary();
       setMessage(`Uploaded ${uploadedPassages.length} passage${uploadedPassages.length === 1 ? "" : "s"}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed. Please try another .txt file.");
@@ -170,8 +222,24 @@ function ManagePassages() {
     }
   }
 
+  async function addPassagesForCurrentStorage(passages: LibraryPassage[]) {
+    if (storageMode === "supabase") {
+      if (!user) {
+        throw new Error("Please sign in before saving passages to Supabase.");
+      }
+
+      await Promise.all(passages.map((passage) => addSupabasePassage(passage, user.id)));
+      return;
+    }
+
+    addPassages(passages);
+  }
+
   function exportLibrary() {
-    const exportData = exportPassageLibrary();
+    const exportData =
+      storageMode === "supabase"
+        ? createPassageExport(library)
+        : exportPassageLibrary();
     const fileDate = new Date().toISOString().slice(0, 10);
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -192,11 +260,24 @@ function ManagePassages() {
 
     try {
       const parsed = JSON.parse(await file.text());
-      const summary = importPassageLibrary(parsed, replaceExistingLibrary);
-      refreshLibrary();
-      setMessage(
-        `Imported ${summary.imported} passages. Skipped ${summary.skippedDuplicates} duplicates. Failed ${summary.failedInvalidItems} invalid items.`
-      );
+
+      if (storageMode === "supabase") {
+        const importedPassages = readPassagesFromImport(parsed);
+
+        if (replaceExistingLibrary) {
+          await Promise.all(library.map((passage) => deleteSupabasePassage(passage.id)));
+        }
+
+        await importSupabasePassageLibrary(importedPassages, user?.id ?? null);
+        await refreshLibrary();
+        setMessage(`Imported ${importedPassages.length} passages to Supabase.`);
+      } else {
+        const summary = importPassageLibrary(parsed, replaceExistingLibrary);
+        await refreshLibrary();
+        setMessage(
+          `Imported ${summary.imported} passages. Skipped ${summary.skippedDuplicates} duplicates. Failed ${summary.failedInvalidItems} invalid items.`
+        );
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Import failed. Please choose a valid FormalType JSON export.");
     } finally {
@@ -214,7 +295,7 @@ function ManagePassages() {
           <div>
             <h1 className="text-3xl font-semibold text-paper md:text-4xl">Admin Passage Console</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/55">
-              Add, edit, import, export, and remove passages from this browser&apos;s local FormalType library.
+              Add, edit, import, export, and remove passages from {storageMode === "supabase" ? "Supabase" : "this browser's localStorage fallback"}.
             </p>
           </div>
           <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 text-right shadow-glow">
@@ -234,6 +315,11 @@ function ManagePassages() {
             {message}
           </div>
         )}
+
+        <div className="mt-5 rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 font-mono text-sm text-paper/55">
+          Storage: {storageMode === "supabase" ? "Supabase" : "localStorage fallback"}
+          {isLoadingLibrary ? " · Loading..." : ""}
+        </div>
 
         <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -451,6 +537,71 @@ function StatCard({ label, value }: { label: string; value: number }) {
       <p className="mt-1 font-mono text-xs uppercase text-paper/45">{label}</p>
     </div>
   );
+}
+
+function createPassageExport(passages: LibraryPassage[]) {
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    passages,
+    settings: {
+      activePassageId: null,
+      selectedCategory: null,
+      selectedStyle: null,
+      passageSelectionMode: null
+    }
+  };
+}
+
+function readPassagesFromImport(payload: unknown): LibraryPassage[] {
+  if (!isRecord(payload) || !Array.isArray(payload.passages)) {
+    throw new Error("Import file must contain a passages array.");
+  }
+
+  const passages = payload.passages.map(toLibraryPassageFromImport).filter(Boolean) as LibraryPassage[];
+
+  if (passages.length === 0) {
+    throw new Error("Import file does not contain valid passages.");
+  }
+
+  return passages;
+}
+
+function toLibraryPassageFromImport(item: unknown): LibraryPassage | null {
+  if (!isRecord(item)) {
+    return null;
+  }
+
+  const content = typeof item.content === "string" ? item.content : typeof item.text === "string" ? item.text : "";
+
+  if (!content.trim()) {
+    return null;
+  }
+
+  const title = typeof item.title === "string" ? item.title : "Imported passage";
+  const category = typeof item.category === "string" ? toPracticeCategory(item.category) : "Uncategorised";
+  const style = typeof item.style === "string" && item.style.trim() ? item.style : "General";
+  const source = item.source === "generated" || item.source === "pasted" || item.source === "uploaded" ? item.source : "uploaded";
+  const passage = createLibraryPassage({
+    title,
+    content,
+    category,
+    style,
+    source
+  });
+
+  return {
+    ...passage,
+    isActive: typeof item.isActive === "boolean" ? item.isActive : passage.isActive
+  };
+}
+
+function toPracticeCategory(category: string): PracticeCategory {
+  return CATEGORIES.find((knownCategory) => knownCategory === category) ?? "Uncategorised";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function EditPassageModal({

@@ -94,6 +94,36 @@ async function main() {
 
     logResult(`Confirmed update for ${refetchedPassage.id}`);
 
+    logStep("Toggling test passage inactive");
+    const inactivePassage = await updateSupabasePassageRow(
+      insertedPassage.id,
+      {
+        is_active: false
+      },
+      supabaseCrudClient
+    );
+
+    if (inactivePassage.is_active) {
+      throw new Error(`Inactive toggle verification failed. Passage ${insertedPassage.id} is still active.`);
+    }
+
+    logResult(`Confirmed inactive toggle for ${inactivePassage.id}`);
+
+    logStep("Toggling test passage active");
+    const activePassage = await updateSupabasePassageRow(
+      insertedPassage.id,
+      {
+        is_active: true
+      },
+      supabaseCrudClient
+    );
+
+    if (!activePassage.is_active) {
+      throw new Error(`Active toggle verification failed. Passage ${insertedPassage.id} is still inactive.`);
+    }
+
+    logResult(`Confirmed active toggle for ${activePassage.id}`);
+
     logStep("Deleting test passage");
     await deleteSupabasePassageRow(insertedPassage.id, supabaseCrudClient);
     insertedPassageId = null;

@@ -139,6 +139,20 @@ export async function getSupabasePassageLibrary(): Promise<LibraryPassage[]> {
   return (data ?? []).map(supabasePassageRowToLibraryPassage);
 }
 
+export async function getSupabaseAdminPassageLibrary(): Promise<LibraryPassage[]> {
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase.from("passages").select("*").order("updated_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(supabasePassageRowToLibraryPassage);
+}
+
 export async function getSupabasePassageById(id: string): Promise<LibraryPassage | null> {
   if (!supabase) {
     return null;
