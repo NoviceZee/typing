@@ -28,9 +28,10 @@ type SupabasePassageInsert = {
 };
 
 type SupabasePassageUpdate = Partial<Omit<SupabasePassageInsert, "id" | "created_by">>;
-
-export async function insertSupabasePassageRow(payload: SupabasePassageInsert): Promise<SupabasePassageRow> {
-  const client = requireSupabaseClient();
+export async function insertSupabasePassageRow(
+  payload: SupabasePassageInsert,
+  client = requireSupabaseClient()
+): Promise<SupabasePassageRow> {
   const { data, error } = await client.from("passages").insert(payload).select("*").single();
 
   if (error) {
@@ -40,8 +41,10 @@ export async function insertSupabasePassageRow(payload: SupabasePassageInsert): 
   return data;
 }
 
-export async function getSupabasePassageRowById(id: string): Promise<SupabasePassageRow | null> {
-  const client = requireSupabaseClient();
+export async function getSupabasePassageRowById(
+  id: string,
+  client = requireSupabaseClient()
+): Promise<SupabasePassageRow | null> {
   const { data, error } = await client.from("passages").select("*").eq("id", id).maybeSingle();
 
   if (error) {
@@ -53,9 +56,9 @@ export async function getSupabasePassageRowById(id: string): Promise<SupabasePas
 
 export async function updateSupabasePassageRow(
   id: string,
-  payload: SupabasePassageUpdate
+  payload: SupabasePassageUpdate,
+  client = requireSupabaseClient()
 ): Promise<SupabasePassageRow> {
-  const client = requireSupabaseClient();
   const { data, error } = await client.from("passages").update(payload).eq("id", id).select("*").single();
 
   if (error) {
@@ -65,8 +68,7 @@ export async function updateSupabasePassageRow(
   return data;
 }
 
-export async function deleteSupabasePassageRow(id: string): Promise<void> {
-  const client = requireSupabaseClient();
+export async function deleteSupabasePassageRow(id: string, client = requireSupabaseClient()): Promise<void> {
   const { error } = await client.from("passages").delete().eq("id", id);
 
   if (error) {
@@ -74,7 +76,7 @@ export async function deleteSupabasePassageRow(id: string): Promise<void> {
   }
 }
 
-function requireSupabaseClient() {
+function requireSupabaseClient(): any {
   if (!supabase) {
     throw new Error("Supabase is not configured yet.");
   }

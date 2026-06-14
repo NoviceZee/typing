@@ -31,18 +31,15 @@ const UPDATED_TITLE = "FormalType Supabase CRUD Test Updated";
 const require = createRequire(import.meta.url);
 
 let insertedPassageId: string | null = null;
-let supabaseClient: {
-  auth: {
-    signInWithPassword: (credentials: { email: string; password: string }) => Promise<{
-      data: { user: { id: string } | null };
-      error: unknown;
-    }>;
-  };
-};
-let insertSupabasePassageRow: (payload: SupabasePassageInsert) => Promise<SupabasePassageRow>;
-let deleteSupabasePassageRow: (id: string) => Promise<void>;
-let getSupabasePassageRowById: (id: string) => Promise<SupabasePassageRow | null>;
-let updateSupabasePassageRow: (id: string, payload: Partial<SupabasePassageInsert>) => Promise<SupabasePassageRow>;
+let supabaseClient: any;
+let insertSupabasePassageRow: (payload: SupabasePassageInsert, client?: any) => Promise<SupabasePassageRow>;
+let deleteSupabasePassageRow: (id: string, client?: any) => Promise<void>;
+let getSupabasePassageRowById: (id: string, client?: any) => Promise<SupabasePassageRow | null>;
+let updateSupabasePassageRow: (
+  id: string,
+  payload: Partial<SupabasePassageInsert>,
+  client?: any
+) => Promise<SupabasePassageRow>;
 
 async function main() {
   loadEnvLocal();
@@ -58,25 +55,31 @@ async function main() {
   const testPassage = makeTestPassage();
 
   try {
+    await assertAuthenticatedUser(createdBy);
+
     logStep("Inserting test passage");
-    const insertedPassage = await insertSupabasePassageRow({ ...testPassage, created_by: createdBy });
+    const insertedPassage = await insertSupabasePassageRow({ ...testPassage, created_by: createdBy }, supabaseClient);
     insertedPassageId = insertedPassage.id;
     logResult(`Inserted ${insertedPassage.id}: ${insertedPassage.title}`);
 
     logStep("Fetching inserted passage");
-    const fetchedPassage = await getSupabasePassageRowById(insertedPassage.id);
+    const fetchedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseClient);
     assertPassage(fetchedPassage, "Inserted passage was not readable after insert.");
     logResult(`Fetched ${fetchedPassage.id}: ${fetchedPassage.title}`);
 
     logStep("Updating test passage");
-    const updatedPassage = await updateSupabasePassageRow(insertedPassage.id, {
-      title: UPDATED_TITLE,
-      content: "Updated FormalType Supabase CRUD verification content."
-    });
+    const updatedPassage = await updateSupabasePassageRow(
+      insertedPassage.id,
+      {
+        title: UPDATED_TITLE,
+        content: "Updated FormalType Supabase CRUD verification content."
+      },
+      supabaseClient
+    );
     logResult(`Updated ${updatedPassage.id}: ${updatedPassage.title}`);
 
     logStep("Fetching updated passage");
-    const refetchedPassage = await getSupabasePassageRowById(insertedPassage.id);
+    const refetchedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseClient);
     assertPassage(refetchedPassage, "Updated passage was not readable after update.");
 
     if (refetchedPassage.title !== UPDATED_TITLE) {
@@ -86,15 +89,16 @@ async function main() {
     logResult(`Confirmed update for ${refetchedPassage.id}`);
 
     logStep("Deleting test passage");
-    await deleteSupabasePassageRow(insertedPassage.id);
+    await deleteSupabasePassageRow(insertedPassage.id, supabaseClient);
     insertedPassageId = null;
 
-    const deletedPassage = await getSupabasePassageRowById(insertedPassage.id);
+    const deletedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseClient);
     if (deletedPassage) {
       throw new Error(`Delete verification failed. Passage ${insertedPassage.id} is still readable.`);
     }
 
     logResult("Deleted test passage and confirmed it is no longer readable.");
+    await assertNoTestRowsRemain();
   } finally {
     await cleanupInsertedPassage();
   }
@@ -126,6 +130,25 @@ async function signInForRls(): Promise<string | null> {
   return data.user.id;
 }
 
+async function assertAuthenticatedUser(expectedUserId: string | null) {
+  if (!expectedUserId) {
+    return;
+  }
+
+  logStep("Confirming authenticated Supabase session before insert");
+  const { data, error } = await supabaseClient.auth.getUser();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data.user || data.user.id !== expectedUserId) {
+    throw new Error("Authenticated Supabase client user does not match the created_by value.");
+  }
+
+  logResult(`Authenticated session confirmed for ${data.user.id}`);
+}
+
 async function cleanupInsertedPassage() {
   if (!insertedPassageId) {
     return;
@@ -134,13 +157,31 @@ async function cleanupInsertedPassage() {
   logStep(`Cleaning up test passage ${insertedPassageId}`);
 
   try {
-    await deleteSupabasePassageRow(insertedPassageId);
+    await deleteSupabasePassageRow(insertedPassageId, supabaseClient);
     logResult("Cleanup delete completed.");
   } catch (error) {
     logError("Cleanup failed. Delete this test row manually if it remains in Supabase.", error);
   } finally {
     insertedPassageId = null;
   }
+}
+
+async function assertNoTestRowsRemain() {
+  logStep("Confirming no CRUD test rows remain");
+  const { data, error } = await supabaseClient
+    .from("passages")
+    .select("id,title")
+    .in("title", [TEST_TITLE, UPDATED_TITLE]);
+
+  if (error) {
+    throw error;
+  }
+
+  if (data && data.length > 0) {
+    throw new Error(`Found ${data.length} remaining FormalType Supabase CRUD Test row(s).`);
+  }
+
+  logResult("No FormalType Supabase CRUD Test rows remain.");
 }
 
 function makeTestPassage(): SupabasePassageInsert {
