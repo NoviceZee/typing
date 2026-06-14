@@ -22,6 +22,7 @@ export type SupabaseLeaderboardResultRow = {
   id: string;
   display_name: string;
   passage_title: string;
+  passage_category: string | null;
   duration_seconds: number;
   wpm: number;
   accuracy: number;
@@ -35,6 +36,12 @@ export type SupabaseOwnTypingResultRow = {
   wpm: number;
   accuracy: number;
   created_at: string;
+};
+
+export type SupabaseLeaderboardFilters = {
+  limit?: number;
+  durationSeconds?: number | null;
+  category?: string | null;
 };
 
 export type SaveTypingResultInput = {
@@ -81,24 +88,57 @@ export async function saveSupabaseTypingResult(
   return data;
 }
 
-export async function getSupabaseLeaderboardResults(limit = 25): Promise<SupabaseLeaderboardResultRow[]> {
+export async function getSupabaseLeaderboardResults({
+  limit = 25,
+  durationSeconds,
+  category
+}: SupabaseLeaderboardFilters = {}): Promise<SupabaseLeaderboardResultRow[]> {
   if (!supabase) {
     return [];
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("typing_results_leaderboard")
-    .select("id,display_name,passage_title,duration_seconds,wpm,accuracy,created_at")
+    .select("id,display_name,passage_title,passage_category,duration_seconds,wpm,accuracy,created_at")
     .order("wpm", { ascending: false })
     .order("accuracy", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (durationSeconds) {
+    query = query.eq("duration_seconds", durationSeconds);
+  }
+
+  if (category?.trim()) {
+    query = query.eq("passage_category", category.trim());
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw error;
   }
 
   return data ?? [];
+}
+
+export async function getSupabaseLeaderboardCategories(limit = 200): Promise<string[]> {
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("typing_results_leaderboard")
+    .select("passage_category")
+    .not("passage_category", "is", null)
+    .order("passage_category", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return Array.from(new Set((data ?? []).map((row) => row.passage_category).filter(Boolean) as string[]));
 }
 
 export async function getSupabaseOwnTypingResults(

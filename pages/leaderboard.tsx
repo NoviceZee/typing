@@ -1,16 +1,51 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { SupabaseLeaderboardResultRow, getSupabaseLeaderboardResults } from "@/lib/typingResultStorage";
+import {
+  SupabaseLeaderboardResultRow,
+  getSupabaseLeaderboardCategories,
+  getSupabaseLeaderboardResults
+} from "@/lib/typingResultStorage";
+
+const ALL_FILTER = "All";
+const DURATION_OPTIONS = [
+  { label: ALL_FILTER, value: ALL_FILTER },
+  { label: "1 min", value: "60" },
+  { label: "5 min", value: "300" }
+];
 
 export default function LeaderboardPage() {
   const [results, setResults] = useState<SupabaseLeaderboardResultRow[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [durationFilter, setDurationFilter] = useState(ALL_FILTER);
+  const [categoryFilter, setCategoryFilter] = useState(ALL_FILTER);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     let isMounted = true;
 
-    getSupabaseLeaderboardResults()
+    getSupabaseLeaderboardCategories()
+      .then((leaderboardCategories) => {
+        if (!isMounted) return;
+        setCategories(leaderboardCategories);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setCategories([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const durationSeconds = durationFilter === ALL_FILTER ? null : Number(durationFilter);
+    const category = categoryFilter === ALL_FILTER ? null : categoryFilter;
+
+    setIsLoading(true);
+    getSupabaseLeaderboardResults({ durationSeconds, category })
       .then((leaderboardResults) => {
         if (!isMounted) return;
         setResults(leaderboardResults);
@@ -28,7 +63,7 @@ export default function LeaderboardPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [categoryFilter, durationFilter]);
 
   return (
     <AppShell>
@@ -47,6 +82,21 @@ export default function LeaderboardPage() {
         <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/55">
           Ranked by WPM, then accuracy. Only public display names are shown.
         </p>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <FilterSelect
+            label="Duration"
+            value={durationFilter}
+            onChange={setDurationFilter}
+            options={DURATION_OPTIONS}
+          />
+          <FilterSelect
+            label="Category"
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            options={[ALL_FILTER, ...categories].map((category) => ({ label: category, value: category }))}
+          />
+        </div>
 
         {message && (
           <div className="mt-6 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
@@ -71,7 +121,7 @@ export default function LeaderboardPage() {
 
           {!isLoading && results.length === 0 && !message && (
             <div className="px-4 py-8 text-center font-mono text-sm text-paper/45">
-              No saved typing results yet.
+              No saved typing results match these filters.
             </div>
           )}
 
@@ -101,6 +151,35 @@ export default function LeaderboardPage() {
         </section>
       </section>
     </AppShell>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ label: string; value: string }>;
+}) {
+  return (
+    <label className="block">
+      <span className="font-mono text-xs uppercase text-paper/45">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 w-full rounded-md border border-paper/10 bg-ink-950 px-3 py-2 font-mono text-sm text-paper outline-none transition focus:border-brass"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

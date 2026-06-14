@@ -6,11 +6,13 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const TEST_TITLE = "FormalType Supabase Leaderboard Display Name Test";
 const TEST_DISPLAY_NAME = "FormalType Tester";
+const TEST_CATEGORY = "Business email";
 
 let supabaseClient: any;
 let supabaseCrudClient: any;
 let createClient: any;
 let insertedResultId: string | null = null;
+let insertedPassageId: string | null = null;
 let previousProfile: { display_name: string } | null = null;
 let profileTouched = false;
 
@@ -28,10 +30,12 @@ async function main() {
 
   try {
     await prepareProfile(authContext.userId);
+    await insertTestPassage(authContext.userId);
     await insertTestResult(authContext.userId);
     await verifyAnonymousLeaderboardRead();
   } finally {
     await cleanupTestResult();
+    await cleanupTestPassage();
     await restoreProfile(authContext.userId);
   }
 }
@@ -90,13 +94,37 @@ async function prepareProfile(userId: string) {
   logResult(`Saved display name "${TEST_DISPLAY_NAME}".`);
 }
 
+async function insertTestPassage(userId: string) {
+  logStep("Inserting leaderboard test passage");
+  const { data, error } = await supabaseCrudClient
+    .from("passages")
+    .insert({
+      title: TEST_TITLE,
+      category: TEST_CATEGORY,
+      style: "Formal",
+      content: "FormalType leaderboard category verification passage.",
+      is_active: true,
+      is_public: true,
+      created_by: userId
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  insertedPassageId = data.id;
+  logResult(`Inserted leaderboard passage ${insertedPassageId}.`);
+}
+
 async function insertTestResult(userId: string) {
   logStep("Inserting leaderboard test result");
   const { data, error } = await supabaseCrudClient
     .from("typing_results")
     .insert({
       user_id: userId,
-      passage_id: null,
+      passage_id: insertedPassageId,
       passage_title: TEST_TITLE,
       duration_seconds: 60,
       wpm: 88,
@@ -119,8 +147,10 @@ async function verifyAnonymousLeaderboardRead() {
   logStep("Reading public leaderboard view as anonymous client");
   const { data, error } = await supabaseClient
     .from("typing_results_leaderboard")
-    .select("id,display_name,passage_title,duration_seconds,wpm,accuracy,created_at")
+    .select("id,display_name,passage_title,passage_category,duration_seconds,wpm,accuracy,created_at")
     .eq("passage_title", TEST_TITLE)
+    .eq("duration_seconds", 60)
+    .eq("passage_category", TEST_CATEGORY)
     .order("wpm", { ascending: false })
     .order("accuracy", { ascending: false })
     .order("created_at", { ascending: false })
@@ -140,11 +170,16 @@ async function verifyAnonymousLeaderboardRead() {
     throw new Error(`Expected display_name "${TEST_DISPLAY_NAME}", got "${row.display_name}".`);
   }
 
+  if (row.passage_category !== TEST_CATEGORY) {
+    throw new Error(`Expected passage_category "${TEST_CATEGORY}", got "${row.passage_category}".`);
+  }
+
   if ("user_id" in row || "email" in row) {
     throw new Error("Leaderboard view exposed user_id or email.");
   }
 
   logResult(`Read leaderboard display name "${row.display_name}".`);
+  logResult(`Read leaderboard category "${row.passage_category}" with duration filter.`);
   logResult("Selected columns exclude user_id and email/profile data.");
 }
 
@@ -161,6 +196,21 @@ async function cleanupTestResult() {
   }
 
   insertedResultId = null;
+}
+
+async function cleanupTestPassage() {
+  if (!insertedPassageId) {
+    return;
+  }
+
+  logStep(`Cleaning up leaderboard passage ${insertedPassageId}`);
+  const { error } = await supabaseCrudClient.from("passages").delete().eq("id", insertedPassageId);
+
+  if (error) {
+    throw error;
+  }
+
+  insertedPassageId = null;
 }
 
 async function restoreProfile(userId: string) {
