@@ -695,50 +695,60 @@ function ResultModal({
   const accuracyDifference = previousResult ? result.accuracy - previousResult.accuracy : 0;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4 backdrop-blur">
-      <section className="w-full max-w-3xl rounded-lg border border-brass/30 bg-ink-900 p-5 shadow-glow md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-paper/10 pb-4">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-3 py-4 backdrop-blur md:px-4">
+      <section className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-brass/30 bg-ink-900 shadow-glow">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-paper/10 bg-ink-900 px-4 py-4 md:px-6">
           <div>
             <p className="font-mono text-xs uppercase text-brass">Result</p>
             <h2 className="mt-1 text-3xl font-semibold text-paper">
               {result.completionReason === "time_up" ? "Time up" : "Passage completed"}
             </h2>
-          </div>
-          <div className="font-mono text-sm text-paper/45">
-            {passage.category} · {passage.style}
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Metric label="WPM" value={result.wpm.toFixed(1)} />
-          <Metric label="Raw WPM" value={result.rawWpm.toFixed(1)} />
-          <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-          <Metric label="Mistakes" value={result.incorrectCharacters} />
-          <Metric label="Correct" value={result.correctCharacters} />
-          <Metric label="Typed" value={typedCharacters} />
-          <Metric label="Missed" value={result.missedCharacters} />
-          <Metric label="Extra" value={result.extraCharacters} />
-          <Metric label="Time used" value={formatTime(result.timeUsedSeconds)} />
-          <Metric label="Duration" value={formatTime(result.durationSeconds)} />
-          <Metric label="Reason" value={result.completionReason.replace("_", " ")} />
-          <Metric label="Category" value={result.category} />
-        </div>
-
-        {previousResult && (
-          <div className="mt-5 rounded-md border border-paper/10 bg-ink-950/60 p-4">
-            <p className="font-mono text-xs uppercase text-paper/45">Previous attempt</p>
-            <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Metric label="Previous WPM" value={previousResult.wpm.toFixed(1)} />
-              <Metric label="Current WPM" value={result.wpm.toFixed(1)} />
-              <Metric label="Change" value={formatSigned(wpmDifference, " WPM")} />
-              <Metric label="Accuracy" value={formatSigned(accuracyDifference, "%")} />
+            <div className="mt-2 font-mono text-sm text-paper/45">
+              {passage.category} · {passage.style}
             </div>
           </div>
-        )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close result"
+            className="shrink-0 rounded-md border border-paper/10 bg-ink-800 px-3 py-2 font-mono text-sm text-paper/85 transition hover:border-brass/50 hover:text-paper"
+          >
+            Close
+          </button>
+        </div>
 
-        <SessionReview result={result} typedCharacters={typedCharacters} />
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Metric label="WPM" value={result.wpm.toFixed(1)} />
+            <Metric label="Raw WPM" value={result.rawWpm.toFixed(1)} />
+            <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
+            <Metric label="Mistakes" value={result.incorrectCharacters} />
+            <Metric label="Correct" value={result.correctCharacters} />
+            <Metric label="Typed" value={typedCharacters} />
+            <Metric label="Missed" value={result.missedCharacters} />
+            <Metric label="Extra" value={result.extraCharacters} />
+            <Metric label="Time used" value={formatTime(result.timeUsedSeconds)} />
+            <Metric label="Duration" value={formatTime(result.durationSeconds)} />
+            <Metric label="Reason" value={result.completionReason.replace("_", " ")} />
+            <Metric label="Category" value={result.category} />
+          </div>
 
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          {previousResult && (
+            <div className="mt-5 rounded-md border border-paper/10 bg-ink-950/60 p-4">
+              <p className="font-mono text-xs uppercase text-paper/45">Previous attempt</p>
+              <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Metric label="Previous WPM" value={previousResult.wpm.toFixed(1)} />
+                <Metric label="Current WPM" value={result.wpm.toFixed(1)} />
+                <Metric label="Change" value={formatSigned(wpmDifference, " WPM")} />
+                <Metric label="Accuracy" value={formatSigned(accuracyDifference, "%")} />
+              </div>
+            </div>
+          )}
+
+          <SessionReview result={result} typedCharacters={typedCharacters} />
+        </div>
+
+        <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-paper/10 bg-ink-900 px-4 py-4 md:px-6">
           <button
             type="button"
             onClick={onClose}
