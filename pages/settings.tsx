@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
@@ -29,6 +29,13 @@ export default function SettingsPage() {
   const [results, setResults] = useState<SupabaseOwnTypingResultRow[]>([]);
   const [resultsMessage, setResultsMessage] = useState("");
   const [isLoadingResults, setIsLoadingResults] = useState(false);
+  const chartResults = useMemo(
+    () =>
+      [...results].sort(
+        (first, second) => new Date(first.created_at).getTime() - new Date(second.created_at).getTime()
+      ),
+    [results]
+  );
 
   useEffect(() => {
     setRules(readStoredRules());
@@ -220,6 +227,23 @@ export default function SettingsPage() {
                 />
               </div>
 
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                <TrendChart
+                  title="WPM over time"
+                  unit="WPM"
+                  results={chartResults}
+                  valueForResult={(result) => result.wpm}
+                  formatValue={formatNumber}
+                />
+                <TrendChart
+                  title="Accuracy over time"
+                  unit="Accuracy"
+                  results={chartResults}
+                  valueForResult={(result) => result.accuracy}
+                  formatValue={(value) => `${formatNumber(value)}%`}
+                />
+              </div>
+
               <div className="mt-5 overflow-hidden rounded-md border border-paper/10 bg-ink-900">
                 <div className="grid grid-cols-[9rem_minmax(0,1fr)_7rem_6rem_7rem] border-b border-paper/10 px-4 py-3 font-mono text-xs uppercase text-paper/40 max-md:hidden">
                   <span>Date</span>
@@ -276,6 +300,69 @@ export default function SettingsPage() {
   );
 }
 
+function TrendChart({
+  title,
+  unit,
+  results,
+  valueForResult,
+  formatValue
+}: {
+  title: string;
+  unit: string;
+  results: SupabaseOwnTypingResultRow[];
+  valueForResult: (result: SupabaseOwnTypingResultRow) => number;
+  formatValue: (value: number) => string;
+}) {
+  const values = results.map(valueForResult);
+  const points = buildChartPoints(values);
+  const firstResult = results[0];
+  const lastResult = results[results.length - 1];
+  const latestValue = values[values.length - 1] ?? 0;
+  const bestValue = values.length > 0 ? Math.max(...values) : 0;
+  const path = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(" ");
+
+  return (
+    <section className="rounded-md border border-paper/10 bg-ink-900 px-4 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-paper">{title}</h3>
+          <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">{unit}</p>
+        </div>
+        <div className="text-right">
+          <div className="font-mono text-lg font-semibold text-brass">{formatValue(latestValue)}</div>
+          <div className="font-mono text-[0.68rem] uppercase text-paper/35">Latest</div>
+        </div>
+      </div>
+
+      <div className="mt-4 aspect-[16/9] w-full overflow-hidden rounded border border-paper/10 bg-ink-950/70">
+        <svg viewBox="0 0 320 160" role="img" aria-label={title} className="h-full w-full">
+          <line x1="28" y1="128" x2="300" y2="128" stroke="rgba(238, 232, 212, 0.12)" strokeWidth="1" />
+          <line x1="28" y1="32" x2="300" y2="32" stroke="rgba(238, 232, 212, 0.08)" strokeWidth="1" />
+          <line x1="28" y1="80" x2="300" y2="80" stroke="rgba(238, 232, 212, 0.08)" strokeWidth="1" />
+          {points.length > 1 && <path d={path} fill="none" stroke="rgb(196, 165, 96)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+          {points.map((point, index) => (
+            <circle
+              key={`${point.x}-${point.y}-${index}`}
+              cx={point.x}
+              cy={point.y}
+              r={index === points.length - 1 ? 4 : 3}
+              fill={index === points.length - 1 ? "rgb(238, 232, 212)" : "rgb(196, 165, 96)"}
+              stroke="rgb(15, 20, 24)"
+              strokeWidth="2"
+            />
+          ))}
+        </svg>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 font-mono text-[0.68rem] uppercase text-paper/35">
+        <span>{firstResult ? formatDate(firstResult.created_at) : "No date"}</span>
+        <span>Best {formatValue(bestValue)}</span>
+        <span>{lastResult ? formatDate(lastResult.created_at) : "No date"}</span>
+      </div>
+    </section>
+  );
+}
+
 function ResultStat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-md border border-paper/10 bg-ink-900 px-4 py-3">
@@ -304,6 +391,26 @@ function getAverage(values: number[]) {
   }
 
   return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function buildChartPoints(values: number[]) {
+  if (values.length === 0) {
+    return [];
+  }
+
+  const chartLeft = 28;
+  const chartRight = 300;
+  const chartTop = 26;
+  const chartBottom = 132;
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const valueRange = maxValue - minValue || 1;
+  const step = values.length > 1 ? (chartRight - chartLeft) / (values.length - 1) : 0;
+
+  return values.map((value, index) => ({
+    x: values.length > 1 ? chartLeft + step * index : (chartLeft + chartRight) / 2,
+    y: chartBottom - ((value - minValue) / valueRange) * (chartBottom - chartTop)
+  }));
 }
 
 function formatDuration(seconds: number) {
