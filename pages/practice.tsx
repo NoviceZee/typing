@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import {
   CompletionReason,
+  CharacterComparison,
   DEFAULT_RULES,
   TypingResult,
   TypingRules,
@@ -624,10 +625,11 @@ export default function PracticePage() {
           </div>
         </div>
 
-        {lastResult && <ResultsPanel result={lastResult} />}
+        {lastResult && <ResultsPanel result={lastResult} typedCharacters={typedText.length} />}
         {lastResult && isResultModalOpen && (
           <ResultModal
             result={lastResult}
+            typedCharacters={typedText.length}
             passage={passage}
             onRestart={resetSession}
             onNextPassage={loadNextPassage}
@@ -649,7 +651,11 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function ResultsPanel({ result }: { result: TypingResult }) {
+type MistakeType = "capitalization" | "punctuation" | "spacing" | "wrongCharacter";
+
+type MistakeBreakdown = Record<MistakeType, number>;
+
+function ResultsPanel({ result, typedCharacters }: { result: TypingResult; typedCharacters: number }) {
   return (
     <section className="mt-6 rounded-lg border border-brass/25 bg-brass/10 p-5">
       <h2 className="text-2xl font-semibold text-paper">Result</h2>
@@ -663,12 +669,14 @@ function ResultsPanel({ result }: { result: TypingResult }) {
         <Metric label="Correct" value={result.correctCharacters} />
         <Metric label="Extra" value={result.extraCharacters} />
       </div>
+      <SessionReview result={result} typedCharacters={typedCharacters} />
     </section>
   );
 }
 
 function ResultModal({
   result,
+  typedCharacters,
   passage,
   onRestart,
   onNextPassage,
@@ -676,6 +684,7 @@ function ResultModal({
   onClose
 }: {
   result: TypingResult;
+  typedCharacters: number;
   passage: StoredPassage;
   onRestart: () => void;
   onNextPassage: () => void;
@@ -704,9 +713,9 @@ function ResultModal({
           <Metric label="WPM" value={result.wpm.toFixed(1)} />
           <Metric label="Raw WPM" value={result.rawWpm.toFixed(1)} />
           <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-          <Metric label="Errors" value={result.incorrectCharacters} />
+          <Metric label="Mistakes" value={result.incorrectCharacters} />
           <Metric label="Correct" value={result.correctCharacters} />
-          <Metric label="Incorrect" value={result.incorrectCharacters} />
+          <Metric label="Typed" value={typedCharacters} />
           <Metric label="Missed" value={result.missedCharacters} />
           <Metric label="Extra" value={result.extraCharacters} />
           <Metric label="Time used" value={formatTime(result.timeUsedSeconds)} />
@@ -726,6 +735,8 @@ function ResultModal({
             </div>
           </div>
         )}
+
+        <SessionReview result={result} typedCharacters={typedCharacters} />
 
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <button
@@ -755,6 +766,67 @@ function ResultModal({
   );
 }
 
+function SessionReview({ result, typedCharacters }: { result: TypingResult; typedCharacters: number }) {
+  const breakdown = getMistakeBreakdown(result.characterStatuses);
+  const mismatches = getMismatches(result.characterStatuses, 10);
+
+  return (
+    <section className="mt-5 rounded-md border border-paper/10 bg-ink-950/60 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-paper">Session review</h3>
+          <p className="mt-1 text-sm leading-6 text-paper/50">A quick breakdown of where the finished attempt drifted.</p>
+        </div>
+        <div className="rounded-md border border-paper/10 bg-ink-900 px-3 py-2 text-right">
+          <div className="font-mono text-lg font-semibold text-paper">
+            {result.correctCharacters} / {typedCharacters}
+          </div>
+          <div className="font-mono text-[0.68rem] uppercase text-paper/35">Correct / typed</div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+        <ReviewStat label="Mistakes" value={result.incorrectCharacters} />
+        <ReviewStat label="Capitalization" value={breakdown.capitalization} />
+        <ReviewStat label="Punctuation" value={breakdown.punctuation} />
+        <ReviewStat label="Spacing" value={breakdown.spacing} />
+        <ReviewStat label="Wrong character" value={breakdown.wrongCharacter} />
+      </div>
+
+      {mismatches.length > 0 && (
+        <div className="mt-4 overflow-hidden rounded-md border border-paper/10 bg-ink-900">
+          <div className="grid grid-cols-[5rem_1fr_1fr_1fr] border-b border-paper/10 px-3 py-2 font-mono text-[0.68rem] uppercase text-paper/35">
+            <span>Pos</span>
+            <span>Expected</span>
+            <span>Typed</span>
+            <span>Type</span>
+          </div>
+          {mismatches.map((mismatch, index) => (
+            <div
+              key={`${mismatch.index}-${index}-${mismatch.expected}-${mismatch.actual}`}
+              className="grid grid-cols-[5rem_1fr_1fr_1fr] border-b border-paper/10 px-3 py-2 font-mono text-xs text-paper/65 last:border-b-0"
+            >
+              <span className="text-paper/40">{mismatch.index + 1}</span>
+              <span>{formatReviewCharacter(mismatch.expected, "Missing")}</span>
+              <span>{formatReviewCharacter(mismatch.actual, "Extra")}</span>
+              <span>{formatMistakeType(classifyMistake(mismatch))}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ReviewStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-paper/10 bg-ink-900 px-3 py-3">
+      <div className="font-mono text-[0.68rem] uppercase text-paper/35">{label}</div>
+      <div className="mt-1 font-mono text-xl font-semibold text-paper">{value}</div>
+    </div>
+  );
+}
+
 function characterClass(status: string, revealMistakes: boolean) {
   if (status === "correct") {
     return "text-mint";
@@ -766,6 +838,94 @@ function characterClass(status: string, revealMistakes: boolean) {
     return "rounded-sm bg-brass px-0.5 text-ink-950";
   }
   return "text-paper/35";
+}
+
+function getMistakeBreakdown(characters: CharacterComparison[]): MistakeBreakdown {
+  return getMismatches(characters).reduce<MistakeBreakdown>(
+    (breakdown, character) => {
+      const mistakeType = classifyMistake(character);
+      return {
+        ...breakdown,
+        [mistakeType]: breakdown[mistakeType] + 1
+      };
+    },
+    {
+      capitalization: 0,
+      punctuation: 0,
+      spacing: 0,
+      wrongCharacter: 0
+    }
+  );
+}
+
+function getMismatches(characters: CharacterComparison[], limit = Number.POSITIVE_INFINITY) {
+  return characters.filter((character) => character.status === "wrong" || character.status === "extra").slice(0, limit);
+}
+
+function classifyMistake(character: CharacterComparison): MistakeType {
+  const expected = character.expected;
+  const actual = character.actual;
+
+  if (isSpacingCharacter(expected) || isSpacingCharacter(actual)) {
+    return "spacing";
+  }
+
+  if (isPunctuationCharacter(expected) || isPunctuationCharacter(actual)) {
+    return "punctuation";
+  }
+
+  if (
+    expected &&
+    actual &&
+    expected !== actual &&
+    expected.toLocaleLowerCase() === actual.toLocaleLowerCase() &&
+    isLetterCharacter(expected) &&
+    isLetterCharacter(actual)
+  ) {
+    return "capitalization";
+  }
+
+  return "wrongCharacter";
+}
+
+function formatMistakeType(type: MistakeType) {
+  if (type === "wrongCharacter") {
+    return "Wrong character";
+  }
+
+  return type.charAt(0).toLocaleUpperCase() + type.slice(1);
+}
+
+function formatReviewCharacter(character: string, emptyLabel: string) {
+  if (!character) {
+    return emptyLabel;
+  }
+
+  if (character === " ") {
+    return "Space";
+  }
+
+  if (character === "\n") {
+    return "Line break";
+  }
+
+  if (character === "\t") {
+    return "Tab";
+  }
+
+  return character;
+}
+
+function isSpacingCharacter(character: string) {
+  return character === " " || character === "\n" || character === "\t";
+}
+
+function isPunctuationCharacter(character: string) {
+  return Boolean(character.match(/[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/));
+}
+
+function isLetterCharacter(character: string) {
+  return /^[a-z]$/i.test(character);
 }
 
 function formatTime(totalSeconds: number) {
