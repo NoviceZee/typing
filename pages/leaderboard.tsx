@@ -7,13 +7,10 @@ import {
   getSupabaseOwnTypingResultIds,
   getSupabaseLeaderboardResults
 } from "@/lib/typingResultStorage";
+import { getDurationFilterOptions } from "@/lib/practiceDurations";
 
 const ALL_FILTER = "All";
-const DURATION_OPTIONS = [
-  { label: ALL_FILTER, value: ALL_FILTER },
-  { label: "1 min", value: "60" },
-  { label: "5 min", value: "300" }
-];
+const DURATION_OPTIONS = getDurationFilterOptions(ALL_FILTER);
 
 export default function LeaderboardPage() {
   const { user, isLoading: isAuthLoading } = useAuth();

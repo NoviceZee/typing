@@ -54,4 +54,46 @@ describe("typingResultStorage", () => {
       typed_chars: 123
     });
   });
+
+  it("stores ten-minute result durations as 600 seconds", () => {
+    const passage: StoredPassage = {
+      id: "default-generated",
+      title: "Generated IELTS practice",
+      category: "Business email",
+      style: "Formal",
+      text: "Sample passage text.",
+      source: "generated",
+      updatedAt: "2026-06-14T00:00:00.000Z"
+    };
+    const result: TypingResult = {
+      characters: [],
+      characterStatuses: [],
+      correctCharacters: 400,
+      incorrectCharacters: 5,
+      missedCharacters: 0,
+      extraCharacters: 0,
+      totalCharacters: 420,
+      comparableTargetLength: 420,
+      comparableTypedLength: 405,
+      accuracy: 98.8,
+      wpm: 42,
+      rawWpm: 43,
+      timeUsedSeconds: 600,
+      durationSeconds: 600,
+      category: "Business email",
+      presetName: "Custom rules",
+      completionReason: "time_up",
+      completedAt: "2026-06-14T00:10:00.000Z",
+      isRankable: true
+    };
+
+    const insert = toSupabaseTypingResultInsert({
+      userId: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+      passage,
+      result,
+      typedCharacters: 405
+    });
+
+    expect(insert.duration_seconds).toBe(600);
+  });
 });

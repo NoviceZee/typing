@@ -47,12 +47,8 @@ import {
   setPassageSelectionMode,
   setSelectedCategory
 } from "@/lib/passageStorage";
+import { PRACTICE_DURATIONS } from "@/lib/practiceDurations";
 import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
-
-const DURATIONS = [
-  { label: "1 min", seconds: 60 },
-  { label: "5 min", seconds: 300 }
-];
 
 type SessionStatus = "idle" | "running" | "finished";
 
@@ -549,14 +545,9 @@ export default function PracticePage() {
   return (
     <AppShell>
       <section className="mx-auto min-w-0 max-w-6xl w-[calc(100vw-2.5rem)] overflow-hidden sm:w-full">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="font-mono text-xs uppercase text-brass">Practice</p>
-            <h1 className="mt-1 text-2xl font-semibold text-paper md:text-3xl">Focused typing desk</h1>
-          </div>
-          <div className="w-full font-mono text-sm text-paper/45 sm:w-auto sm:text-right">
-            {isRunning ? "Session running" : isFinished ? "Session complete" : "Press Tab to begin"}
-          </div>
+        <div className="mb-3">
+          <p className="font-mono text-xs uppercase text-brass">Practice</p>
+          <h1 className="sr-only">Practice</h1>
         </div>
 
         {passageNotice && (
@@ -602,9 +593,9 @@ export default function PracticePage() {
               </select>
             </label>
 
-            <div className="grid min-w-0 grid-cols-2 rounded-md border border-paper/10 bg-ink-900 p-1">
+            <div className="grid min-w-0 grid-cols-3 rounded-md border border-paper/10 bg-ink-900 p-1">
               <span className="sr-only">Duration</span>
-              {DURATIONS.map((duration) => (
+              {PRACTICE_DURATIONS.map((duration) => (
                 <button
                   key={duration.seconds}
                   type="button"
@@ -631,26 +622,11 @@ export default function PracticePage() {
               Start
             </button>
           </div>
-
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-paper/10 pt-3 font-mono text-xs text-paper/45">
-            <div className="min-w-0 break-words leading-5">
-              <span className="font-semibold text-paper/80">{passage.title ?? "Untitled passage"}</span>
-              <span className="mx-2 text-paper/25">·</span>
-              <span>{passage.category}</span>
-              <span className="mx-2 text-paper/25">·</span>
-              <span>{passage.style}</span>
-              <span className="mx-2 text-paper/25">·</span>
-              <span>{formatTime(durationSeconds)}</span>
-            </div>
-            <div className="uppercase text-paper/35">
-              {selectedPassageId === RANDOM_PASSAGE_ID ? "Random" : "Selected"}
-            </div>
-          </div>
         </section>
 
         <div className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden rounded-md border border-paper/10 bg-ink-900/55 px-3 py-2 font-mono text-xs text-paper/45">
           <div className="w-full min-w-0 truncate sm:w-auto">
-            {passage.title ?? "Untitled passage"} · {passage.category} · {formatTime(durationSeconds)}
+            <span className="font-semibold text-paper/75">{passage.title ?? "Untitled passage"}</span> · {passage.category} · {passage.style} · {formatTime(durationSeconds)} · {selectedPassageId === RANDOM_PASSAGE_ID ? "Random" : "Selected"}
           </div>
           <div className="flex w-full flex-wrap justify-between gap-x-4 gap-y-1 text-paper/55 sm:w-auto sm:justify-start">
             <span>{formatTime(remainingSeconds)}</span>
