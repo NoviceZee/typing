@@ -9,6 +9,7 @@ import {
   CompletionReason,
   CharacterComparison,
   DEFAULT_RULES,
+  PracticeCategory,
   TypingResult,
   TypingRules,
   buildPracticePassage,
@@ -19,6 +20,8 @@ import {
   validateTypedText
 } from "@/lib/typing-engine";
 import {
+  ALL_FILTER,
+  CategoryFilter,
   PreviousTypingResult,
   LibraryPassage,
   StoredPassage,
@@ -35,23 +38,25 @@ import {
   writeStoredPassage
 } from "@/lib/app-storage";
 import {
+  getActivePassageId,
   getActivePassageLibrary,
   getPassageSelectionMode,
   getSelectedCategory,
-  getSelectedStyle,
   getSupabasePassageLibrary,
   setActivePassageId,
-  setPassageSelectionMode
+  setPassageSelectionMode,
+  setSelectedCategory
 } from "@/lib/passageStorage";
 import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 
 const DURATIONS = [
   { label: "1 min", seconds: 60 },
-  { label: "5 min", seconds: 300 },
-  { label: "10 min", seconds: 600 }
+  { label: "5 min", seconds: 300 }
 ];
 
 type SessionStatus = "idle" | "running" | "finished";
+
+const RANDOM_PASSAGE_ID = "__random__";
 
 export default function PracticePage() {
   const { user } = useAuth();
@@ -60,7 +65,6 @@ export default function PracticePage() {
   const [typedText, setTypedText] = useState("");
   const [status, setStatus] = useState<SessionStatus>("idle");
   const [durationSeconds, setDurationSeconds] = useState(60);
-  const [customMinutes, setCustomMinutes] = useState(2);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(60);
   const [startedAt, setStartedAt] = useState<number | null>(null);
@@ -69,6 +73,9 @@ export default function PracticePage() {
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [passageNotice, setPassageNotice] = useState("");
   const [previousResult, setPreviousResult] = useState<PreviousTypingResult | null>(null);
+  const [availableLibrary, setAvailableLibrary] = useState<LibraryPassage[]>([]);
+  const [selectedCategory, setSelectedCategoryState] = useState<CategoryFilter>(ALL_FILTER);
+  const [selectedPassageId, setSelectedPassageId] = useState(RANDOM_PASSAGE_ID);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typingWindowRef = useRef<HTMLDivElement>(null);
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
@@ -113,6 +120,11 @@ export default function PracticePage() {
     [comparison, durationSeconds, elapsedSeconds, isRunning, passage.category, rules, sourceText, typedText]
   );
   const displayedResult = lastResult ?? liveResult;
+  const categoryOptions = useMemo(() => getCategoryOptions(availableLibrary), [availableLibrary]);
+  const selectablePassages = useMemo(
+    () => filterLibraryByCategory(availableLibrary, selectedCategory),
+    [availableLibrary, selectedCategory]
+  );
   const previousPaceIndex = useMemo(() => {
     if (!previousResult || !isRunning) {
       return -1;
@@ -128,6 +140,58 @@ export default function PracticePage() {
         : "Behind previous pace"
       : "";
 
+  const choosePracticePassage = useCallback(
+    ({
+      library,
+      category,
+      duration,
+      preferredPassageId
+    }: {
+      library: LibraryPassage[];
+      category: CategoryFilter;
+      duration: number;
+      preferredPassageId?: string | null;
+    }) => {
+      const categoryLibrary = filterLibraryByCategory(library, category);
+
+      if (categoryLibrary.length > 0) {
+        if (preferredPassageId === RANDOM_PASSAGE_ID) {
+          const randomPassage = selectRandomLibraryPassage(getActivePassageId() ?? undefined, categoryLibrary) ?? categoryLibrary[0];
+          setPassageSelectionMode("random");
+          setActivePassageId(randomPassage.id);
+          setSelectedPassageId(RANDOM_PASSAGE_ID);
+          const nextPassage = toStoredPassage(randomPassage, duration, categoryLibrary);
+          setPassage(nextPassage);
+          setPreviousResult(readPreviousResult(nextPassage.id));
+          writeStoredPassage(nextPassage);
+          setPassageNotice("");
+          return;
+        }
+
+        const preferredLibraryPassage = preferredPassageId
+          ? categoryLibrary.find((libraryPassage) => libraryPassage.id === preferredPassageId)
+          : undefined;
+        const selectedLibraryPassage = preferredLibraryPassage ?? categoryLibrary[0];
+        setPassageSelectionMode("specific");
+        setActivePassageId(selectedLibraryPassage.id);
+        setSelectedPassageId(selectedLibraryPassage.id);
+        const nextPassage = toStoredPassage(selectedLibraryPassage, duration, categoryLibrary);
+        setPassage(nextPassage);
+        setPreviousResult(readPreviousResult(nextPassage.id));
+        writeStoredPassage(nextPassage);
+        setPassageNotice("");
+        return;
+      }
+
+      const fallbackPassage = readStoredPassage(duration);
+      setSelectedPassageId(RANDOM_PASSAGE_ID);
+      setPassage(fallbackPassage);
+      setPreviousResult(readPreviousResult(fallbackPassage.id));
+      setPassageNotice("No active saved passages found. Using a sample passage.");
+    },
+    []
+  );
+
   useEffect(() => {
     let isMounted = true;
 
@@ -138,14 +202,15 @@ export default function PracticePage() {
         return;
       }
 
-      const storedPassage = readStoredPassage(60);
-      setPassage(storedPassage);
-      setPreviousResult(readPreviousResult(storedPassage.id));
-      if (activeLibrary.length === 0) {
-        setPassageNotice("No active saved passages found. Using a sample passage.");
-      } else {
-        setPassageNotice("");
-      }
+      setAvailableLibrary(activeLibrary);
+      const initialCategory = getInitialCategory(activeLibrary);
+      setSelectedCategoryState(initialCategory);
+      choosePracticePassage({
+        library: activeLibrary,
+        category: initialCategory,
+        duration: 60,
+        preferredPassageId: getPassageSelectionMode() === "random" ? RANDOM_PASSAGE_ID : getActivePassageId()
+      });
     }
 
     setRules(readStoredRules());
@@ -154,7 +219,7 @@ export default function PracticePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [choosePracticePassage]);
 
   useEffect(() => {
     typedTextRef.current = typedText;
@@ -231,7 +296,8 @@ export default function PracticePage() {
           userId: user.id,
           passage,
           result: finalResult,
-          typedCharacters: typedTextRef.current.length
+          typedCharacters: typedTextRef.current.length,
+          supabasePassageId: passage.id ?? null
         }).catch((error) => {
           console.warn("Supabase typing result save failed", error);
         });
@@ -352,17 +418,36 @@ export default function PracticePage() {
     resetSession();
     setDurationSeconds(seconds);
     setRemainingSeconds(seconds);
-    await loadActivePassageLibrary();
-    const nextPassage = readStoredPassage(seconds);
-    setPassage(nextPassage);
-    setPreviousResult(readPreviousResult(nextPassage.id));
-    setPassageNotice(getFilteredLibrary().length === 0 ? "No active saved passages found. Using a sample passage." : "");
+    const activeLibrary = await loadActivePassageLibrary();
+    setAvailableLibrary(activeLibrary);
+    choosePracticePassage({
+      library: activeLibrary,
+      category: selectedCategory,
+      duration: seconds,
+      preferredPassageId: selectedPassageId
+    });
   }
 
-  function handleCustomDuration(minutes: number) {
-    const safeMinutes = Math.min(Math.max(minutes || 1, 1), 60);
-    setCustomMinutes(safeMinutes);
-    handleDuration(safeMinutes * 60);
+  function handleCategorySelection(category: CategoryFilter) {
+    resetSession();
+    setSelectedCategoryState(category);
+    setSelectedCategory(category);
+    choosePracticePassage({
+      library: availableLibrary,
+      category,
+      duration: durationSeconds,
+      preferredPassageId: selectedPassageId === RANDOM_PASSAGE_ID ? RANDOM_PASSAGE_ID : null
+    });
+  }
+
+  function handlePassageSelection(passageId: string) {
+    resetSession();
+    choosePracticePassage({
+      library: availableLibrary,
+      category: selectedCategory,
+      duration: durationSeconds,
+      preferredPassageId: passageId
+    });
   }
 
   function loadNextPassage() {
@@ -386,6 +471,7 @@ export default function PracticePage() {
 
       setPassageSelectionMode(isRandomMode ? "random" : "specific");
       setActivePassageId(nextLibraryPassage.id);
+      setSelectedPassageId(isRandomMode ? RANDOM_PASSAGE_ID : nextLibraryPassage.id);
       const nextPassage = toStoredPassage(nextLibraryPassage, durationSeconds, library);
       setPassage(nextPassage);
       setPreviousResult(readPreviousResult(nextPassage.id));
@@ -403,6 +489,7 @@ export default function PracticePage() {
       updatedAt: new Date().toISOString()
     };
     setPassageNotice("No active saved passages found. Using a sample passage.");
+    setSelectedPassageId(RANDOM_PASSAGE_ID);
     setPassage(nextPassage);
     setPreviousResult(readPreviousResult(nextPassage.id));
     writeStoredPassage(nextPassage);
@@ -412,6 +499,7 @@ export default function PracticePage() {
     resetSession();
     setPassageSelectionMode("random");
     const library = getFilteredLibrary();
+    setSelectedPassageId(RANDOM_PASSAGE_ID);
 
     if (library.length === 0) {
       const defaultPassage = getDefaultPassage(durationSeconds);
@@ -455,7 +543,7 @@ export default function PracticePage() {
 
   function getFilteredLibrary() {
     const activeLibrary = libraryRef.current.length > 0 ? libraryRef.current : getActivePassageLibrary();
-    return filterLibraryPassages(activeLibrary, getSelectedCategory(), getSelectedStyle());
+    return filterLibraryByCategory(activeLibrary, selectedCategory);
   }
 
   return (
@@ -477,43 +565,81 @@ export default function PracticePage() {
           </div>
         )}
 
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {DURATIONS.map((duration) => (
-              <button
-                key={duration.seconds}
-                type="button"
-                onClick={() => handleDuration(duration.seconds)}
-                className={clsx(
-                  "rounded-md border px-4 py-2 font-mono text-sm transition",
-                  durationSeconds === duration.seconds
-                    ? "border-brass bg-brass text-ink-950"
-                    : "border-paper/10 bg-ink-900 text-paper/70 hover:border-brass/50"
-                )}
+        <section className="mb-5 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_auto] lg:items-end">
+            <label className="block">
+              <span className="font-mono text-xs uppercase text-paper/45">Category</span>
+              <select
+                value={selectedCategory}
+                onChange={(event) => handleCategorySelection(event.target.value as CategoryFilter)}
+                disabled={isRunning}
+                className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-3 font-mono text-sm text-paper outline-none transition focus:border-brass/60 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {duration.label}
-              </button>
-            ))}
-            <label className="flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-sm text-paper/70">
-              Custom
-              <input
-                aria-label="Custom duration in minutes"
-                type="number"
-                min={1}
-                max={60}
-                value={customMinutes}
-                onChange={(event) => handleCustomDuration(Number(event.target.value))}
-                className="w-12 bg-transparent outline-none"
-              />
+                {[ALL_FILTER, ...categoryOptions].map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
             </label>
-          </div>
-          <div className="text-right font-mono text-sm text-paper/45">
+
+            <label className="block">
+              <span className="font-mono text-xs uppercase text-paper/45">Passage</span>
+              <select
+                value={selectedPassageId}
+                onChange={(event) => handlePassageSelection(event.target.value)}
+                disabled={isRunning || selectablePassages.length === 0}
+                className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-3 font-mono text-sm text-paper outline-none transition focus:border-brass/60 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value={RANDOM_PASSAGE_ID}>
+                  {selectablePassages.length > 0 ? "Random from selected category" : "Default generated passage"}
+                </option>
+                {selectablePassages.map((libraryPassage) => (
+                  <option key={libraryPassage.id} value={libraryPassage.id}>
+                    {libraryPassage.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <div>
-              {passage.category} · {passage.style}
+              <div className="font-mono text-xs uppercase text-paper/45">Duration</div>
+              <div className="mt-2 flex gap-2">
+                {DURATIONS.map((duration) => (
+                  <button
+                    key={duration.seconds}
+                    type="button"
+                    onClick={() => handleDuration(duration.seconds)}
+                    disabled={isRunning}
+                    className={clsx(
+                      "rounded-md border px-4 py-3 font-mono text-sm transition disabled:cursor-not-allowed disabled:opacity-60",
+                      durationSeconds === duration.seconds
+                        ? "border-brass bg-brass text-ink-950"
+                        : "border-paper/10 bg-ink-900 text-paper/70 hover:border-brass/50"
+                    )}
+                  >
+                    {duration.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            {passage.title && <div className="mt-1 text-paper/65">{passage.title}</div>}
           </div>
-        </div>
+
+          <div className="mt-4 rounded-md border border-paper/10 bg-ink-900 px-4 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-[0.68rem] uppercase text-paper/35">Selected article</p>
+                <h2 className="mt-1 text-sm font-semibold text-paper">{passage.title ?? "Untitled passage"}</h2>
+                <p className="mt-1 font-mono text-xs text-paper/45">
+                  {passage.category} · {passage.style} · {formatTime(durationSeconds)}
+                </p>
+              </div>
+              <div className="font-mono text-xs uppercase text-paper/35">
+                {selectedPassageId === RANDOM_PASSAGE_ID ? "Random mode" : "Specific article"}
+              </div>
+            </div>
+          </div>
+        </section>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metric label="WPM" value={displayedResult.wpm.toFixed(1)} />
@@ -649,6 +775,25 @@ function Metric({ label, value }: { label: string; value: string | number }) {
       <div className="mt-1 font-mono text-xl font-semibold text-paper">{value}</div>
     </div>
   );
+}
+
+function getCategoryOptions(library: LibraryPassage[]): PracticeCategory[] {
+  return Array.from(new Set(library.map((libraryPassage) => libraryPassage.category))).sort();
+}
+
+function getInitialCategory(library: LibraryPassage[]): CategoryFilter {
+  const storedCategory = getSelectedCategory();
+  const categories = getCategoryOptions(library);
+
+  if (storedCategory === ALL_FILTER || categories.includes(storedCategory as PracticeCategory)) {
+    return storedCategory;
+  }
+
+  return ALL_FILTER;
+}
+
+function filterLibraryByCategory(library: LibraryPassage[], category: CategoryFilter) {
+  return filterLibraryPassages(library, category, ALL_FILTER);
 }
 
 type MistakeType = "capitalization" | "punctuation" | "spacing" | "wrongCharacter";
