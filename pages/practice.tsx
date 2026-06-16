@@ -548,13 +548,13 @@ export default function PracticePage() {
 
   return (
     <AppShell>
-      <section className="mx-auto max-w-5xl">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <section className="mx-auto min-w-0 max-w-6xl w-[calc(100vw-2.5rem)] overflow-hidden sm:w-full">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="font-mono text-xs uppercase text-brass">Practice</p>
-            <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Focused typing desk</h1>
+            <h1 className="mt-1 text-2xl font-semibold text-paper md:text-3xl">Focused typing desk</h1>
           </div>
-          <div className="font-mono text-sm text-paper/45">
+          <div className="w-full font-mono text-sm text-paper/45 sm:w-auto sm:text-right">
             {isRunning ? "Session running" : isFinished ? "Session complete" : "Press Tab to begin"}
           </div>
         </div>
@@ -565,15 +565,15 @@ export default function PracticePage() {
           </div>
         )}
 
-        <section className="mb-5 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_auto] lg:items-end">
-            <label className="block">
-              <span className="font-mono text-xs uppercase text-paper/45">Category</span>
+        <section className="mb-4 max-w-full overflow-hidden rounded-md border border-paper/10 bg-ink-950/70 p-3 shadow-glow">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 md:grid-cols-2 xl:grid-cols-[minmax(10rem,0.9fr)_minmax(14rem,1.35fr)_auto_auto] xl:items-end">
+            <label className="min-w-0">
+              <span className="sr-only">Category</span>
               <select
                 value={selectedCategory}
                 onChange={(event) => handleCategorySelection(event.target.value as CategoryFilter)}
                 disabled={isRunning}
-                className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-3 font-mono text-sm text-paper outline-none transition focus:border-brass/60 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-10 w-full min-w-0 rounded-md border border-paper/10 bg-ink-900 px-3 font-mono text-xs text-paper outline-none transition focus:border-brass/60 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {[ALL_FILTER, ...categoryOptions].map((category) => (
                   <option key={category} value={category}>
@@ -583,13 +583,13 @@ export default function PracticePage() {
               </select>
             </label>
 
-            <label className="block">
-              <span className="font-mono text-xs uppercase text-paper/45">Passage</span>
+            <label className="min-w-0">
+              <span className="sr-only">Passage</span>
               <select
                 value={selectedPassageId}
                 onChange={(event) => handlePassageSelection(event.target.value)}
                 disabled={isRunning || selectablePassages.length === 0}
-                className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-3 font-mono text-sm text-paper outline-none transition focus:border-brass/60 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-10 w-full min-w-0 rounded-md border border-paper/10 bg-ink-900 px-3 font-mono text-xs text-paper outline-none transition focus:border-brass/60 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value={RANDOM_PASSAGE_ID}>
                   {selectablePassages.length > 0 ? "Random from selected category" : "Default generated passage"}
@@ -602,50 +602,62 @@ export default function PracticePage() {
               </select>
             </label>
 
-            <div>
-              <div className="font-mono text-xs uppercase text-paper/45">Duration</div>
-              <div className="mt-2 flex gap-2">
-                {DURATIONS.map((duration) => (
-                  <button
-                    key={duration.seconds}
-                    type="button"
-                    onClick={() => handleDuration(duration.seconds)}
-                    disabled={isRunning}
-                    className={clsx(
-                      "rounded-md border px-4 py-3 font-mono text-sm transition disabled:cursor-not-allowed disabled:opacity-60",
-                      durationSeconds === duration.seconds
-                        ? "border-brass bg-brass text-ink-950"
-                        : "border-paper/10 bg-ink-900 text-paper/70 hover:border-brass/50"
-                    )}
-                  >
-                    {duration.label}
-                  </button>
-                ))}
-              </div>
+            <div className="grid min-w-0 grid-cols-2 rounded-md border border-paper/10 bg-ink-900 p-1">
+              <span className="sr-only">Duration</span>
+              {DURATIONS.map((duration) => (
+                <button
+                  key={duration.seconds}
+                  type="button"
+                  onClick={() => handleDuration(duration.seconds)}
+                  disabled={isRunning}
+                  className={clsx(
+                    "h-8 rounded-sm px-3 font-mono text-xs transition disabled:cursor-not-allowed disabled:opacity-60",
+                    durationSeconds === duration.seconds
+                      ? "bg-brass text-ink-950"
+                      : "text-paper/55 hover:bg-paper/5 hover:text-paper"
+                  )}
+                >
+                  {duration.label}
+                </button>
+              ))}
             </div>
+
+            <button
+              type="button"
+              onClick={startSession}
+              disabled={isRunning || isFinished}
+              className="h-10 rounded-md border border-brass/45 bg-brass/10 px-4 font-mono text-xs uppercase text-brass transition hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2 xl:col-span-1"
+            >
+              Start
+            </button>
           </div>
 
-          <div className="mt-4 rounded-md border border-paper/10 bg-ink-900 px-4 py-3">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="font-mono text-[0.68rem] uppercase text-paper/35">Selected article</p>
-                <h2 className="mt-1 text-sm font-semibold text-paper">{passage.title ?? "Untitled passage"}</h2>
-                <p className="mt-1 font-mono text-xs text-paper/45">
-                  {passage.category} · {passage.style} · {formatTime(durationSeconds)}
-                </p>
-              </div>
-              <div className="font-mono text-xs uppercase text-paper/35">
-                {selectedPassageId === RANDOM_PASSAGE_ID ? "Random mode" : "Specific article"}
-              </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-paper/10 pt-3 font-mono text-xs text-paper/45">
+            <div className="min-w-0 break-words leading-5">
+              <span className="font-semibold text-paper/80">{passage.title ?? "Untitled passage"}</span>
+              <span className="mx-2 text-paper/25">·</span>
+              <span>{passage.category}</span>
+              <span className="mx-2 text-paper/25">·</span>
+              <span>{passage.style}</span>
+              <span className="mx-2 text-paper/25">·</span>
+              <span>{formatTime(durationSeconds)}</span>
+            </div>
+            <div className="uppercase text-paper/35">
+              {selectedPassageId === RANDOM_PASSAGE_ID ? "Random" : "Selected"}
             </div>
           </div>
         </section>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Metric label="WPM" value={displayedResult.wpm.toFixed(1)} />
-          <Metric label="Accuracy" value={`${displayedResult.accuracy.toFixed(1)}%`} />
-          <Metric label="Errors" value={displayedResult.incorrectCharacters} />
-          <Metric label="Remaining" value={formatTime(remainingSeconds)} />
+        <div className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden rounded-md border border-paper/10 bg-ink-900/55 px-3 py-2 font-mono text-xs text-paper/45">
+          <div className="w-full min-w-0 truncate sm:w-auto">
+            {passage.title ?? "Untitled passage"} · {passage.category} · {formatTime(durationSeconds)}
+          </div>
+          <div className="flex w-full flex-wrap justify-between gap-x-4 gap-y-1 text-paper/55 sm:w-auto sm:justify-start">
+            <span>{formatTime(remainingSeconds)}</span>
+            <span>{displayedResult.wpm.toFixed(1)} WPM</span>
+            <span>{displayedResult.accuracy.toFixed(1)}%</span>
+            <span>{displayedResult.incorrectCharacters} errors</span>
+          </div>
         </div>
 
         <div
@@ -657,28 +669,28 @@ export default function PracticePage() {
             }
           }}
           className={clsx(
-            "relative mt-5 rounded-lg border bg-ink-950/80 p-4 shadow-glow outline-none transition md:p-6",
+            "relative max-w-full overflow-hidden rounded-lg border bg-ink-950/55 p-3 shadow-glow outline-none transition md:p-5",
             isRunning ? "border-brass/50" : "border-paper/10 focus:border-brass/60"
           )}
         >
           {previousResult && (
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-paper/45">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-paper/45">
               <span>Previous pace: {previousResult.wpm.toFixed(1)} WPM</span>
               {paceComparison && <span className="text-paper/55">{paceComparison}</span>}
             </div>
           )}
 
           {!isRunning && !isFinished && (
-            <div className="mb-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+            <div className="mb-3 rounded-md border border-brass/25 bg-brass/10 px-3 py-2 font-mono text-xs text-brass">
               {rules.requireTabToStart ? "Press Tab to begin" : "Start typing to begin"}
             </div>
           )}
 
           <div
             ref={typingWindowRef}
-            className="h-[260px] overflow-y-auto overscroll-contain rounded-md bg-ink-900 px-4 py-5 md:h-[300px] md:px-6"
+            className="h-[340px] overflow-y-auto overscroll-contain rounded-md bg-ink-900/80 px-4 py-6 md:h-[420px] md:px-8 md:py-8"
           >
-            <p className="whitespace-pre-wrap break-words font-mono text-2xl leading-[2.35rem] text-paper/45 md:text-3xl md:leading-[2.85rem]">
+            <p className="mx-auto max-w-4xl whitespace-pre-wrap break-words font-mono text-[1.7rem] leading-[2.55rem] text-paper/45 md:text-[2.15rem] md:leading-[3.25rem]">
               {comparison.characters.map((character, index) => {
                 const isCurrent = character.status === "current";
                 const isPreviousPace = index === previousPaceIndex && !isCurrent;
@@ -719,15 +731,15 @@ export default function PracticePage() {
           />
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="font-mono text-sm text-paper/45">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="font-mono text-xs text-paper/40">
             Typed {typedText.length} / {targetText.length} characters
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={resetSession}
-              className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-4 py-2 font-mono text-sm text-paper/75 transition hover:border-brass/50"
+              className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/50 hover:text-paper"
             >
               <RotateCcw className="h-4 w-4" />
               Restart
@@ -735,7 +747,7 @@ export default function PracticePage() {
             <button
               type="button"
               onClick={loadRandomPassage}
-              className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-4 py-2 font-mono text-sm text-paper/75 transition hover:border-brass/50"
+              className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/50 hover:text-paper"
             >
               <Shuffle className="h-4 w-4" />
               Random passage
@@ -743,7 +755,7 @@ export default function PracticePage() {
             <button
               type="button"
               onClick={loadNextPassage}
-              className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-sm text-brass transition hover:bg-brass/15"
+              className="inline-flex items-center gap-2 rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:bg-brass/15"
             >
               <RefreshCw className="h-4 w-4" />
               Next passage
