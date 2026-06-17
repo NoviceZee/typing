@@ -123,6 +123,26 @@ describe("typing rule comparison", () => {
     expect(tolerated.incorrectCharacters).toBe(0);
   });
 
+  it("counts missed paragraph breaks without consuming the next paragraph text", () => {
+    const comparison = validateTypedText({
+      targetText: "First paragraph.\n\nSecond paragraph.",
+      typedText: "First paragraph.Second paragraph.",
+      rules: DEFAULT_RULES
+    });
+
+    const missedBreaks = comparison.characterStatuses.filter(
+      (character) => character.expected === "\n" && character.status === "wrong"
+    );
+    const secondParagraphStart = comparison.characterStatuses.find(
+      (character) => character.expected === "S" && character.actual === "S"
+    );
+
+    expect(missedBreaks).toHaveLength(2);
+    expect(comparison.missedCharacters).toBe(2);
+    expect(comparison.incorrectCharacters).toBe(2);
+    expect(secondParagraphStart).toMatchObject({ status: "correct" });
+  });
+
   it("prevents backspace changes when backspace is disabled", () => {
     expect(enforceBackspacePolicy("abc", "ab", false)).toBe("abc");
     expect(enforceBackspacePolicy("abc", "abcd", false)).toBe("abcd");

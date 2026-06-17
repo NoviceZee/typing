@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw, RotateCcw } from "lucide-react";
 import { clsx } from "clsx";
 import { AppShell } from "@/components/AppShell";
@@ -395,24 +395,27 @@ export default function PracticePage() {
       const scrollContainer = typingWindowRef.current;
       const activeCharacter = currentCharRef.current;
 
-      if (!scrollContainer || !activeCharacter) {
+      if (!scrollContainer || !activeCharacter || !scrollContainer.contains(activeCharacter)) {
+        return;
+      }
+
+      const containerHeight = scrollContainer.clientHeight;
+      if (scrollContainer.scrollHeight <= containerHeight) {
         return;
       }
 
       const containerBounds = scrollContainer.getBoundingClientRect();
       const characterBounds = activeCharacter.getBoundingClientRect();
-      const triggerLine = containerBounds.top + containerBounds.height * 0.68;
+      const characterBottom = scrollContainer.scrollTop + characterBounds.bottom - containerBounds.top;
+      const triggerLine = scrollContainer.scrollTop + containerHeight * 0.68;
 
-      if (characterBounds.bottom <= triggerLine) {
+      if (characterBottom <= triggerLine) {
         return;
       }
 
-      const targetLine = containerBounds.top + containerBounds.height * 0.52;
-      const scrollAmount = Math.ceil(characterBounds.bottom - targetLine);
-      scrollContainer.scrollTo({
-        top: scrollContainer.scrollTop + scrollAmount,
-        behavior: "smooth"
-      });
+      const targetLine = scrollContainer.scrollTop + containerHeight * 0.48;
+      const scrollAmount = Math.ceil(characterBottom - targetLine);
+      scrollContainer.scrollTop += scrollAmount;
     });
 
     return () => {
@@ -685,7 +688,7 @@ export default function PracticePage() {
           className={clsx(
             "relative max-w-full outline-none transition",
             isRunning
-              ? "overflow-hidden rounded-none bg-transparent p-0"
+              ? "flex h-[60vh] max-h-[60vh] flex-col overflow-hidden rounded-none bg-transparent p-0 md:h-[68vh] md:max-h-[72vh]"
               : "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
           )}
         >
@@ -695,20 +698,21 @@ export default function PracticePage() {
             </div>
           )}
 
+          {isRunning && (
+            <div className="sticky top-0 z-10 flex shrink-0 justify-end bg-ink-950/80 pb-3 font-mono text-[1.45rem] leading-none text-paper/35 backdrop-blur-sm md:text-[2rem]">
+              {formatTime(remainingSeconds)}
+            </div>
+          )}
+
           <div
             ref={typingWindowRef}
             className={clsx(
-              "typing-scrollbar transition",
+              "typing-scrollbar min-h-0 transition",
               isRunning
-                ? "h-[60vh] overflow-y-auto overscroll-contain px-1 py-6 md:h-[68vh] md:max-h-[72vh] md:px-6 md:py-9"
+                ? "h-full flex-1 overflow-y-auto overscroll-contain px-1 py-3 md:px-6 md:py-5"
                 : "h-[340px] overflow-y-auto overscroll-contain rounded-md bg-ink-900/55 px-4 py-6 md:h-[420px] md:px-8 md:py-8"
             )}
           >
-            {isRunning && (
-              <div className="sticky top-0 z-10 flex justify-end bg-ink-950/80 pb-2 font-mono text-[1.45rem] leading-none text-paper/35 backdrop-blur-sm md:text-[2rem]">
-                {formatTime(remainingSeconds)}
-              </div>
-            )}
             <p
               className={clsx(
                 "mx-auto max-w-4xl whitespace-pre-wrap break-words font-mono text-[1.7rem] leading-[2.55rem] text-paper/45 md:text-[2.15rem] md:leading-[3.25rem]",
@@ -717,6 +721,28 @@ export default function PracticePage() {
             >
               {comparison.characters.map((character, index) => {
                 const isCurrent = character.status === "current";
+                const isLineBreak = character.expected === "\n" || character.actual === "\n";
+
+                if (isLineBreak) {
+                  return (
+                    <Fragment key={`${character.index}-${index}-${character.expected}-${character.actual}`}>
+                      <span
+                        ref={isCurrent ? currentCharRef : undefined}
+                        data-index={index}
+                        aria-label={character.status === "wrong" ? "Missed line break" : "Line break"}
+                        className={clsx(
+                          "inline-block min-w-[0.7em]",
+                          characterClass(character.status, rules.showMistakesImmediately || isFinished),
+                          character.status === "untyped" && "text-paper/20"
+                        )}
+                      >
+                        {shouldShowLineBreakMarker(character.status, rules.showMistakesImmediately || isFinished) ? "↵" : ""}
+                      </span>
+                      <br />
+                    </Fragment>
+                  );
+                }
+
                 return (
                   <span
                     key={`${character.index}-${index}-${character.expected}-${character.actual}`}
@@ -1014,6 +1040,10 @@ function characterClass(status: string, revealMistakes: boolean) {
     return "rounded-sm bg-brass px-0.5 text-ink-950";
   }
   return "text-paper/35";
+}
+
+function shouldShowLineBreakMarker(status: string, revealMistakes: boolean) {
+  return status === "current" || ((status === "wrong" || status === "extra") && revealMistakes);
 }
 
 function getMistakeBreakdown(characters: CharacterComparison[]): MistakeBreakdown {

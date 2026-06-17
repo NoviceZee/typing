@@ -217,6 +217,14 @@ export function compareTyping(target: string, typed: string, rules: TypingRules)
       continue;
     }
 
+    if (expected === "\n" && actual !== "\n") {
+      incorrectCharacters += 1;
+      missedCharacters += 1;
+      characters.push({ expected, actual: "", index: targetIndex, status: "wrong" });
+      targetIndex += 1;
+      continue;
+    }
+
     if (expected !== actual && typed[typedIndex + 1] === expected) {
       const countsAsError = shouldCountExtraCharacter(actual, rules);
       if (countsAsError) {
