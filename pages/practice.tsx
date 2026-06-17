@@ -48,6 +48,7 @@ import {
   setSelectedCategory
 } from "@/lib/passageStorage";
 import { PRACTICE_DURATIONS } from "@/lib/practiceDurations";
+import { isRestartShortcut } from "@/lib/practiceShortcuts";
 import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 
 type SessionStatus = "idle" | "running" | "finished";
@@ -81,6 +82,7 @@ export default function PracticePage() {
   const typedTextRef = useRef("");
   const elapsedSecondsRef = useRef(0);
   const libraryRef = useRef<LibraryPassage[]>([]);
+  const isTabPressedRef = useRef(false);
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
@@ -356,18 +358,47 @@ export default function PracticePage() {
   }, [finishTest, isFinished, isRunning, rules, sourceText, typedText]);
 
   useEffect(() => {
-    const startOnTab = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Tab" || !rules.requireTabToStart || status !== "idle") {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Tab") {
+        isTabPressedRef.current = true;
+
+        if (isRunning || (rules.requireTabToStart && status === "idle")) {
+          event.preventDefault();
+        }
+
+        if (rules.requireTabToStart && status === "idle") {
+          startSession();
+        }
+
         return;
       }
 
-      event.preventDefault();
-      startSession();
+      if (isRestartShortcut({ key: event.key, tabKey: isTabPressedRef.current })) {
+        event.preventDefault();
+        resetSession();
+        return;
+      }
     };
 
-    window.addEventListener("keydown", startOnTab);
-    return () => window.removeEventListener("keydown", startOnTab);
-  }, [rules.requireTabToStart, startSession, status]);
+    const handleKeyUp = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Tab") {
+        isTabPressedRef.current = false;
+      }
+    };
+
+    const resetTabState = () => {
+      isTabPressedRef.current = false;
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", resetTabState);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", resetTabState);
+    };
+  }, [isRunning, resetSession, rules.requireTabToStart, startSession, status]);
 
   useEffect(() => {
     if (isRunning) {
@@ -556,7 +587,15 @@ export default function PracticePage() {
           </div>
         )}
 
-        <section className="mb-4 max-w-full overflow-hidden rounded-md border border-paper/10 bg-ink-950/70 p-3 shadow-glow">
+        <section
+          className={clsx(
+            "max-w-full overflow-hidden transition-all duration-200",
+            isRunning
+              ? "mb-1 max-h-0 opacity-0"
+              : "mb-4 max-h-64 rounded-md bg-paper/[0.025] p-2 ring-1 ring-paper/5"
+          )}
+          aria-hidden={isRunning}
+        >
           <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 md:grid-cols-2 xl:grid-cols-[minmax(10rem,0.9fr)_minmax(14rem,1.35fr)_auto_auto] xl:items-end">
             <label className="min-w-0">
               <span className="sr-only">Category</span>
@@ -564,7 +603,7 @@ export default function PracticePage() {
                 value={selectedCategory}
                 onChange={(event) => handleCategorySelection(event.target.value as CategoryFilter)}
                 disabled={isRunning}
-                className="h-10 w-full min-w-0 rounded-md border border-paper/10 bg-ink-900 px-3 font-mono text-xs text-paper outline-none transition focus:border-brass/60 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-10 w-full min-w-0 rounded-md border-0 bg-paper/[0.045] px-3 font-mono text-xs text-paper/80 outline-none transition focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/35 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {[ALL_FILTER, ...categoryOptions].map((category) => (
                   <option key={category} value={category}>
@@ -580,7 +619,7 @@ export default function PracticePage() {
                 value={selectedPassageId}
                 onChange={(event) => handlePassageSelection(event.target.value)}
                 disabled={isRunning || selectablePassages.length === 0}
-                className="h-10 w-full min-w-0 rounded-md border border-paper/10 bg-ink-900 px-3 font-mono text-xs text-paper outline-none transition focus:border-brass/60 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-10 w-full min-w-0 rounded-md border-0 bg-paper/[0.045] px-3 font-mono text-xs text-paper/80 outline-none transition focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/35 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value={RANDOM_PASSAGE_ID}>
                   {selectablePassages.length > 0 ? "Random from selected category" : "Default generated passage"}
@@ -593,7 +632,7 @@ export default function PracticePage() {
               </select>
             </label>
 
-            <div className="grid min-w-0 grid-cols-3 rounded-md border border-paper/10 bg-ink-900 p-1">
+            <div className="grid min-w-0 grid-cols-3 rounded-md bg-paper/[0.045] p-1">
               <span className="sr-only">Duration</span>
               {PRACTICE_DURATIONS.map((duration) => (
                 <button
@@ -604,8 +643,8 @@ export default function PracticePage() {
                   className={clsx(
                     "h-8 rounded-sm px-3 font-mono text-xs transition disabled:cursor-not-allowed disabled:opacity-60",
                     durationSeconds === duration.seconds
-                      ? "bg-brass text-ink-950"
-                      : "text-paper/55 hover:bg-paper/5 hover:text-paper"
+                      ? "bg-brass/85 text-ink-950"
+                      : "text-paper/50 hover:bg-paper/5 hover:text-paper/80"
                   )}
                 >
                   {duration.label}
@@ -617,14 +656,19 @@ export default function PracticePage() {
               type="button"
               onClick={startSession}
               disabled={isRunning || isFinished}
-              className="h-10 rounded-md border border-brass/45 bg-brass/10 px-4 font-mono text-xs uppercase text-brass transition hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2 xl:col-span-1"
+              className="h-10 rounded-md border-0 bg-brass/12 px-4 font-mono text-xs uppercase text-brass ring-1 ring-brass/20 transition hover:bg-brass/18 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2 xl:col-span-1"
             >
               Start
             </button>
           </div>
         </section>
 
-        <div className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden rounded-md border border-paper/10 bg-ink-900/55 px-3 py-2 font-mono text-xs text-paper/45">
+        <div
+          className={clsx(
+            "mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden px-1 font-mono text-xs text-paper/40 transition",
+            isRunning ? "py-1" : "rounded-md bg-paper/[0.025] px-3 py-2 ring-1 ring-paper/5"
+          )}
+        >
           <div className="w-full min-w-0 truncate sm:w-auto">
             <span className="font-semibold text-paper/75">{passage.title ?? "Untitled passage"}</span> · {passage.category} · {passage.style} · {formatTime(durationSeconds)} · {selectedPassageId === RANDOM_PASSAGE_ID ? "Random" : "Selected"}
           </div>
@@ -645,8 +689,8 @@ export default function PracticePage() {
             }
           }}
           className={clsx(
-            "relative max-w-full overflow-hidden rounded-lg border bg-ink-950/55 p-3 shadow-glow outline-none transition md:p-5",
-            isRunning ? "border-brass/50" : "border-paper/10 focus:border-brass/60"
+            "relative max-w-full overflow-hidden outline-none transition md:p-5",
+            isRunning ? "rounded-none bg-transparent p-0" : "rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30"
           )}
         >
           {previousResult && (
@@ -664,9 +708,19 @@ export default function PracticePage() {
 
           <div
             ref={typingWindowRef}
-            className="h-[340px] overflow-y-auto overscroll-contain rounded-md bg-ink-900/80 px-4 py-6 md:h-[420px] md:px-8 md:py-8"
+            className={clsx(
+              "overflow-y-auto overscroll-contain transition",
+              isRunning
+                ? "h-[430px] px-1 py-8 md:h-[520px] md:px-6 md:py-10"
+                : "h-[340px] rounded-md bg-ink-900/65 px-4 py-6 md:h-[420px] md:px-8 md:py-8"
+            )}
           >
-            <p className="mx-auto max-w-4xl whitespace-pre-wrap break-words font-mono text-[1.7rem] leading-[2.55rem] text-paper/45 md:text-[2.15rem] md:leading-[3.25rem]">
+            <p
+              className={clsx(
+                "mx-auto max-w-4xl whitespace-pre-wrap break-words font-mono text-[1.7rem] leading-[2.55rem] text-paper/45 md:text-[2.15rem] md:leading-[3.25rem]",
+                isRunning && "text-paper/50"
+              )}
+            >
               {comparison.characters.map((character, index) => {
                 const isCurrent = character.status === "current";
                 const isPreviousPace = index === previousPaceIndex && !isCurrent;
@@ -708,8 +762,9 @@ export default function PracticePage() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="font-mono text-xs text-paper/40">
+          <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-paper/35">
             Typed {typedText.length} / {targetText.length} characters
+            <span className="rounded-full bg-paper/[0.035] px-2 py-1 text-paper/40">Tab + Enter restart</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
