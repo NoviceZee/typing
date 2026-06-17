@@ -83,6 +83,7 @@ export default function PracticePage() {
   const elapsedSecondsRef = useRef(0);
   const libraryRef = useRef<LibraryPassage[]>([]);
   const isTabPressedRef = useRef(false);
+  const scrollFrameRef = useRef<number | null>(null);
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
@@ -368,6 +369,11 @@ export default function PracticePage() {
   useEffect(() => {
     const currentCharacter = currentCharRef.current;
 
+    if (scrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(scrollFrameRef.current);
+      scrollFrameRef.current = null;
+    }
+
     if (!currentCharacter) {
       return;
     }
@@ -381,18 +387,35 @@ export default function PracticePage() {
       return;
     }
 
-    const characterBounds = currentCharacter.getBoundingClientRect();
-    const topEdge = 120;
-    const bottomEdge = window.innerHeight - 140;
-
-    if (characterBounds.bottom > bottomEdge) {
-      window.scrollBy({ top: characterBounds.bottom - bottomEdge, behavior: "smooth" });
+    if (typedText.length <= 1) {
       return;
     }
 
-    if (characterBounds.top < topEdge) {
-      window.scrollBy({ top: characterBounds.top - topEdge, behavior: "smooth" });
-    }
+    scrollFrameRef.current = window.requestAnimationFrame(() => {
+      const activeCharacter = currentCharRef.current;
+
+      if (!activeCharacter) {
+        return;
+      }
+
+      const characterBounds = activeCharacter.getBoundingClientRect();
+      const lineHeight = characterBounds.height || 36;
+      const bottomEdge = window.innerHeight - Math.max(96, lineHeight * 2.4);
+
+      if (characterBounds.bottom <= bottomEdge) {
+        return;
+      }
+
+      const scrollAmount = Math.ceil(characterBounds.bottom - bottomEdge);
+      window.scrollBy({ top: scrollAmount, behavior: "smooth" });
+    });
+
+    return () => {
+      if (scrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollFrameRef.current);
+        scrollFrameRef.current = null;
+      }
+    };
   }, [isRunning, typedText.length]);
 
   function handleTyping(value: string) {
@@ -556,7 +579,7 @@ export default function PracticePage() {
 
   return (
     <AppShell>
-      <section className="mx-auto min-w-0 max-w-6xl w-[calc(100vw-2.5rem)] overflow-hidden sm:w-full">
+      <section className="mx-auto min-w-0 max-w-6xl w-[calc(100vw-2.5rem)] overflow-x-hidden sm:w-full">
         <div className="mb-3">
           <p className="font-mono text-xs uppercase text-brass">Practice</p>
           <h1 className="sr-only">Practice</h1>
@@ -636,7 +659,7 @@ export default function PracticePage() {
         </section>
 
         {isRunning ? (
-          <div className="mb-1 flex justify-end px-1 font-mono text-sm text-paper/45 md:text-base">
+          <div className="mb-1 flex justify-end px-1 font-mono text-[1.45rem] leading-none text-paper/35 md:text-[2rem]">
             {formatTime(remainingSeconds)}
           </div>
         ) : status === "idle" ? (
@@ -657,8 +680,10 @@ export default function PracticePage() {
             }
           }}
           className={clsx(
-            "relative max-w-full overflow-hidden outline-none transition md:p-5",
-            isRunning ? "rounded-none bg-transparent p-0" : "rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30"
+            "relative max-w-full outline-none transition md:p-5",
+            isRunning
+              ? "overflow-visible rounded-none bg-transparent p-0"
+              : "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30"
           )}
         >
           {previousResult && status === "idle" && (
