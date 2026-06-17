@@ -401,14 +401,14 @@ export default function PracticePage() {
 
       const containerBounds = scrollContainer.getBoundingClientRect();
       const characterBounds = activeCharacter.getBoundingClientRect();
-      const lineHeight = characterBounds.height || 36;
-      const bottomEdge = containerBounds.bottom - Math.max(72, lineHeight * 2.2);
+      const triggerLine = containerBounds.top + containerBounds.height * 0.68;
 
-      if (characterBounds.bottom <= bottomEdge) {
+      if (characterBounds.bottom <= triggerLine) {
         return;
       }
 
-      const scrollAmount = Math.ceil(characterBounds.bottom - bottomEdge);
+      const targetLine = containerBounds.top + containerBounds.height * 0.52;
+      const scrollAmount = Math.ceil(characterBounds.bottom - targetLine);
       scrollContainer.scrollTo({
         top: scrollContainer.scrollTop + scrollAmount,
         behavior: "smooth"
