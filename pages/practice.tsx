@@ -1,7 +1,7 @@
 "use client";
 
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw, RotateCcw, Shuffle } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 import { clsx } from "clsx";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
@@ -92,32 +92,6 @@ export default function PracticePage() {
     () => validateTypedText({ targetText: sourceText, typedText, rules }),
     [sourceText, typedText, rules]
   );
-  const liveResult = useMemo(
-    () =>
-      isRunning
-        ? calculateResult({
-            target: sourceText,
-            typed: typedText,
-            elapsedSeconds: Math.max(elapsedSeconds, 1),
-            durationSeconds,
-            category: passage.category,
-            rules
-          })
-        : {
-            ...comparison,
-            wpm: 0,
-            rawWpm: 0,
-            timeUsedSeconds: 0,
-            durationSeconds,
-            category: passage.category,
-            presetName: "Custom rules",
-            completionReason: "manual" as CompletionReason,
-            completedAt: "",
-            isRankable: false
-          },
-    [comparison, durationSeconds, elapsedSeconds, isRunning, passage.category, rules, sourceText, typedText]
-  );
-  const displayedResult = lastResult ?? liveResult;
   const categoryOptions = useMemo(() => getCategoryOptions(availableLibrary), [availableLibrary]);
   const selectablePassages = useMemo(
     () => filterLibraryByCategory(availableLibrary, selectedCategory),
@@ -662,24 +636,17 @@ export default function PracticePage() {
         </section>
 
         {isRunning ? (
-          <div className="mb-1 flex justify-end px-1 font-mono text-xs text-paper/35">
+          <div className="mb-1 flex justify-end px-1 font-mono text-sm text-paper/45 md:text-base">
             {formatTime(remainingSeconds)}
           </div>
-        ) : (
+        ) : status === "idle" ? (
           <div className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden px-1 font-mono text-xs text-paper/40 transition">
             <div className="w-full min-w-0 truncate sm:w-auto">
               <span className="font-semibold text-paper/70">{passage.title ?? "Untitled passage"}</span> ·{" "}
               {passage.category} · {passage.style} · {formatTime(durationSeconds)}
             </div>
-            {isFinished && (
-              <div className="flex w-full flex-wrap justify-between gap-x-4 gap-y-1 text-paper/55 sm:w-auto sm:justify-start">
-                <span>{displayedResult.wpm.toFixed(1)} WPM</span>
-                <span>{displayedResult.accuracy.toFixed(1)}%</span>
-                <span>{displayedResult.incorrectCharacters} errors</span>
-              </div>
-            )}
           </div>
-        )}
+        ) : null}
 
         <div
           tabIndex={0}
@@ -694,7 +661,7 @@ export default function PracticePage() {
             isRunning ? "rounded-none bg-transparent p-0" : "rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30"
           )}
         >
-          {previousResult && !isRunning && (
+          {previousResult && status === "idle" && (
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-paper/45">
               <span>Previous pace: {previousResult.wpm.toFixed(1)} WPM</span>
             </div>
@@ -753,45 +720,17 @@ export default function PracticePage() {
           />
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-paper/30">
-            {!isRunning && <span>Typed {typedText.length} / {targetText.length} characters</span>}
+        {status === "idle" && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-xs text-paper/30">
             <span>Tab = start</span>
             <span>Tab + Enter = restart</span>
           </div>
-          <div className={clsx("flex flex-wrap gap-2", isRunning && "hidden")}>
-            <button
-              type="button"
-              onClick={resetSession}
-              className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/50 hover:text-paper"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Restart
-            </button>
-            <button
-              type="button"
-              onClick={loadRandomPassage}
-              className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/50 hover:text-paper"
-            >
-              <Shuffle className="h-4 w-4" />
-              Random passage
-            </button>
-            <button
-              type="button"
-              onClick={loadNextPassage}
-              className="inline-flex items-center gap-2 rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:bg-brass/15"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Next passage
-            </button>
-          </div>
-        </div>
+        )}
 
-        {lastResult && <ResultsPanel result={lastResult} typedCharacters={typedText.length} />}
+        {lastResult && <ResultsPanel result={lastResult} onRestart={resetSession} onNextPassage={loadNextPassage} />}
         {lastResult && isResultModalOpen && (
           <ResultModal
             result={lastResult}
-            typedCharacters={typedText.length}
             passage={passage}
             onRestart={resetSession}
             onNextPassage={loadNextPassage}
@@ -806,9 +745,9 @@ export default function PracticePage() {
 
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-md border border-paper/10 bg-ink-900 px-4 py-3">
-      <div className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</div>
-      <div className="mt-1 font-mono text-xl font-semibold text-paper">{value}</div>
+    <div className="rounded-md bg-paper/[0.035] px-4 py-3">
+      <div className="font-mono text-[0.68rem] uppercase text-paper/45">{label}</div>
+      <div className="mt-1 font-mono text-2xl font-semibold text-paper md:text-3xl">{value}</div>
     </div>
   );
 }
@@ -836,28 +775,56 @@ type MistakeType = "capitalization" | "punctuation" | "spacing" | "wrongCharacte
 
 type MistakeBreakdown = Record<MistakeType, number>;
 
-function ResultsPanel({ result, typedCharacters }: { result: TypingResult; typedCharacters: number }) {
+function ResultsPanel({
+  result,
+  onRestart,
+  onNextPassage
+}: {
+  result: TypingResult;
+  onRestart: () => void;
+  onNextPassage: () => void;
+}) {
   return (
-    <section className="mt-6 rounded-lg border border-brass/25 bg-brass/10 p-5">
-      <h2 className="text-2xl font-semibold text-paper">Result</h2>
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label="WPM" value={result.wpm.toFixed(1)} />
-        <Metric label="Raw WPM" value={result.rawWpm.toFixed(1)} />
-        <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-        <Metric label="Errors" value={result.incorrectCharacters} />
-        <Metric label="Time" value={formatTime(result.timeUsedSeconds)} />
-        <Metric label="Reason" value={result.completionReason.replace("_", " ")} />
-        <Metric label="Correct" value={result.correctCharacters} />
-        <Metric label="Extra" value={result.extraCharacters} />
+    <section className="mt-6 rounded-lg bg-paper/[0.025] p-4 md:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-xs uppercase text-brass">Result</p>
+          <h2 className="mt-1 text-2xl font-semibold text-paper">
+            {result.completionReason === "time_up" ? "Time up" : "Passage completed"}
+          </h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onRestart}
+            className="inline-flex items-center gap-2 rounded-md bg-paper/[0.045] px-3 py-2 font-mono text-xs text-paper/70 transition hover:bg-paper/[0.075] hover:text-paper"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Restart
+          </button>
+          <button
+            type="button"
+            onClick={onNextPassage}
+            className="inline-flex items-center gap-2 rounded-md bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:bg-brass/15"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Next passage
+          </button>
+        </div>
       </div>
-      <SessionReview result={result} typedCharacters={typedCharacters} />
+      <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <Metric label="WPM" value={result.wpm.toFixed(1)} />
+        <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
+        <Metric label="Time" value={formatTime(result.timeUsedSeconds)} />
+        <Metric label="Mistakes" value={result.incorrectCharacters} />
+      </div>
+      <SessionReview result={result} />
     </section>
   );
 }
 
 function ResultModal({
   result,
-  typedCharacters,
   passage,
   onRestart,
   onNextPassage,
@@ -865,7 +832,6 @@ function ResultModal({
   onClose
 }: {
   result: TypingResult;
-  typedCharacters: number;
   passage: StoredPassage;
   onRestart: () => void;
   onNextPassage: () => void;
@@ -901,17 +867,9 @@ function ResultModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-6">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Metric label="WPM" value={result.wpm.toFixed(1)} />
-            <Metric label="Raw WPM" value={result.rawWpm.toFixed(1)} />
             <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
             <Metric label="Mistakes" value={result.incorrectCharacters} />
-            <Metric label="Correct" value={result.correctCharacters} />
-            <Metric label="Typed" value={typedCharacters} />
-            <Metric label="Missed" value={result.missedCharacters} />
-            <Metric label="Extra" value={result.extraCharacters} />
             <Metric label="Time used" value={formatTime(result.timeUsedSeconds)} />
-            <Metric label="Duration" value={formatTime(result.durationSeconds)} />
-            <Metric label="Reason" value={result.completionReason.replace("_", " ")} />
-            <Metric label="Category" value={result.category} />
           </div>
 
           {previousResult && (
@@ -926,7 +884,7 @@ function ResultModal({
             </div>
           )}
 
-          <SessionReview result={result} typedCharacters={typedCharacters} />
+          <SessionReview result={result} />
         </div>
 
         <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-paper/10 bg-ink-900 px-4 py-4 md:px-6">
@@ -957,26 +915,20 @@ function ResultModal({
   );
 }
 
-function SessionReview({ result, typedCharacters }: { result: TypingResult; typedCharacters: number }) {
+function SessionReview({ result }: { result: TypingResult }) {
   const breakdown = getMistakeBreakdown(result.characterStatuses);
   const mismatches = getMismatches(result.characterStatuses, 10);
 
   return (
-    <section className="mt-5 rounded-md border border-paper/10 bg-ink-950/60 p-4">
+    <section className="mt-5 rounded-md bg-ink-950/35 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-paper">Session review</h3>
           <p className="mt-1 text-sm leading-6 text-paper/50">A quick breakdown of where the finished attempt drifted.</p>
         </div>
-        <div className="rounded-md border border-paper/10 bg-ink-900 px-3 py-2 text-right">
-          <div className="font-mono text-lg font-semibold text-paper">
-            {result.correctCharacters} / {typedCharacters}
-          </div>
-          <div className="font-mono text-[0.68rem] uppercase text-paper/35">Correct / typed</div>
-        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5">
         <ReviewStat label="Mistakes" value={result.incorrectCharacters} />
         <ReviewStat label="Capitalization" value={breakdown.capitalization} />
         <ReviewStat label="Punctuation" value={breakdown.punctuation} />
@@ -985,8 +937,8 @@ function SessionReview({ result, typedCharacters }: { result: TypingResult; type
       </div>
 
       {mismatches.length > 0 && (
-        <div className="mt-4 overflow-hidden rounded-md border border-paper/10 bg-ink-900">
-          <div className="grid grid-cols-[5rem_1fr_1fr_1fr] border-b border-paper/10 px-3 py-2 font-mono text-[0.68rem] uppercase text-paper/35">
+        <div className="mt-4 overflow-hidden rounded-md bg-paper/[0.025]">
+          <div className="grid grid-cols-[5rem_1fr_1fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-[0.68rem] uppercase text-paper/35">
             <span>Pos</span>
             <span>Expected</span>
             <span>Typed</span>
@@ -995,7 +947,7 @@ function SessionReview({ result, typedCharacters }: { result: TypingResult; type
           {mismatches.map((mismatch, index) => (
             <div
               key={`${mismatch.index}-${index}-${mismatch.expected}-${mismatch.actual}`}
-              className="grid grid-cols-[5rem_1fr_1fr_1fr] border-b border-paper/10 px-3 py-2 font-mono text-xs text-paper/65 last:border-b-0"
+              className="grid grid-cols-[5rem_1fr_1fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-xs text-paper/70 last:border-b-0"
             >
               <span className="text-paper/40">{mismatch.index + 1}</span>
               <span>{formatReviewCharacter(mismatch.expected, "Missing")}</span>
@@ -1011,9 +963,9 @@ function SessionReview({ result, typedCharacters }: { result: TypingResult; type
 
 function ReviewStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border border-paper/10 bg-ink-900 px-3 py-3">
+    <div className="rounded-md bg-paper/[0.03] px-3 py-3">
       <div className="font-mono text-[0.68rem] uppercase text-paper/35">{label}</div>
-      <div className="mt-1 font-mono text-xl font-semibold text-paper">{value}</div>
+      <div className="mt-1 font-mono text-xl font-semibold text-paper/90">{value}</div>
     </div>
   );
 }
