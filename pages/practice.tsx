@@ -387,17 +387,39 @@ export default function PracticePage() {
 
   useEffect(() => {
     if (isRunning) {
-      inputRef.current?.focus();
+      inputRef.current?.focus({ preventScroll: true });
     }
   }, [isRunning]);
 
   useEffect(() => {
-    currentCharRef.current?.scrollIntoView({
-      block: "center",
-      inline: "nearest",
-      behavior: "smooth"
-    });
-  }, [typedText.length]);
+    const currentCharacter = currentCharRef.current;
+
+    if (!currentCharacter) {
+      return;
+    }
+
+    if (!isRunning) {
+      currentCharacter.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+        behavior: "smooth"
+      });
+      return;
+    }
+
+    const characterBounds = currentCharacter.getBoundingClientRect();
+    const topEdge = 120;
+    const bottomEdge = window.innerHeight - 140;
+
+    if (characterBounds.bottom > bottomEdge) {
+      window.scrollBy({ top: characterBounds.bottom - bottomEdge, behavior: "smooth" });
+      return;
+    }
+
+    if (characterBounds.top < topEdge) {
+      window.scrollBy({ top: characterBounds.top - topEdge, behavior: "smooth" });
+    }
+  }, [isRunning, typedText.length]);
 
   function handleTyping(value: string) {
     if (isFinished || finishedRef.current || (!isRunning && rules.requireTabToStart)) {
