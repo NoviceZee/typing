@@ -392,22 +392,27 @@ export default function PracticePage() {
     }
 
     scrollFrameRef.current = window.requestAnimationFrame(() => {
+      const scrollContainer = typingWindowRef.current;
       const activeCharacter = currentCharRef.current;
 
-      if (!activeCharacter) {
+      if (!scrollContainer || !activeCharacter) {
         return;
       }
 
+      const containerBounds = scrollContainer.getBoundingClientRect();
       const characterBounds = activeCharacter.getBoundingClientRect();
       const lineHeight = characterBounds.height || 36;
-      const bottomEdge = window.innerHeight - Math.max(96, lineHeight * 2.4);
+      const bottomEdge = containerBounds.bottom - Math.max(72, lineHeight * 2.2);
 
       if (characterBounds.bottom <= bottomEdge) {
         return;
       }
 
       const scrollAmount = Math.ceil(characterBounds.bottom - bottomEdge);
-      window.scrollBy({ top: scrollAmount, behavior: "smooth" });
+      scrollContainer.scrollTo({
+        top: scrollContainer.scrollTop + scrollAmount,
+        behavior: "smooth"
+      });
     });
 
     return () => {
@@ -659,9 +664,7 @@ export default function PracticePage() {
         </section>
 
         {isRunning ? (
-          <div className="mb-1 flex justify-end px-1 font-mono text-[1.45rem] leading-none text-paper/35 md:text-[2rem]">
-            {formatTime(remainingSeconds)}
-          </div>
+          null
         ) : status === "idle" ? (
           <div className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden px-1 font-mono text-xs text-paper/40 transition">
             <div className="w-full min-w-0 truncate sm:w-auto">
@@ -680,10 +683,10 @@ export default function PracticePage() {
             }
           }}
           className={clsx(
-            "relative max-w-full outline-none transition md:p-5",
+            "relative max-w-full outline-none transition",
             isRunning
-              ? "overflow-visible rounded-none bg-transparent p-0"
-              : "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30"
+              ? "overflow-hidden rounded-none bg-transparent p-0"
+              : "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
           )}
         >
           {previousResult && status === "idle" && (
@@ -695,12 +698,17 @@ export default function PracticePage() {
           <div
             ref={typingWindowRef}
             className={clsx(
-              "transition",
+              "typing-scrollbar transition",
               isRunning
-                ? "min-h-[430px] overflow-visible px-1 py-8 md:min-h-[520px] md:px-6 md:py-10"
+                ? "h-[60vh] overflow-y-auto overscroll-contain px-1 py-6 md:h-[68vh] md:max-h-[72vh] md:px-6 md:py-9"
                 : "h-[340px] overflow-y-auto overscroll-contain rounded-md bg-ink-900/55 px-4 py-6 md:h-[420px] md:px-8 md:py-8"
             )}
           >
+            {isRunning && (
+              <div className="sticky top-0 z-10 flex justify-end bg-ink-950/80 pb-2 font-mono text-[1.45rem] leading-none text-paper/35 backdrop-blur-sm md:text-[2rem]">
+                {formatTime(remainingSeconds)}
+              </div>
+            )}
             <p
               className={clsx(
                 "mx-auto max-w-4xl whitespace-pre-wrap break-words font-mono text-[1.7rem] leading-[2.55rem] text-paper/45 md:text-[2.15rem] md:leading-[3.25rem]",

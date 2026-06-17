@@ -47,3 +47,11 @@ textarea {
   background: rgba(202, 164, 93, 0.35);
   color: #fff8df;
 }
+
+.typing-scrollbar {
+  scrollbar-width: none;
+}
+
+.typing-scrollbar::-webkit-scrollbar {
+  display: none;
+}
