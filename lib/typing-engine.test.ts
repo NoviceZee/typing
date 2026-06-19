@@ -231,4 +231,12 @@ describe("passage length generation", () => {
     const passage = buildPracticePassage("Business email", 300);
     expect(passage.split(/\s+/).filter(Boolean).length).toBeGreaterThanOrEqual(1100);
   });
+
+  it("does not include the removed Dear Ms. Chan fallback passage", () => {
+    const passage = buildPracticePassage("Business email", 60);
+
+    expect(passage).not.toContain("Dear Ms. Chan");
+    expect(passage).not.toContain("Please review the attached schedule");
+    expect(passage).not.toContain("thank you for your prompt response");
+  });
 });

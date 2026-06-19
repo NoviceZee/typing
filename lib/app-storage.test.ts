@@ -1,11 +1,32 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  ACTIVE_PASSAGE_ID_STORAGE_KEY,
   LibraryPassage,
+  PASSAGE_LIBRARY_STORAGE_KEY,
   extractPassageTitle,
   filterLibraryPassages,
   mergeImportedPassages,
-  splitTextIntoPassages
+  readPracticePassageFromLibrary,
+  splitTextIntoPassages,
+  toStoredPassage
 } from "./app-storage";
+
+let storage: Map<string, string>;
+
+beforeEach(() => {
+  storage = new Map();
+  vi.stubGlobal("window", {
+    localStorage: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key)
+    }
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("splitTextIntoPassages", () => {
   it("splits text on supported separator lines", () => {
@@ -98,6 +119,45 @@ describe("filterLibraryPassages", () => {
   it("does not hide inactive passages by itself so manage views can show all statuses", () => {
     const hiddenPassage = { ...library[0], id: "hidden", isActive: false };
     expect(filterLibraryPassages([hiddenPassage], "All", "All").map((passage) => passage.id)).toEqual(["hidden"]);
+  });
+});
+
+describe("toStoredPassage", () => {
+  it("keeps the selected passage unexpanded when single-passage text is requested", () => {
+    const passage = makePassage("1", "Selected", "Business email", "Formal");
+    const support = makePassage("2", "Support", "Business email", "Formal");
+
+    const timedPassage = toStoredPassage(passage, 60, [passage, support]);
+    const singlePassage = toStoredPassage(passage, 60, [passage, support], "single");
+
+    expect(timedPassage.text).toContain("Support body text");
+    expect(singlePassage.text).toBe("Selected body text");
+  });
+});
+
+describe("readPracticePassageFromLibrary", () => {
+  it("replaces a missing active passage id with a selectable active passage", () => {
+    const activePassage = makePassage("active", "Active", "Business email", "Formal");
+    const inactivePassage = { ...makePassage("inactive", "Inactive", "Business email", "Formal"), isActive: false };
+    storage.set(PASSAGE_LIBRARY_STORAGE_KEY, JSON.stringify([inactivePassage, activePassage]));
+    storage.set(ACTIVE_PASSAGE_ID_STORAGE_KEY, "deleted");
+
+    const selected = readPracticePassageFromLibrary(60);
+
+    expect(selected?.id).toBe("active");
+    expect(selected?.text).toContain("Active body text");
+    expect(storage.get(ACTIVE_PASSAGE_ID_STORAGE_KEY)).toBe("active");
+  });
+
+  it("clears the active passage id when no active passage can be selected", () => {
+    const inactivePassage = { ...makePassage("inactive", "Inactive", "Business email", "Formal"), isActive: false };
+    storage.set(PASSAGE_LIBRARY_STORAGE_KEY, JSON.stringify([inactivePassage]));
+    storage.set(ACTIVE_PASSAGE_ID_STORAGE_KEY, "inactive");
+
+    const selected = readPracticePassageFromLibrary(60);
+
+    expect(selected).toBeNull();
+    expect(storage.get(ACTIVE_PASSAGE_ID_STORAGE_KEY)).toBeUndefined();
   });
 });
 

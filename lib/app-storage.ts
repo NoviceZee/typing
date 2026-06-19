@@ -340,14 +340,21 @@ export function createLibraryPassage({
   };
 }
 
-export function toStoredPassage(passage: LibraryPassage, durationSeconds = 60, library = readPassageLibrary()): StoredPassage {
+export type StoredPassageTextMode = "timed" | "single";
+
+export function toStoredPassage(
+  passage: LibraryPassage,
+  durationSeconds = 60,
+  library = readPassageLibrary(),
+  textMode: StoredPassageTextMode = "timed"
+): StoredPassage {
   return {
     id: passage.id,
     title: passage.title,
     category: passage.category,
     style: passage.style,
     source: passage.source,
-    text: buildTimedPassageText(passage, library, durationSeconds),
+    text: textMode === "single" ? passage.content : buildTimedPassageText(passage, library, durationSeconds),
     updatedAt: new Date().toISOString()
   };
 }
@@ -358,6 +365,7 @@ export function readPracticePassageFromLibrary(durationSeconds = 60): StoredPass
   const selectableLibrary = filteredLibrary;
 
   if (selectableLibrary.length === 0) {
+    window.localStorage.removeItem(ACTIVE_PASSAGE_ID_STORAGE_KEY);
     return null;
   }
 
@@ -369,7 +377,13 @@ export function readPracticePassageFromLibrary(durationSeconds = 60): StoredPass
   }
 
   const activePassage = activeId ? selectableLibrary.find((passage) => passage.id === activeId) : null;
-  return toStoredPassage(activePassage ?? selectableLibrary[0], durationSeconds, selectableLibrary);
+  const selectedPassage = activePassage ?? selectableLibrary[0];
+
+  if (selectedPassage.id !== activeId) {
+    writeActivePassageId(selectedPassage.id);
+  }
+
+  return toStoredPassage(selectedPassage, durationSeconds, selectableLibrary);
 }
 
 export function selectDifferentLibraryPassage(currentId?: string, library = readPassageLibrary()): LibraryPassage | null {

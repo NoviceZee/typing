@@ -87,9 +87,9 @@ const PUNCTUATION_PATTERN = /[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/;
 
 const PASSAGE_BANK: Record<PracticeCategory, string[]> = {
   "Business email": [
-    "Dear Ms. Chan, thank you for your prompt response. Please review the attached schedule and confirm whether the proposed meeting time remains convenient. Our team has updated the action list to reflect the decisions made during the last discussion.",
-    "For completeness, I have also included the revised delivery assumptions, the outstanding approvals, and the proposed sequence for stakeholder review. Please let us know if any item requires further clarification before the document is circulated.",
-    "We would appreciate receiving your comments by close of business on Friday. This will allow the project team to consolidate feedback, resolve open points, and issue the final version without affecting the agreed implementation timeline."
+    "The coordination note has been updated to reflect the confirmed responsibilities, outstanding dependencies, and expected response dates for each workstream. Kindly advise if any item should be reclassified before circulation.",
+    "The attached summary records the agreed position as of this afternoon, including the revised delivery assumptions and the remaining approvals required before implementation can proceed.",
+    "To maintain the current timetable, the project team will consolidate comments, resolve open points, and issue the final version after the responsible reviewers have confirmed their input."
   ],
   "Tender / proposal writing": [
     "The bidder shall submit a complete technical proposal, including methodology, staffing plan, delivery timeline, quality assurance measures, and supporting evidence of relevant project experience.",

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw, RotateCcw, X } from "lucide-react";
 import { clsx } from "clsx";
 import { AppShell } from "@/components/AppShell";
@@ -15,7 +15,6 @@ import {
   buildPracticePassage,
   calculateResult,
   enforceBackspacePolicy,
-  isTypedTextComplete,
   normalizeTargetForRules,
   validateTypedText
 } from "@/lib/typing-engine";
@@ -25,6 +24,7 @@ import {
   PreviousTypingResult,
   LibraryPassage,
   StoredPassage,
+  StoredPassageTextMode,
   filterLibraryPassages,
   getDefaultPassage,
   readPreviousResult,
@@ -47,7 +47,14 @@ import {
   setPassageSelectionMode,
   setSelectedCategory
 } from "@/lib/passageStorage";
-import { PRACTICE_DURATIONS } from "@/lib/practiceDurations";
+import {
+  PRACTICE_MODE_OPTIONS,
+  PracticeModeId,
+  getComparableDurationSeconds,
+  getPracticeMode,
+  isManualFinishShortcut,
+  isTimedPracticeMode,
+} from "@/lib/practiceModes";
 import { isRestartShortcut } from "@/lib/practiceShortcuts";
 import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 
@@ -58,10 +65,10 @@ const RANDOM_PASSAGE_ID = "__random__";
 export default function PracticePage() {
   const { user } = useAuth();
   const [rules, setRules] = useState<TypingRules>(DEFAULT_RULES);
-  const [passage, setPassage] = useState<StoredPassage>(() => getDefaultPassage(60));
+  const [passage, setPassage] = useState<StoredPassage | null>(null);
   const [typedText, setTypedText] = useState("");
   const [status, setStatus] = useState<SessionStatus>("idle");
-  const [durationSeconds, setDurationSeconds] = useState(60);
+  const [practiceModeId, setPracticeModeId] = useState<PracticeModeId>("1m");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(60);
   const [startedAt, setStartedAt] = useState<number | null>(null);
@@ -87,7 +94,13 @@ export default function PracticePage() {
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
-  const sourceText = passage.text.trim();
+  const isPassageLoading = passage === null;
+  const practiceMode = useMemo(() => getPracticeMode(practiceModeId), [practiceModeId]);
+  const isTimedMode = isTimedPracticeMode(practiceMode);
+  const durationSeconds = isTimedMode ? practiceMode.seconds : 60;
+  const passageTextMode: StoredPassageTextMode = isTimedMode ? "timed" : "single";
+  const clockSeconds = isTimedMode ? remainingSeconds : elapsedSeconds;
+  const sourceText = passage?.text.trim() ?? "";
   const targetText = useMemo(() => normalizeTargetForRules(sourceText, rules), [sourceText, rules]);
   const comparison = useMemo(
     () => validateTypedText({ targetText: sourceText, typedText, rules }),
@@ -103,11 +116,13 @@ export default function PracticePage() {
       library,
       category,
       duration,
+      textMode,
       preferredPassageId
     }: {
       library: LibraryPassage[];
       category: CategoryFilter;
       duration: number;
+      textMode: StoredPassageTextMode;
       preferredPassageId?: string | null;
     }) => {
       const categoryLibrary = filterLibraryByCategory(library, category);
@@ -118,7 +133,7 @@ export default function PracticePage() {
           setPassageSelectionMode("random");
           setActivePassageId(randomPassage.id);
           setSelectedPassageId(RANDOM_PASSAGE_ID);
-          const nextPassage = toStoredPassage(randomPassage, duration, categoryLibrary);
+          const nextPassage = toStoredPassage(randomPassage, duration, categoryLibrary, textMode);
           setPassage(nextPassage);
           setPreviousResult(readPreviousResult(nextPassage.id));
           writeStoredPassage(nextPassage);
@@ -133,7 +148,7 @@ export default function PracticePage() {
         setPassageSelectionMode("specific");
         setActivePassageId(selectedLibraryPassage.id);
         setSelectedPassageId(selectedLibraryPassage.id);
-        const nextPassage = toStoredPassage(selectedLibraryPassage, duration, categoryLibrary);
+        const nextPassage = toStoredPassage(selectedLibraryPassage, duration, categoryLibrary, textMode);
         setPassage(nextPassage);
         setPreviousResult(readPreviousResult(nextPassage.id));
         writeStoredPassage(nextPassage);
@@ -167,6 +182,7 @@ export default function PracticePage() {
         library: activeLibrary,
         category: initialCategory,
         duration: 60,
+        textMode: "timed",
         preferredPassageId: getPassageSelectionMode() === "random" ? RANDOM_PASSAGE_ID : getActivePassageId()
       });
     }
@@ -203,43 +219,44 @@ export default function PracticePage() {
     setTypedText("");
     setElapsedSeconds(0);
     elapsedSecondsRef.current = 0;
-    setRemainingSeconds(durationSeconds);
+    setRemainingSeconds(isTimedMode ? durationSeconds : 0);
     setStartedAt(null);
     setFinishedAt(null);
     setLastResult(null);
     setIsResultModalOpen(false);
-    setPreviousResult(readPreviousResult(passage.id));
+    setPreviousResult(passage ? readPreviousResult(passage.id) : null);
     setStatus("idle");
     if (typingWindowRef.current) {
       typingWindowRef.current.scrollTop = 0;
     }
-  }, [durationSeconds, passage.id]);
+  }, [durationSeconds, isTimedMode, passage]);
 
   const finishTest = useCallback(
     (completionReason: CompletionReason) => {
       const sessionStartedAt = startedAtRef.current;
 
-      if (finishedRef.current || statusRef.current !== "running" || !sessionStartedAt) {
+      if (finishedRef.current || statusRef.current !== "running" || !sessionStartedAt || !passage) {
         return;
       }
 
       const finishedTime = Date.now();
       const measuredElapsed = Math.max(1, Math.floor((finishedTime - sessionStartedAt) / 1000));
-      const finalElapsed = completionReason === "time_up" ? durationSeconds : measuredElapsed;
+      const finalElapsed = completionReason === "time_up" && isTimedMode ? durationSeconds : measuredElapsed;
+      const resultDurationSeconds = getComparableDurationSeconds(practiceMode, finalElapsed);
 
       finishedRef.current = true;
       statusRef.current = "finished";
       elapsedSecondsRef.current = finalElapsed;
       setFinishedAt(finishedTime);
       setElapsedSeconds(finalElapsed);
-      setRemainingSeconds(completionReason === "time_up" ? 0 : Math.max(0, durationSeconds - finalElapsed));
+      setRemainingSeconds(isTimedMode ? (completionReason === "time_up" ? 0 : Math.max(0, durationSeconds - finalElapsed)) : 0);
       setStatus("finished");
-      setIsResultModalOpen(completionReason === "time_up" || completionReason === "text_completed");
+      setIsResultModalOpen(true);
       const finalResult = calculateResult({
         target: sourceText,
         typed: typedTextRef.current,
         elapsedSeconds: Math.max(finalElapsed, 1),
-        durationSeconds,
+        durationSeconds: resultDurationSeconds,
         category: passage.category,
         rules,
         completionReason
@@ -261,11 +278,11 @@ export default function PracticePage() {
         });
       }
     },
-    [durationSeconds, passage, rules, sourceText, user]
+    [durationSeconds, isTimedMode, passage, practiceMode, rules, sourceText, user]
   );
 
   const startSession = useCallback(() => {
-    if (!sourceText || isFinished) {
+    if (!passage || !sourceText || isFinished) {
       return;
     }
 
@@ -277,13 +294,13 @@ export default function PracticePage() {
     setTypedText("");
     setElapsedSeconds(0);
     elapsedSecondsRef.current = 0;
-    setRemainingSeconds(durationSeconds);
+    setRemainingSeconds(isTimedMode ? durationSeconds : 0);
     setStartedAt(now);
     setFinishedAt(null);
     setLastResult(null);
     setPreviousResult(readPreviousResult(passage.id));
     setStatus("running");
-  }, [durationSeconds, isFinished, passage.id, sourceText]);
+  }, [durationSeconds, isFinished, isTimedMode, passage, sourceText]);
 
   useEffect(() => {
     if (!isRunning || isFinished || !startedAt) {
@@ -292,30 +309,20 @@ export default function PracticePage() {
 
     const timer = window.setInterval(() => {
       const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-      const remaining = Math.max(0, durationSeconds - elapsed);
+      const remaining = isTimedMode ? Math.max(0, durationSeconds - elapsed) : 0;
 
       elapsedSecondsRef.current = elapsed;
       setElapsedSeconds(elapsed);
       setRemainingSeconds(remaining);
 
-      if (remaining <= 0) {
+      if (isTimedMode && remaining <= 0) {
         window.clearInterval(timer);
         finishTest("time_up");
       }
     }, 250);
 
     return () => window.clearInterval(timer);
-  }, [durationSeconds, finishTest, isFinished, isRunning, startedAt]);
-
-  useEffect(() => {
-    if (!isRunning || isFinished) {
-      return;
-    }
-
-    if (isTypedTextComplete(sourceText, typedText, rules)) {
-      finishTest("text_completed");
-    }
-  }, [finishTest, isFinished, isRunning, rules, sourceText, typedText]);
+  }, [durationSeconds, finishTest, isFinished, isRunning, isTimedMode, startedAt]);
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -338,6 +345,11 @@ export default function PracticePage() {
         resetSession();
         return;
       }
+
+      if (isRunning && isManualFinishShortcut(event.key)) {
+        event.preventDefault();
+        finishTest("manual");
+      }
     };
 
     const handleKeyUp = (event: globalThis.KeyboardEvent) => {
@@ -358,7 +370,7 @@ export default function PracticePage() {
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", resetTabState);
     };
-  }, [isRunning, resetSession, rules.requireTabToStart, startSession, status]);
+  }, [finishTest, isRunning, resetSession, rules.requireTabToStart, startSession, status]);
 
   useEffect(() => {
     if (isRunning) {
@@ -427,7 +439,7 @@ export default function PracticePage() {
   }, [isRunning, typedText.length]);
 
   function handleTyping(value: string) {
-    if (isFinished || finishedRef.current || (!isRunning && rules.requireTabToStart)) {
+    if (!passage || isFinished || finishedRef.current || (!isRunning && rules.requireTabToStart)) {
       return;
     }
 
@@ -440,7 +452,7 @@ export default function PracticePage() {
       setElapsedSeconds(0);
       setStartedAt(now);
       setFinishedAt(null);
-      setRemainingSeconds(durationSeconds);
+      setRemainingSeconds(isTimedMode ? durationSeconds : 0);
       setLastResult(null);
       setIsResultModalOpen(false);
       setStatus("running");
@@ -453,16 +465,22 @@ export default function PracticePage() {
     });
   }
 
-  async function handleDuration(seconds: number) {
+  async function handlePracticeMode(modeId: PracticeModeId) {
+    const nextMode = getPracticeMode(modeId);
+    const nextIsTimedMode = isTimedPracticeMode(nextMode);
+    const nextDurationSeconds = nextIsTimedMode ? nextMode.seconds : 60;
+    const nextTextMode: StoredPassageTextMode = nextIsTimedMode ? "timed" : "single";
+
     resetSession();
-    setDurationSeconds(seconds);
-    setRemainingSeconds(seconds);
+    setPracticeModeId(modeId);
+    setRemainingSeconds(nextIsTimedMode ? nextMode.seconds : 0);
     const activeLibrary = await loadActivePassageLibrary();
     setAvailableLibrary(activeLibrary);
     choosePracticePassage({
       library: activeLibrary,
       category: selectedCategory,
-      duration: seconds,
+      duration: nextDurationSeconds,
+      textMode: nextTextMode,
       preferredPassageId: selectedPassageId
     });
   }
@@ -475,6 +493,7 @@ export default function PracticePage() {
       library: availableLibrary,
       category,
       duration: durationSeconds,
+      textMode: passageTextMode,
       preferredPassageId: selectedPassageId === RANDOM_PASSAGE_ID ? RANDOM_PASSAGE_ID : null
     });
   }
@@ -485,11 +504,16 @@ export default function PracticePage() {
       library: availableLibrary,
       category: selectedCategory,
       duration: durationSeconds,
+      textMode: passageTextMode,
       preferredPassageId: passageId
     });
   }
 
   function loadNextPassage() {
+    if (!passage) {
+      return;
+    }
+
     resetSession();
     const library = getFilteredLibrary();
 
@@ -511,7 +535,7 @@ export default function PracticePage() {
       setPassageSelectionMode(isRandomMode ? "random" : "specific");
       setActivePassageId(nextLibraryPassage.id);
       setSelectedPassageId(isRandomMode ? RANDOM_PASSAGE_ID : nextLibraryPassage.id);
-      const nextPassage = toStoredPassage(nextLibraryPassage, durationSeconds, library);
+      const nextPassage = toStoredPassage(nextLibraryPassage, durationSeconds, library, passageTextMode);
       setPassage(nextPassage);
       setPreviousResult(readPreviousResult(nextPassage.id));
       writeStoredPassage(nextPassage);
@@ -535,6 +559,10 @@ export default function PracticePage() {
   }
 
   function loadRandomPassage() {
+    if (!passage) {
+      return;
+    }
+
     resetSession();
     setPassageSelectionMode("random");
     const library = getFilteredLibrary();
@@ -561,7 +589,7 @@ export default function PracticePage() {
     }
 
     setActivePassageId(randomLibraryPassage.id);
-    const randomPassage = toStoredPassage(randomLibraryPassage, durationSeconds, library);
+    const randomPassage = toStoredPassage(randomLibraryPassage, durationSeconds, library, passageTextMode);
     setPassage(randomPassage);
     setPreviousResult(readPreviousResult(randomPassage.id));
     writeStoredPassage(randomPassage);
@@ -570,14 +598,18 @@ export default function PracticePage() {
   async function loadActivePassageLibrary(): Promise<LibraryPassage[]> {
     try {
       const supabaseLibrary = await getSupabasePassageLibrary();
-      libraryRef.current = supabaseLibrary;
-      writePassageLibrary(supabaseLibrary);
-      return supabaseLibrary;
+      if (supabaseLibrary.length > 0) {
+        libraryRef.current = supabaseLibrary;
+        writePassageLibrary(supabaseLibrary);
+        return supabaseLibrary;
+      }
     } catch {
-      const localLibrary = getActivePassageLibrary();
-      libraryRef.current = localLibrary;
-      return localLibrary;
+      // Fall through to local active passages.
     }
+
+    const localLibrary = getActivePassageLibrary();
+    libraryRef.current = localLibrary;
+    return localLibrary;
   }
 
   function getFilteredLibrary() {
@@ -608,13 +640,13 @@ export default function PracticePage() {
           )}
           aria-hidden={isRunning}
         >
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1.5 md:grid-cols-[minmax(8rem,0.8fr)_minmax(14rem,1.35fr)_minmax(12rem,0.8fr)] md:items-center">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1.5 md:grid-cols-[minmax(8rem,0.75fr)_minmax(14rem,1.3fr)_minmax(16rem,0.95fr)] md:items-center">
             <label className="min-w-0">
               <span className="sr-only">Category</span>
               <select
                 value={selectedCategory}
                 onChange={(event) => handleCategorySelection(event.target.value as CategoryFilter)}
-                disabled={isRunning}
+                disabled={isRunning || isPassageLoading}
                 className="h-9 w-full min-w-0 rounded-full border-0 bg-paper/[0.035] px-4 font-mono text-xs text-paper/70 outline-none transition hover:bg-paper/[0.055] focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/30 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {[ALL_FILTER, ...categoryOptions].map((category) => (
@@ -630,7 +662,7 @@ export default function PracticePage() {
               <select
                 value={selectedPassageId}
                 onChange={(event) => handlePassageSelection(event.target.value)}
-                disabled={isRunning || selectablePassages.length === 0}
+                disabled={isRunning || isPassageLoading || selectablePassages.length === 0}
                 className="h-9 w-full min-w-0 rounded-full border-0 bg-paper/[0.035] px-4 font-mono text-xs text-paper/70 outline-none transition hover:bg-paper/[0.055] focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/30 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value={RANDOM_PASSAGE_ID}>
@@ -644,22 +676,22 @@ export default function PracticePage() {
               </select>
             </label>
 
-            <div className="grid min-w-0 grid-cols-3 rounded-full bg-paper/[0.035] p-1">
-              <span className="sr-only">Duration</span>
-              {PRACTICE_DURATIONS.map((duration) => (
+            <div className="grid min-w-0 grid-cols-4 rounded-full bg-paper/[0.035] p-1">
+              <span className="sr-only">Practice mode</span>
+              {PRACTICE_MODE_OPTIONS.map((mode) => (
                 <button
-                  key={duration.seconds}
+                  key={mode.id}
                   type="button"
-                  onClick={() => handleDuration(duration.seconds)}
-                  disabled={isRunning}
+                  onClick={() => handlePracticeMode(mode.id)}
+                  disabled={isRunning || isPassageLoading}
                   className={clsx(
-                    "h-7 rounded-full px-3 font-mono text-xs transition disabled:cursor-not-allowed disabled:opacity-60",
-                    durationSeconds === duration.seconds
+                    "h-7 rounded-full px-2 font-mono text-[0.68rem] transition disabled:cursor-not-allowed disabled:opacity-60 sm:text-xs",
+                    practiceModeId === mode.id
                       ? "bg-brass/85 text-ink-950"
                       : "text-paper/50 hover:bg-paper/5 hover:text-paper/80"
                   )}
                 >
-                  {duration.label}
+                  {mode.label}
                 </button>
               ))}
             </div>
@@ -668,11 +700,11 @@ export default function PracticePage() {
 
         {isRunning ? (
           null
-        ) : status === "idle" ? (
+        ) : status === "idle" && passage ? (
           <div className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden px-1 font-mono text-xs text-paper/40 transition">
             <div className="w-full min-w-0 truncate sm:w-auto">
               <span className="font-semibold text-paper/70">{passage.title ?? "Untitled passage"}</span> ·{" "}
-              {passage.category} · {passage.style} · {formatTime(durationSeconds)}
+              {passage.category} · {passage.style} · {practiceMode.label}
             </div>
           </div>
         ) : null}
@@ -700,7 +732,7 @@ export default function PracticePage() {
 
           {isRunning && (
             <div className="sticky top-0 z-10 flex shrink-0 justify-end bg-ink-950/80 pb-3 font-mono text-[1.45rem] leading-none text-paper/35 backdrop-blur-sm md:text-[2rem]">
-              {formatTime(remainingSeconds)}
+              {formatTime(clockSeconds)}
             </div>
           )}
 
@@ -719,7 +751,10 @@ export default function PracticePage() {
                 isRunning && "text-paper/50"
               )}
             >
-              {comparison.characters.map((character, index) => {
+              {isPassageLoading ? (
+                <PassageLoadingPlaceholder />
+              ) : (
+                comparison.characters.map((character, index) => {
                 const isCurrent = character.status === "current";
                 const isLineBreak = character.expected === "\n" || character.actual === "\n";
 
@@ -755,16 +790,17 @@ export default function PracticePage() {
                     {character.actual || character.expected}
                   </span>
                 );
-              })}
+                })
+              )}
             </p>
           </div>
 
           <textarea
             ref={inputRef}
             value={typedText}
-            disabled={isFinished || (!isRunning && rules.requireTabToStart)}
+            disabled={isPassageLoading || isFinished || (!isRunning && rules.requireTabToStart)}
             onKeyDown={(event) => {
-              if (isFinished || (!isRunning && rules.requireTabToStart)) {
+              if (isPassageLoading || isFinished || (!isRunning && rules.requireTabToStart)) {
                 event.preventDefault();
                 return;
               }
@@ -783,11 +819,12 @@ export default function PracticePage() {
           <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-xs text-paper/30">
             <span>Tab = start</span>
             <span>Tab + Enter = restart</span>
+            <span>Esc = finish</span>
           </div>
         )}
 
-        {lastResult && <ResultsPanel result={lastResult} onRestart={resetSession} onNextPassage={loadNextPassage} />}
-        {lastResult && isResultModalOpen && (
+        {lastResult && passage && <ResultsPanel result={lastResult} onRestart={resetSession} onNextPassage={loadNextPassage} />}
+        {lastResult && passage && isResultModalOpen && (
           <ResultModal
             result={lastResult}
             passage={passage}
@@ -799,6 +836,24 @@ export default function PracticePage() {
         )}
       </section>
     </AppShell>
+  );
+}
+
+function PassageLoadingPlaceholder() {
+  return (
+    <span
+      data-testid="passage-loading-placeholder"
+      aria-hidden="true"
+      className="block w-full max-w-4xl space-y-4 opacity-45"
+    >
+      {[92, 76, 88, 64].map((width, index) => (
+        <span
+          key={width}
+          className="block h-[1.15rem] rounded-sm bg-paper/[0.07]"
+          style={{ width: `${width}%`, marginTop: index === 0 ? 0 : undefined }}
+        />
+      ))}
+    </span>
   );
 }
 
@@ -848,9 +903,7 @@ function ResultsPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs uppercase text-brass">Result</p>
-          <h2 className="mt-1 text-2xl font-semibold text-paper">
-            {result.completionReason === "time_up" ? "Time up" : "Passage completed"}
-          </h2>
+          <h2 className="mt-1 text-2xl font-semibold text-paper">{getCompletionLabel(result.completionReason)}</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -899,7 +952,7 @@ function ResultModal({
 }) {
   const wpmDifference = previousResult ? result.wpm - previousResult.wpm : 0;
   const accuracyDifference = previousResult ? result.accuracy - previousResult.accuracy : 0;
-  const completionLabel = result.completionReason === "time_up" ? "Time up" : "Passage completed";
+  const completionLabel = getCompletionLabel(result.completionReason);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/85 px-3 py-4 backdrop-blur md:px-4">
@@ -1041,6 +1094,14 @@ function getResultSummary(result: TypingResult) {
   }
 
   return "Slow the next pass slightly and use the mistake pattern below as the target.";
+}
+
+function getCompletionLabel(completionReason: CompletionReason) {
+  if (completionReason === "time_up") {
+    return "Time up";
+  }
+
+  return "Session ended";
 }
 
 function SessionReview({ result }: { result: TypingResult }) {
