@@ -55,8 +55,17 @@ import {
   isManualFinishShortcut,
   isTimedPracticeMode,
 } from "@/lib/practiceModes";
+import {
+  buildConsistencySeries,
+  getConsistencySummary,
+  getSparklinePath
+} from "@/lib/practiceConsistency";
 import { isRestartShortcut } from "@/lib/practiceShortcuts";
-import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
+import {
+  SupabaseOwnTypingResultRow,
+  getSupabaseOwnTypingResults,
+  saveSupabaseTypingResult
+} from "@/lib/typingResultStorage";
 
 type SessionStatus = "idle" | "running" | "finished";
 
@@ -74,6 +83,7 @@ export default function PracticePage() {
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [lastResult, setLastResult] = useState<TypingResult | null>(null);
+  const [recentResults, setRecentResults] = useState<SupabaseOwnTypingResultRow[]>([]);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [passageNotice, setPassageNotice] = useState("");
   const [previousResult, setPreviousResult] = useState<PreviousTypingResult | null>(null);
@@ -252,6 +262,7 @@ export default function PracticePage() {
       setRemainingSeconds(isTimedMode ? (completionReason === "time_up" ? 0 : Math.max(0, durationSeconds - finalElapsed)) : 0);
       setStatus("finished");
       setIsResultModalOpen(true);
+      setRecentResults([]);
       const finalResult = calculateResult({
         target: sourceText,
         typed: typedTextRef.current,
@@ -267,6 +278,12 @@ export default function PracticePage() {
       writePreviousResult(passage, finalResult, typedTextRef.current.length);
 
       if (user) {
+        void getSupabaseOwnTypingResults(user.id, 10)
+          .then((typingResults) => setRecentResults(typingResults))
+          .catch((error) => {
+            console.warn("Supabase recent typing results load failed", error);
+          });
+
         void saveSupabaseTypingResult({
           userId: user.id,
           passage,
@@ -831,6 +848,7 @@ export default function PracticePage() {
             onRestart={resetSession}
             onNextPassage={loadNextPassage}
             previousResult={previousResult}
+            recentResults={user ? recentResults : null}
             onClose={() => setIsResultModalOpen(false)}
           />
         )}
@@ -941,6 +959,7 @@ function ResultModal({
   onRestart,
   onNextPassage,
   previousResult,
+  recentResults,
   onClose
 }: {
   result: TypingResult;
@@ -948,6 +967,7 @@ function ResultModal({
   onRestart: () => void;
   onNextPassage: () => void;
   previousResult: PreviousTypingResult | null;
+  recentResults: SupabaseOwnTypingResultRow[] | null;
   onClose: () => void;
 }) {
   const wpmDifference = previousResult ? result.wpm - previousResult.wpm : 0;
@@ -1029,6 +1049,8 @@ function ResultModal({
             </div>
           )}
 
+          {recentResults && <ConsistencyGraph result={result} recentResults={recentResults} />}
+
           <SessionReview result={result} />
         </div>
 
@@ -1077,6 +1099,65 @@ function ComparisonMetric({ label, value, delta }: { label: string; value: strin
       <div className="font-mono text-[0.64rem] uppercase text-paper/35">{label}</div>
       <div className={clsx("mt-1 font-mono text-lg font-semibold", tone)}>{value}</div>
     </div>
+  );
+}
+
+function ConsistencyGraph({
+  result,
+  recentResults
+}: {
+  result: TypingResult;
+  recentResults: SupabaseOwnTypingResultRow[];
+}) {
+  const series = buildConsistencySeries(recentResults, {
+    wpm: result.wpm,
+    completedAt: result.completedAt
+  });
+
+  if (series.length < 2) {
+    return (
+      <section className="mt-4 rounded-lg border border-paper/10 bg-paper/[0.02] px-4 py-3">
+        <p className="font-mono text-xs uppercase text-paper/35">Consistency</p>
+        <p className="mt-2 text-sm text-paper/45">More attempts needed</p>
+      </section>
+    );
+  }
+
+  const summary = getConsistencySummary(series);
+  const path = getSparklinePath(series, 240, 56);
+
+  return (
+    <section className="mt-4 rounded-lg border border-paper/10 bg-paper/[0.02] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-xs uppercase text-paper/35">Consistency</p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <ResultMiniMetric label="Current" value={summary.currentWpm.toFixed(1)} />
+            <ResultMiniMetric label="Average" value={summary.averageWpm.toFixed(1)} />
+            <ResultMiniMetric label="Best" value={summary.bestWpm.toFixed(1)} />
+          </div>
+        </div>
+        <svg
+          viewBox="0 0 240 56"
+          role="img"
+          aria-label="Last 10 WPM trend"
+          className="h-16 min-w-[14rem] flex-1 text-brass"
+          preserveAspectRatio="none"
+        >
+          <path d={path} fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+          {series.map((point, index) => {
+            const values = series.map((seriesPoint) => seriesPoint.wpm);
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const range = Math.max(max - min, 1);
+            const x = series.length === 1 ? 0 : (index / (series.length - 1)) * 240;
+            const y = 56 - 4 - ((point.wpm - min) / range) * 48;
+
+            return <circle key={point.id} cx={x} cy={y} r="2.5" fill="currentColor" className="text-mint" />;
+          })}
+        </svg>
+      </div>
+    </section>
   );
 }
 
