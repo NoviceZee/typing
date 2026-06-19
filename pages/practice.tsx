@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw, RotateCcw } from "lucide-react";
+import { RefreshCw, RotateCcw, X } from "lucide-react";
 import { clsx } from "clsx";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
@@ -899,46 +899,79 @@ function ResultModal({
 }) {
   const wpmDifference = previousResult ? result.wpm - previousResult.wpm : 0;
   const accuracyDifference = previousResult ? result.accuracy - previousResult.accuracy : 0;
+  const completionLabel = result.completionReason === "time_up" ? "Time up" : "Passage completed";
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-3 py-4 backdrop-blur md:px-4">
-      <section className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-brass/30 bg-ink-900 shadow-glow">
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-paper/10 bg-ink-900 px-4 py-4 md:px-6">
-          <div>
-            <p className="font-mono text-xs uppercase text-brass">Result</p>
-            <h2 className="mt-1 text-3xl font-semibold text-paper">
-              {result.completionReason === "time_up" ? "Time up" : "Passage completed"}
-            </h2>
-            <div className="mt-2 font-mono text-sm text-paper/45">
-              {passage.category} · {passage.style}
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/85 px-3 py-4 backdrop-blur md:px-4">
+      <section className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-brass/25 bg-ink-900 shadow-glow">
+        <div className="sticky top-0 z-10 border-b border-paper/10 bg-ink-900/95 px-4 py-4 backdrop-blur md:px-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="font-mono text-xs uppercase text-brass">Result</p>
+              <h2 className="mt-1 text-2xl font-semibold leading-tight text-paper md:text-3xl">{completionLabel}</h2>
+              <div className="mt-2 truncate font-mono text-xs text-paper/45 md:text-sm">
+                {passage.title ?? "Untitled passage"} · {passage.category} · {passage.style}
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close result"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-800 text-paper/75 transition hover:border-brass/50 hover:text-paper"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close result"
-            className="shrink-0 rounded-md border border-paper/10 bg-ink-800 px-3 py-2 font-mono text-sm text-paper/85 transition hover:border-brass/50 hover:text-paper"
-          >
-            Close
-          </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-6">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Metric label="WPM" value={result.wpm.toFixed(1)} />
-            <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-            <Metric label="Mistakes" value={result.incorrectCharacters} />
-            <Metric label="Time used" value={formatTime(result.timeUsedSeconds)} />
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.9fr)]">
+            <div className="rounded-lg border border-brass/20 bg-brass/[0.07] p-5">
+              <p className="font-mono text-xs uppercase text-brass">Final pace</p>
+              <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-1">
+                <span className="font-mono text-6xl font-semibold leading-none text-paper md:text-7xl">
+                  {result.wpm.toFixed(1)}
+                </span>
+                <span className="pb-1 font-mono text-sm uppercase text-paper/45">WPM</span>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <ResultMiniMetric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
+                <ResultMiniMetric label="Mistakes" value={result.incorrectCharacters} />
+                <ResultMiniMetric label="Time" value={formatTime(result.timeUsedSeconds)} />
+              </div>
+            </div>
+
+            <div className="grid gap-3 rounded-lg border border-paper/10 bg-ink-950/45 p-4">
+              <div>
+                <p className="font-mono text-xs uppercase text-paper/40">Attempt quality</p>
+                <p className="mt-2 text-sm leading-6 text-paper/55">
+                  {getResultSummary(result)}
+                </p>
+              </div>
+              {previousResult ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <ComparisonMetric label="Pace change" value={formatSigned(wpmDifference, " WPM")} delta={wpmDifference} />
+                  <ComparisonMetric label="Accuracy change" value={formatSigned(accuracyDifference, "%")} delta={accuracyDifference} />
+                </div>
+              ) : (
+                <div className="rounded-md bg-paper/[0.035] px-3 py-3 font-mono text-xs text-paper/45">
+                  First saved attempt for this passage.
+                </div>
+              )}
+            </div>
           </div>
 
           {previousResult && (
-            <div className="mt-5 rounded-md border border-paper/10 bg-ink-950/60 p-4">
-              <p className="font-mono text-xs uppercase text-paper/45">Previous attempt</p>
-              <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-                <Metric label="Previous WPM" value={previousResult.wpm.toFixed(1)} />
-                <Metric label="Current WPM" value={result.wpm.toFixed(1)} />
-                <Metric label="Change" value={formatSigned(wpmDifference, " WPM")} />
-                <Metric label="Accuracy" value={formatSigned(accuracyDifference, "%")} />
+            <div className="mt-4 rounded-lg border border-paper/10 bg-paper/[0.025] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-mono text-xs uppercase text-paper/45">Previous attempt</p>
+                <p className="font-mono text-xs text-paper/35">{formatTime(previousResult.elapsedSeconds)}</p>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <ResultMiniMetric label="Previous WPM" value={previousResult.wpm.toFixed(1)} />
+                <ResultMiniMetric label="Current WPM" value={result.wpm.toFixed(1)} />
+                <ResultMiniMetric label="Previous accuracy" value={`${previousResult.accuracy.toFixed(2)}%`} />
+                <ResultMiniMetric label="Current accuracy" value={`${result.accuracy.toFixed(2)}%`} />
               </div>
             </div>
           )}
@@ -950,7 +983,7 @@ function ResultModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/70 transition hover:border-brass/50"
+            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/70 transition hover:border-brass/50 hover:text-paper"
           >
             Close
           </button>
@@ -972,6 +1005,42 @@ function ResultModal({
       </section>
     </div>
   );
+}
+
+function ResultMiniMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="min-w-0 rounded-md bg-paper/[0.035] px-3 py-3">
+      <div className="truncate font-mono text-[0.64rem] uppercase text-paper/35">{label}</div>
+      <div className="mt-1 truncate font-mono text-lg font-semibold text-paper/90">{value}</div>
+    </div>
+  );
+}
+
+function ComparisonMetric({ label, value, delta }: { label: string; value: string; delta: number }) {
+  const tone = delta > 0 ? "text-mint" : delta < 0 ? "text-ember" : "text-paper/80";
+
+  return (
+    <div className="rounded-md bg-paper/[0.035] px-3 py-3">
+      <div className="font-mono text-[0.64rem] uppercase text-paper/35">{label}</div>
+      <div className={clsx("mt-1 font-mono text-lg font-semibold", tone)}>{value}</div>
+    </div>
+  );
+}
+
+function getResultSummary(result: TypingResult) {
+  if (result.accuracy >= 98 && result.incorrectCharacters <= 2) {
+    return "Clean control with very little correction needed.";
+  }
+
+  if (result.accuracy >= 95) {
+    return "Strong pace with a few small slips to review.";
+  }
+
+  if (result.accuracy >= 90) {
+    return "Readable run. The review below shows the main accuracy leaks.";
+  }
+
+  return "Slow the next pass slightly and use the mistake pattern below as the target.";
 }
 
 function SessionReview({ result }: { result: TypingResult }) {
@@ -996,8 +1065,8 @@ function SessionReview({ result }: { result: TypingResult }) {
       </div>
 
       {mismatches.length > 0 && (
-        <div className="mt-4 overflow-hidden rounded-md bg-paper/[0.025]">
-          <div className="grid grid-cols-[5rem_1fr_1fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-[0.68rem] uppercase text-paper/35">
+        <div className="mt-4 overflow-x-auto rounded-md bg-paper/[0.025]">
+          <div className="grid min-w-[34rem] grid-cols-[4rem_1fr_1fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-[0.68rem] uppercase text-paper/35">
             <span>Pos</span>
             <span>Expected</span>
             <span>Typed</span>
@@ -1006,7 +1075,7 @@ function SessionReview({ result }: { result: TypingResult }) {
           {mismatches.map((mismatch, index) => (
             <div
               key={`${mismatch.index}-${index}-${mismatch.expected}-${mismatch.actual}`}
-              className="grid grid-cols-[5rem_1fr_1fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-xs text-paper/70 last:border-b-0"
+              className="grid min-w-[34rem] grid-cols-[4rem_1fr_1fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-xs text-paper/70 last:border-b-0"
             >
               <span className="text-paper/40">{mismatch.index + 1}</span>
               <span>{formatReviewCharacter(mismatch.expected, "Missing")}</span>
