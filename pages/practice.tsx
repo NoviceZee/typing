@@ -3,6 +3,7 @@
 import React, { Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw, RotateCcw, X } from "lucide-react";
 import { clsx } from "clsx";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import {
@@ -970,8 +971,6 @@ function ResultModal({
   recentResults: SupabaseOwnTypingResultRow[] | null;
   onClose: () => void;
 }) {
-  const wpmDifference = previousResult ? result.wpm - previousResult.wpm : 0;
-  const accuracyDifference = previousResult ? result.accuracy - previousResult.accuracy : 0;
   const completionLabel = getCompletionLabel(result.completionReason);
 
   return (
@@ -997,59 +996,32 @@ function ResultModal({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-6">
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.9fr)]">
-            <div className="rounded-lg border border-brass/20 bg-brass/[0.07] p-5">
-              <p className="font-mono text-xs uppercase text-brass">Final pace</p>
-              <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-1">
-                <span className="font-mono text-6xl font-semibold leading-none text-paper md:text-7xl">
-                  {result.wpm.toFixed(1)}
-                </span>
-                <span className="pb-1 font-mono text-sm uppercase text-paper/45">WPM</span>
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                <ResultMiniMetric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-                <ResultMiniMetric label="Mistakes" value={result.incorrectCharacters} />
-                <ResultMiniMetric label="Time" value={formatTime(result.timeUsedSeconds)} />
-              </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-8">
+          <section className="text-center">
+            <p className="font-mono text-xs uppercase text-brass">Final pace</p>
+            <div className="mt-2 flex items-end justify-center gap-3">
+              <span className="font-mono text-7xl font-semibold leading-none text-paper md:text-8xl">
+                {result.wpm.toFixed(1)}
+              </span>
+              <span className="pb-2 font-mono text-sm uppercase text-paper/45">WPM</span>
             </div>
+            <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs uppercase text-paper/40">
+              <PlainResultStat label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
+              <PlainResultStat label="Mistakes" value={result.incorrectCharacters} />
+              <PlainResultStat label="Time" value={formatTime(result.timeUsedSeconds)} />
+            </div>
+            <p className="mx-auto mt-4 max-w-lg text-sm leading-6 text-paper/50">{getResultSummary(result)}</p>
+          </section>
 
-            <div className="grid gap-3 rounded-lg border border-paper/10 bg-ink-950/45 p-4">
-              <div>
-                <p className="font-mono text-xs uppercase text-paper/40">Attempt quality</p>
-                <p className="mt-2 text-sm leading-6 text-paper/55">
-                  {getResultSummary(result)}
-                </p>
-              </div>
-              {previousResult ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <ComparisonMetric label="Pace change" value={formatSigned(wpmDifference, " WPM")} delta={wpmDifference} />
-                  <ComparisonMetric label="Accuracy change" value={formatSigned(accuracyDifference, "%")} delta={accuracyDifference} />
-                </div>
-              ) : (
-                <div className="rounded-md bg-paper/[0.035] px-3 py-3 font-mono text-xs text-paper/45">
-                  First saved attempt for this passage.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {previousResult && (
-            <div className="mt-4 rounded-lg border border-paper/10 bg-paper/[0.025] p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-mono text-xs uppercase text-paper/45">Previous attempt</p>
-                <p className="font-mono text-xs text-paper/35">{formatTime(previousResult.elapsedSeconds)}</p>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-                <ResultMiniMetric label="Previous WPM" value={previousResult.wpm.toFixed(1)} />
-                <ResultMiniMetric label="Current WPM" value={result.wpm.toFixed(1)} />
-                <ResultMiniMetric label="Previous accuracy" value={`${previousResult.accuracy.toFixed(2)}%`} />
-                <ResultMiniMetric label="Current accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-              </div>
-            </div>
+          {recentResults ? (
+            <ConsistencyGraph result={result} recentResults={recentResults} />
+          ) : (
+            <SignInResultCta />
           )}
 
-          {recentResults && <ConsistencyGraph result={result} recentResults={recentResults} />}
+          {previousResult && (
+            <PreviousAttemptDeltas result={result} previousResult={previousResult} />
+          )}
 
           <SessionReview result={result} />
         </div>
@@ -1082,22 +1054,56 @@ function ResultModal({
   );
 }
 
-function ResultMiniMetric({ label, value }: { label: string; value: string | number }) {
+function PlainResultStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="min-w-0 rounded-md bg-paper/[0.035] px-3 py-3">
-      <div className="truncate font-mono text-[0.64rem] uppercase text-paper/35">{label}</div>
-      <div className="mt-1 truncate font-mono text-lg font-semibold text-paper/90">{value}</div>
-    </div>
+    <span>
+      <span className="text-paper/30">{label}</span>{" "}
+      <span className="text-paper/75">{value}</span>
+    </span>
   );
 }
 
-function ComparisonMetric({ label, value, delta }: { label: string; value: string; delta: number }) {
+function PreviousAttemptDeltas({
+  result,
+  previousResult
+}: {
+  result: TypingResult;
+  previousResult: PreviousTypingResult;
+}) {
+  const wpmDifference = result.wpm - previousResult.wpm;
+  const accuracyDifference = result.accuracy - previousResult.accuracy;
+
+  return (
+    <section className="mt-7 text-center">
+      <p className="font-mono text-xs uppercase text-paper/30">Previous attempt</p>
+      <div className="mt-2 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs uppercase">
+        <PlainDelta label="Pace" value={formatSigned(wpmDifference, " WPM")} delta={wpmDifference} />
+        <PlainDelta label="Accuracy" value={formatSigned(accuracyDifference, "%")} delta={accuracyDifference} />
+        <span className="text-paper/35">
+          <span className="text-paper/25">Previous time</span> {formatTime(previousResult.elapsedSeconds)}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function PlainDelta({ label, value, delta }: { label: string; value: string; delta: number }) {
   const tone = delta > 0 ? "text-mint" : delta < 0 ? "text-ember" : "text-paper/80";
 
   return (
-    <div className="rounded-md bg-paper/[0.035] px-3 py-3">
-      <div className="font-mono text-[0.64rem] uppercase text-paper/35">{label}</div>
-      <div className={clsx("mt-1 font-mono text-lg font-semibold", tone)}>{value}</div>
+    <span>
+      <span className="text-paper/25">{label}</span>{" "}
+      <span className={tone}>{value}</span>
+    </span>
+  );
+}
+
+function SignInResultCta() {
+  return (
+    <div className="mt-8 text-center font-mono text-sm text-paper/35">
+      <Link href="/login" className="transition hover:text-brass">
+        Sign in to save your result
+      </Link>
     </div>
   );
 }
@@ -1116,8 +1122,8 @@ function ConsistencyGraph({
 
   if (series.length < 2) {
     return (
-      <section className="mt-4 rounded-lg border border-paper/10 bg-paper/[0.02] px-4 py-3">
-        <p className="font-mono text-xs uppercase text-paper/35">Consistency</p>
+      <section className="mt-8 text-center">
+        <p className="font-mono text-xs uppercase text-paper/30">Consistency</p>
         <p className="mt-2 text-sm text-paper/45">More attempts needed</p>
       </section>
     );
@@ -1127,21 +1133,14 @@ function ConsistencyGraph({
   const path = getSparklinePath(series, 240, 56);
 
   return (
-    <section className="mt-4 rounded-lg border border-paper/10 bg-paper/[0.02] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs uppercase text-paper/35">Consistency</p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <ResultMiniMetric label="Current" value={summary.currentWpm.toFixed(1)} />
-            <ResultMiniMetric label="Average" value={summary.averageWpm.toFixed(1)} />
-            <ResultMiniMetric label="Best" value={summary.bestWpm.toFixed(1)} />
-          </div>
-        </div>
+    <section className="mx-auto mt-8 max-w-3xl">
+      <p className="text-center font-mono text-xs uppercase text-paper/30">Consistency</p>
+      <div className="mt-4">
         <svg
           viewBox="0 0 240 56"
           role="img"
           aria-label="Last 10 WPM trend"
-          className="h-16 min-w-[14rem] flex-1 text-brass"
+          className="h-28 w-full text-brass md:h-32"
           preserveAspectRatio="none"
         >
           <path d={path} fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
@@ -1156,6 +1155,11 @@ function ConsistencyGraph({
             return <circle key={point.id} cx={x} cy={y} r="2.5" fill="currentColor" className="text-mint" />;
           })}
         </svg>
+      </div>
+      <div className="mt-3 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs uppercase text-paper/40">
+        <PlainResultStat label="Recent avg" value={summary.averageWpm.toFixed(1)} />
+        <PlainResultStat label="Best" value={summary.bestWpm.toFixed(1)} />
+        <PlainResultStat label="Attempts" value={series.length} />
       </div>
     </section>
   );
