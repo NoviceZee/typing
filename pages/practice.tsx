@@ -954,7 +954,7 @@ function ResultsPanel({
   );
 }
 
-function ResultModal({
+export function ResultModal({
   result,
   passage,
   onRestart,
@@ -1010,20 +1010,17 @@ function ResultModal({
               <PlainResultStat label="Mistakes" value={result.incorrectCharacters} />
               <PlainResultStat label="Time" value={formatTime(result.timeUsedSeconds)} />
             </div>
-            <p className="mx-auto mt-4 max-w-lg text-sm leading-6 text-paper/50">{getResultSummary(result)}</p>
           </section>
 
-          {recentResults ? (
-            <ConsistencyGraph result={result} recentResults={recentResults} />
-          ) : (
-            <SignInResultCta />
-          )}
+          {recentResults && <ConsistencyGraph result={result} recentResults={recentResults} />}
 
           {previousResult && (
             <PreviousAttemptDeltas result={result} previousResult={previousResult} />
           )}
 
           <SessionReview result={result} />
+
+          {!recentResults && <SignInResultCta />}
         </div>
 
         <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-paper/10 bg-ink-900 px-4 py-4 md:px-6">
@@ -1100,7 +1097,7 @@ function PlainDelta({ label, value, delta }: { label: string; value: string; del
 
 function SignInResultCta() {
   return (
-    <div className="mt-8 text-center font-mono text-sm text-paper/35">
+    <div data-testid="result-sign-in-cta" className="mt-8 text-center font-mono text-sm text-paper/35">
       <Link href="/login" className="transition hover:text-brass">
         Sign in to save your result
       </Link>
@@ -1123,7 +1120,7 @@ function ConsistencyGraph({
   if (series.length < 2) {
     return (
       <section className="mt-8 text-center">
-        <p className="font-mono text-xs uppercase text-paper/30">Consistency</p>
+        <p className="font-mono text-xs uppercase text-paper/30">History</p>
         <p className="mt-2 text-sm text-paper/45">More attempts needed</p>
       </section>
     );
@@ -1134,7 +1131,7 @@ function ConsistencyGraph({
 
   return (
     <section className="mx-auto mt-8 max-w-3xl">
-      <p className="text-center font-mono text-xs uppercase text-paper/30">Consistency</p>
+      <p className="text-center font-mono text-xs uppercase text-paper/30">History</p>
       <div className="mt-4">
         <svg
           viewBox="0 0 240 56"
@@ -1163,22 +1160,6 @@ function ConsistencyGraph({
       </div>
     </section>
   );
-}
-
-function getResultSummary(result: TypingResult) {
-  if (result.accuracy >= 98 && result.incorrectCharacters <= 2) {
-    return "Clean control with very little correction needed.";
-  }
-
-  if (result.accuracy >= 95) {
-    return "Strong pace with a few small slips to review.";
-  }
-
-  if (result.accuracy >= 90) {
-    return "Readable run. The review below shows the main accuracy leaks.";
-  }
-
-  return "Slow the next pass slightly and use the mistake pattern below as the target.";
 }
 
 function getCompletionLabel(completionReason: CompletionReason) {
