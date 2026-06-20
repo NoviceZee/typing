@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ResultModal } from "../pages/practice";
@@ -22,16 +22,62 @@ describe("ResultModal", () => {
         onNextPassage={vi.fn()}
         previousResult={null}
         recentResults={null}
+        attemptTimeline={makeTimeline()}
         onClose={vi.fn()}
       />
     );
 
     expect(screen.queryByText("History")).toBeNull();
-    expect(screen.queryByText("Consistency")).toBeNull();
+    expect(screen.queryByText("Avg (last 10)")).toBeNull();
     expect(screen.getByTestId("result-sign-in-cta").textContent).toContain("Sign in to save your result");
   });
 
-  it("shows saved-result history for authenticated users and hides the sign-in CTA", () => {
+  it("shows the authenticated result layout without duplicated summary sections", () => {
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={{
+          passageId: "passage-1",
+          passageTitle: "The Importance of Time Management",
+          wpm: 35.8,
+          rawWpm: 36.2,
+          accuracy: 98.9,
+          errors: 1,
+          correctCharacters: 179,
+          typedCharacters: 181,
+          elapsedSeconds: 60,
+          completedAt: "2026-06-18T00:00:00.000Z",
+          completionReason: "time_up"
+        }}
+        recentResults={[
+          makeRecentResult("older", 41, "2026-06-19T00:00:00.000Z"),
+          makeRecentResult("newer", 46, "2026-06-19T00:01:00.000Z")
+        ]}
+        attemptTimeline={makeTimeline()}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("This Result")).toBeTruthy();
+    expect(screen.getByText("WPM Over Time")).toBeTruthy();
+    expect(screen.getByText("Time (seconds)")).toBeTruthy();
+    expect(screen.getAllByText("WPM").length).toBeGreaterThan(0);
+    expect(screen.getByText("History")).toBeTruthy();
+    expect(screen.getByText("Avg (last 10)")).toBeTruthy();
+    expect(screen.getByText("Best (last 10)")).toBeTruthy();
+    expect(screen.getByText("Attempts")).toBeTruthy();
+    expect(screen.getByText("Previous Attempt")).toBeTruthy();
+    expect(screen.getAllByText("Net WPM").length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("Session review")).toBeNull();
+    expect(screen.queryByText("Highest")).toBeNull();
+    expect(screen.queryByText("Lowest")).toBeNull();
+    expect(screen.queryByTestId("result-sign-in-cta")).toBeNull();
+  });
+
+  it("shows the attempt graph tooltip with time, WPM, and accuracy", () => {
     render(
       <ResultModal
         result={makeResult()}
@@ -39,16 +85,17 @@ describe("ResultModal", () => {
         onRestart={vi.fn()}
         onNextPassage={vi.fn()}
         previousResult={null}
-        recentResults={[
-          makeRecentResult("older", 41, "2026-06-19T00:00:00.000Z"),
-          makeRecentResult("newer", 46, "2026-06-19T00:01:00.000Z")
-        ]}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
         onClose={vi.fn()}
       />
     );
 
-    expect(screen.getByText("History")).toBeTruthy();
-    expect(screen.queryByTestId("result-sign-in-cta")).toBeNull();
+    fireEvent.mouseEnter(screen.getByTestId("attempt-graph-point-10"));
+
+    expect(screen.getByText("10s")).toBeTruthy();
+    expect(screen.getByText("WPM 48.0")).toBeTruthy();
+    expect(screen.getByText("Accuracy 100.0%")).toBeTruthy();
   });
 });
 
@@ -65,7 +112,7 @@ function makeResult(): TypingResult {
     comparableTypedLength: 240,
     accuracy: 100,
     wpm: 48,
-    rawWpm: 48,
+    rawWpm: 50,
     timeUsedSeconds: 60,
     durationSeconds: 60,
     category: "Uncategorised",
@@ -74,6 +121,14 @@ function makeResult(): TypingResult {
     completedAt: "2026-06-19T00:02:00.000Z",
     isRankable: true
   };
+}
+
+function makeTimeline() {
+  return [
+    { timeSeconds: 1, wpm: 30, accuracy: 96 },
+    { timeSeconds: 5, wpm: 42, accuracy: 98 },
+    { timeSeconds: 10, wpm: 48, accuracy: 100 }
+  ];
 }
 
 function makePassage(): StoredPassage {

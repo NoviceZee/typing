@@ -58,8 +58,7 @@ import {
 } from "@/lib/practiceModes";
 import {
   buildConsistencySeries,
-  getConsistencySummary,
-  getSparklinePath
+  getConsistencySummary
 } from "@/lib/practiceConsistency";
 import { isRestartShortcut } from "@/lib/practiceShortcuts";
 import {
@@ -69,6 +68,12 @@ import {
 } from "@/lib/typingResultStorage";
 
 type SessionStatus = "idle" | "running" | "finished";
+
+export type AttemptTimelinePoint = {
+  timeSeconds: number;
+  wpm: number;
+  accuracy?: number;
+};
 
 const RANDOM_PASSAGE_ID = "__random__";
 
@@ -84,6 +89,7 @@ export default function PracticePage() {
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [lastResult, setLastResult] = useState<TypingResult | null>(null);
+  const [attemptTimeline, setAttemptTimeline] = useState<AttemptTimelinePoint[]>([]);
   const [recentResults, setRecentResults] = useState<SupabaseOwnTypingResultRow[]>([]);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [passageNotice, setPassageNotice] = useState("");
@@ -98,6 +104,7 @@ export default function PracticePage() {
   const statusRef = useRef<SessionStatus>("idle");
   const startedAtRef = useRef<number | null>(null);
   const typedTextRef = useRef("");
+  const attemptTimelineRef = useRef<AttemptTimelinePoint[]>([]);
   const elapsedSecondsRef = useRef(0);
   const libraryRef = useRef<LibraryPassage[]>([]);
   const isTabPressedRef = useRef(false);
@@ -222,12 +229,42 @@ export default function PracticePage() {
     elapsedSecondsRef.current = elapsedSeconds;
   }, [elapsedSeconds]);
 
+  const recordAttemptTimelinePoint = useCallback(
+    (elapsed: number, typed: string) => {
+      if (elapsed < 1 || !sourceText) {
+        return;
+      }
+
+      const point = buildAttemptTimelinePoint({
+        elapsedSeconds: elapsed,
+        sourceText,
+        typedText: typed,
+        rules
+      });
+      const existingIndex = attemptTimelineRef.current.findIndex(
+        (timelinePoint) => timelinePoint.timeSeconds === point.timeSeconds
+      );
+
+      if (existingIndex >= 0) {
+        attemptTimelineRef.current = attemptTimelineRef.current.map((timelinePoint, index) =>
+          index === existingIndex ? point : timelinePoint
+        );
+        return;
+      }
+
+      attemptTimelineRef.current = [...attemptTimelineRef.current, point].slice(-80);
+    },
+    [rules, sourceText]
+  );
+
   const resetSession = useCallback(() => {
     finishedRef.current = false;
     statusRef.current = "idle";
     startedAtRef.current = null;
     typedTextRef.current = "";
+    attemptTimelineRef.current = [];
     setTypedText("");
+    setAttemptTimeline([]);
     setElapsedSeconds(0);
     elapsedSecondsRef.current = 0;
     setRemainingSeconds(isTimedMode ? durationSeconds : 0);
@@ -273,9 +310,17 @@ export default function PracticePage() {
         rules,
         completionReason
       });
+      const finalTimelinePoint: AttemptTimelinePoint = {
+        timeSeconds: finalResult.timeUsedSeconds,
+        wpm: finalResult.wpm,
+        accuracy: finalResult.accuracy
+      };
+      const completedTimeline = upsertAttemptTimelinePoint(attemptTimelineRef.current, finalTimelinePoint);
+      attemptTimelineRef.current = completedTimeline;
 
       setPreviousResult(readPreviousResult(passage.id));
       setLastResult(finalResult);
+      setAttemptTimeline(completedTimeline);
       writePreviousResult(passage, finalResult, typedTextRef.current.length);
 
       if (user) {
@@ -309,7 +354,9 @@ export default function PracticePage() {
     statusRef.current = "running";
     startedAtRef.current = now;
     typedTextRef.current = "";
+    attemptTimelineRef.current = [];
     setTypedText("");
+    setAttemptTimeline([]);
     setElapsedSeconds(0);
     elapsedSecondsRef.current = 0;
     setRemainingSeconds(isTimedMode ? durationSeconds : 0);
@@ -330,6 +377,7 @@ export default function PracticePage() {
       const remaining = isTimedMode ? Math.max(0, durationSeconds - elapsed) : 0;
 
       elapsedSecondsRef.current = elapsed;
+      recordAttemptTimelinePoint(elapsed, typedTextRef.current);
       setElapsedSeconds(elapsed);
       setRemainingSeconds(remaining);
 
@@ -340,7 +388,7 @@ export default function PracticePage() {
     }, 250);
 
     return () => window.clearInterval(timer);
-  }, [durationSeconds, finishTest, isFinished, isRunning, isTimedMode, startedAt]);
+  }, [durationSeconds, finishTest, isFinished, isRunning, isTimedMode, recordAttemptTimelinePoint, startedAt]);
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -466,8 +514,10 @@ export default function PracticePage() {
       finishedRef.current = false;
       statusRef.current = "running";
       startedAtRef.current = now;
+      attemptTimelineRef.current = [];
       elapsedSecondsRef.current = 0;
       setElapsedSeconds(0);
+      setAttemptTimeline([]);
       setStartedAt(now);
       setFinishedAt(null);
       setRemainingSeconds(isTimedMode ? durationSeconds : 0);
@@ -479,6 +529,7 @@ export default function PracticePage() {
     setTypedText((previous) => {
       const nextValue = enforceBackspacePolicy(previous, value, rules.allowBackspace);
       typedTextRef.current = nextValue;
+      recordAttemptTimelinePoint(elapsedSecondsRef.current, nextValue);
       return nextValue;
     });
   }
@@ -850,6 +901,7 @@ export default function PracticePage() {
             onNextPassage={loadNextPassage}
             previousResult={previousResult}
             recentResults={user ? recentResults : null}
+            attemptTimeline={attemptTimeline}
             onClose={() => setIsResultModalOpen(false)}
           />
         )}
@@ -961,6 +1013,7 @@ export function ResultModal({
   onNextPassage,
   previousResult,
   recentResults,
+  attemptTimeline,
   onClose
 }: {
   result: TypingResult;
@@ -969,13 +1022,21 @@ export function ResultModal({
   onNextPassage: () => void;
   previousResult: PreviousTypingResult | null;
   recentResults: SupabaseOwnTypingResultRow[] | null;
+  attemptTimeline: AttemptTimelinePoint[];
   onClose: () => void;
 }) {
   const completionLabel = getCompletionLabel(result.completionReason);
+  const hasSavedHistory = recentResults !== null;
+  const historySeries = hasSavedHistory
+    ? buildConsistencySeries(recentResults, {
+        wpm: result.wpm,
+        completedAt: result.completedAt
+      })
+    : [];
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/85 px-3 py-4 backdrop-blur md:px-4">
-      <section className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-brass/25 bg-ink-900 shadow-glow">
+      <section className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-brass/25 bg-ink-900 shadow-glow">
         <div className="sticky top-0 z-10 border-b border-paper/10 bg-ink-900/95 px-4 py-4 backdrop-blur md:px-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -997,28 +1058,18 @@ export function ResultModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-8">
-          <section className="text-center">
-            <p className="font-mono text-xs uppercase text-brass">Final pace</p>
-            <div className="mt-2 flex items-end justify-center gap-3">
-              <span className="font-mono text-7xl font-semibold leading-none text-paper md:text-8xl">
-                {result.wpm.toFixed(1)}
-              </span>
-              <span className="pb-2 font-mono text-sm uppercase text-paper/45">WPM</span>
-            </div>
-            <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs uppercase text-paper/40">
-              <PlainResultStat label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-              <PlainResultStat label="Mistakes" value={result.incorrectCharacters} />
-              <PlainResultStat label="Time" value={formatTime(result.timeUsedSeconds)} />
-            </div>
-          </section>
+          <div className="grid gap-7 md:grid-cols-[minmax(14rem,17rem)_minmax(0,1fr)] md:gap-8">
+            <ThisResultColumn result={result} />
 
-          {recentResults && <ConsistencyGraph result={result} recentResults={recentResults} />}
+            <section className="min-w-0 md:border-l md:border-paper/10 md:pl-8">
+              <AttemptWpmGraph result={result} timeline={attemptTimeline} />
 
-          {previousResult && (
-            <PreviousAttemptDeltas result={result} previousResult={previousResult} />
-          )}
-
-          <SessionReview result={result} />
+              <div className="mt-7 grid gap-6 border-t border-paper/10 pt-5 md:grid-cols-2">
+                {hasSavedHistory && <HistoryStats points={historySeries} />}
+                {previousResult && <PreviousAttemptComparison result={result} previousResult={previousResult} />}
+              </div>
+            </section>
+          </div>
 
           {!recentResults && <SignInResultCta />}
         </div>
@@ -1051,47 +1102,130 @@ export function ResultModal({
   );
 }
 
-function PlainResultStat({ label, value }: { label: string; value: string | number }) {
+function ThisResultColumn({ result }: { result: TypingResult }) {
   return (
-    <span>
-      <span className="text-paper/30">{label}</span>{" "}
-      <span className="text-paper/75">{value}</span>
-    </span>
+    <section>
+      <p className="font-mono text-sm uppercase text-brass">This Result</p>
+      <div className="mt-6">
+        <p className="font-mono text-sm uppercase text-paper/45">WPM</p>
+        <div className="mt-1 font-mono text-7xl font-semibold leading-none text-paper md:text-8xl">
+          {result.rawWpm.toFixed(1)}
+        </div>
+      </div>
+      <div className="mt-6 space-y-0">
+        <ResultMetricRow label="Net WPM" value={result.wpm.toFixed(1)} tone="text-mint" />
+        <ResultMetricRow label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
+        <ResultMetricRow label="Mistakes" value={result.incorrectCharacters} />
+        <ResultMetricRow label="Time" value={formatTime(result.timeUsedSeconds)} />
+        <ResultMetricRow label="Consistency" value={`${getResultConsistency(result)}%`} />
+      </div>
+    </section>
   );
 }
 
-function PreviousAttemptDeltas({
+function ResultMetricRow({
+  label,
+  value,
+  tone = "text-paper"
+}: {
+  label: string;
+  value: string | number;
+  tone?: string;
+}) {
+  return (
+    <div className="grid grid-cols-[minmax(5rem,1fr)_auto] items-baseline gap-4 border-b border-paper/10 py-4 font-mono last:border-b-0">
+      <span className="text-sm text-paper/50">{label}</span>
+      <span className={clsx("text-xl font-semibold", tone)}>{value}</span>
+    </div>
+  );
+}
+
+function HistoryStats({ points }: { points: Array<{ wpm: number }> }) {
+  const summary = getConsistencySummary(points);
+
+  return (
+    <section>
+      <p className="font-mono text-sm uppercase text-brass">History</p>
+      <div className="mt-4 space-y-3 font-mono">
+        <HistoryRow label="Avg (last 10)" value={summary.averageWpm.toFixed(1)} />
+        <HistoryRow label="Best (last 10)" value={summary.bestWpm.toFixed(1)} />
+        <HistoryRow label="Attempts" value={points.length} />
+      </div>
+    </section>
+  );
+}
+
+function HistoryRow({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 text-paper/65">
+      <span className="text-sm">{label}</span>
+      <span className="text-xl text-paper">{value}</span>
+    </div>
+  );
+}
+
+function PreviousAttemptComparison({
   result,
   previousResult
 }: {
   result: TypingResult;
   previousResult: PreviousTypingResult;
 }) {
-  const wpmDifference = result.wpm - previousResult.wpm;
+  const rawWpmDifference = result.rawWpm - previousResult.rawWpm;
+  const netWpmDifference = result.wpm - previousResult.wpm;
   const accuracyDifference = result.accuracy - previousResult.accuracy;
 
   return (
-    <section className="mt-7 text-center">
-      <p className="font-mono text-xs uppercase text-paper/30">Previous attempt</p>
-      <div className="mt-2 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs uppercase">
-        <PlainDelta label="Pace" value={formatSigned(wpmDifference, " WPM")} delta={wpmDifference} />
-        <PlainDelta label="Accuracy" value={formatSigned(accuracyDifference, "%")} delta={accuracyDifference} />
-        <span className="text-paper/35">
-          <span className="text-paper/25">Previous time</span> {formatTime(previousResult.elapsedSeconds)}
-        </span>
+    <section>
+      <p className="font-mono text-sm uppercase text-brass">Previous Attempt</p>
+      <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4 font-mono md:grid-cols-4">
+        <PreviousComparisonStat
+          label="WPM"
+          delta={rawWpmDifference}
+          comparison={`${previousResult.rawWpm.toFixed(1)} → ${result.rawWpm.toFixed(1)}`}
+        />
+        <PreviousComparisonStat
+          label="Net WPM"
+          delta={netWpmDifference}
+          comparison={`${previousResult.wpm.toFixed(1)} → ${result.wpm.toFixed(1)}`}
+        />
+        <PreviousComparisonStat
+          label="Accuracy"
+          delta={accuracyDifference}
+          suffix="%"
+          comparison={`${formatPercent(previousResult.accuracy)} → ${formatPercent(result.accuracy)}`}
+        />
+        <div>
+          <p className="text-xs uppercase text-paper/40">Time</p>
+          <p className="mt-3 text-sm text-paper/45">-</p>
+          <p className="mt-2 text-sm text-paper/55">
+            {formatTime(previousResult.elapsedSeconds)} → {formatTime(result.timeUsedSeconds)}
+          </p>
+        </div>
       </div>
     </section>
   );
 }
 
-function PlainDelta({ label, value, delta }: { label: string; value: string; delta: number }) {
+function PreviousComparisonStat({
+  label,
+  delta,
+  comparison,
+  suffix = ""
+}: {
+  label: string;
+  delta: number;
+  comparison: string;
+  suffix?: string;
+}) {
   const tone = delta > 0 ? "text-mint" : delta < 0 ? "text-ember" : "text-paper/80";
 
   return (
-    <span>
-      <span className="text-paper/25">{label}</span>{" "}
-      <span className={tone}>{value}</span>
-    </span>
+    <div>
+      <p className="text-xs uppercase text-paper/40">{label}</p>
+      <p className={clsx("mt-3 text-sm", tone)}>{formatSigned(delta, suffix)}</p>
+      <p className="mt-2 text-sm text-paper/55">{comparison}</p>
+    </div>
   );
 }
 
@@ -1105,61 +1239,282 @@ function SignInResultCta() {
   );
 }
 
-function ConsistencyGraph({
+function AttemptWpmGraph({
   result,
-  recentResults
+  timeline
 }: {
   result: TypingResult;
-  recentResults: SupabaseOwnTypingResultRow[];
+  timeline: AttemptTimelinePoint[];
 }) {
-  const series = buildConsistencySeries(recentResults, {
-    wpm: result.wpm,
-    completedAt: result.completedAt
-  });
-
-  if (series.length < 2) {
-    return (
-      <section className="mt-8 text-center">
-        <p className="font-mono text-xs uppercase text-paper/30">History</p>
-        <p className="mt-2 text-sm text-paper/45">More attempts needed</p>
-      </section>
-    );
-  }
-
-  const summary = getConsistencySummary(series);
-  const path = getSparklinePath(series, 240, 56);
+  const [hoveredPoint, setHoveredPoint] = useState<PositionedAttemptPoint | null>(null);
+  const points = getAttemptGraphPoints(timeline, result);
+  const graph = getAttemptGraphLayout(points, result);
 
   return (
-    <section className="mx-auto mt-8 max-w-3xl">
-      <p className="text-center font-mono text-xs uppercase text-paper/30">History</p>
-      <div className="mt-4">
-        <svg
-          viewBox="0 0 240 56"
-          role="img"
-          aria-label="Last 10 WPM trend"
-          className="h-28 w-full text-brass md:h-32"
-          preserveAspectRatio="none"
-        >
-          <path d={path} fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
-          {series.map((point, index) => {
-            const values = series.map((seriesPoint) => seriesPoint.wpm);
-            const min = Math.min(...values);
-            const max = Math.max(...values);
-            const range = Math.max(max - min, 1);
-            const x = series.length === 1 ? 0 : (index / (series.length - 1)) * 240;
-            const y = 56 - 4 - ((point.wpm - min) / range) * 48;
-
-            return <circle key={point.id} cx={x} cy={y} r="2.5" fill="currentColor" className="text-mint" />;
-          })}
-        </svg>
+    <section>
+      <div className="flex items-start justify-between gap-4">
+        <p className="font-mono text-sm uppercase text-brass">WPM Over Time</p>
+        <div className="hidden gap-5 font-mono text-xs uppercase text-paper/45 sm:flex">
+          <span className="inline-flex items-center gap-2">
+            <span className="h-px w-8 bg-mint" />
+            WPM
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="h-px w-8 border-t border-dashed border-paper/40" />
+            Avg {result.wpm.toFixed(1)}
+          </span>
+        </div>
       </div>
-      <div className="mt-3 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-xs uppercase text-paper/40">
-        <PlainResultStat label="Recent avg" value={summary.averageWpm.toFixed(1)} />
-        <PlainResultStat label="Best" value={summary.bestWpm.toFixed(1)} />
-        <PlainResultStat label="Attempts" value={series.length} />
+      <div className="mt-4 min-w-0">
+        <svg
+          viewBox={`0 0 ${graph.width} ${graph.height}`}
+          role="img"
+          aria-label="WPM over time"
+          className="h-72 w-full overflow-visible text-paper/45"
+          preserveAspectRatio="none"
+          onMouseLeave={() => setHoveredPoint(null)}
+        >
+          {graph.yTicks.map((tick) => {
+            const y = getGraphY(tick, graph);
+            return (
+              <g key={tick}>
+                <line
+                  x1={graph.left}
+                  x2={graph.right}
+                  y1={y}
+                  y2={y}
+                  stroke="currentColor"
+                  strokeDasharray="4 6"
+                  strokeOpacity="0.16"
+                />
+                <text x={graph.left - 12} y={y + 4} textAnchor="end" className="fill-paper/45 font-mono text-[12px]">
+                  {tick}
+                </text>
+              </g>
+            );
+          })}
+          <line x1={graph.left} x2={graph.left} y1={graph.top} y2={graph.bottom} stroke="currentColor" strokeOpacity="0.55" />
+          <line x1={graph.left} x2={graph.right} y1={graph.bottom} y2={graph.bottom} stroke="currentColor" strokeOpacity="0.55" />
+          <line
+            x1={graph.left}
+            x2={graph.right}
+            y1={getGraphY(result.wpm, graph)}
+            y2={getGraphY(result.wpm, graph)}
+            stroke="currentColor"
+            strokeDasharray="8 8"
+            strokeOpacity="0.45"
+          />
+          {graph.xTicks.map((tick) => (
+            <text
+              key={tick}
+              x={getGraphX(tick, graph)}
+              y={graph.bottom + 24}
+              textAnchor="middle"
+              className="fill-paper/45 font-mono text-[12px]"
+            >
+              {tick}
+            </text>
+          ))}
+          <text x={graph.left - 30} y={graph.top - 14} className="fill-paper/55 font-mono text-[12px] uppercase">
+            WPM
+          </text>
+          <text
+            x={(graph.left + graph.right) / 2}
+            y={graph.height - 8}
+            textAnchor="middle"
+            className="fill-paper/55 font-mono text-[12px] uppercase"
+          >
+            Time (seconds)
+          </text>
+          <path
+            d={graph.path}
+            fill="none"
+            stroke="rgb(85 239 160)"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+          {graph.positionedPoints.map((point) => (
+            <g key={`${point.timeSeconds}-${point.x}`}>
+              <circle cx={point.x} cy={point.y} r="3.5" fill="rgb(85 239 160)" />
+              <circle
+                data-testid={`attempt-graph-point-${point.timeSeconds}`}
+                cx={point.x}
+                cy={point.y}
+                r="12"
+                fill="transparent"
+                tabIndex={0}
+                onMouseEnter={() => setHoveredPoint(point)}
+                onFocus={() => setHoveredPoint(point)}
+              />
+            </g>
+          ))}
+          {hoveredPoint && (
+            <g transform={`translate(${getTooltipX(hoveredPoint.x, graph)} ${Math.max(graph.top + 12, hoveredPoint.y - 84)})`}>
+              <rect width="126" height="70" rx="6" className="fill-ink-900 stroke-paper/15" />
+              <text x="12" y="20" className="fill-paper font-mono text-[12px]">
+                {hoveredPoint.timeSeconds}s
+              </text>
+              <text x="12" y="42" className="fill-mint font-mono text-[12px]">
+                WPM {hoveredPoint.wpm.toFixed(1)}
+              </text>
+              {typeof hoveredPoint.accuracy === "number" && (
+                <text x="12" y="62" className="fill-paper/65 font-mono text-[12px]">
+                  Accuracy {hoveredPoint.accuracy.toFixed(1)}%
+                </text>
+              )}
+            </g>
+          )}
+        </svg>
       </div>
     </section>
   );
+}
+
+type PositionedAttemptPoint = AttemptTimelinePoint & {
+  x: number;
+  y: number;
+};
+
+type AttemptGraphLayout = {
+  width: number;
+  height: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  maxTime: number;
+  maxWpm: number;
+  yTicks: number[];
+  xTicks: number[];
+  positionedPoints: PositionedAttemptPoint[];
+  path: string;
+};
+
+function buildAttemptTimelinePoint({
+  elapsedSeconds,
+  sourceText,
+  typedText,
+  rules
+}: {
+  elapsedSeconds: number;
+  sourceText: string;
+  typedText: string;
+  rules: TypingRules;
+}): AttemptTimelinePoint {
+  const comparison = validateTypedText({ targetText: sourceText, typedText, rules });
+  const minutes = Math.max(elapsedSeconds, 1) / 60;
+
+  return {
+    timeSeconds: Math.round(elapsedSeconds),
+    wpm: roundOne(comparison.correctCharacters / 5 / minutes),
+    accuracy: comparison.accuracy
+  };
+}
+
+function upsertAttemptTimelinePoint(points: AttemptTimelinePoint[], point: AttemptTimelinePoint) {
+  const existingIndex = points.findIndex((timelinePoint) => timelinePoint.timeSeconds === point.timeSeconds);
+
+  if (existingIndex < 0) {
+    return [...points, point].sort((left, right) => left.timeSeconds - right.timeSeconds);
+  }
+
+  return points
+    .map((timelinePoint, index) => (index === existingIndex ? point : timelinePoint))
+    .sort((left, right) => left.timeSeconds - right.timeSeconds);
+}
+
+function getAttemptGraphPoints(timeline: AttemptTimelinePoint[], result: TypingResult) {
+  const sortedPoints = timeline
+    .filter((point) => point.timeSeconds >= 0)
+    .sort((left, right) => left.timeSeconds - right.timeSeconds);
+
+  if (sortedPoints.length >= 2) {
+    return sortedPoints;
+  }
+
+  if (sortedPoints.length === 1) {
+    return [{ timeSeconds: 0, wpm: 0 }, sortedPoints[0]];
+  }
+
+  return [
+    { timeSeconds: 0, wpm: 0 },
+    { timeSeconds: result.timeUsedSeconds, wpm: result.wpm, accuracy: result.accuracy }
+  ];
+}
+
+function getAttemptGraphLayout(points: AttemptTimelinePoint[], result: TypingResult): AttemptGraphLayout {
+  const width = 640;
+  const height = 280;
+  const left = 48;
+  const right = width - 18;
+  const top = 32;
+  const bottom = height - 46;
+  const maxTime = Math.max(result.timeUsedSeconds, ...points.map((point) => point.timeSeconds), 1);
+  const maxWpm = getNiceGraphMax(Math.max(result.wpm, ...points.map((point) => point.wpm), 1));
+  const graphBase = {
+    width,
+    height,
+    left,
+    right,
+    top,
+    bottom,
+    maxTime,
+    maxWpm,
+    yTicks: getWpmTicks(maxWpm),
+    xTicks: getTimeTicks(maxTime)
+  };
+  const positionedPoints = points.map((point) => ({
+    ...point,
+    x: getGraphX(point.timeSeconds, graphBase),
+    y: getGraphY(point.wpm, graphBase)
+  }));
+
+  return {
+    ...graphBase,
+    positionedPoints,
+    path: positionedPoints
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${roundOne(point.x)} ${roundOne(point.y)}`)
+      .join(" ")
+  };
+}
+
+function getGraphX(timeSeconds: number, graph: Pick<AttemptGraphLayout, "left" | "right" | "maxTime">) {
+  const range = graph.right - graph.left;
+  return graph.left + (Math.min(Math.max(timeSeconds, 0), graph.maxTime) / graph.maxTime) * range;
+}
+
+function getGraphY(wpm: number, graph: Pick<AttemptGraphLayout, "top" | "bottom" | "maxWpm">) {
+  const range = graph.bottom - graph.top;
+  return graph.bottom - (Math.min(Math.max(wpm, 0), graph.maxWpm) / graph.maxWpm) * range;
+}
+
+function getTooltipX(x: number, graph: Pick<AttemptGraphLayout, "left" | "right">) {
+  if (x > graph.right - 126) {
+    return graph.right - 126;
+  }
+
+  return Math.max(graph.left, x + 12);
+}
+
+function getNiceGraphMax(value: number) {
+  return Math.max(30, Math.ceil(value / 15) * 15);
+}
+
+function getWpmTicks(maxWpm: number) {
+  return [0, Math.round(maxWpm / 2), maxWpm];
+}
+
+function getTimeTicks(maxTime: number) {
+  return Array.from(new Set([0, Math.round(maxTime / 2), maxTime]));
+}
+
+function getResultConsistency(result: TypingResult) {
+  if (result.rawWpm <= 0) {
+    return roundOne(result.accuracy);
+  }
+
+  return roundOne(Math.max(0, Math.min(100, (result.wpm / result.rawWpm) * 100)));
 }
 
 function getCompletionLabel(completionReason: CompletionReason) {
@@ -1336,7 +1691,16 @@ function formatTime(totalSeconds: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+function formatPercent(value: number) {
+  const roundedValue = roundOne(value);
+  return `${Number.isInteger(roundedValue) ? roundedValue.toFixed(0) : roundedValue.toFixed(1)}%`;
+}
+
 function formatSigned(value: number, suffix: string) {
-  const roundedValue = Math.round(value * 10) / 10;
+  const roundedValue = roundOne(value);
   return `${roundedValue >= 0 ? "+" : ""}${roundedValue.toFixed(1)}${suffix}`;
+}
+
+function roundOne(value: number) {
+  return Math.round(value * 10) / 10;
 }
