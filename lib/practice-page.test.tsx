@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PracticePage from "../pages/practice";
@@ -79,6 +79,36 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text.");
     });
     expect(screen.queryByTestId("passage-loading-placeholder")).toBeNull();
+  });
+
+  it("shows the just-finished previous pace after restarting the same passage", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(screen.getByLabelText("Typing input"), {
+      target: { value: "Local fallback body text" }
+    });
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Previous pace:/)).toBeTruthy();
+    });
   });
 });
 

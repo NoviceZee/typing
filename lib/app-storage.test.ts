@@ -3,13 +3,18 @@ import {
   ACTIVE_PASSAGE_ID_STORAGE_KEY,
   LibraryPassage,
   PASSAGE_LIBRARY_STORAGE_KEY,
+  PREVIOUS_RESULTS_STORAGE_KEY,
   extractPassageTitle,
   filterLibraryPassages,
   mergeImportedPassages,
+  readPreviousResult,
   readPracticePassageFromLibrary,
   splitTextIntoPassages,
-  toStoredPassage
+  toStoredPassage,
+  writePreviousResult
 } from "./app-storage";
+import type { StoredPassage } from "./app-storage";
+import type { TypingResult } from "./typing-engine";
 
 let storage: Map<string, string>;
 
@@ -161,6 +166,39 @@ describe("readPracticePassageFromLibrary", () => {
   });
 });
 
+describe("previous result storage", () => {
+  it("scopes previous results by passage and duration", () => {
+    const passage = makeStoredPassage("passage-1");
+
+    writePreviousResult(passage, makeResult({ durationSeconds: 60, wpm: 42 }), 210);
+    writePreviousResult(passage, makeResult({ durationSeconds: 300, wpm: 55 }), 275);
+
+    expect(readPreviousResult("passage-1", 60)?.wpm).toBe(42);
+    expect(readPreviousResult("passage-1", 300)?.wpm).toBe(55);
+  });
+
+  it("falls back to legacy passage-only previous results", () => {
+    storage.set(
+      PREVIOUS_RESULTS_STORAGE_KEY,
+      JSON.stringify({
+        "passage-1": makePreviousResult({ wpm: 39 })
+      })
+    );
+
+    expect(readPreviousResult("passage-1", 60)?.wpm).toBe(39);
+  });
+
+  it("does not let different durations overwrite each other", () => {
+    const passage = makeStoredPassage("passage-1");
+
+    writePreviousResult(passage, makeResult({ durationSeconds: 60, wpm: 44 }), 220);
+    writePreviousResult(passage, makeResult({ durationSeconds: 600, wpm: 61 }), 305);
+
+    expect(readPreviousResult("passage-1", 60)?.wpm).toBe(44);
+    expect(readPreviousResult("passage-1", 600)?.wpm).toBe(61);
+  });
+});
+
 describe("mergeImportedPassages", () => {
   it("merges imported passages and skips duplicate ids", () => {
     const existing = [makePassage("existing", "Existing", "News article", "Simple")];
@@ -229,5 +267,57 @@ function makePassage(id: string, title: string, category: LibraryPassage["catego
     wordCount: 4,
     characterCount: 20,
     isActive: true
+  };
+}
+
+function makeStoredPassage(id: string): StoredPassage {
+  return {
+    id,
+    title: "Stored passage",
+    category: "Business email",
+    style: "Formal",
+    source: "uploaded",
+    text: "Stored passage body text",
+    updatedAt: "2026-06-19T00:00:00.000Z"
+  };
+}
+
+function makeResult({ durationSeconds, wpm }: { durationSeconds: number; wpm: number }): TypingResult {
+  return {
+    characters: [],
+    characterStatuses: [],
+    correctCharacters: wpm * 5,
+    incorrectCharacters: 0,
+    missedCharacters: 0,
+    extraCharacters: 0,
+    totalCharacters: wpm * 5,
+    comparableTargetLength: wpm * 5,
+    comparableTypedLength: wpm * 5,
+    accuracy: 100,
+    wpm,
+    rawWpm: wpm,
+    timeUsedSeconds: durationSeconds,
+    durationSeconds,
+    category: "Business email",
+    presetName: "General",
+    completionReason: "time_up",
+    completedAt: "2026-06-19T00:00:00.000Z",
+    isRankable: true
+  };
+}
+
+function makePreviousResult({ wpm }: { wpm: number }) {
+  return {
+    passageId: "passage-1",
+    passageTitle: "Legacy passage",
+    wpm,
+    rawWpm: wpm,
+    accuracy: 100,
+    errors: 0,
+    correctCharacters: wpm * 5,
+    typedCharacters: wpm * 5,
+    elapsedSeconds: 60,
+    completedAt: "2026-06-18T00:00:00.000Z",
+    completionReason: "time_up"
   };
 }

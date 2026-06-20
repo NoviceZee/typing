@@ -23,6 +23,7 @@ describe("ResultModal", () => {
         previousResult={null}
         recentResults={null}
         attemptTimeline={makeTimeline()}
+        modeLabel="1m"
         onClose={vi.fn()}
       />
     );
@@ -59,6 +60,7 @@ describe("ResultModal", () => {
           makeRecentResult("newer", 46, "2026-06-19T00:01:00.000Z")
         ]}
         attemptTimeline={makeTimeline()}
+        modeLabel="1m"
         onClose={vi.fn()}
       />
     );
@@ -92,6 +94,7 @@ describe("ResultModal", () => {
         previousResult={null}
         recentResults={[]}
         attemptTimeline={makeTimeline()}
+        modeLabel="1m"
         onClose={vi.fn()}
       />
     );
@@ -115,6 +118,36 @@ describe("ResultModal", () => {
     );
 
     expect(layout.maxWpm).toBeLessThan(90);
+  });
+
+  it("renders the image-card action row and calls the generator", () => {
+    const generateImageCard = vi.fn(() => new Promise<void>(() => {}));
+
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        onGenerateImageCard={generateImageCard}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Generate image card")).toBeTruthy();
+    expect(screen.getByText("Create a shareable result image.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /generate image card/i }));
+
+    expect(generateImageCard).toHaveBeenCalledWith({
+      result: makeResult(),
+      passage: makePassage(),
+      modeLabel: "1m"
+    });
   });
 
   it("calculates consistency from WPM variance instead of net/raw ratio", () => {

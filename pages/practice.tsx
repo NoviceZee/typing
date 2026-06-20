@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw, RotateCcw, X } from "lucide-react";
+import { ImageIcon, RefreshCw, RotateCcw, X } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
@@ -23,6 +23,7 @@ import {
   ALL_FILTER,
   CategoryFilter,
   PreviousTypingResult,
+  PreviousResultScope,
   LibraryPassage,
   StoredPassage,
   StoredPassageTextMode,
@@ -75,6 +76,12 @@ export type AttemptTimelinePoint = {
   accuracy?: number;
 };
 
+export type ResultImageCardInput = {
+  result: TypingResult;
+  passage: StoredPassage;
+  modeLabel: string;
+};
+
 const RANDOM_PASSAGE_ID = "__random__";
 
 export default function PracticePage() {
@@ -116,6 +123,7 @@ export default function PracticePage() {
   const practiceMode = useMemo(() => getPracticeMode(practiceModeId), [practiceModeId]);
   const isTimedMode = isTimedPracticeMode(practiceMode);
   const durationSeconds = isTimedMode ? practiceMode.seconds : 60;
+  const previousResultScope: PreviousResultScope = isTimedMode ? durationSeconds : practiceMode.id;
   const passageTextMode: StoredPassageTextMode = isTimedMode ? "timed" : "single";
   const clockSeconds = isTimedMode ? remainingSeconds : elapsedSeconds;
   const sourceText = passage?.text.trim() ?? "";
@@ -153,7 +161,7 @@ export default function PracticePage() {
           setSelectedPassageId(RANDOM_PASSAGE_ID);
           const nextPassage = toStoredPassage(randomPassage, duration, categoryLibrary, textMode);
           setPassage(nextPassage);
-          setPreviousResult(readPreviousResult(nextPassage.id));
+          setPreviousResult(readPreviousResult(nextPassage.id, getPreviousResultScope(duration, textMode)));
           writeStoredPassage(nextPassage);
           setPassageNotice("");
           return;
@@ -168,7 +176,7 @@ export default function PracticePage() {
         setSelectedPassageId(selectedLibraryPassage.id);
         const nextPassage = toStoredPassage(selectedLibraryPassage, duration, categoryLibrary, textMode);
         setPassage(nextPassage);
-        setPreviousResult(readPreviousResult(nextPassage.id));
+        setPreviousResult(readPreviousResult(nextPassage.id, getPreviousResultScope(duration, textMode)));
         writeStoredPassage(nextPassage);
         setPassageNotice("");
         return;
@@ -177,7 +185,7 @@ export default function PracticePage() {
       const fallbackPassage = readStoredPassage(duration);
       setSelectedPassageId(RANDOM_PASSAGE_ID);
       setPassage(fallbackPassage);
-      setPreviousResult(readPreviousResult(fallbackPassage.id));
+      setPreviousResult(readPreviousResult(fallbackPassage.id, getPreviousResultScope(duration, textMode)));
       setPassageNotice("No active saved passages found. Using a sample passage.");
     },
     []
@@ -272,12 +280,12 @@ export default function PracticePage() {
     setFinishedAt(null);
     setLastResult(null);
     setIsResultModalOpen(false);
-    setPreviousResult(passage ? readPreviousResult(passage.id) : null);
+    setPreviousResult(passage ? readPreviousResult(passage.id, previousResultScope) : null);
     setStatus("idle");
     if (typingWindowRef.current) {
       typingWindowRef.current.scrollTop = 0;
     }
-  }, [durationSeconds, isTimedMode, passage]);
+  }, [durationSeconds, isTimedMode, passage, previousResultScope]);
 
   const finishTest = useCallback(
     (completionReason: CompletionReason) => {
@@ -318,10 +326,10 @@ export default function PracticePage() {
       const completedTimeline = upsertAttemptTimelinePoint(attemptTimelineRef.current, finalTimelinePoint);
       attemptTimelineRef.current = completedTimeline;
 
-      setPreviousResult(readPreviousResult(passage.id));
+      setPreviousResult(readPreviousResult(passage.id, previousResultScope));
       setLastResult(finalResult);
       setAttemptTimeline(completedTimeline);
-      writePreviousResult(passage, finalResult, typedTextRef.current.length);
+      writePreviousResult(passage, finalResult, typedTextRef.current.length, previousResultScope);
 
       if (user) {
         void getSupabaseOwnTypingResults(user.id, 10)
@@ -341,7 +349,7 @@ export default function PracticePage() {
         });
       }
     },
-    [durationSeconds, isTimedMode, passage, practiceMode, rules, sourceText, user]
+    [durationSeconds, isTimedMode, passage, practiceMode, previousResultScope, rules, sourceText, user]
   );
 
   const startSession = useCallback(() => {
@@ -363,9 +371,9 @@ export default function PracticePage() {
     setStartedAt(now);
     setFinishedAt(null);
     setLastResult(null);
-    setPreviousResult(readPreviousResult(passage.id));
+    setPreviousResult(readPreviousResult(passage.id, previousResultScope));
     setStatus("running");
-  }, [durationSeconds, isFinished, isTimedMode, passage, sourceText]);
+  }, [durationSeconds, isFinished, isTimedMode, passage, previousResultScope, sourceText]);
 
   useEffect(() => {
     if (!isRunning || isFinished || !startedAt) {
@@ -606,7 +614,7 @@ export default function PracticePage() {
       setSelectedPassageId(isRandomMode ? RANDOM_PASSAGE_ID : nextLibraryPassage.id);
       const nextPassage = toStoredPassage(nextLibraryPassage, durationSeconds, library, passageTextMode);
       setPassage(nextPassage);
-      setPreviousResult(readPreviousResult(nextPassage.id));
+      setPreviousResult(readPreviousResult(nextPassage.id, previousResultScope));
       writeStoredPassage(nextPassage);
       return;
     }
@@ -623,7 +631,7 @@ export default function PracticePage() {
     setPassageNotice("No active saved passages found. Using a sample passage.");
     setSelectedPassageId(RANDOM_PASSAGE_ID);
     setPassage(nextPassage);
-    setPreviousResult(readPreviousResult(nextPassage.id));
+    setPreviousResult(readPreviousResult(nextPassage.id, previousResultScope));
     writeStoredPassage(nextPassage);
   }
 
@@ -641,7 +649,7 @@ export default function PracticePage() {
       const defaultPassage = getDefaultPassage(durationSeconds);
       setPassageNotice("No active saved passages found. Using a sample passage.");
       setPassage(defaultPassage);
-      setPreviousResult(readPreviousResult(defaultPassage.id));
+      setPreviousResult(readPreviousResult(defaultPassage.id, previousResultScope));
       writeStoredPassage(defaultPassage);
       return;
     }
@@ -660,7 +668,7 @@ export default function PracticePage() {
     setActivePassageId(randomLibraryPassage.id);
     const randomPassage = toStoredPassage(randomLibraryPassage, durationSeconds, library, passageTextMode);
     setPassage(randomPassage);
-    setPreviousResult(readPreviousResult(randomPassage.id));
+    setPreviousResult(readPreviousResult(randomPassage.id, previousResultScope));
     writeStoredPassage(randomPassage);
   }
 
@@ -902,6 +910,7 @@ export default function PracticePage() {
             previousResult={previousResult}
             recentResults={user ? recentResults : null}
             attemptTimeline={attemptTimeline}
+            modeLabel={practiceMode.label}
             onClose={() => setIsResultModalOpen(false)}
           />
         )}
@@ -954,6 +963,10 @@ function getInitialCategory(library: LibraryPassage[]): CategoryFilter {
 
 function filterLibraryByCategory(library: LibraryPassage[], category: CategoryFilter) {
   return filterLibraryPassages(library, category, ALL_FILTER);
+}
+
+function getPreviousResultScope(duration: number, textMode: StoredPassageTextMode): PreviousResultScope {
+  return textMode === "single" ? "infinite" : duration;
 }
 
 type MistakeType = "capitalization" | "punctuation" | "spacing" | "wrongCharacter";
@@ -1014,6 +1027,8 @@ export function ResultModal({
   previousResult,
   recentResults,
   attemptTimeline,
+  modeLabel,
+  onGenerateImageCard = generateResultImageCard,
   onClose
 }: {
   result: TypingResult;
@@ -1023,10 +1038,14 @@ export function ResultModal({
   previousResult: PreviousTypingResult | null;
   recentResults: SupabaseOwnTypingResultRow[] | null;
   attemptTimeline: AttemptTimelinePoint[];
+  modeLabel: string;
+  onGenerateImageCard?: (input: ResultImageCardInput) => Promise<void> | void;
   onClose: () => void;
 }) {
   const completionLabel = getCompletionLabel(result.completionReason);
   const hasSavedHistory = recentResults !== null;
+  const [imageCardError, setImageCardError] = useState("");
+  const [isGeneratingImageCard, setIsGeneratingImageCard] = useState(false);
   const historySeries = hasSavedHistory
     ? buildConsistencySeries(recentResults, {
         wpm: result.wpm,
@@ -1070,6 +1089,22 @@ export function ResultModal({
               </div>
             </section>
           </div>
+
+          <ResultImageCardAction
+            disabled={isGeneratingImageCard}
+            error={imageCardError}
+            onGenerate={() => {
+              setImageCardError("");
+              setIsGeneratingImageCard(true);
+              Promise.resolve(onGenerateImageCard({ result, passage, modeLabel }))
+                .catch(() => {
+                  setImageCardError("Could not generate image.");
+                })
+                .finally(() => {
+                  setIsGeneratingImageCard(false);
+                });
+            }}
+          />
 
           {!recentResults && <SignInResultCta />}
         </div>
@@ -1246,6 +1281,40 @@ function SignInResultCta() {
       <Link href="/login" className="transition hover:text-brass">
         Sign in to save your result and see long-term progress.
       </Link>
+    </div>
+  );
+}
+
+function ResultImageCardAction({
+  disabled,
+  error,
+  onGenerate
+}: {
+  disabled: boolean;
+  error: string;
+  onGenerate: () => void;
+}) {
+  return (
+    <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-paper/10 pt-5 font-mono">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-brass/10 text-brass">
+          <ImageIcon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm text-paper/85">Generate image card</p>
+          <p className="mt-1 text-xs text-paper/40">Create a shareable result image.</p>
+          {error && <p className="mt-2 text-xs text-ember">{error}</p>}
+        </div>
+      </div>
+      <button
+        type="button"
+        aria-label="Generate image card"
+        onClick={onGenerate}
+        disabled={disabled}
+        className="rounded-md border border-paper/10 bg-paper/[0.035] px-3 py-2 text-xs text-paper/70 transition hover:border-brass/40 hover:text-paper disabled:cursor-not-allowed disabled:opacity-55"
+      >
+        {disabled ? "Generating..." : "Generate"}
+      </button>
     </div>
   );
 }
@@ -1566,6 +1635,137 @@ function getCompletionLabel(completionReason: CompletionReason) {
   }
 
   return "Session ended";
+}
+
+export async function generateResultImageCard({ result, passage, modeLabel }: ResultImageCardInput) {
+  if (typeof document === "undefined") {
+    throw new Error("Image card generation requires a browser.");
+  }
+
+  const canvas = document.createElement("canvas");
+  const width = 1200;
+  const height = 675;
+  const scale = Math.max(window.devicePixelRatio || 1, 1);
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Canvas is not available.");
+  }
+
+  context.scale(scale, scale);
+  drawResultImageCard(context, { result, passage, modeLabel }, width, height);
+  const blob = await canvasToPngBlob(canvas);
+  downloadBlob(blob, "formaltype-result-card.png");
+}
+
+function drawResultImageCard(
+  context: CanvasRenderingContext2D,
+  { result, passage, modeLabel }: ResultImageCardInput,
+  width: number,
+  height: number
+) {
+  const completedAt = new Date(result.completedAt);
+  const dateLabel = Number.isNaN(completedAt.getTime())
+    ? result.completedAt
+    : completedAt.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+  context.fillStyle = "#080b0b";
+  context.fillRect(0, 0, width, height);
+  const gradient = context.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, "rgba(199, 156, 74, 0.16)");
+  gradient.addColorStop(0.45, "rgba(85, 239, 160, 0.08)");
+  gradient.addColorStop(1, "rgba(8, 11, 11, 0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, width, height);
+
+  context.strokeStyle = "rgba(238, 231, 216, 0.12)";
+  context.lineWidth = 2;
+  context.strokeRect(28, 28, width - 56, height - 56);
+
+  drawCardText(context, "FormalType", 72, 92, 30, "#c79c4a", "600");
+  drawCardText(context, passage.title ?? "Untitled passage", 72, 142, 28, "rgba(238, 231, 216, 0.88)", "600");
+  drawCardText(context, `${passage.category} · ${passage.style} · ${modeLabel}`, 72, 184, 20, "rgba(238, 231, 216, 0.48)");
+
+  drawCardText(context, result.rawWpm.toFixed(1), 72, 360, 128, "#eee7d8", "700");
+  drawCardText(context, "WPM", 78, 404, 24, "rgba(238, 231, 216, 0.46)");
+  drawCardText(context, `Net WPM ${result.wpm.toFixed(1)}`, 78, 456, 30, "#55efa0", "600");
+
+  const stats = [
+    ["Accuracy", `${result.accuracy.toFixed(2)}%`],
+    ["Mistakes", String(result.incorrectCharacters)],
+    ["Time", formatTime(result.timeUsedSeconds)],
+    ["Mode", modeLabel]
+  ];
+  stats.forEach(([label, value], index) => {
+    const x = 620 + (index % 2) * 245;
+    const y = 320 + Math.floor(index / 2) * 110;
+    drawCardText(context, label, x, y, 18, "rgba(238, 231, 216, 0.42)");
+    drawCardText(context, value, x, y + 42, 34, "#eee7d8", "600");
+  });
+
+  drawCardText(context, dateLabel, 72, height - 72, 20, "rgba(238, 231, 216, 0.44)");
+  drawCardText(context, "formaltype", width - 236, height - 72, 20, "rgba(199, 156, 74, 0.78)", "600");
+}
+
+function drawCardText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+  weight = "400"
+) {
+  context.fillStyle = color;
+  context.font = `${weight} ${size}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
+  context.fillText(truncateCanvasText(context, text, 960), x, y);
+}
+
+function truncateCanvasText(context: CanvasRenderingContext2D, text: string, maxWidth: number) {
+  if (context.measureText(text).width <= maxWidth) {
+    return text;
+  }
+
+  let nextText = text;
+  while (nextText.length > 1 && context.measureText(`${nextText}...`).width > maxWidth) {
+    nextText = nextText.slice(0, -1);
+  }
+
+  return `${nextText}...`;
+}
+
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("Canvas export failed."));
+        return;
+      }
+
+      resolve(blob);
+    }, "image/png");
+  });
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function SessionReview({ result }: { result: TypingResult }) {

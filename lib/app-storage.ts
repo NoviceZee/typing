@@ -443,21 +443,42 @@ export function readPreviousResults(): Record<string, PreviousTypingResult> {
   }
 }
 
-export function readPreviousResult(passageId?: string): PreviousTypingResult | null {
+export type PreviousResultScope = number | string | null | undefined;
+
+export function getPreviousResultStorageKey(passageId: string, scope?: PreviousResultScope) {
+  if (typeof scope === "number") {
+    return `${passageId}::${Math.round(scope)}s`;
+  }
+
+  if (typeof scope === "string" && scope.trim()) {
+    return `${passageId}::${scope.trim()}`;
+  }
+
+  return passageId;
+}
+
+export function readPreviousResult(passageId?: string, scope?: PreviousResultScope): PreviousTypingResult | null {
   if (!passageId) {
     return null;
   }
 
-  return readPreviousResults()[passageId] ?? null;
+  const previousResults = readPreviousResults();
+  const scopedKey = getPreviousResultStorageKey(passageId, scope);
+  return previousResults[scopedKey] ?? previousResults[passageId] ?? null;
 }
 
-export function writePreviousResult(passage: StoredPassage, result: TypingResult, typedCharacters: number) {
+export function writePreviousResult(
+  passage: StoredPassage,
+  result: TypingResult,
+  typedCharacters: number,
+  scope?: PreviousResultScope
+) {
   if (!passage.id) {
     return;
   }
 
   const previousResults = readPreviousResults();
-  previousResults[passage.id] = {
+  previousResults[getPreviousResultStorageKey(passage.id, scope ?? result.durationSeconds)] = {
     passageId: passage.id,
     passageTitle: passage.title ?? "Untitled passage",
     wpm: result.wpm,
