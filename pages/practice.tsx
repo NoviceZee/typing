@@ -83,6 +83,9 @@ export type ResultImageCardInput = {
 };
 
 const RANDOM_PASSAGE_ID = "__random__";
+const SUSPICIOUS_RESULT_NOTE = "This result was not saved because suspicious input was detected.";
+const MAX_CHARACTERS_PER_INPUT_EVENT = 5;
+const SUSPICIOUS_WPM_THRESHOLD = 250;
 
 export default function PracticePage() {
   const { user } = useAuth();
@@ -100,6 +103,7 @@ export default function PracticePage() {
   const [recentResults, setRecentResults] = useState<SupabaseOwnTypingResultRow[]>([]);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [passageNotice, setPassageNotice] = useState("");
+  const [isAttemptSuspicious, setIsAttemptSuspicious] = useState(false);
   const [previousResult, setPreviousResult] = useState<PreviousTypingResult | null>(null);
   const [availableLibrary, setAvailableLibrary] = useState<LibraryPassage[]>([]);
   const [selectedCategory, setSelectedCategoryState] = useState<CategoryFilter>(ALL_FILTER);
@@ -113,6 +117,7 @@ export default function PracticePage() {
   const typedTextRef = useRef("");
   const attemptTimelineRef = useRef<AttemptTimelinePoint[]>([]);
   const elapsedSecondsRef = useRef(0);
+  const suspiciousAttemptRef = useRef(false);
   const libraryRef = useRef<LibraryPassage[]>([]);
   const isTabPressedRef = useRef(false);
   const scrollFrameRef = useRef<number | null>(null);
@@ -271,8 +276,10 @@ export default function PracticePage() {
     startedAtRef.current = null;
     typedTextRef.current = "";
     attemptTimelineRef.current = [];
+    suspiciousAttemptRef.current = false;
     setTypedText("");
     setAttemptTimeline([]);
+    setIsAttemptSuspicious(false);
     setElapsedSeconds(0);
     elapsedSecondsRef.current = 0;
     setRemainingSeconds(isTimedMode ? durationSeconds : 0);
@@ -325,12 +332,16 @@ export default function PracticePage() {
       };
       const completedTimeline = upsertAttemptTimelinePoint(attemptTimelineRef.current, finalTimelinePoint);
       attemptTimelineRef.current = completedTimeline;
+      const isSuspicious = suspiciousAttemptRef.current;
 
       const comparisonPreviousResult = readPreviousResult(passage.id, previousResultScope);
-      writePreviousResult(passage, finalResult, typedTextRef.current.length, previousResultScope);
+      if (!isSuspicious) {
+        writePreviousResult(passage, finalResult, typedTextRef.current.length, previousResultScope);
+      }
       setPreviousResult(comparisonPreviousResult);
       setLastResult(finalResult);
       setAttemptTimeline(completedTimeline);
+      setIsAttemptSuspicious(isSuspicious);
 
       if (user) {
         void getSupabaseOwnTypingResults(user.id, 10)
@@ -339,15 +350,17 @@ export default function PracticePage() {
             console.warn("Supabase recent typing results load failed", error);
           });
 
-        void saveSupabaseTypingResult({
-          userId: user.id,
-          passage,
-          result: finalResult,
-          typedCharacters: typedTextRef.current.length,
-          supabasePassageId: passage.id ?? null
-        }).catch((error) => {
-          console.warn("Supabase typing result save failed", error);
-        });
+        if (!isSuspicious) {
+          void saveSupabaseTypingResult({
+            userId: user.id,
+            passage,
+            result: finalResult,
+            typedCharacters: typedTextRef.current.length,
+            supabasePassageId: passage.id ?? null
+          }).catch((error) => {
+            console.warn("Supabase typing result save failed", error);
+          });
+        }
       }
     },
     [durationSeconds, isTimedMode, passage, practiceMode, previousResultScope, rules, sourceText, user]
@@ -364,8 +377,10 @@ export default function PracticePage() {
     startedAtRef.current = now;
     typedTextRef.current = "";
     attemptTimelineRef.current = [];
+    suspiciousAttemptRef.current = false;
     setTypedText("");
     setAttemptTimeline([]);
+    setIsAttemptSuspicious(false);
     setElapsedSeconds(0);
     elapsedSecondsRef.current = 0;
     setRemainingSeconds(isTimedMode ? durationSeconds : 0);
@@ -537,10 +552,22 @@ export default function PracticePage() {
 
     setTypedText((previous) => {
       const nextValue = enforceBackspacePolicy(previous, value, rules.allowBackspace);
+      if (isSuspiciousInputChange(previous, nextValue, elapsedSecondsRef.current)) {
+        markAttemptSuspicious();
+      }
       typedTextRef.current = nextValue;
       recordAttemptTimelinePoint(elapsedSecondsRef.current, nextValue);
       return nextValue;
     });
+  }
+
+  function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    event.preventDefault();
+  }
+
+  function markAttemptSuspicious() {
+    suspiciousAttemptRef.current = true;
+    setIsAttemptSuspicious(true);
   }
 
   async function handlePracticeMode(modeId: PracticeModeId) {
@@ -807,7 +834,6 @@ export default function PracticePage() {
               <span>Previous pace: {previousResult.wpm.toFixed(1)} WPM</span>
             </div>
           )}
-
           {isRunning && (
             <div className="sticky top-0 z-10 flex shrink-0 justify-end bg-ink-950/80 pb-3 font-mono text-[1.45rem] leading-none text-paper/35 backdrop-blur-sm md:text-[2rem]">
               {formatTime(clockSeconds)}
@@ -886,6 +912,7 @@ export default function PracticePage() {
                 event.preventDefault();
               }
             }}
+            onPaste={handlePaste}
             onChange={(event) => handleTyping(event.target.value)}
             className="absolute inset-0 h-full w-full resize-none opacity-0"
             aria-label="Typing input"
@@ -912,6 +939,7 @@ export default function PracticePage() {
             recentResults={user ? recentResults : null}
             attemptTimeline={attemptTimeline}
             modeLabel={practiceMode.label}
+            isSuspicious={isAttemptSuspicious}
             onClose={() => setIsResultModalOpen(false)}
           />
         )}
@@ -1029,6 +1057,7 @@ export function ResultModal({
   recentResults,
   attemptTimeline,
   modeLabel,
+  isSuspicious = false,
   onGenerateImageCard = generateResultImageCard,
   onClose
 }: {
@@ -1040,6 +1069,7 @@ export function ResultModal({
   recentResults: SupabaseOwnTypingResultRow[] | null;
   attemptTimeline: AttemptTimelinePoint[];
   modeLabel: string;
+  isSuspicious?: boolean;
   onGenerateImageCard?: (input: ResultImageCardInput) => Promise<void> | void;
   onClose: () => void;
 }) {
@@ -1048,10 +1078,12 @@ export function ResultModal({
   const [imageCardError, setImageCardError] = useState("");
   const [isGeneratingImageCard, setIsGeneratingImageCard] = useState(false);
   const historySeries = hasSavedHistory
-    ? buildConsistencySeries(recentResults, {
-        wpm: result.wpm,
-        completedAt: result.completedAt
-      })
+    ? isSuspicious
+      ? buildSavedHistorySeries(recentResults)
+      : buildConsistencySeries(recentResults, {
+          wpm: result.wpm,
+          completedAt: result.completedAt
+        })
     : [];
 
   return (
@@ -1111,6 +1143,12 @@ export function ResultModal({
             </section>
           </div>
 
+          {isSuspicious && (
+            <div className="mt-4 rounded-md bg-brass/10 px-3 py-2 font-mono text-xs text-brass/80">
+              {SUSPICIOUS_RESULT_NOTE}
+            </div>
+          )}
+
           {!recentResults && <SignInResultCta />}
         </div>
 
@@ -1140,6 +1178,32 @@ export function ResultModal({
       </section>
     </div>
   );
+}
+
+function buildSavedHistorySeries(savedResults: SupabaseOwnTypingResultRow[]) {
+  return savedResults
+    .map((result) => ({
+      id: result.id,
+      wpm: result.wpm,
+      completedAt: result.created_at
+    }))
+    .sort((left, right) => Date.parse(left.completedAt) - Date.parse(right.completedAt))
+    .slice(-10);
+}
+
+function isSuspiciousInputChange(previousValue: string, nextValue: string, elapsedSeconds: number) {
+  const addedCharacters = nextValue.length - previousValue.length;
+
+  if (addedCharacters > MAX_CHARACTERS_PER_INPUT_EVENT) {
+    return true;
+  }
+
+  if (elapsedSeconds < 1 || nextValue.length === 0) {
+    return false;
+  }
+
+  const currentWpm = nextValue.length / 5 / (elapsedSeconds / 60);
+  return currentWpm > SUSPICIOUS_WPM_THRESHOLD;
 }
 
 function ThisResultColumn({

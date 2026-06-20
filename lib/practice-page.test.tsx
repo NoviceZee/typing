@@ -8,13 +8,16 @@ import PracticePage from "../pages/practice";
 import type { LibraryPassage } from "@/lib/app-storage";
 import { PASSAGE_LIBRARY_STORAGE_KEY, readPreviousResult } from "@/lib/app-storage";
 import { getSupabasePassageLibrary } from "@/lib/passageStorage";
+import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 
 vi.mock("@/components/AppShell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }));
 
+const authState: { user: { id: string } | null } = { user: null };
+
 vi.mock("@/components/AuthProvider", () => ({
-  useAuth: () => ({ user: null })
+  useAuth: () => ({ user: authState.user })
 }));
 
 vi.mock("@/lib/passageStorage", async () => {
@@ -28,11 +31,28 @@ vi.mock("@/lib/passageStorage", async () => {
 
 const mockedGetSupabasePassageLibrary = vi.mocked(getSupabasePassageLibrary);
 
+vi.mock("@/lib/typingResultStorage", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/typingResultStorage")>("@/lib/typingResultStorage");
+
+  return {
+    ...actual,
+    getSupabaseOwnTypingResults: vi.fn().mockResolvedValue([]),
+    saveSupabaseTypingResult: vi.fn().mockResolvedValue({
+      id: "saved-result",
+      created_at: "2026-06-19T00:00:00.000Z"
+    })
+  };
+});
+
+const mockedSaveSupabaseTypingResult = vi.mocked(saveSupabaseTypingResult);
+
 describe("PracticePage passage loading", () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    authState.user = null;
     mockedGetSupabasePassageLibrary.mockReset();
+    mockedSaveSupabaseTypingResult.mockClear();
   });
 
   afterEach(() => {
@@ -95,9 +115,7 @@ describe("PracticePage passage loading", () => {
     });
 
     fireEvent.keyDown(window, { key: "Tab" });
-    fireEvent.change(screen.getByLabelText("Typing input"), {
-      target: { value: "Local fallback body text" }
-    });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
     fireEvent.keyDown(window, { key: "Escape" });
 
     await waitFor(() => {
@@ -111,6 +129,56 @@ describe("PracticePage passage loading", () => {
       expect(justFinishedResult).toBeTruthy();
       expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
     });
+  });
+
+  it("prevents pasted text without showing a paste warning", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    const input = screen.getByLabelText("Typing input");
+    const pasteEvent = fireEvent.paste(input);
+
+    expect(pasteEvent).toBe(false);
+    expect(screen.queryByText("Pasting is disabled for fair results.")).toBeNull();
+    expect((input as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("flags suspicious bursts and does not save or update previous pace", async () => {
+    authState.user = { id: "user-1" };
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(screen.getByLabelText("Typing input"), {
+      target: { value: "Local " }
+    });
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByText("This result was not saved because suspicious input was detected.")).toBeTruthy();
+    });
+
+    expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
+    expect(readPreviousResult("local", 60)).toBeNull();
   });
 });
 
@@ -128,4 +196,15 @@ function makePassage(id: string, title: string, content: string): LibraryPassage
     characterCount: content.length,
     isActive: true
   };
+}
+
+function typeIncrementally(input: HTMLElement, value: string) {
+  let currentValue = "";
+
+  for (const character of value) {
+    currentValue += character;
+    fireEvent.change(input, {
+      target: { value: currentValue }
+    });
+  }
 }

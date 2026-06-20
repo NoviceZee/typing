@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ResultModal, getAttemptGraphLayout, getResultConsistency } from "../pages/practice";
@@ -148,6 +148,30 @@ describe("ResultModal", () => {
       passage: makePassage(),
       modeLabel: "1m"
     });
+  });
+
+  it("shows a suspicious-result note and keeps it out of saved history", () => {
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[makeRecentResult("saved", 41, "2026-06-19T00:00:00.000Z")]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        isSuspicious
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("This result was not saved because suspicious input was detected.")).toBeTruthy();
+    const historySection = screen.getByText("History").closest("section");
+
+    expect(historySection).toBeTruthy();
+    expect(within(historySection as HTMLElement).getByText("Attempts")).toBeTruthy();
+    expect(within(historySection as HTMLElement).getByText("1")).toBeTruthy();
   });
 
   it("calculates consistency from WPM variance instead of net/raw ratio", () => {
