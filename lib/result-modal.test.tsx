@@ -4,7 +4,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ResultModal } from "../pages/practice";
+import { ResultModal, getAttemptGraphLayout, getResultConsistency } from "../pages/practice";
 import type { StoredPassage } from "@/lib/app-storage";
 import type { TypingResult } from "@/lib/typing-engine";
 
@@ -29,7 +29,9 @@ describe("ResultModal", () => {
 
     expect(screen.queryByText("History")).toBeNull();
     expect(screen.queryByText("Avg (last 10)")).toBeNull();
-    expect(screen.getByTestId("result-sign-in-cta").textContent).toContain("Sign in to save your result");
+    expect(screen.getByTestId("result-sign-in-cta").textContent).toContain(
+      "Sign in to save your result and see long-term progress."
+    );
   });
 
   it("shows the authenticated result layout without duplicated summary sections", () => {
@@ -71,6 +73,9 @@ describe("ResultModal", () => {
     expect(screen.getByText("Attempts")).toBeTruthy();
     expect(screen.getByText("Previous Attempt")).toBeTruthy();
     expect(screen.getAllByText("Net WPM").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("previous 36.2")).toBeTruthy();
+    expect(screen.queryByText("36.2 → 48.0")).toBeNull();
+    expect(screen.queryByText("36.2 → 50.0")).toBeNull();
     expect(screen.queryByText("Session review")).toBeNull();
     expect(screen.queryByText("Highest")).toBeNull();
     expect(screen.queryByText("Lowest")).toBeNull();
@@ -96,6 +101,38 @@ describe("ResultModal", () => {
     expect(screen.getByText("10s")).toBeTruthy();
     expect(screen.getByText("WPM 48.0")).toBeTruthy();
     expect(screen.getByText("Accuracy 100.0%")).toBeTruthy();
+  });
+
+  it("keeps early WPM spikes from dominating graph scaling", () => {
+    const layout = getAttemptGraphLayout(
+      [
+        { timeSeconds: 1, wpm: 120, accuracy: 100 },
+        { timeSeconds: 5, wpm: 44, accuracy: 98 },
+        { timeSeconds: 20, wpm: 47, accuracy: 99 },
+        { timeSeconds: 60, wpm: 48, accuracy: 100 }
+      ],
+      makeResult()
+    );
+
+    expect(layout.maxWpm).toBeLessThan(90);
+  });
+
+  it("calculates consistency from WPM variance instead of net/raw ratio", () => {
+    const stable = getResultConsistency([
+      { timeSeconds: 5, wpm: 46 },
+      { timeSeconds: 20, wpm: 48 },
+      { timeSeconds: 40, wpm: 47 },
+      { timeSeconds: 60, wpm: 48 }
+    ]);
+    const spiky = getResultConsistency([
+      { timeSeconds: 5, wpm: 20 },
+      { timeSeconds: 20, wpm: 65 },
+      { timeSeconds: 40, wpm: 28 },
+      { timeSeconds: 60, wpm: 70 }
+    ]);
+
+    expect(stable).toBeGreaterThan(90);
+    expect(spiky).toBeLessThan(75);
   });
 });
 

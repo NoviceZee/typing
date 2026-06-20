@@ -1059,7 +1059,7 @@ export function ResultModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-8">
           <div className="grid gap-7 md:grid-cols-[minmax(14rem,17rem)_minmax(0,1fr)] md:gap-8">
-            <ThisResultColumn result={result} />
+            <ThisResultColumn result={result} timeline={attemptTimeline} />
 
             <section className="min-w-0 md:border-l md:border-paper/10 md:pl-8">
               <AttemptWpmGraph result={result} timeline={attemptTimeline} />
@@ -1102,7 +1102,7 @@ export function ResultModal({
   );
 }
 
-function ThisResultColumn({ result }: { result: TypingResult }) {
+function ThisResultColumn({ result, timeline }: { result: TypingResult; timeline: AttemptTimelinePoint[] }) {
   return (
     <section>
       <p className="font-mono text-sm uppercase text-brass">This Result</p>
@@ -1117,7 +1117,11 @@ function ThisResultColumn({ result }: { result: TypingResult }) {
         <ResultMetricRow label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
         <ResultMetricRow label="Mistakes" value={result.incorrectCharacters} />
         <ResultMetricRow label="Time" value={formatTime(result.timeUsedSeconds)} />
-        <ResultMetricRow label="Consistency" value={`${getResultConsistency(result)}%`} />
+        <ResultMetricRow
+          label="Consistency"
+          value={`${getResultConsistency(timeline).toFixed(0)}%`}
+          helpText="Based on WPM variance during this attempt."
+        />
       </div>
     </section>
   );
@@ -1126,15 +1130,24 @@ function ThisResultColumn({ result }: { result: TypingResult }) {
 function ResultMetricRow({
   label,
   value,
-  tone = "text-paper"
+  tone = "text-paper",
+  helpText
 }: {
   label: string;
   value: string | number;
   tone?: string;
+  helpText?: string;
 }) {
   return (
     <div className="grid grid-cols-[minmax(5rem,1fr)_auto] items-baseline gap-4 border-b border-paper/10 py-4 font-mono last:border-b-0">
-      <span className="text-sm text-paper/50">{label}</span>
+      <span className="text-sm text-paper/50">
+        {label}
+        {helpText && (
+          <span className="ml-1 cursor-help text-paper/30" title={helpText} aria-label={helpText}>
+            ⓘ
+          </span>
+        )}
+      </span>
       <span className={clsx("text-xl font-semibold", tone)}>{value}</span>
     </div>
   );
@@ -1182,25 +1195,23 @@ function PreviousAttemptComparison({
         <PreviousComparisonStat
           label="WPM"
           delta={rawWpmDifference}
-          comparison={`${previousResult.rawWpm.toFixed(1)} → ${result.rawWpm.toFixed(1)}`}
+          previousValue={previousResult.rawWpm.toFixed(1)}
         />
         <PreviousComparisonStat
           label="Net WPM"
           delta={netWpmDifference}
-          comparison={`${previousResult.wpm.toFixed(1)} → ${result.wpm.toFixed(1)}`}
+          previousValue={previousResult.wpm.toFixed(1)}
         />
         <PreviousComparisonStat
           label="Accuracy"
           delta={accuracyDifference}
           suffix="%"
-          comparison={`${formatPercent(previousResult.accuracy)} → ${formatPercent(result.accuracy)}`}
+          previousValue={formatPercent(previousResult.accuracy)}
         />
         <div>
           <p className="text-xs uppercase text-paper/40">Time</p>
           <p className="mt-3 text-sm text-paper/45">-</p>
-          <p className="mt-2 text-sm text-paper/55">
-            {formatTime(previousResult.elapsedSeconds)} → {formatTime(result.timeUsedSeconds)}
-          </p>
+          <p className="mt-2 text-sm text-paper/55">previous {formatTime(previousResult.elapsedSeconds)}</p>
         </div>
       </div>
     </section>
@@ -1210,12 +1221,12 @@ function PreviousAttemptComparison({
 function PreviousComparisonStat({
   label,
   delta,
-  comparison,
+  previousValue,
   suffix = ""
 }: {
   label: string;
   delta: number;
-  comparison: string;
+  previousValue: string;
   suffix?: string;
 }) {
   const tone = delta > 0 ? "text-mint" : delta < 0 ? "text-ember" : "text-paper/80";
@@ -1224,7 +1235,7 @@ function PreviousComparisonStat({
     <div>
       <p className="text-xs uppercase text-paper/40">{label}</p>
       <p className={clsx("mt-3 text-sm", tone)}>{formatSigned(delta, suffix)}</p>
-      <p className="mt-2 text-sm text-paper/55">{comparison}</p>
+      <p className="mt-2 text-sm text-paper/55">previous {previousValue}</p>
     </div>
   );
 }
@@ -1233,7 +1244,7 @@ function SignInResultCta() {
   return (
     <div data-testid="result-sign-in-cta" className="mt-8 text-center font-mono text-sm text-paper/35">
       <Link href="/login" className="transition hover:text-brass">
-        Sign in to save your result
+        Sign in to save your result and see long-term progress.
       </Link>
     </div>
   );
@@ -1443,7 +1454,7 @@ function getAttemptGraphPoints(timeline: AttemptTimelinePoint[], result: TypingR
   ];
 }
 
-function getAttemptGraphLayout(points: AttemptTimelinePoint[], result: TypingResult): AttemptGraphLayout {
+export function getAttemptGraphLayout(points: AttemptTimelinePoint[], result: TypingResult): AttemptGraphLayout {
   const width = 640;
   const height = 280;
   const left = 48;
@@ -1451,7 +1462,7 @@ function getAttemptGraphLayout(points: AttemptTimelinePoint[], result: TypingRes
   const top = 32;
   const bottom = height - 46;
   const maxTime = Math.max(result.timeUsedSeconds, ...points.map((point) => point.timeSeconds), 1);
-  const maxWpm = getNiceGraphMax(Math.max(result.wpm, ...points.map((point) => point.wpm), 1));
+  const maxWpm = getStableGraphMax(points, result);
   const graphBase = {
     width,
     height,
@@ -1509,12 +1520,44 @@ function getTimeTicks(maxTime: number) {
   return Array.from(new Set([0, Math.round(maxTime / 2), maxTime]));
 }
 
-function getResultConsistency(result: TypingResult) {
-  if (result.rawWpm <= 0) {
-    return roundOne(result.accuracy);
+function getStableGraphMax(points: AttemptTimelinePoint[], result: TypingResult) {
+  const stablePoints = getStableTimelinePoints(points);
+  const stableMax = Math.max(result.wpm, ...stablePoints.map((point) => point.wpm), 1);
+  const allMax = Math.max(stableMax, ...points.map((point) => point.wpm), 1);
+  const sensibleMax = Math.min(allMax, stableMax * 1.35);
+
+  return getNiceGraphMax(sensibleMax);
+}
+
+function getStableTimelinePoints(points: AttemptTimelinePoint[]) {
+  const stablePoints = points.filter((point) => point.timeSeconds >= 5);
+  return stablePoints.length >= 2 ? stablePoints : points;
+}
+
+export function getResultConsistency(timeline: AttemptTimelinePoint[]) {
+  const stablePoints = getStableTimelinePoints(timeline).filter((point) => point.wpm > 0);
+
+  if (stablePoints.length < 2) {
+    return 100;
   }
 
-  return roundOne(Math.max(0, Math.min(100, (result.wpm / result.rawWpm) * 100)));
+  const values = stablePoints.map((point) => point.wpm);
+  const average = values.reduce((total, value) => total + value, 0) / values.length;
+
+  if (average <= 0) {
+    return 100;
+  }
+
+  const variance = values.reduce((total, value) => total + (value - average) ** 2, 0) / values.length;
+  const standardDeviation = Math.sqrt(variance);
+  const averageDelta =
+    values.slice(1).reduce((total, value, index) => total + Math.abs(value - values[index]), 0) /
+    Math.max(values.length - 1, 1);
+  const volatilityRatio = standardDeviation / average;
+  const swingRatio = averageDelta / average;
+  const consistency = 100 - volatilityRatio * 120 - swingRatio * 35;
+
+  return roundOne(Math.max(0, Math.min(100, consistency)));
 }
 
 function getCompletionLabel(completionReason: CompletionReason) {
