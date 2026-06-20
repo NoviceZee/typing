@@ -6,7 +6,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PracticePage from "../pages/practice";
 import type { LibraryPassage } from "@/lib/app-storage";
-import { PASSAGE_LIBRARY_STORAGE_KEY } from "@/lib/app-storage";
+import { PASSAGE_LIBRARY_STORAGE_KEY, readPreviousResult } from "@/lib/app-storage";
 import { getSupabasePassageLibrary } from "@/lib/passageStorage";
 
 vi.mock("@/components/AppShell", () => ({
@@ -105,9 +105,11 @@ describe("PracticePage passage loading", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    const justFinishedResult = readPreviousResult("local", 60);
 
     await waitFor(() => {
-      expect(screen.getByText(/Previous pace:/)).toBeTruthy();
+      expect(justFinishedResult).toBeTruthy();
+      expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
     });
   });
 });

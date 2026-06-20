@@ -326,10 +326,11 @@ export default function PracticePage() {
       const completedTimeline = upsertAttemptTimelinePoint(attemptTimelineRef.current, finalTimelinePoint);
       attemptTimelineRef.current = completedTimeline;
 
-      setPreviousResult(readPreviousResult(passage.id, previousResultScope));
+      const comparisonPreviousResult = readPreviousResult(passage.id, previousResultScope);
+      writePreviousResult(passage, finalResult, typedTextRef.current.length, previousResultScope);
+      setPreviousResult(comparisonPreviousResult);
       setLastResult(finalResult);
       setAttemptTimeline(completedTimeline);
-      writePreviousResult(passage, finalResult, typedTextRef.current.length, previousResultScope);
 
       if (user) {
         void getSupabaseOwnTypingResults(user.id, 10)
@@ -1054,14 +1055,14 @@ export function ResultModal({
     : [];
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/85 px-3 py-4 backdrop-blur md:px-4">
-      <section className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-brass/25 bg-ink-900 shadow-glow">
-        <div className="sticky top-0 z-10 border-b border-paper/10 bg-ink-900/95 px-4 py-4 backdrop-blur md:px-6">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/85 px-3 py-3 backdrop-blur md:px-4">
+      <section className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-brass/25 bg-ink-900 shadow-glow">
+        <div className="sticky top-0 z-10 border-b border-paper/10 bg-ink-900/95 px-4 py-3 backdrop-blur md:px-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="font-mono text-xs uppercase text-brass">Result</p>
-              <h2 className="mt-1 text-2xl font-semibold leading-tight text-paper md:text-3xl">{completionLabel}</h2>
-              <div className="mt-2 truncate font-mono text-xs text-paper/45 md:text-sm">
+              <h2 className="mt-0.5 text-2xl font-semibold leading-tight text-paper">{completionLabel}</h2>
+              <div className="mt-1.5 truncate font-mono text-xs text-paper/45 md:text-sm">
                 {passage.title ?? "Untitled passage"} · {passage.category} · {passage.style}
               </div>
             </div>
@@ -1076,58 +1077,62 @@ export function ResultModal({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-8">
-          <div className="grid gap-7 md:grid-cols-[minmax(14rem,17rem)_minmax(0,1fr)] md:gap-8">
-            <ThisResultColumn result={result} timeline={attemptTimeline} />
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
+          <div className="grid gap-5 md:grid-cols-[minmax(13rem,16rem)_minmax(0,1fr)] md:gap-6">
+            <ThisResultColumn
+              result={result}
+              timeline={attemptTimeline}
+              imageAction={
+                <ResultImageCardAction
+                  disabled={isGeneratingImageCard}
+                  error={imageCardError}
+                  onGenerate={() => {
+                    setImageCardError("");
+                    setIsGeneratingImageCard(true);
+                    Promise.resolve(onGenerateImageCard({ result, passage, modeLabel }))
+                      .catch(() => {
+                        setImageCardError("Could not generate image.");
+                      })
+                      .finally(() => {
+                        setIsGeneratingImageCard(false);
+                      });
+                  }}
+                />
+              }
+            />
 
-            <section className="min-w-0 md:border-l md:border-paper/10 md:pl-8">
+            <section className="min-w-0 md:border-l md:border-paper/10 md:pl-6">
               <AttemptWpmGraph result={result} timeline={attemptTimeline} />
 
-              <div className="mt-7 grid gap-6 border-t border-paper/10 pt-5 md:grid-cols-2">
+              <div className="mt-4 grid gap-4 border-t border-paper/10 pt-4 md:grid-cols-[0.7fr_1.3fr]">
                 {hasSavedHistory && <HistoryStats points={historySeries} />}
                 {previousResult && <PreviousAttemptComparison result={result} previousResult={previousResult} />}
               </div>
             </section>
           </div>
 
-          <ResultImageCardAction
-            disabled={isGeneratingImageCard}
-            error={imageCardError}
-            onGenerate={() => {
-              setImageCardError("");
-              setIsGeneratingImageCard(true);
-              Promise.resolve(onGenerateImageCard({ result, passage, modeLabel }))
-                .catch(() => {
-                  setImageCardError("Could not generate image.");
-                })
-                .finally(() => {
-                  setIsGeneratingImageCard(false);
-                });
-            }}
-          />
-
           {!recentResults && <SignInResultCta />}
         </div>
 
-        <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-paper/10 bg-ink-900 px-4 py-4 md:px-6">
+        <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-paper/10 bg-ink-900 px-4 py-3 md:px-5">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/70 transition hover:border-brass/50 hover:text-paper"
+            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-1.5 font-mono text-sm text-paper/70 transition hover:border-brass/50 hover:text-paper"
           >
             Close
           </button>
           <button
             type="button"
             onClick={onRestart}
-            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/85 transition hover:border-brass/50"
+            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-1.5 font-mono text-sm text-paper/85 transition hover:border-brass/50"
           >
             Restart same passage
           </button>
           <button
             type="button"
             onClick={onNextPassage}
-            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-sm text-brass transition hover:bg-brass/15"
+            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-1.5 font-mono text-sm text-brass transition hover:bg-brass/15"
           >
             Next passage
           </button>
@@ -1137,17 +1142,25 @@ export function ResultModal({
   );
 }
 
-function ThisResultColumn({ result, timeline }: { result: TypingResult; timeline: AttemptTimelinePoint[] }) {
+function ThisResultColumn({
+  result,
+  timeline,
+  imageAction
+}: {
+  result: TypingResult;
+  timeline: AttemptTimelinePoint[];
+  imageAction: React.ReactNode;
+}) {
   return (
     <section>
       <p className="font-mono text-sm uppercase text-brass">This Result</p>
-      <div className="mt-6">
-        <p className="font-mono text-sm uppercase text-paper/45">WPM</p>
-        <div className="mt-1 font-mono text-7xl font-semibold leading-none text-paper md:text-8xl">
+      <div className="mt-3">
+        <p className="font-mono text-xs uppercase text-paper/45">WPM</p>
+        <div className="mt-0.5 font-mono text-5xl font-semibold leading-none text-paper md:text-6xl">
           {result.rawWpm.toFixed(1)}
         </div>
       </div>
-      <div className="mt-6 space-y-0">
+      <div className="mt-3 space-y-0">
         <ResultMetricRow label="Net WPM" value={result.wpm.toFixed(1)} tone="text-mint" />
         <ResultMetricRow label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
         <ResultMetricRow label="Mistakes" value={result.incorrectCharacters} />
@@ -1158,6 +1171,7 @@ function ThisResultColumn({ result, timeline }: { result: TypingResult; timeline
           helpText="Based on WPM variance during this attempt."
         />
       </div>
+      {imageAction}
     </section>
   );
 }
@@ -1174,8 +1188,8 @@ function ResultMetricRow({
   helpText?: string;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(5rem,1fr)_auto] items-baseline gap-4 border-b border-paper/10 py-4 font-mono last:border-b-0">
-      <span className="text-sm text-paper/50">
+    <div className="grid grid-cols-[minmax(5rem,1fr)_auto] items-baseline gap-3 border-b border-paper/10 py-2 font-mono last:border-b-0">
+      <span className="text-xs text-paper/50">
         {label}
         {helpText && (
           <span className="ml-1 cursor-help text-paper/30" title={helpText} aria-label={helpText}>
@@ -1183,7 +1197,7 @@ function ResultMetricRow({
           </span>
         )}
       </span>
-      <span className={clsx("text-xl font-semibold", tone)}>{value}</span>
+      <span className={clsx("text-base font-semibold", tone)}>{value}</span>
     </div>
   );
 }
@@ -1194,7 +1208,7 @@ function HistoryStats({ points }: { points: Array<{ wpm: number }> }) {
   return (
     <section>
       <p className="font-mono text-sm uppercase text-brass">History</p>
-      <div className="mt-4 space-y-3 font-mono">
+      <div className="mt-3 space-y-2 font-mono">
         <HistoryRow label="Avg (last 10)" value={summary.averageWpm.toFixed(1)} />
         <HistoryRow label="Best (last 10)" value={summary.bestWpm.toFixed(1)} />
         <HistoryRow label="Attempts" value={points.length} />
@@ -1206,8 +1220,8 @@ function HistoryStats({ points }: { points: Array<{ wpm: number }> }) {
 function HistoryRow({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex items-baseline justify-between gap-4 text-paper/65">
-      <span className="text-sm">{label}</span>
-      <span className="text-xl text-paper">{value}</span>
+      <span className="text-xs">{label}</span>
+      <span className="text-lg text-paper">{value}</span>
     </div>
   );
 }
@@ -1226,7 +1240,7 @@ function PreviousAttemptComparison({
   return (
     <section>
       <p className="font-mono text-sm uppercase text-brass">Previous Attempt</p>
-      <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4 font-mono md:grid-cols-4">
+      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 font-mono md:grid-cols-4">
         <PreviousComparisonStat
           label="WPM"
           delta={rawWpmDifference}
@@ -1245,8 +1259,8 @@ function PreviousAttemptComparison({
         />
         <div>
           <p className="text-xs uppercase text-paper/40">Time</p>
-          <p className="mt-3 text-sm text-paper/45">-</p>
-          <p className="mt-2 text-sm text-paper/55">previous {formatTime(previousResult.elapsedSeconds)}</p>
+          <p className="mt-2 text-sm text-paper/45">-</p>
+          <p className="mt-1.5 text-xs text-paper/55">previous {formatTime(previousResult.elapsedSeconds)}</p>
         </div>
       </div>
     </section>
@@ -1269,15 +1283,15 @@ function PreviousComparisonStat({
   return (
     <div>
       <p className="text-xs uppercase text-paper/40">{label}</p>
-      <p className={clsx("mt-3 text-sm", tone)}>{formatSigned(delta, suffix)}</p>
-      <p className="mt-2 text-sm text-paper/55">previous {previousValue}</p>
+      <p className={clsx("mt-2 text-sm", tone)}>{formatSigned(delta, suffix)}</p>
+      <p className="mt-1.5 text-xs text-paper/55">previous {previousValue}</p>
     </div>
   );
 }
 
 function SignInResultCta() {
   return (
-    <div data-testid="result-sign-in-cta" className="mt-8 text-center font-mono text-sm text-paper/35">
+    <div data-testid="result-sign-in-cta" className="mt-5 text-center font-mono text-sm text-paper/35">
       <Link href="/login" className="transition hover:text-brass">
         Sign in to save your result and see long-term progress.
       </Link>
@@ -1295,14 +1309,14 @@ function ResultImageCardAction({
   onGenerate: () => void;
 }) {
   return (
-    <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-paper/10 pt-5 font-mono">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-brass/10 text-brass">
-          <ImageIcon className="h-5 w-5" />
+    <div className="mt-4 flex items-center justify-between gap-2 border-t border-paper/10 pt-3 font-mono">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-brass/10 text-brass">
+          <ImageIcon className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <p className="text-sm text-paper/85">Generate image card</p>
-          <p className="mt-1 text-xs text-paper/40">Create a shareable result image.</p>
+          <p className="truncate text-xs text-paper/85">Generate image card</p>
+          <p className="truncate text-[0.68rem] text-paper/40">Create a shareable result image.</p>
           {error && <p className="mt-2 text-xs text-ember">{error}</p>}
         </div>
       </div>
@@ -1311,7 +1325,7 @@ function ResultImageCardAction({
         aria-label="Generate image card"
         onClick={onGenerate}
         disabled={disabled}
-        className="rounded-md border border-paper/10 bg-paper/[0.035] px-3 py-2 text-xs text-paper/70 transition hover:border-brass/40 hover:text-paper disabled:cursor-not-allowed disabled:opacity-55"
+        className="shrink-0 rounded-md border border-paper/10 bg-transparent px-2.5 py-1.5 text-xs text-paper/60 transition hover:border-brass/40 hover:text-paper disabled:cursor-not-allowed disabled:opacity-55"
       >
         {disabled ? "Generating..." : "Generate"}
       </button>
@@ -1345,12 +1359,12 @@ function AttemptWpmGraph({
           </span>
         </div>
       </div>
-      <div className="mt-4 min-w-0">
+      <div className="mt-3 min-w-0">
         <svg
           viewBox={`0 0 ${graph.width} ${graph.height}`}
           role="img"
           aria-label="WPM over time"
-          className="h-72 w-full overflow-visible text-paper/45"
+          className="h-[260px] w-full overflow-visible text-paper/45"
           preserveAspectRatio="none"
           onMouseLeave={() => setHoveredPoint(null)}
         >
@@ -1643,8 +1657,8 @@ export async function generateResultImageCard({ result, passage, modeLabel }: Re
   }
 
   const canvas = document.createElement("canvas");
-  const width = 1200;
-  const height = 675;
+  const width = 1080;
+  const height = 1080;
   const scale = Math.max(window.devicePixelRatio || 1, 1);
   canvas.width = width * scale;
   canvas.height = height * scale;
@@ -1690,15 +1704,15 @@ function drawResultImageCard(
 
   context.strokeStyle = "rgba(238, 231, 216, 0.12)";
   context.lineWidth = 2;
-  context.strokeRect(28, 28, width - 56, height - 56);
+  context.strokeRect(36, 36, width - 72, height - 72);
 
-  drawCardText(context, "FormalType", 72, 92, 30, "#c79c4a", "600");
-  drawCardText(context, passage.title ?? "Untitled passage", 72, 142, 28, "rgba(238, 231, 216, 0.88)", "600");
-  drawCardText(context, `${passage.category} · ${passage.style} · ${modeLabel}`, 72, 184, 20, "rgba(238, 231, 216, 0.48)");
+  drawCardText(context, "FormalType", 82, 112, 34, "#c79c4a", "600");
+  drawCardText(context, passage.title ?? "Untitled passage", 82, 176, 34, "rgba(238, 231, 216, 0.9)", "600", 850);
+  drawCardText(context, `${passage.category} · ${passage.style} · ${modeLabel}`, 82, 226, 22, "rgba(238, 231, 216, 0.48)", "400", 850);
 
-  drawCardText(context, result.rawWpm.toFixed(1), 72, 360, 128, "#eee7d8", "700");
-  drawCardText(context, "WPM", 78, 404, 24, "rgba(238, 231, 216, 0.46)");
-  drawCardText(context, `Net WPM ${result.wpm.toFixed(1)}`, 78, 456, 30, "#55efa0", "600");
+  drawCardText(context, result.rawWpm.toFixed(1), 82, 540, 160, "#eee7d8", "700");
+  drawCardText(context, "WPM", 92, 590, 26, "rgba(238, 231, 216, 0.46)");
+  drawCardText(context, `Net WPM ${result.wpm.toFixed(1)}`, 92, 660, 36, "#55efa0", "600");
 
   const stats = [
     ["Accuracy", `${result.accuracy.toFixed(2)}%`],
@@ -1707,14 +1721,16 @@ function drawResultImageCard(
     ["Mode", modeLabel]
   ];
   stats.forEach(([label, value], index) => {
-    const x = 620 + (index % 2) * 245;
-    const y = 320 + Math.floor(index / 2) * 110;
-    drawCardText(context, label, x, y, 18, "rgba(238, 231, 216, 0.42)");
-    drawCardText(context, value, x, y + 42, 34, "#eee7d8", "600");
+    const x = 560 + (index % 2) * 245;
+    const y = 478 + Math.floor(index / 2) * 138;
+    context.fillStyle = "rgba(238, 231, 216, 0.05)";
+    context.fillRect(x - 20, y - 48, 205, 92);
+    drawCardText(context, label, x, y - 12, 18, "rgba(238, 231, 216, 0.42)", "400", 180);
+    drawCardText(context, value, x, y + 32, 34, "#eee7d8", "600", 180);
   });
 
-  drawCardText(context, dateLabel, 72, height - 72, 20, "rgba(238, 231, 216, 0.44)");
-  drawCardText(context, "formaltype", width - 236, height - 72, 20, "rgba(199, 156, 74, 0.78)", "600");
+  drawCardText(context, dateLabel, 82, height - 110, 22, "rgba(238, 231, 216, 0.44)", "400", 560);
+  drawCardText(context, "formaltype", width - 282, height - 110, 24, "rgba(199, 156, 74, 0.78)", "600", 220);
 }
 
 function drawCardText(
@@ -1724,11 +1740,12 @@ function drawCardText(
   y: number,
   size: number,
   color: string,
-  weight = "400"
+  weight = "400",
+  maxWidth = 960
 ) {
   context.fillStyle = color;
   context.font = `${weight} ${size}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
-  context.fillText(truncateCanvasText(context, text, 960), x, y);
+  context.fillText(truncateCanvasText(context, text, maxWidth), x, y);
 }
 
 function truncateCanvasText(context: CanvasRenderingContext2D, text: string, maxWidth: number) {
