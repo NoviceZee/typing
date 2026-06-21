@@ -34,8 +34,8 @@ vi.mock("next/router", () => ({
 }));
 
 vi.mock("@/lib/profileStorage", () => ({
-  getSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Formal Typist" }),
-  upsertSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Updated Typist" })
+  getSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Formal Typist", handle: "formal_typist" }),
+  upsertSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Updated Typist", handle: "formal_typist" })
 }));
 
 const mockedGetSupabaseProfile = vi.mocked(getSupabaseProfile);
@@ -63,7 +63,9 @@ describe("Profile account page", () => {
     expect(screen.getByText("This public name appears on leaderboard rows. Your email stays private.")).toBeTruthy();
     expect(screen.getByText("Email")).toBeTruthy();
     expect(screen.getByText("typist@example.com")).toBeTruthy();
-    expect(screen.getByText("Username and handle setup will be added later.")).toBeTruthy();
+    expect(screen.getByText("Handle")).toBeTruthy();
+    expect(screen.getByText("@formal_typist")).toBeTruthy();
+    expect(screen.getByText("Handles are locked for now. Handle editing will be added later.")).toBeTruthy();
     expect(screen.queryByText("My Results")).toBeNull();
     expect(screen.queryByText("Typing rules")).toBeNull();
   });

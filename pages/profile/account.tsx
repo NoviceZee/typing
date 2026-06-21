@@ -4,12 +4,13 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
-import { getSupabaseProfile, upsertSupabaseProfile } from "@/lib/profileStorage";
+import { SupabaseProfile, getSupabaseProfile, upsertSupabaseProfile } from "@/lib/profileStorage";
 
 export default function AccountPage() {
   const router = useRouter();
   const { user, isLoading: isAuthLoading, isConfigured } = useAuth();
   const [displayName, setDisplayName] = useState("");
+  const [profile, setProfile] = useState<SupabaseProfile | null>(null);
   const [profileMessage, setProfileMessage] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -26,12 +27,14 @@ export default function AccountPage() {
 
     if (!user) {
       setDisplayName("");
+      setProfile(null);
       return;
     }
 
     getSupabaseProfile(user.id)
       .then((profile) => {
         if (!isMounted) return;
+        setProfile(profile);
         setDisplayName(profile?.display_name ?? "");
       })
       .catch((error) => {
@@ -55,6 +58,7 @@ export default function AccountPage() {
 
     try {
       const profile = await upsertSupabaseProfile(user.id, displayName);
+      setProfile(profile);
       setDisplayName(profile.display_name);
       setProfileMessage("Display name saved.");
     } catch (error) {
@@ -119,8 +123,11 @@ export default function AccountPage() {
               </div>
 
               <div className="mt-4 rounded-md border border-paper/10 bg-ink-900/80 px-4 py-4">
-                <p className="font-mono text-xs uppercase text-paper/40">Username handles</p>
-                <p className="mt-2 text-sm leading-6 text-paper/55">Username and handle setup will be added later.</p>
+                <p className="font-mono text-xs uppercase text-paper/40">Handle</p>
+                <p className="mt-2 font-mono text-sm text-paper">{profile?.handle ? `@${profile.handle}` : "Not set"}</p>
+                <p className="mt-2 text-sm leading-6 text-paper/55">
+                  Handles are locked for now. Handle editing will be added later.
+                </p>
               </div>
             </section>
           </div>

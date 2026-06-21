@@ -1,8 +1,10 @@
+import React from "react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { LogIn, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
+import { getSupabaseProfile } from "@/lib/profileStorage";
 
 type AuthMode = "login" | "signup";
 
@@ -21,9 +23,28 @@ export default function LoginPage() {
   }, [router.query.redirectTo]);
 
   useEffect(() => {
-    if (!isLoading && user) {
-      router.replace(redirectTo);
+    let isMounted = true;
+
+    if (isLoading || !user) {
+      return;
     }
+
+    getSupabaseProfile(user.id)
+      .then((profile) => {
+        if (!isMounted) return;
+        const nextRoute = profile?.handle
+          ? redirectTo
+          : `/onboarding/handle?redirectTo=${encodeURIComponent(redirectTo)}`;
+        router.replace(nextRoute);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        router.replace(`/onboarding/handle?redirectTo=${encodeURIComponent(redirectTo)}`);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [isLoading, redirectTo, router, user]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import React, { ReactNode, useEffect, useRef, useState } from "react";
 import { ChevronDown, LogIn, LogOut, UserCircle } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
-import { getSupabaseProfile } from "@/lib/profileStorage";
+import { SupabaseProfile, getProfileDisplayLabel, getSupabaseProfile } from "@/lib/profileStorage";
 
 const NAV_ITEMS = [
   { href: "/practice", label: "Practice" },
@@ -58,7 +58,7 @@ function HeaderAuthAction() {
   const router = useRouter();
   const { user, isLoading, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [displayName, setDisplayName] = useState("");
+  const [profile, setProfile] = useState<SupabaseProfile | null>(null);
   const [isProfileLabelResolved, setIsProfileLabelResolved] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -66,7 +66,7 @@ function HeaderAuthAction() {
     let isMounted = true;
 
     if (!user) {
-      setDisplayName("");
+      setProfile(null);
       setIsProfileLabelResolved(false);
       setIsOpen(false);
       return;
@@ -74,14 +74,14 @@ function HeaderAuthAction() {
 
     setIsProfileLabelResolved(false);
     getSupabaseProfile(user.id)
-      .then((profile) => {
+      .then((nextProfile) => {
         if (!isMounted) return;
-        setDisplayName(profile?.display_name ?? "");
+        setProfile(nextProfile);
         setIsProfileLabelResolved(true);
       })
       .catch(() => {
         if (!isMounted) return;
-        setDisplayName("");
+        setProfile(null);
         setIsProfileLabelResolved(true);
       });
 
@@ -89,6 +89,19 @@ function HeaderAuthAction() {
       isMounted = false;
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!user || !isProfileLabelResolved || profile?.handle) {
+      return;
+    }
+
+    if (router.pathname === "/onboarding/handle" || router.pathname === "/logout") {
+      return;
+    }
+
+    const redirectTo = router.asPath && router.asPath !== "/onboarding/handle" ? router.asPath : "/practice";
+    router.replace(`/onboarding/handle?redirectTo=${encodeURIComponent(redirectTo)}`);
+  }, [isProfileLabelResolved, profile?.handle, router, user]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -139,7 +152,7 @@ function HeaderAuthAction() {
     router.push("/practice");
   }
 
-  const accountLabel = isProfileLabelResolved ? displayName || user.email || "Account" : displayName || "Account";
+  const accountLabel = isProfileLabelResolved ? getProfileDisplayLabel(profile) : "Account";
 
   return (
     <div ref={menuRef} className="relative">
