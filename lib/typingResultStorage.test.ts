@@ -160,12 +160,14 @@ describe("typingResultStorage", () => {
   });
 
   it("applies leaderboard date range filters to created_at", async () => {
+    const query: any = {};
     const limit = vi.fn().mockResolvedValue({ data: [], error: null });
-    const lt = vi.fn(() => ({ limit }));
-    const gte = vi.fn(() => ({ lt }));
-    const eq = vi.fn(() => ({ gte }));
-    const order = vi.fn(() => ({ order, limit, eq, gte }));
-    const select = vi.fn(() => ({ order }));
+    const lt = vi.fn(() => query);
+    const gte = vi.fn(() => query);
+    const eq = vi.fn(() => query);
+    const order = vi.fn(() => query);
+    Object.assign(query, { order, limit, eq, gte, lt });
+    const select = vi.fn(() => query);
     const from = vi.fn(() => ({ select }));
     const start = new Date("2026-06-21T00:00:00.000Z");
     const end = new Date("2026-06-22T00:00:00.000Z");
@@ -177,7 +179,7 @@ describe("typingResultStorage", () => {
           category: "Business email",
           dateRange: { start, end }
         },
-        { from }
+        { from } as any
       )
     ).resolves.toEqual([]);
 

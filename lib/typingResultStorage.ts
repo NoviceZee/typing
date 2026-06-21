@@ -111,8 +111,7 @@ export async function getSupabaseLeaderboardResults({
     .select("id,display_name,passage_title,passage_category,duration_seconds,wpm,accuracy,created_at")
     .order("wpm", { ascending: false })
     .order("accuracy", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("created_at", { ascending: false });
 
   if (durationSeconds) {
     query = query.eq("duration_seconds", durationSeconds);
@@ -129,7 +128,7 @@ export async function getSupabaseLeaderboardResults({
     query = query.lt("created_at", resolvedDateRange.end.toISOString());
   }
 
-  const { data, error } = await query;
+  const { data, error } = await query.limit(limit);
 
   if (error) {
     throw error;

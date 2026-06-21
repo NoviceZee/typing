@@ -9,6 +9,11 @@ import {
   getSupabaseLeaderboardResults
 } from "@/lib/typingResultStorage";
 import { getDurationFilterOptions } from "@/lib/practiceDurations";
+import {
+  DEFAULT_LEADERBOARD_TIME_RANGE,
+  LEADERBOARD_TIME_RANGE_OPTIONS,
+  LeaderboardTimeRange
+} from "@/lib/leaderboardFilters";
 
 const ALL_FILTER = "All";
 const DURATION_OPTIONS = getDurationFilterOptions(ALL_FILTER);
@@ -18,6 +23,7 @@ export default function LeaderboardPage() {
   const [results, setResults] = useState<SupabaseLeaderboardResultRow[]>([]);
   const [ownResultIds, setOwnResultIds] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<string[]>([]);
+  const [timeRange, setTimeRange] = useState<LeaderboardTimeRange>(DEFAULT_LEADERBOARD_TIME_RANGE);
   const [durationFilter, setDurationFilter] = useState(ALL_FILTER);
   const [categoryFilter, setCategoryFilter] = useState(ALL_FILTER);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,7 +54,7 @@ export default function LeaderboardPage() {
 
     setIsLoading(true);
     setOwnResultIds(new Set());
-    getSupabaseLeaderboardResults({ durationSeconds, category })
+    getSupabaseLeaderboardResults({ durationSeconds, category, timeRange })
       .then((leaderboardResults) => {
         if (!isMounted) return;
         setResults(leaderboardResults);
@@ -66,7 +72,7 @@ export default function LeaderboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [categoryFilter, durationFilter]);
+  }, [categoryFilter, durationFilter, timeRange]);
 
   useEffect(() => {
     let isMounted = true;
@@ -117,10 +123,16 @@ export default function LeaderboardPage() {
         </div>
 
         <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/55">
-          Ranked by WPM, then accuracy. Only public display names are shown.
+          Ranked by WPM, then accuracy. Only public handles are shown.
         </p>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <FilterSelect
+            label="Time range"
+            value={timeRange}
+            onChange={(value) => setTimeRange(value as LeaderboardTimeRange)}
+            options={LEADERBOARD_TIME_RANGE_OPTIONS}
+          />
           <FilterSelect
             label="Duration"
             value={durationFilter}
@@ -158,7 +170,7 @@ export default function LeaderboardPage() {
 
           {!isLoading && results.length === 0 && !message && (
             <div className="px-4 py-8 text-center font-mono text-sm text-paper/45">
-              No saved typing results match these filters.
+              No saved typing results match this time range.
             </div>
           )}
 
