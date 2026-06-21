@@ -7,7 +7,6 @@ import { Activity, Clock, Medal, Target, Trophy } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
-import { getSupabaseProfile, upsertSupabaseProfile } from "@/lib/profileStorage";
 import {
   SupabaseAnalyticsTypingResultRow,
   getSupabaseAnalyticsTypingResults
@@ -23,10 +22,7 @@ const TREND_RANGES: Array<{ id: TrendRange; label: string }> = [
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isLoading: isAuthLoading, isConfigured } = useAuth();
-  const [displayName, setDisplayName] = useState("");
-  const [profileMessage, setProfileMessage] = useState("");
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [results, setResults] = useState<SupabaseAnalyticsTypingResultRow[]>([]);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [resultsMessage, setResultsMessage] = useState("");
@@ -46,23 +42,11 @@ export default function ProfilePage() {
     let isMounted = true;
 
     if (!user) {
-      setDisplayName("");
       setResults([]);
-      setProfileMessage("");
       setResultsMessage("");
       setIsLoadingResults(false);
       return;
     }
-
-    getSupabaseProfile(user.id)
-      .then((profile) => {
-        if (!isMounted) return;
-        setDisplayName(profile?.display_name ?? "");
-      })
-      .catch((error) => {
-        if (!isMounted) return;
-        setProfileMessage(error instanceof Error ? error.message : "Display name could not be loaded.");
-      });
 
     setIsLoadingResults(true);
     setResultsMessage("");
@@ -84,26 +68,6 @@ export default function ProfilePage() {
       isMounted = false;
     };
   }, [user]);
-
-  async function saveDisplayName() {
-    if (!user) {
-      setProfileMessage("Log in to set a leaderboard name.");
-      return;
-    }
-
-    setIsSavingProfile(true);
-    setProfileMessage("");
-
-    try {
-      const profile = await upsertSupabaseProfile(user.id, displayName);
-      setDisplayName(profile.display_name);
-      setProfileMessage("Display name saved.");
-    } catch (error) {
-      setProfileMessage(error instanceof Error ? error.message : "Display name could not be saved.");
-    } finally {
-      setIsSavingProfile(false);
-    }
-  }
 
   return (
     <AppShell sideAd={false}>
@@ -132,15 +96,6 @@ export default function ProfilePage() {
 
         {user && (
           <div className="mt-6 space-y-6">
-            <ProfileSettings
-              displayName={displayName}
-              isConfigured={isConfigured}
-              isSaving={isSavingProfile}
-              message={profileMessage}
-              onDisplayNameChange={setDisplayName}
-              onSave={saveDisplayName}
-            />
-
             {resultsMessage && (
               <div className="rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
                 {resultsMessage}
@@ -184,66 +139,6 @@ export default function ProfilePage() {
         )}
       </section>
     </AppShell>
-  );
-}
-
-function ProfileSettings({
-  displayName,
-  isConfigured,
-  isSaving,
-  message,
-  onDisplayNameChange,
-  onSave
-}: {
-  displayName: string;
-  isConfigured: boolean;
-  isSaving: boolean;
-  message: string;
-  onDisplayNameChange: (value: string) => void;
-  onSave: () => void;
-}) {
-  return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
-      <h2 className="font-mono text-sm uppercase text-brass">Profile Settings</h2>
-      <p className="mt-2 text-sm leading-6 text-paper/55">
-        This public name appears on leaderboard rows. Your email stays private.
-      </p>
-
-      {isConfigured ? (
-        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-          <label className="block">
-            <span className="font-mono text-xs uppercase text-paper/45">Display name</span>
-            <input
-              value={displayName}
-              onChange={(event) => onDisplayNameChange(event.target.value)}
-              maxLength={40}
-              className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-3 font-mono text-sm text-paper outline-none transition focus:border-brass/60"
-              placeholder="Your leaderboard name"
-            />
-          </label>
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={isSaving}
-              className="rounded-md border border-brass/35 bg-brass/10 px-4 py-3 font-mono text-sm text-brass transition hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSaving ? "Saving..." : "Save name"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-5 rounded-md border border-paper/10 bg-ink-900 px-4 py-3 font-mono text-sm text-paper/55">
-          Supabase is not configured yet.
-        </div>
-      )}
-
-      {message && (
-        <div className="mt-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
-          {message}
-        </div>
-      )}
-    </section>
   );
 }
 

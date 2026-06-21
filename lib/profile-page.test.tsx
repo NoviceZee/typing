@@ -1,11 +1,10 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProfilePage from "../pages/profile";
-import { getSupabaseProfile, upsertSupabaseProfile } from "@/lib/profileStorage";
 import { getSupabaseAnalyticsTypingResults } from "@/lib/typingResultStorage";
 
 const mockState = vi.hoisted(() => ({
@@ -35,11 +34,6 @@ vi.mock("next/router", () => ({
   })
 }));
 
-vi.mock("@/lib/profileStorage", () => ({
-  getSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Formal Typist" }),
-  upsertSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Updated Typist" })
-}));
-
 vi.mock("@/lib/typingResultStorage", async () => {
   const actual = await vi.importActual<typeof import("@/lib/typingResultStorage")>("@/lib/typingResultStorage");
 
@@ -53,8 +47,6 @@ vi.mock("@/lib/typingResultStorage", async () => {
   };
 });
 
-const mockedGetSupabaseProfile = vi.mocked(getSupabaseProfile);
-const mockedUpsertSupabaseProfile = vi.mocked(upsertSupabaseProfile);
 const mockedGetSupabaseAnalyticsTypingResults = vi.mocked(getSupabaseAnalyticsTypingResults);
 
 describe("ProfilePage", () => {
@@ -63,23 +55,17 @@ describe("ProfilePage", () => {
     mockState.isLoading = false;
     mockState.isConfigured = true;
     mockState.routerPush.mockClear();
-    mockedGetSupabaseProfile.mockClear();
-    mockedUpsertSupabaseProfile.mockClear();
     mockedGetSupabaseAnalyticsTypingResults.mockClear();
   });
 
-  it("renders profile settings and progress analytics for an authenticated user", async () => {
+  it("renders progress analytics for an authenticated user", async () => {
     render(<ProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("Formal Typist")).toBeTruthy();
+      expect(screen.getByText("Progress Summary")).toBeTruthy();
     });
 
-    expect(mockedGetSupabaseProfile).toHaveBeenCalledWith("user-1");
     expect(mockedGetSupabaseAnalyticsTypingResults).toHaveBeenCalledWith("user-1");
-    expect(screen.getByText("Profile Settings")).toBeTruthy();
-    expect(screen.getByText("This public name appears on leaderboard rows. Your email stays private.")).toBeTruthy();
-    expect(screen.getByText("Progress Summary")).toBeTruthy();
     expect(screen.getByText("Average WPM last 10")).toBeTruthy();
     expect(screen.getByText("Average WPM last 100")).toBeTruthy();
     expect(screen.getByText("Trends")).toBeTruthy();
@@ -90,19 +76,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("Weakest: News article")).toBeTruthy();
     expect(screen.getByText("Activity")).toBeTruthy();
     expect(screen.getByText("Current streak")).toBeTruthy();
-  });
-
-  it("saves the display name from the profile page", async () => {
-    render(<ProfilePage />);
-
-    const input = await screen.findByDisplayValue("Formal Typist");
-    fireEvent.change(input, { target: { value: "Updated Typist" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save name" }));
-
-    await waitFor(() => {
-      expect(mockedUpsertSupabaseProfile).toHaveBeenCalledWith("user-1", "Updated Typist");
-    });
-    expect(screen.getByText("Display name saved.")).toBeTruthy();
+    expect(screen.queryByText("Profile Settings")).toBeNull();
   });
 
   it("redirects logged-out users to login without loading profile data", async () => {
@@ -113,7 +87,6 @@ describe("ProfilePage", () => {
     await waitFor(() => {
       expect(mockState.routerPush).toHaveBeenCalledWith("/login?redirectTo=/profile");
     });
-    expect(mockedGetSupabaseProfile).not.toHaveBeenCalled();
     expect(mockedGetSupabaseAnalyticsTypingResults).not.toHaveBeenCalled();
   });
 });

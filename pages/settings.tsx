@@ -5,7 +5,7 @@ export default function SettingsRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/profile");
+    router.replace("/profile/account");
   }, [router]);
 
   return null;

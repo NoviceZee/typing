@@ -28,11 +28,11 @@ describe("profile compatibility redirects", () => {
     });
   });
 
-  it("redirects /settings to /profile", async () => {
+  it("redirects /settings to /profile/account", async () => {
     render(<SettingsRedirectPage />);
 
     await waitFor(() => {
-      expect(mockRouter.replace).toHaveBeenCalledWith("/profile");
+      expect(mockRouter.replace).toHaveBeenCalledWith("/profile/account");
     });
   });
 });

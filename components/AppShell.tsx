@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ReactNode } from "react";
-import { LogIn, LogOut } from "lucide-react";
+import React, { ReactNode, useEffect, useRef, useState } from "react";
+import { ChevronDown, LogIn, LogOut, UserCircle } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { getSupabaseProfile } from "@/lib/profileStorage";
 
 const NAV_ITEMS = [
   { href: "/practice", label: "Practice" },
-  { href: "/profile", label: "Profile", requiresAuth: true },
   { href: "/passages", label: "Passages" },
   { href: "/passages/manage", label: "Manage passages", requiresAuth: true },
   { href: "/leaderboard", label: "Leaderboard" }
@@ -57,6 +57,59 @@ export function AppShell({ children, sideAd = true }: { children: ReactNode; sid
 function HeaderAuthAction() {
   const router = useRouter();
   const { user, isLoading, signOut } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!user) {
+      setDisplayName("");
+      setIsOpen(false);
+      return;
+    }
+
+    getSupabaseProfile(user.id)
+      .then((profile) => {
+        if (!isMounted) return;
+        setDisplayName(profile?.display_name ?? "");
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setDisplayName("");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
 
   if (isLoading) {
     return <span className="font-mono text-xs text-paper/35">Checking login...</span>;
@@ -76,22 +129,62 @@ function HeaderAuthAction() {
   }
 
   async function handleLogout() {
+    setIsOpen(false);
     await signOut();
     router.push("/practice");
   }
 
+  const accountLabel = displayName || user.email || "Account";
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="max-w-[14rem] truncate font-mono text-xs text-mint">{user.email}</span>
+    <div ref={menuRef} className="relative">
       <button
         type="button"
-        onClick={handleLogout}
-        className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/70 transition hover:border-mint/30 hover:text-paper"
+        aria-label="Account menu"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+        className="inline-flex max-w-[15rem] items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/75 transition hover:border-brass/40 hover:text-paper"
       >
-        <LogOut className="h-4 w-4" />
-        Logout
+        <UserCircle className="h-4 w-4 text-brass" />
+        <span className="truncate">{accountLabel}</span>
+        <ChevronDown className={`h-3.5 w-3.5 transition ${isOpen ? "rotate-180" : ""}`} />
       </button>
+      {isOpen && (
+        <div
+          role="menu"
+          aria-label="Account"
+          className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-md border border-paper/10 bg-ink-950 shadow-glow"
+        >
+          <AccountMenuLink href="/profile" label="User stats" onClick={() => setIsOpen(false)} />
+          <AccountMenuLink href="/profile/friends" label="Friends" onClick={() => setIsOpen(false)} />
+          <AccountMenuLink href="/profile/public" label="Public profile" onClick={() => setIsOpen(false)} />
+          <AccountMenuLink href="/profile/account" label="Account settings" onClick={() => setIsOpen(false)} />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleLogout}
+            className="flex w-full items-center gap-2 border-t border-paper/10 px-3 py-2.5 text-left font-mono text-xs text-paper/65 transition hover:bg-paper/10 hover:text-paper"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </div>
+      )}
     </div>
+  );
+}
+
+function AccountMenuLink({ href, label, onClick }: { href: string; label: string; onClick: () => void }) {
+  return (
+    <Link
+      href={href}
+      role="menuitem"
+      onClick={onClick}
+      className="block px-3 py-2.5 font-mono text-xs text-paper/65 transition hover:bg-paper/10 hover:text-paper"
+    >
+      {label}
+    </Link>
   );
 }
 
