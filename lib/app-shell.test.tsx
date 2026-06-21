@@ -36,7 +36,7 @@ vi.mock("next/router", () => ({
 
 vi.mock("@/lib/profileStorage", () => ({
   getProfileDisplayLabel: (profile: { display_name: string; handle: string | null } | null) =>
-    profile?.handle ? `@${profile.handle}` : profile?.display_name || "Account",
+    profile?.handle ? `@${profile.handle}` : "Account",
   getSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Formal Typist", handle: "formal_typist" })
 }));
 
@@ -76,14 +76,15 @@ describe("AppShell account dropdown", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  it("falls back to display name and closes on Escape", async () => {
+  it("does not use display name as an account label fallback and closes on Escape", async () => {
     mockedGetSupabaseProfile.mockResolvedValue({ display_name: "Formal Typist", handle: null } as any);
 
     render(<AppShell sideAd={false}>Content</AppShell>);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /account menu/i }).textContent).toContain("Formal Typist");
+      expect(screen.getByRole("button", { name: /account menu/i }).textContent).toContain("Account");
     });
+    expect(screen.getByRole("button", { name: /account menu/i }).textContent).not.toContain("Formal Typist");
 
     fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
     expect(screen.getByRole("menu")).toBeTruthy();

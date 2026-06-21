@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { getSupabaseAnalyticsTypingResults, toSupabaseTypingResultInsert } from "./typingResultStorage";
+import {
+  getSupabaseAnalyticsTypingResults,
+  getSupabaseLeaderboardResults,
+  toSupabaseTypingResultInsert
+} from "./typingResultStorage";
 import type { StoredPassage } from "./app-storage";
 import type { TypingResult } from "./typing-engine";
 
@@ -153,5 +157,35 @@ describe("typingResultStorage", () => {
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
     expect(order).toHaveBeenCalledWith("created_at", { ascending: false });
     expect(limit).toHaveBeenCalledWith(50);
+  });
+
+  it("applies leaderboard date range filters to created_at", async () => {
+    const limit = vi.fn().mockResolvedValue({ data: [], error: null });
+    const lt = vi.fn(() => ({ limit }));
+    const gte = vi.fn(() => ({ lt }));
+    const eq = vi.fn(() => ({ gte }));
+    const order = vi.fn(() => ({ order, limit, eq, gte }));
+    const select = vi.fn(() => ({ order }));
+    const from = vi.fn(() => ({ select }));
+    const start = new Date("2026-06-21T00:00:00.000Z");
+    const end = new Date("2026-06-22T00:00:00.000Z");
+
+    await expect(
+      getSupabaseLeaderboardResults(
+        {
+          durationSeconds: 60,
+          category: "Business email",
+          dateRange: { start, end }
+        },
+        { from }
+      )
+    ).resolves.toEqual([]);
+
+    expect(from).toHaveBeenCalledWith("typing_results_leaderboard");
+    expect(eq).toHaveBeenCalledWith("duration_seconds", 60);
+    expect(eq).toHaveBeenCalledWith("passage_category", "Business email");
+    expect(gte).toHaveBeenCalledWith("created_at", start.toISOString());
+    expect(lt).toHaveBeenCalledWith("created_at", end.toISOString());
+    expect(limit).toHaveBeenCalledWith(25);
   });
 });

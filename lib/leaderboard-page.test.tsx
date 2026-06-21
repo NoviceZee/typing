@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LeaderboardPage from "../pages/leaderboard";
@@ -61,5 +61,41 @@ describe("LeaderboardPage", () => {
       expect(screen.getByText("@formal_typist")).toBeTruthy();
     });
     expect(screen.queryByText("typist@example.com")).toBeNull();
+  });
+
+  it("defaults to this week and reloads when the time range changes", async () => {
+    mockedGetSupabaseLeaderboardResults
+      .mockResolvedValueOnce([
+        {
+          id: "result-1",
+          display_name: "@formal_typist",
+          passage_title: "Board memo",
+          passage_category: "Business email",
+          duration_seconds: 60,
+          wpm: 72,
+          accuracy: 98.2,
+          created_at: "2026-06-21T00:00:00.000Z"
+        }
+      ] as any)
+      .mockResolvedValueOnce([]);
+
+    render(<LeaderboardPage />);
+
+    await waitFor(() => {
+      expect(mockedGetSupabaseLeaderboardResults).toHaveBeenCalledWith(
+        expect.objectContaining({ timeRange: "this_week" })
+      );
+    });
+
+    fireEvent.change(screen.getByLabelText("Time range"), { target: { value: "this_month" } });
+
+    await waitFor(() => {
+      expect(mockedGetSupabaseLeaderboardResults).toHaveBeenLastCalledWith(
+        expect.objectContaining({ timeRange: "this_month" })
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByText("No saved typing results match this time range.")).toBeTruthy();
+    });
   });
 });

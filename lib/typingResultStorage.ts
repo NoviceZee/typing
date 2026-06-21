@@ -1,4 +1,5 @@
 import type { StoredPassage } from "./app-storage";
+import { LeaderboardTimeRange, getLeaderboardDateRange } from "./leaderboardFilters";
 import { supabase } from "./supabaseClient";
 import type { TypingResult } from "./typing-engine";
 
@@ -46,6 +47,8 @@ export type SupabaseLeaderboardFilters = {
   limit?: number;
   durationSeconds?: number | null;
   category?: string | null;
+  timeRange?: LeaderboardTimeRange;
+  dateRange?: { start: Date; end: Date } | null;
 };
 
 export type SaveTypingResultInput = {
@@ -95,13 +98,15 @@ export async function saveSupabaseTypingResult(
 export async function getSupabaseLeaderboardResults({
   limit = 25,
   durationSeconds,
-  category
-}: SupabaseLeaderboardFilters = {}): Promise<SupabaseLeaderboardResultRow[]> {
-  if (!supabase) {
+  category,
+  timeRange,
+  dateRange
+}: SupabaseLeaderboardFilters = {}, client = supabase): Promise<SupabaseLeaderboardResultRow[]> {
+  if (!client) {
     return [];
   }
 
-  let query = supabase
+  let query = client
     .from("typing_results_leaderboard")
     .select("id,display_name,passage_title,passage_category,duration_seconds,wpm,accuracy,created_at")
     .order("wpm", { ascending: false })
@@ -115,6 +120,13 @@ export async function getSupabaseLeaderboardResults({
 
   if (category?.trim()) {
     query = query.eq("passage_category", category.trim());
+  }
+
+  const resolvedDateRange = dateRange === undefined && timeRange ? getLeaderboardDateRange(timeRange) : dateRange;
+
+  if (resolvedDateRange) {
+    query = query.gte("created_at", resolvedDateRange.start.toISOString());
+    query = query.lt("created_at", resolvedDateRange.end.toISOString());
   }
 
   const { data, error } = await query;

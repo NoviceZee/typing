@@ -33,9 +33,9 @@ describe("profileStorage handles", () => {
     );
   });
 
-  it("prefers handle before display name and never uses email for public labels", () => {
-    expect(getProfileDisplayLabel({ handle: "formal_typist", display_name: "Formal Typist" })).toBe("@formal_typist");
-    expect(getProfileDisplayLabel({ handle: null, display_name: "Formal Typist" })).toBe("Formal Typist");
+  it("uses handle only for public labels and never falls back to display name or email", () => {
+    expect(getProfileDisplayLabel({ handle: "formal_typist" })).toBe("@formal_typist");
+    expect(getProfileDisplayLabel({ handle: null })).toBe("Account");
     expect(getProfileDisplayLabel(null)).toBe("Account");
   });
 });

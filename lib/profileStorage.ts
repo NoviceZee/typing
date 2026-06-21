@@ -44,12 +44,12 @@ export function validateHandle(handle: string): HandleValidationResult {
   return { isValid: true, handle: cleanHandle };
 }
 
-export function getProfileDisplayLabel(profile: Pick<SupabaseProfile, "display_name" | "handle"> | null) {
+export function getProfileDisplayLabel(profile: Pick<SupabaseProfile, "handle"> | null) {
   if (profile?.handle) {
     return `@${profile.handle}`;
   }
 
-  return profile?.display_name?.trim() || "Account";
+  return "Account";
 }
 
 export async function upsertSupabaseProfile(
