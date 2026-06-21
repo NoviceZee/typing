@@ -1003,10 +1003,21 @@ function PreviousPaceMarker({ characterIndex }: { characterIndex: number }) {
       data-testid="previous-pace-marker"
       data-character-index={characterIndex}
       aria-hidden="true"
-      className="relative inline-block w-0 overflow-visible align-baseline"
-    >
-      <span className="absolute -left-px top-[-0.12em] h-[1.2em] w-px rounded-full bg-brass/75 shadow-[0_0_8px_rgba(221,167,75,0.4)]" />
-    </span>
+      className="formaltype-previous-pace-marker"
+      style={{
+        display: "inline-block",
+        width: 0,
+        height: "0.95em",
+        borderLeft: "2px solid rgba(221, 167, 75, 0.82)",
+        marginLeft: -1,
+        marginRight: -1,
+        verticalAlign: "-0.08em",
+        opacity: 0.9,
+        pointerEvents: "none",
+        position: "static",
+        boxShadow: "0 0 7px rgba(221, 167, 75, 0.28)"
+      }}
+    />
   );
 }
 

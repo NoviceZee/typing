@@ -242,6 +242,13 @@ describe("PracticePage passage loading", () => {
     const marker = screen.getByTestId("previous-pace-marker");
     expect(marker).toBeTruthy();
     expect(marker.getAttribute("data-character-index")).toBe(String("Local fallback body text".length));
+    expect(marker.className).toContain("formaltype-previous-pace-marker");
+    expect(marker.style.display).toBe("inline-block");
+    expect(marker.style.width).toBe("0px");
+    expect(marker.style.height).toBe("0.95em");
+    expect(marker.style.position).toBe("static");
+    expect(marker.style.verticalAlign).toBe("-0.08em");
+    expect(marker.querySelector(".absolute")).toBeNull();
 
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
