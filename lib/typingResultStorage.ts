@@ -1,5 +1,6 @@
 import type { StoredPassage } from "./app-storage";
 import { LeaderboardTimeRange, getLeaderboardDateRange } from "./leaderboardFilters";
+import { normalizeHandle } from "./profileStorage";
 import { supabase } from "./supabaseClient";
 import type { TypingResult } from "./typing-engine";
 
@@ -214,6 +215,31 @@ export async function getSupabaseAnalyticsTypingResults(
   return (data ?? []).map(toSupabaseAnalyticsTypingResultRow);
 }
 
+export async function getSupabasePublicTypingResultsByHandle(
+  handle: string,
+  limit = 1000,
+  client = requireSupabaseClient()
+): Promise<SupabaseAnalyticsTypingResultRow[]> {
+  const cleanHandle = normalizeHandle(handle);
+
+  if (!cleanHandle) {
+    return [];
+  }
+
+  const { data, error } = await client
+    .from("public_profile_typing_results")
+    .select("id,passage_title,passage_category,duration_seconds,wpm,accuracy,correct_chars,created_at")
+    .eq("handle", cleanHandle)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toSupabasePublicTypingResultRow);
+}
+
 function requireSupabaseClient(): any {
   if (!supabase) {
     throw new Error("Supabase is not configured yet.");
@@ -229,6 +255,19 @@ function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingRe
     id: row.id,
     passage_title: row.passage_title,
     passage_category: passage?.category ?? null,
+    duration_seconds: Number(row.duration_seconds),
+    wpm: Number(row.wpm),
+    accuracy: Number(row.accuracy),
+    correct_chars: Number(row.correct_chars ?? 0),
+    created_at: row.created_at
+  };
+}
+
+function toSupabasePublicTypingResultRow(row: any): SupabaseAnalyticsTypingResultRow {
+  return {
+    id: row.id,
+    passage_title: row.passage_title,
+    passage_category: row.passage_category ?? null,
     duration_seconds: Number(row.duration_seconds),
     wpm: Number(row.wpm),
     accuracy: Number(row.accuracy),

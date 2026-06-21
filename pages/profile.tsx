@@ -128,7 +128,6 @@ export default function ProfilePage() {
             {results.length > 0 && (
               <>
                 <ProgressSummary analytics={analytics} />
-                <MyResults results={results} />
                 <ProgressionSection analytics={analytics} />
                 <ChallengesSection analytics={analytics} />
                 <AchievementsSection analytics={analytics} />
@@ -142,6 +141,7 @@ export default function ProfilePage() {
                   <CategoryBreakdown analytics={analytics} />
                 </section>
                 <ActivitySection analytics={analytics} />
+                <MyResults results={results} />
               </>
             )}
           </div>

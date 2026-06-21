@@ -89,6 +89,10 @@ describe("ProfilePage", () => {
     expect(screen.getByText("My Results")).toBeTruthy();
     expect(screen.getByText("Recent attempts")).toBeTruthy();
     expect(screen.getByText("Passage latest")).toBeTruthy();
+    expect(
+      screen.getByText("Activity").compareDocumentPosition(screen.getByText("My Results")) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(screen.queryByText("Profile Settings")).toBeNull();
   });
 
