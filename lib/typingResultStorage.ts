@@ -38,6 +38,10 @@ export type SupabaseOwnTypingResultRow = {
   created_at: string;
 };
 
+export type SupabaseAnalyticsTypingResultRow = SupabaseOwnTypingResultRow & {
+  passage_category: string | null;
+};
+
 export type SupabaseLeaderboardFilters = {
   limit?: number;
   durationSeconds?: number | null;
@@ -179,12 +183,45 @@ export async function getSupabaseOwnTypingResults(
   return data ?? [];
 }
 
+export async function getSupabaseAnalyticsTypingResults(
+  userId: string,
+  limit = 1000,
+  client = requireSupabaseClient()
+): Promise<SupabaseAnalyticsTypingResultRow[]> {
+  const { data, error } = await client
+    .from("typing_results")
+    .select("id,passage_title,duration_seconds,wpm,accuracy,created_at,passages(category)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toSupabaseAnalyticsTypingResultRow);
+}
+
 function requireSupabaseClient(): any {
   if (!supabase) {
     throw new Error("Supabase is not configured yet.");
   }
 
   return supabase;
+}
+
+function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingResultRow {
+  const passage = Array.isArray(row.passages) ? row.passages[0] : row.passages;
+
+  return {
+    id: row.id,
+    passage_title: row.passage_title,
+    passage_category: passage?.category ?? null,
+    duration_seconds: Number(row.duration_seconds),
+    wpm: Number(row.wpm),
+    accuracy: Number(row.accuracy),
+    created_at: row.created_at
+  };
 }
 
 function isUuid(value?: string | null): value is string {

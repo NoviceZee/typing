@@ -6,15 +6,16 @@ import { useAuth } from "@/components/AuthProvider";
 
 const NAV_ITEMS = [
   { href: "/practice", label: "Practice" },
+  { href: "/analytics", label: "Analytics", requiresAuth: true },
   { href: "/passages", label: "Passages" },
-  { href: "/passages/manage", label: "Manage passages" },
+  { href: "/passages/manage", label: "Manage passages", requiresAuth: true },
   { href: "/settings", label: "Settings" },
   { href: "/leaderboard", label: "Leaderboard" }
 ];
 
 export function AppShell({ children, sideAd = true }: { children: ReactNode; sideAd?: boolean }) {
   const { user } = useAuth();
-  const navItems = user ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.href !== "/passages/manage");
+  const navItems = user ? NAV_ITEMS : NAV_ITEMS.filter((item) => !item.requiresAuth);
 
   return (
     <main className="min-h-screen px-5 py-5 text-paper md:px-8">

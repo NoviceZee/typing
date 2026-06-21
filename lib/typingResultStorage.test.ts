@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { toSupabaseTypingResultInsert } from "./typingResultStorage";
+import { describe, expect, it, vi } from "vitest";
+import { getSupabaseAnalyticsTypingResults, toSupabaseTypingResultInsert } from "./typingResultStorage";
 import type { StoredPassage } from "./app-storage";
 import type { TypingResult } from "./typing-engine";
 
@@ -95,5 +95,63 @@ describe("typingResultStorage", () => {
     });
 
     expect(insert.duration_seconds).toBe(600);
+  });
+
+  it("loads analytics results with passage categories for the current user", async () => {
+    const limit = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: "result-1",
+          passage_title: "Board memo",
+          duration_seconds: 60,
+          wpm: 72,
+          accuracy: 98.5,
+          created_at: "2026-06-19T00:00:00.000Z",
+          passages: { category: "Business email" }
+        },
+        {
+          id: "result-2",
+          passage_title: "Legacy memo",
+          duration_seconds: 300,
+          wpm: 61,
+          accuracy: 99,
+          created_at: "2026-06-18T00:00:00.000Z",
+          passages: null
+        }
+      ],
+      error: null
+    });
+    const order = vi.fn(() => ({ limit }));
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+
+    await expect(getSupabaseAnalyticsTypingResults("user-1", 50, { from })).resolves.toEqual([
+      {
+        id: "result-1",
+        passage_title: "Board memo",
+        passage_category: "Business email",
+        duration_seconds: 60,
+        wpm: 72,
+        accuracy: 98.5,
+        created_at: "2026-06-19T00:00:00.000Z"
+      },
+      {
+        id: "result-2",
+        passage_title: "Legacy memo",
+        passage_category: null,
+        duration_seconds: 300,
+        wpm: 61,
+        accuracy: 99,
+        created_at: "2026-06-18T00:00:00.000Z"
+      }
+    ]);
+    expect(from).toHaveBeenCalledWith("typing_results");
+    expect(select).toHaveBeenCalledWith(
+      "id,passage_title,duration_seconds,wpm,accuracy,created_at,passages(category)"
+    );
+    expect(eq).toHaveBeenCalledWith("user_id", "user-1");
+    expect(order).toHaveBeenCalledWith("created_at", { ascending: false });
+    expect(limit).toHaveBeenCalledWith(50);
   });
 });
