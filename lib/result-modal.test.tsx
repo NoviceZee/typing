@@ -4,7 +4,13 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ResultModal, addAttemptTimelinePoint, getAttemptGraphLayout, getResultConsistency } from "../pages/practice";
+import {
+  ResultModal,
+  addAttemptTimelinePoint,
+  getAttemptGraphLayout,
+  getPreviousPaceIndex,
+  getResultConsistency
+} from "../pages/practice";
 import type { StoredPassage } from "@/lib/app-storage";
 import type { TypingResult } from "@/lib/typing-engine";
 
@@ -135,6 +141,18 @@ describe("ResultModal", () => {
     expect(layout.positionedPoints[0].timeSeconds).toBe(0);
     expect(layout.positionedPoints[layout.positionedPoints.length - 1].timeSeconds).toBe(300);
     expect(layout.positionedPoints[0].x).toBeLessThan(layout.positionedPoints[layout.positionedPoints.length - 1].x);
+  });
+
+  it("interpolates the previous pace marker index from saved timeline progress", () => {
+    expect(
+      getPreviousPaceIndex(
+        [
+          { timeSeconds: 5, characterIndex: 20, wpm: 48 },
+          { timeSeconds: 15, characterIndex: 60, wpm: 48 }
+        ],
+        10
+      )
+    ).toBe(40);
   });
 
   it("adds a final time-up point at the duration instead of using remaining seconds", () => {

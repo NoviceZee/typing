@@ -152,7 +152,7 @@ export default function PracticePage() {
   );
   const previousPaceMarkerIndex =
     previousComparisonMatches && status !== "finished"
-      ? getPreviousPaceIndex(previousResult?.timeline, elapsedSeconds)
+      ? getPreviousPaceIndex(previousResult?.previousPaceTimeline, elapsedSeconds)
       : null;
   const choosePracticePassage = useCallback(
     ({

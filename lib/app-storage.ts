@@ -70,6 +70,12 @@ export type LibraryPassage = {
   isActive: boolean;
 };
 
+export type PreviousPaceTimelinePoint = {
+  timeSeconds: number;
+  characterIndex: number;
+  wpm?: number;
+};
+
 export type PreviousTypingResult = {
   passageId: string;
   passageTitle: string;
@@ -80,6 +86,8 @@ export type PreviousTypingResult = {
   correctCharacters: number;
   typedCharacters: number;
   elapsedSeconds: number;
+  durationSeconds?: number;
+  previousPaceTimeline?: PreviousPaceTimelinePoint[];
   completedAt: string;
   completionReason: CompletionReason;
 };
@@ -471,7 +479,8 @@ export function writePreviousResult(
   passage: StoredPassage,
   result: TypingResult,
   typedCharacters: number,
-  scope?: PreviousResultScope
+  scope?: PreviousResultScope,
+  previousPaceTimeline?: PreviousPaceTimelinePoint[]
 ) {
   if (!passage.id) {
     return;
@@ -488,6 +497,8 @@ export function writePreviousResult(
     correctCharacters: result.correctCharacters,
     typedCharacters,
     elapsedSeconds: result.timeUsedSeconds,
+    durationSeconds: result.durationSeconds,
+    previousPaceTimeline,
     completedAt: result.completedAt,
     completionReason: result.completionReason
   };

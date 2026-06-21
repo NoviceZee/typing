@@ -231,7 +231,7 @@ describe("PracticePage passage loading", () => {
     const justFinishedResult = readPreviousResult("local", 60);
 
     expect(justFinishedResult).toBeTruthy();
-    expect(justFinishedResult?.timeline?.some((point) => point.timeSeconds === 10)).toBe(true);
+    expect(justFinishedResult?.previousPaceTimeline?.some((point) => point.timeSeconds === 10)).toBe(true);
 
     fireEvent.keyDown(window, { key: "Tab" });
 
