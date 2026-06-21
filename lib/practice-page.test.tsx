@@ -162,6 +162,7 @@ describe("PracticePage passage loading", () => {
     });
 
     fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
     expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
   });

@@ -814,6 +814,15 @@ export default function PracticePage() {
           </div>
         ) : null}
 
+        {previousResult && status !== "finished" && (
+          <div
+            data-testid="previous-pace-display"
+            className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden px-1 font-mono text-xs text-paper/45"
+          >
+            <span>Previous pace: {previousResult.wpm.toFixed(1)} WPM</span>
+          </div>
+        )}
+
         <div
           tabIndex={0}
           onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
@@ -829,11 +838,6 @@ export default function PracticePage() {
               : "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
           )}
         >
-          {previousResult && status !== "finished" && (
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 font-mono text-xs text-paper/45">
-              <span>Previous pace: {previousResult.wpm.toFixed(1)} WPM</span>
-            </div>
-          )}
           {isRunning && (
             <div className="sticky top-0 z-10 flex shrink-0 justify-end bg-ink-950/80 pb-3 font-mono text-[1.45rem] leading-none text-paper/35 backdrop-blur-sm md:text-[2rem]">
               {formatTime(clockSeconds)}
