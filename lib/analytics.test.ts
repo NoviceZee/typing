@@ -18,7 +18,8 @@ describe("buildProgressAnalytics", () => {
       averageWpmLast100: 62.3,
       bestAccuracy: 100,
       totalTests: 4,
-      totalPracticeSeconds: 540
+      totalPracticeSeconds: 540,
+      totalWordsTyped: 560
     });
     expect(analytics.records.fastestOneMinute?.id).toBe("one-minute-fast");
     expect(analytics.records.fastestFiveMinute?.id).toBe("five-minute");
@@ -104,7 +105,7 @@ describe("buildProgressAnalytics", () => {
     const analytics = buildProgressAnalytics(results);
     const achievements = new Map(analytics.achievements.items.map((achievement) => [achievement.id, achievement.isUnlocked]));
 
-    expect(analytics.achievements.totalCount).toBe(12);
+    expect(analytics.achievements.totalCount).toBe(23);
     expect(analytics.achievements.unlockedCount).toBe(6);
     expect(achievements.get("first-test")).toBe(true);
     expect(achievements.get("getting-started")).toBe(true);
@@ -152,9 +153,84 @@ describe("buildProgressAnalytics", () => {
   it("keeps every achievement locked when there are no saved results", () => {
     const analytics = buildProgressAnalytics([]);
 
-    expect(analytics.achievements.totalCount).toBe(12);
+    expect(analytics.achievements.totalCount).toBe(23);
     expect(analytics.achievements.unlockedCount).toBe(0);
     expect(analytics.achievements.items.every((achievement) => !achievement.isUnlocked)).toBe(true);
+  });
+
+  it("calculates XP, level, and progress from saved results", () => {
+    const analytics = buildProgressAnalytics(
+      [
+        makeResult("first", 60, 40, 97, "Business email", "2026-06-19T10:00:00.000Z", 200),
+        makeResult("second", 60, 45, 100, "Business email", "2026-06-20T10:00:00.000Z", 225),
+        makeResult("third", 60, 43, 99, "Business email", "2026-06-21T10:00:00.000Z", 215)
+      ],
+      { now: new Date("2026-06-21T12:00:00.000Z") }
+    );
+
+    expect(analytics.progression).toEqual({
+      totalXp: 105,
+      currentLevel: 2,
+      currentLevelXp: 5,
+      xpForNextLevel: 100,
+      xpToNextLevel: 95,
+      progressPercent: 5
+    });
+  });
+
+  it("unlocks word count and category achievements from existing result data", () => {
+    const businessResults = Array.from({ length: 25 }, (_, index) =>
+      makeResult(`business-${index}`, 60, 50, 96, index % 2 === 0 ? "business email" : "Business Email", `2026-05-${String(index + 1).padStart(2, "0")}T10:00:00.000Z`, 200)
+    );
+
+    const analytics = buildProgressAnalytics(businessResults);
+    const achievements = new Map(analytics.achievements.items.map((achievement) => [achievement.id, achievement.isUnlocked]));
+
+    expect(analytics.summary.totalWordsTyped).toBe(1000);
+    expect(achievements.get("words-1000")).toBe(true);
+    expect(achievements.get("words-10000")).toBe(false);
+    expect(achievements.get("category-25")).toBe(true);
+    expect(achievements.get("category-100")).toBe(false);
+  });
+
+  it("calculates daily and weekly challenge progress using local dates and case-insensitive business categories", () => {
+    const analytics = buildProgressAnalytics(
+      [
+        makeResult("today-1", 60, 55, 99, "Business email", "2026-06-21T01:00:00.000Z", 275),
+        makeResult("today-2", 300, 58, 96, "Legal", "2026-06-21T02:00:00.000Z", 1450),
+        makeResult("today-3", 60, 61, 97, "BUSINESS Memo", "2026-06-21T03:00:00.000Z", 305),
+        makeResult("week-business", 300, 57, 95, "business report", "2026-06-19T03:00:00.000Z", 1425),
+        makeResult("last-week", 600, 70, 100, "Business email", "2026-06-12T03:00:00.000Z", 3500)
+      ],
+      { now: new Date("2026-06-21T12:00:00.000Z") }
+    );
+
+    expect(analytics.challenges.daily.items).toEqual([
+      expect.objectContaining({ id: "daily-tests", progress: 3, target: 3, isComplete: true }),
+      expect.objectContaining({ id: "daily-minutes", progress: 7, target: 10, isComplete: false }),
+      expect.objectContaining({ id: "daily-accuracy", progress: 99, target: 98, isComplete: true })
+    ]);
+    expect(analytics.challenges.weekly.items).toEqual([
+      expect.objectContaining({ id: "weekly-minutes", progress: 12, target: 30, isComplete: false }),
+      expect.objectContaining({ id: "weekly-tests", progress: 4, target: 20, isComplete: false }),
+      expect.objectContaining({ id: "weekly-business", progress: 3, target: 10, isComplete: false })
+    ]);
+  });
+
+  it("unlocks improvement achievements when the recent average is higher than the early average", () => {
+    const early = Array.from({ length: 5 }, (_, index) =>
+      makeResult(`early-${index}`, 60, 40, 96, "Business email", new Date(Date.UTC(2026, 4, index + 1)).toISOString(), 200)
+    );
+    const recent = Array.from({ length: 5 }, (_, index) =>
+      makeResult(`recent-${index}`, 60, 61, 96, "Business email", new Date(Date.UTC(2026, 5, index + 1)).toISOString(), 305)
+    );
+
+    const analytics = buildProgressAnalytics([...recent, ...early]);
+    const achievements = new Map(analytics.achievements.items.map((achievement) => [achievement.id, achievement.isUnlocked]));
+
+    expect(analytics.improvement.averageWpmGain).toBe(21);
+    expect(achievements.get("improvement-10")).toBe(true);
+    expect(achievements.get("improvement-20")).toBe(true);
   });
 });
 
@@ -164,7 +240,8 @@ function makeResult(
   wpm: number,
   accuracy: number,
   category: string | null,
-  createdAt: string
+  createdAt: string,
+  correctCharacters = Math.round(wpm * 5 * Math.max(durationSeconds, 60) / 60)
 ): SupabaseAnalyticsTypingResultRow {
   return {
     id,
@@ -173,6 +250,7 @@ function makeResult(
     duration_seconds: durationSeconds,
     wpm,
     accuracy,
+    correct_chars: correctCharacters,
     created_at: createdAt
   };
 }

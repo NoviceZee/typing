@@ -72,10 +72,16 @@ describe("ProfilePage", () => {
     expect(screen.getByRole("button", { name: "Last 90" })).toBeTruthy();
     expect(screen.getByText("Consistency")).toBeTruthy();
     expect(screen.getByText("Not enough data yet")).toBeTruthy();
+    expect(screen.getByText("Level")).toBeTruthy();
+    expect(screen.getByText("Total XP")).toBeTruthy();
+    expect(screen.getByText("Daily Challenge")).toBeTruthy();
+    expect(screen.getByText("Weekly Challenge")).toBeTruthy();
     expect(screen.getByText("Achievements")).toBeTruthy();
-    expect(screen.getByText("6 / 12 unlocked")).toBeTruthy();
+    expect(screen.getByText("6 / 23 unlocked")).toBeTruthy();
     expect(screen.getByText("First Test")).toBeTruthy();
     expect(screen.getByText("Getting Started")).toBeTruthy();
+    expect(screen.getByText("100-Day Streak")).toBeTruthy();
+    expect(screen.getByText("1,000 Words")).toBeTruthy();
     expect(screen.getByText("Category Breakdown")).toBeTruthy();
     expect(screen.getByText("Weakest: News article")).toBeTruthy();
     expect(screen.getByText("Activity")).toBeTruthy();
@@ -107,7 +113,10 @@ describe("ProfilePage", () => {
     });
 
     expect(screen.getByText("Achievements")).toBeTruthy();
-    expect(screen.getByText("0 / 12 unlocked")).toBeTruthy();
+    expect(screen.getByText("Level")).toBeTruthy();
+    expect(screen.getByText("Daily Challenge")).toBeTruthy();
+    expect(screen.getByText("Weekly Challenge")).toBeTruthy();
+    expect(screen.getByText("0 / 23 unlocked")).toBeTruthy();
     expect(screen.getByText("First Test")).toBeTruthy();
     expect(screen.getAllByText("Locked").length).toBeGreaterThan(0);
     expect(screen.queryByText("Progress Summary")).toBeNull();
@@ -129,6 +138,7 @@ function makeResult(
     duration_seconds: durationSeconds,
     wpm,
     accuracy,
+    correct_chars: Math.round(wpm * 5 * Math.max(durationSeconds, 60) / 60),
     created_at: createdAt
   };
 }

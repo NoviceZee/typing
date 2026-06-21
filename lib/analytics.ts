@@ -9,6 +9,7 @@ export type ProgressAnalytics = {
     bestAccuracy: number;
     totalTests: number;
     totalPracticeSeconds: number;
+    totalWordsTyped: number;
   };
   recentTrend: SupabaseAnalyticsTypingResultRow[];
   records: {
@@ -33,6 +34,21 @@ export type ProgressAnalytics = {
     activeDays: number;
     activeDates: string[];
   };
+  progression: {
+    totalXp: number;
+    currentLevel: number;
+    currentLevelXp: number;
+    xpForNextLevel: number;
+    xpToNextLevel: number;
+    progressPercent: number;
+  };
+  improvement: {
+    averageWpmGain: number;
+  };
+  challenges: {
+    daily: ChallengeGroup;
+    weekly: ChallengeGroup;
+  };
   achievements: {
     unlockedCount: number;
     totalCount: number;
@@ -47,11 +63,34 @@ export type Achievement = {
   isUnlocked: boolean;
 };
 
+export type ChallengeGroup = {
+  title: string;
+  items: ChallengeItem[];
+};
+
+export type ChallengeItem = {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  target: number;
+  unit: string;
+  isComplete: boolean;
+};
+
+type BuildProgressAnalyticsOptions = {
+  now?: Date;
+};
+
 const RECENT_TREND_LIMIT = 30;
 const ONE_MINUTE_SECONDS = 60;
 const FIVE_MINUTE_SECONDS = 300;
+const LEVEL_XP = 100;
 
-export function buildProgressAnalytics(results: SupabaseAnalyticsTypingResultRow[]): ProgressAnalytics {
+export function buildProgressAnalytics(
+  results: SupabaseAnalyticsTypingResultRow[],
+  options: BuildProgressAnalyticsOptions = {}
+): ProgressAnalytics {
   const normalizedResults = results.map((result) => ({
     ...result,
     passage_category: normalizeCategory(result.passage_category)
@@ -69,9 +108,13 @@ export function buildProgressAnalytics(results: SupabaseAnalyticsTypingResultRow
     averageWpmLast100: roundOne(average(newestFirst.slice(0, 100).map((result) => result.wpm))),
     bestAccuracy: roundOne(maxOrZero(normalizedResults.map((result) => result.accuracy))),
     totalTests: normalizedResults.length,
-    totalPracticeSeconds: normalizedResults.reduce((total, result) => total + result.duration_seconds, 0)
+    totalPracticeSeconds: normalizedResults.reduce((total, result) => total + result.duration_seconds, 0),
+    totalWordsTyped: Math.floor(normalizedResults.reduce((total, result) => total + Math.max(0, result.correct_chars), 0) / 5)
   };
   const activity = getActivitySummary(normalizedResults);
+  const progression = getProgression(normalizedResults, activity);
+  const improvement = getImprovement(normalizedResults);
+  const challenges = getChallenges(normalizedResults, options.now ?? new Date());
 
   return {
     summary,
@@ -84,14 +127,20 @@ export function buildProgressAnalytics(results: SupabaseAnalyticsTypingResultRow
     categoryBreakdown,
     weakestCategory: getWeakestCategory(categoryBreakdown),
     activity,
-    achievements: getAchievements(summary, activity)
+    progression,
+    improvement,
+    challenges,
+    achievements: getAchievements(summary, activity, categoryBreakdown, improvement)
   };
 }
 
 function getAchievements(
   summary: ProgressAnalytics["summary"],
-  activity: ProgressAnalytics["activity"]
+  activity: ProgressAnalytics["activity"],
+  categoryBreakdown: ProgressAnalytics["categoryBreakdown"],
+  improvement: ProgressAnalytics["improvement"]
 ): ProgressAnalytics["achievements"] {
+  const bestCategoryCount = maxOrZero(categoryBreakdown.map((category) => category.tests));
   const items: Achievement[] = [
     {
       id: "first-test",
@@ -164,6 +213,72 @@ function getAchievements(
       title: "Seven-Day Streak",
       description: "Practice on 7 consecutive days.",
       isUnlocked: activity.currentStreakDays >= 7
+    },
+    {
+      id: "fourteen-day-streak",
+      title: "14-Day Streak",
+      description: "Practice on 14 consecutive days.",
+      isUnlocked: activity.currentStreakDays >= 14
+    },
+    {
+      id: "thirty-day-streak",
+      title: "30-Day Streak",
+      description: "Practice on 30 consecutive days.",
+      isUnlocked: activity.currentStreakDays >= 30
+    },
+    {
+      id: "hundred-day-streak",
+      title: "100-Day Streak",
+      description: "Practice on 100 consecutive days.",
+      isUnlocked: activity.currentStreakDays >= 100
+    },
+    {
+      id: "words-1000",
+      title: "1,000 Words",
+      description: "Type 1,000 saved words.",
+      isUnlocked: summary.totalWordsTyped >= 1000
+    },
+    {
+      id: "words-10000",
+      title: "10,000 Words",
+      description: "Type 10,000 saved words.",
+      isUnlocked: summary.totalWordsTyped >= 10000
+    },
+    {
+      id: "words-50000",
+      title: "50,000 Words",
+      description: "Type 50,000 saved words.",
+      isUnlocked: summary.totalWordsTyped >= 50000
+    },
+    {
+      id: "words-100000",
+      title: "100,000 Words",
+      description: "Type 100,000 saved words.",
+      isUnlocked: summary.totalWordsTyped >= 100000
+    },
+    {
+      id: "category-25",
+      title: "Category Regular",
+      description: "Complete 25 passages in one category.",
+      isUnlocked: bestCategoryCount >= 25
+    },
+    {
+      id: "category-100",
+      title: "Category Specialist",
+      description: "Complete 100 passages in one category.",
+      isUnlocked: bestCategoryCount >= 100
+    },
+    {
+      id: "improvement-10",
+      title: "Plus 10 WPM",
+      description: "Improve your recent average WPM by 10.",
+      isUnlocked: improvement.averageWpmGain >= 10
+    },
+    {
+      id: "improvement-20",
+      title: "Plus 20 WPM",
+      description: "Improve your recent average WPM by 20.",
+      isUnlocked: improvement.averageWpmGain >= 20
     }
   ];
 
@@ -171,6 +286,115 @@ function getAchievements(
     unlockedCount: items.filter((item) => item.isUnlocked).length,
     totalCount: items.length,
     items
+  };
+}
+
+function getProgression(
+  results: SupabaseAnalyticsTypingResultRow[],
+  activity: ProgressAnalytics["activity"]
+): ProgressAnalytics["progression"] {
+  const totalXp =
+    results.length * 10 +
+    results.filter((result) => result.accuracy === 100).length * 10 +
+    getPersonalBestCount(results) * 25 +
+    activity.currentStreakDays * 5;
+  const currentLevel = Math.floor(totalXp / LEVEL_XP) + 1;
+  const currentLevelXp = totalXp % LEVEL_XP;
+  const xpToNextLevel = LEVEL_XP - currentLevelXp;
+
+  return {
+    totalXp,
+    currentLevel,
+    currentLevelXp,
+    xpForNextLevel: LEVEL_XP,
+    xpToNextLevel,
+    progressPercent: Math.round((currentLevelXp / LEVEL_XP) * 100)
+  };
+}
+
+function getPersonalBestCount(results: SupabaseAnalyticsTypingResultRow[]) {
+  let bestWpm = Number.NEGATIVE_INFINITY;
+  let bestCount = 0;
+
+  for (const result of [...results].sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at))) {
+    if (result.wpm > bestWpm) {
+      bestWpm = result.wpm;
+      bestCount += 1;
+    }
+  }
+
+  return bestCount;
+}
+
+function getImprovement(results: SupabaseAnalyticsTypingResultRow[]): ProgressAnalytics["improvement"] {
+  if (results.length < 10) {
+    return { averageWpmGain: 0 };
+  }
+
+  const oldestFirst = [...results].sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
+  const earlyAverage = average(oldestFirst.slice(0, 5).map((result) => result.wpm));
+  const recentAverage = average(oldestFirst.slice(-5).map((result) => result.wpm));
+
+  return {
+    averageWpmGain: roundOne(Math.max(0, recentAverage - earlyAverage))
+  };
+}
+
+function getChallenges(results: SupabaseAnalyticsTypingResultRow[], now: Date): ProgressAnalytics["challenges"] {
+  const todayKey = toDateKey(now);
+  const weekStart = getWeekStart(now);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const todayResults = results.filter((result) => toDateKey(result.created_at) === todayKey);
+  const weekResults = results.filter((result) => isWithinDateRange(new Date(result.created_at), weekStart, weekEnd));
+  const dailyMinutes = Math.floor(sumPracticeSeconds(todayResults) / 60);
+  const weeklyMinutes = Math.floor(sumPracticeSeconds(weekResults) / 60);
+  const dailyBestAccuracy = roundOne(maxOrZero(todayResults.map((result) => result.accuracy)));
+  const weeklyBusinessPassages = weekResults.filter((result) => isBusinessCategory(result.passage_category)).length;
+
+  return {
+    daily: {
+      title: "Daily Challenge",
+      items: [
+        toChallengeItem("daily-tests", "Complete 3 tests", "Finish 3 saved tests today.", todayResults.length, 3, "tests"),
+        toChallengeItem("daily-minutes", "Type for 10 minutes", "Practice for 10 saved minutes today.", dailyMinutes, 10, "minutes"),
+        toChallengeItem("daily-accuracy", "Achieve 98% accuracy", "Reach 98% accuracy in a saved result today.", dailyBestAccuracy, 98, "%")
+      ]
+    },
+    weekly: {
+      title: "Weekly Challenge",
+      items: [
+        toChallengeItem("weekly-minutes", "Complete 30 minutes", "Practice for 30 saved minutes this week.", weeklyMinutes, 30, "minutes"),
+        toChallengeItem("weekly-tests", "Complete 20 tests", "Finish 20 saved tests this week.", weekResults.length, 20, "tests"),
+        toChallengeItem(
+          "weekly-business",
+          "Complete 10 business passages",
+          "Finish 10 saved business passages this week.",
+          weeklyBusinessPassages,
+          10,
+          "passages"
+        )
+      ]
+    }
+  };
+}
+
+function toChallengeItem(
+  id: string,
+  title: string,
+  description: string,
+  progress: number,
+  target: number,
+  unit: string
+): ChallengeItem {
+  return {
+    id,
+    title,
+    description,
+    progress,
+    target,
+    unit,
+    isComplete: progress >= target
   };
 }
 
@@ -192,19 +416,24 @@ function getHighestAccuracy(results: SupabaseAnalyticsTypingResultRow[]) {
 }
 
 function getCategoryBreakdown(results: SupabaseAnalyticsTypingResultRow[]) {
-  const categories = new Map<string, SupabaseAnalyticsTypingResultRow[]>();
+  const categories = new Map<string, { label: string; results: SupabaseAnalyticsTypingResultRow[] }>();
 
   for (const result of results) {
     const category = normalizeCategory(result.passage_category);
-    categories.set(category, [...(categories.get(category) ?? []), result]);
+    const categoryKey = category.toLowerCase();
+    const existingCategory = categories.get(categoryKey);
+    categories.set(categoryKey, {
+      label: existingCategory?.label ?? category,
+      results: [...(existingCategory?.results ?? []), result]
+    });
   }
 
-  return Array.from(categories.entries())
-    .map(([category, categoryResults]) => ({
-      category,
-      averageWpm: roundOne(average(categoryResults.map((result) => result.wpm))),
-      averageAccuracy: roundOne(average(categoryResults.map((result) => result.accuracy))),
-      tests: categoryResults.length
+  return Array.from(categories.values())
+    .map((category) => ({
+      category: category.label,
+      averageWpm: roundOne(average(category.results.map((result) => result.wpm))),
+      averageAccuracy: roundOne(average(category.results.map((result) => result.accuracy))),
+      tests: category.results.length
     }))
     .sort((left, right) => right.tests - left.tests || left.category.localeCompare(right.category));
 }
@@ -232,9 +461,9 @@ function getCurrentStreakDays(activeDates: string[]) {
   let streak = 0;
   let cursor = parseDateKey(activeDates[activeDates.length - 1]);
 
-  while (activeDateSet.has(toDateKey(cursor.toISOString()))) {
+  while (activeDateSet.has(toDateKey(cursor))) {
     streak += 1;
-    cursor.setUTCDate(cursor.getUTCDate() - 1);
+    cursor.setDate(cursor.getDate() - 1);
   }
 
   return streak;
@@ -256,18 +485,42 @@ function normalizeCategory(category: string | null) {
   return category?.trim() || "Uncategorised";
 }
 
-function toDateKey(value: string) {
+function sumPracticeSeconds(results: SupabaseAnalyticsTypingResultRow[]) {
+  return results.reduce((total, result) => total + result.duration_seconds, 0);
+}
+
+function isBusinessCategory(category: string | null) {
+  return Boolean(category?.toLowerCase().includes("business"));
+}
+
+function isWithinDateRange(date: Date, start: Date, end: Date) {
+  return date.getTime() >= start.getTime() && date.getTime() < end.getTime();
+}
+
+function getWeekStart(value: Date) {
   const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  const daysSinceMonday = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - daysSinceMonday);
+  return date;
+}
+
+function toDateKey(value: string | Date) {
+  const date = value instanceof Date ? new Date(value) : new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return "";
   }
 
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function parseDateKey(value: string) {
-  return new Date(`${value}T00:00:00.000Z`);
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function average(values: number[]) {

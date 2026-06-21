@@ -119,6 +119,8 @@ export default function ProfilePage() {
                     to build your progress profile.
                   </p>
                 </section>
+                <ProgressionSection analytics={analytics} />
+                <ChallengesSection analytics={analytics} />
                 <AchievementsSection analytics={analytics} />
               </>
             )}
@@ -127,6 +129,8 @@ export default function ProfilePage() {
               <>
                 <ProgressSummary analytics={analytics} />
                 <MyResults results={results} />
+                <ProgressionSection analytics={analytics} />
+                <ChallengesSection analytics={analytics} />
                 <AchievementsSection analytics={analytics} />
                 <Trends
                   range={trendRange}
@@ -144,6 +148,87 @@ export default function ProfilePage() {
         )}
       </section>
     </AppShell>
+  );
+}
+
+function ProgressionSection({ analytics }: { analytics: ReturnType<typeof buildProgressAnalytics> }) {
+  return (
+    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="font-mono text-sm uppercase text-brass">Level</h2>
+          <p className="mt-2 font-mono text-4xl font-semibold text-paper">{analytics.progression.currentLevel}</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ProgressionMetric label="Total XP" value={analytics.progression.totalXp} />
+          <ProgressionMetric label="XP to next level" value={analytics.progression.xpToNextLevel} />
+        </div>
+      </div>
+      <div className="mt-5">
+        <div className="flex items-center justify-between font-mono text-[0.68rem] uppercase text-paper/35">
+          <span>{analytics.progression.currentLevelXp} XP</span>
+          <span>{analytics.progression.xpForNextLevel} XP</span>
+        </div>
+        <div className="mt-2 h-3 overflow-hidden rounded-full bg-paper/[0.06]" aria-label="Level progress">
+          <div
+            className="h-full rounded-full bg-brass"
+            style={{ width: `${analytics.progression.progressPercent}%` }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProgressionMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <article className="min-w-40 rounded-md border border-paper/10 bg-ink-900/70 px-4 py-3 text-right">
+      <p className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</p>
+      <p className="mt-2 font-mono text-2xl text-paper">{value}</p>
+    </article>
+  );
+}
+
+function ChallengesSection({ analytics }: { analytics: ReturnType<typeof buildProgressAnalytics> }) {
+  return (
+    <section className="grid gap-4 lg:grid-cols-2">
+      <ChallengeGroupSection group={analytics.challenges.daily} />
+      <ChallengeGroupSection group={analytics.challenges.weekly} />
+    </section>
+  );
+}
+
+function ChallengeGroupSection({ group }: { group: ReturnType<typeof buildProgressAnalytics>["challenges"]["daily"] }) {
+  return (
+    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+      <h2 className="font-mono text-sm uppercase text-brass">{group.title}</h2>
+      <div className="mt-4 space-y-3">
+        {group.items.map((item) => (
+          <article key={item.id} className="rounded-md border border-paper/10 bg-ink-900/70 px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-mono text-xs uppercase text-paper">{item.title}</h3>
+                <p className="mt-1 text-sm leading-6 text-paper/45">{item.description}</p>
+              </div>
+              <span className={`font-mono text-xs uppercase ${item.isComplete ? "text-brass" : "text-paper/35"}`}>
+                {item.isComplete ? "Done" : "Open"}
+              </span>
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-paper/[0.06]">
+                <div
+                  className="h-full rounded-full bg-brass/80"
+                  style={{ width: `${Math.min(100, Math.round((item.progress / item.target) * 100))}%` }}
+                />
+              </div>
+              <p className="min-w-20 text-right font-mono text-xs text-paper/55">
+                {formatChallengeProgress(item.progress, item.unit)} / {formatChallengeProgress(item.target, item.unit)}
+              </p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -203,6 +288,10 @@ function AchievementsSection({ analytics }: { analytics: ReturnType<typeof build
       </div>
     </section>
   );
+}
+
+function formatChallengeProgress(value: number, unit: string) {
+  return unit === "%" ? `${formatNumber(value)}%` : `${value}`;
 }
 
 function MyResults({ results }: { results: SupabaseAnalyticsTypingResultRow[] }) {

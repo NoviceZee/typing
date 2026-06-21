@@ -41,6 +41,7 @@ export type SupabaseOwnTypingResultRow = {
 
 export type SupabaseAnalyticsTypingResultRow = SupabaseOwnTypingResultRow & {
   passage_category: string | null;
+  correct_chars: number;
 };
 
 export type SupabaseLeaderboardFilters = {
@@ -201,7 +202,7 @@ export async function getSupabaseAnalyticsTypingResults(
 ): Promise<SupabaseAnalyticsTypingResultRow[]> {
   const { data, error } = await client
     .from("typing_results")
-    .select("id,passage_title,duration_seconds,wpm,accuracy,created_at,passages(category)")
+    .select("id,passage_title,duration_seconds,wpm,accuracy,correct_chars,created_at,passages(category)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -231,6 +232,7 @@ function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingRe
     duration_seconds: Number(row.duration_seconds),
     wpm: Number(row.wpm),
     accuracy: Number(row.accuracy),
+    correct_chars: Number(row.correct_chars ?? 0),
     created_at: row.created_at
   };
 }
