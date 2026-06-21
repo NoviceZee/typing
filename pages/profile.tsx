@@ -3,7 +3,7 @@
 import React, { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { Activity, Clock, Medal, Target, Trophy } from "lucide-react";
+import { Activity, Award, Clock, Flame, Lock, Medal, Target, Trophy } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
@@ -109,21 +109,25 @@ export default function ProfilePage() {
             )}
 
             {!isLoadingResults && results.length === 0 && !resultsMessage && (
-              <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
-                <p className="font-mono text-sm text-paper/55">
-                  No saved results yet.{" "}
-                  <Link href="/practice" className="text-brass hover:text-brass/80">
-                    Start a practice session
-                  </Link>{" "}
-                  to build your progress profile.
-                </p>
-              </section>
+              <>
+                <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
+                  <p className="font-mono text-sm text-paper/55">
+                    No saved results yet.{" "}
+                    <Link href="/practice" className="text-brass hover:text-brass/80">
+                      Start a practice session
+                    </Link>{" "}
+                    to build your progress profile.
+                  </p>
+                </section>
+                <AchievementsSection analytics={analytics} />
+              </>
             )}
 
             {results.length > 0 && (
               <>
                 <ProgressSummary analytics={analytics} />
                 <MyResults results={results} />
+                <AchievementsSection analytics={analytics} />
                 <Trends
                   range={trendRange}
                   results={trendResults}
@@ -140,6 +144,64 @@ export default function ProfilePage() {
         )}
       </section>
     </AppShell>
+  );
+}
+
+function AchievementsSection({ analytics }: { analytics: ReturnType<typeof buildProgressAnalytics> }) {
+  return (
+    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="font-mono text-sm uppercase text-brass">Achievements</h2>
+          <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">
+            {analytics.achievements.unlockedCount} / {analytics.achievements.totalCount} unlocked
+          </p>
+        </div>
+        <div className="flex items-center gap-3 rounded-md border border-brass/20 bg-brass/10 px-4 py-3">
+          <Flame className="h-4 w-4 text-brass" />
+          <div>
+            <p className="font-mono text-[0.68rem] uppercase text-paper/40">Current streak</p>
+            <p className="font-mono text-xl text-paper">{analytics.activity.currentStreakDays} days</p>
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {analytics.achievements.items.map((achievement) => (
+          <article
+            key={achievement.id}
+            className={`rounded-md border px-4 py-4 transition ${
+              achievement.isUnlocked
+                ? "border-brass/30 bg-brass/10"
+                : "border-paper/10 bg-ink-900/70 opacity-70"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-mono text-sm uppercase text-paper">{achievement.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-paper/50">{achievement.description}</p>
+              </div>
+              <span
+                className={`rounded-full border p-2 ${
+                  achievement.isUnlocked
+                    ? "border-brass/35 bg-brass/15 text-brass"
+                    : "border-paper/10 bg-paper/[0.03] text-paper/30"
+                }`}
+                aria-hidden="true"
+              >
+                {achievement.isUnlocked ? <Award className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+              </span>
+            </div>
+            <p
+              className={`mt-4 font-mono text-[0.68rem] uppercase ${
+                achievement.isUnlocked ? "text-brass" : "text-paper/35"
+              }`}
+            >
+              {achievement.isUnlocked ? "Unlocked" : "Locked"}
+            </p>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 

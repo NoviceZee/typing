@@ -33,6 +33,18 @@ export type ProgressAnalytics = {
     activeDays: number;
     activeDates: string[];
   };
+  achievements: {
+    unlockedCount: number;
+    totalCount: number;
+    items: Achievement[];
+  };
+};
+
+export type Achievement = {
+  id: string;
+  title: string;
+  description: string;
+  isUnlocked: boolean;
 };
 
 const RECENT_TREND_LIMIT = 30;
@@ -50,17 +62,19 @@ export function buildProgressAnalytics(results: SupabaseAnalyticsTypingResultRow
     .slice(0, RECENT_TREND_LIMIT)
     .reverse();
   const categoryBreakdown = getCategoryBreakdown(normalizedResults);
+  const summary = {
+    bestWpm: roundOne(maxOrZero(normalizedResults.map((result) => result.wpm))),
+    averageWpm: roundOne(average(normalizedResults.map((result) => result.wpm))),
+    averageWpmLast10: roundOne(average(newestFirst.slice(0, 10).map((result) => result.wpm))),
+    averageWpmLast100: roundOne(average(newestFirst.slice(0, 100).map((result) => result.wpm))),
+    bestAccuracy: roundOne(maxOrZero(normalizedResults.map((result) => result.accuracy))),
+    totalTests: normalizedResults.length,
+    totalPracticeSeconds: normalizedResults.reduce((total, result) => total + result.duration_seconds, 0)
+  };
+  const activity = getActivitySummary(normalizedResults);
 
   return {
-    summary: {
-      bestWpm: roundOne(maxOrZero(normalizedResults.map((result) => result.wpm))),
-      averageWpm: roundOne(average(normalizedResults.map((result) => result.wpm))),
-      averageWpmLast10: roundOne(average(newestFirst.slice(0, 10).map((result) => result.wpm))),
-      averageWpmLast100: roundOne(average(newestFirst.slice(0, 100).map((result) => result.wpm))),
-      bestAccuracy: roundOne(maxOrZero(normalizedResults.map((result) => result.accuracy))),
-      totalTests: normalizedResults.length,
-      totalPracticeSeconds: normalizedResults.reduce((total, result) => total + result.duration_seconds, 0)
-    },
+    summary,
     recentTrend,
     records: {
       fastestOneMinute: getFastestForDuration(normalizedResults, ONE_MINUTE_SECONDS),
@@ -69,7 +83,94 @@ export function buildProgressAnalytics(results: SupabaseAnalyticsTypingResultRow
     },
     categoryBreakdown,
     weakestCategory: getWeakestCategory(categoryBreakdown),
-    activity: getActivitySummary(normalizedResults)
+    activity,
+    achievements: getAchievements(summary, activity)
+  };
+}
+
+function getAchievements(
+  summary: ProgressAnalytics["summary"],
+  activity: ProgressAnalytics["activity"]
+): ProgressAnalytics["achievements"] {
+  const items: Achievement[] = [
+    {
+      id: "first-test",
+      title: "First Test",
+      description: "Save your first typing result.",
+      isUnlocked: summary.totalTests >= 1
+    },
+    {
+      id: "getting-started",
+      title: "Getting Started",
+      description: "Save 10 typing results.",
+      isUnlocked: summary.totalTests >= 10
+    },
+    {
+      id: "dedicated-typist",
+      title: "Dedicated Typist",
+      description: "Save 50 typing results.",
+      isUnlocked: summary.totalTests >= 50
+    },
+    {
+      id: "century-club",
+      title: "Century Club",
+      description: "Save 100 typing results.",
+      isUnlocked: summary.totalTests >= 100
+    },
+    {
+      id: "speed-40",
+      title: "Speed 40",
+      description: "Reach 40 WPM in a saved result.",
+      isUnlocked: summary.bestWpm >= 40
+    },
+    {
+      id: "speed-50",
+      title: "Speed 50",
+      description: "Reach 50 WPM in a saved result.",
+      isUnlocked: summary.bestWpm >= 50
+    },
+    {
+      id: "speed-60",
+      title: "Speed 60",
+      description: "Reach 60 WPM in a saved result.",
+      isUnlocked: summary.bestWpm >= 60
+    },
+    {
+      id: "accuracy-95",
+      title: "Accuracy 95",
+      description: "Reach 95% accuracy in a saved result.",
+      isUnlocked: summary.bestAccuracy >= 95
+    },
+    {
+      id: "accuracy-99",
+      title: "Accuracy 99",
+      description: "Reach 99% accuracy in a saved result.",
+      isUnlocked: summary.bestAccuracy >= 99
+    },
+    {
+      id: "perfect-accuracy",
+      title: "Perfect Accuracy",
+      description: "Save a result with 100% accuracy.",
+      isUnlocked: summary.bestAccuracy === 100
+    },
+    {
+      id: "three-day-streak",
+      title: "Three-Day Streak",
+      description: "Practice on 3 consecutive days.",
+      isUnlocked: activity.currentStreakDays >= 3
+    },
+    {
+      id: "seven-day-streak",
+      title: "Seven-Day Streak",
+      description: "Practice on 7 consecutive days.",
+      isUnlocked: activity.currentStreakDays >= 7
+    }
+  ];
+
+  return {
+    unlockedCount: items.filter((item) => item.isUnlocked).length,
+    totalCount: items.length,
+    items
   };
 }
 

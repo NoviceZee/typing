@@ -88,6 +88,74 @@ describe("buildProgressAnalytics", () => {
     expect(analytics.activity.currentStreakDays).toBe(2);
     expect(analytics.activity.activeDays).toBe(3);
   });
+
+  it("calculates achievement unlocks from saved results", () => {
+    const results = Array.from({ length: 10 }, (_, index) =>
+      makeResult(
+        `result-${index}`,
+        60,
+        index === 0 ? 55 : 42,
+        index === 1 ? 99.4 : 96,
+        "Business email",
+        new Date(Date.UTC(2026, 5, 1 + index * 2)).toISOString()
+      )
+    );
+
+    const analytics = buildProgressAnalytics(results);
+    const achievements = new Map(analytics.achievements.items.map((achievement) => [achievement.id, achievement.isUnlocked]));
+
+    expect(analytics.achievements.totalCount).toBe(12);
+    expect(analytics.achievements.unlockedCount).toBe(6);
+    expect(achievements.get("first-test")).toBe(true);
+    expect(achievements.get("getting-started")).toBe(true);
+    expect(achievements.get("dedicated-typist")).toBe(false);
+    expect(achievements.get("speed-40")).toBe(true);
+    expect(achievements.get("speed-50")).toBe(true);
+    expect(achievements.get("speed-60")).toBe(false);
+    expect(achievements.get("accuracy-95")).toBe(true);
+    expect(achievements.get("accuracy-99")).toBe(true);
+    expect(achievements.get("perfect-accuracy")).toBe(false);
+  });
+
+  it("unlocks streak achievements from consecutive practice days", () => {
+    const threeDayStreak = buildProgressAnalytics([
+      makeResult("day-3", 60, 70, 98, "Business email", "2026-06-21T10:00:00.000Z"),
+      makeResult("day-2", 60, 70, 98, "Business email", "2026-06-20T10:00:00.000Z"),
+      makeResult("day-1", 60, 70, 98, "Business email", "2026-06-19T10:00:00.000Z")
+    ]);
+    const threeDayAchievements = new Map(
+      threeDayStreak.achievements.items.map((achievement) => [achievement.id, achievement.isUnlocked])
+    );
+
+    expect(threeDayAchievements.get("three-day-streak")).toBe(true);
+    expect(threeDayAchievements.get("seven-day-streak")).toBe(false);
+
+    const sevenDayStreak = buildProgressAnalytics(
+      Array.from({ length: 7 }, (_, index) =>
+        makeResult(
+          `day-${index}`,
+          60,
+          70,
+          98,
+          "Business email",
+          new Date(Date.UTC(2026, 5, 15 + index)).toISOString()
+        )
+      )
+    );
+    const sevenDayAchievements = new Map(
+      sevenDayStreak.achievements.items.map((achievement) => [achievement.id, achievement.isUnlocked])
+    );
+
+    expect(sevenDayAchievements.get("seven-day-streak")).toBe(true);
+  });
+
+  it("keeps every achievement locked when there are no saved results", () => {
+    const analytics = buildProgressAnalytics([]);
+
+    expect(analytics.achievements.totalCount).toBe(12);
+    expect(analytics.achievements.unlockedCount).toBe(0);
+    expect(analytics.achievements.items.every((achievement) => !achievement.isUnlocked)).toBe(true);
+  });
 });
 
 function makeResult(

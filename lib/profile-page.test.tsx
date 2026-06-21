@@ -72,10 +72,14 @@ describe("ProfilePage", () => {
     expect(screen.getByRole("button", { name: "Last 90" })).toBeTruthy();
     expect(screen.getByText("Consistency")).toBeTruthy();
     expect(screen.getByText("Not enough data yet")).toBeTruthy();
+    expect(screen.getByText("Achievements")).toBeTruthy();
+    expect(screen.getByText("6 / 12 unlocked")).toBeTruthy();
+    expect(screen.getByText("First Test")).toBeTruthy();
+    expect(screen.getByText("Getting Started")).toBeTruthy();
     expect(screen.getByText("Category Breakdown")).toBeTruthy();
     expect(screen.getByText("Weakest: News article")).toBeTruthy();
     expect(screen.getByText("Activity")).toBeTruthy();
-    expect(screen.getByText("Current streak")).toBeTruthy();
+    expect(screen.getAllByText("Current streak").length).toBeGreaterThan(0);
     expect(screen.getByText("My Results")).toBeTruthy();
     expect(screen.getByText("Recent attempts")).toBeTruthy();
     expect(screen.getByText("Passage latest")).toBeTruthy();
@@ -91,6 +95,22 @@ describe("ProfilePage", () => {
       expect(mockState.routerPush).toHaveBeenCalledWith("/login?redirectTo=/profile");
     });
     expect(mockedGetSupabaseAnalyticsTypingResults).not.toHaveBeenCalled();
+  });
+
+  it("renders locked achievements for an authenticated user with no saved results", async () => {
+    mockedGetSupabaseAnalyticsTypingResults.mockResolvedValueOnce([]);
+
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/No saved results yet/)).toBeTruthy();
+    });
+
+    expect(screen.getByText("Achievements")).toBeTruthy();
+    expect(screen.getByText("0 / 12 unlocked")).toBeTruthy();
+    expect(screen.getByText("First Test")).toBeTruthy();
+    expect(screen.getAllByText("Locked").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Progress Summary")).toBeNull();
   });
 });
 
