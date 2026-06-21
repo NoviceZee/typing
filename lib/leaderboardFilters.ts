@@ -3,13 +3,22 @@ export type LeaderboardTimeRange = "today" | "yesterday" | "this_week" | "this_m
 export const LEADERBOARD_TIME_RANGE_OPTIONS: Array<{ label: string; value: LeaderboardTimeRange }> = [
   { label: "Today", value: "today" },
   { label: "Yesterday", value: "yesterday" },
-  { label: "This week", value: "this_week" },
-  { label: "This month", value: "this_month" },
-  { label: "This year", value: "this_year" },
-  { label: "All time", value: "all_time" }
+  { label: "Week", value: "this_week" },
+  { label: "Month", value: "this_month" },
+  { label: "Year", value: "this_year" },
+  { label: "All-time", value: "all_time" }
 ];
 
-export const DEFAULT_LEADERBOARD_TIME_RANGE: LeaderboardTimeRange = "this_week";
+export const DEFAULT_LEADERBOARD_TIME_RANGE: LeaderboardTimeRange = "today";
+
+export const LEADERBOARD_HEADING_BY_RANGE: Record<LeaderboardTimeRange, string> = {
+  today: "Daily Leaderboard",
+  yesterday: "Yesterday Leaderboard",
+  this_week: "Weekly Leaderboard",
+  this_month: "Monthly Leaderboard",
+  this_year: "Yearly Leaderboard",
+  all_time: "All-time Leaderboard"
+};
 
 export function getLeaderboardDateRange(range: LeaderboardTimeRange, now = new Date()) {
   if (range === "all_time") {

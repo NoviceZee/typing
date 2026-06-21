@@ -11,6 +11,7 @@ import {
 import { getDurationFilterOptions } from "@/lib/practiceDurations";
 import {
   DEFAULT_LEADERBOARD_TIME_RANGE,
+  LEADERBOARD_HEADING_BY_RANGE,
   LEADERBOARD_TIME_RANGE_OPTIONS,
   LeaderboardTimeRange
 } from "@/lib/leaderboardFilters";
@@ -114,7 +115,9 @@ export default function LeaderboardPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase text-brass">Leaderboard</p>
-            <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Top typing results</h1>
+            <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">
+              {LEADERBOARD_HEADING_BY_RANGE[timeRange]}
+            </h1>
           </div>
           <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 text-right shadow-glow">
             <p className="font-mono text-2xl text-paper">{results.length}</p>
@@ -126,13 +129,29 @@ export default function LeaderboardPage() {
           Ranked by WPM, then accuracy. Only public handles are shown.
         </p>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <FilterSelect
-            label="Time range"
-            value={timeRange}
-            onChange={(value) => setTimeRange(value as LeaderboardTimeRange)}
-            options={LEADERBOARD_TIME_RANGE_OPTIONS}
-          />
+        <div className="mt-6 flex flex-wrap gap-2" aria-label="Leaderboard time range">
+          {LEADERBOARD_TIME_RANGE_OPTIONS.map((option) => {
+            const isSelected = timeRange === option.value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => setTimeRange(option.value)}
+                className={`rounded-md border px-3 py-2 font-mono text-xs transition ${
+                  isSelected
+                    ? "border-brass/60 bg-brass/15 text-brass"
+                    : "border-paper/10 bg-ink-950 text-paper/55 hover:border-paper/25 hover:text-paper"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <FilterSelect
             label="Duration"
             value={durationFilter}
