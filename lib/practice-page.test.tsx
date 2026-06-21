@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PracticePage from "../pages/practice";
@@ -57,6 +57,7 @@ describe("PracticePage passage loading", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   it("shows a quiet reserved placeholder until Supabase passage resolution finishes", async () => {
@@ -165,6 +166,135 @@ describe("PracticePage passage loading", () => {
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
     expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
+  });
+
+  it("shows previous pace after a time-up finish and same-passage restart", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-21T12:00:00.000Z"));
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_250);
+    });
+
+    expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    const justFinishedResult = readPreviousResult("local", 60);
+
+    expect(justFinishedResult).toBeTruthy();
+    expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "L");
+
+    expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
+  });
+
+  it("renders the in-text previous pace marker after a time-up same-passage restart", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-21T12:00:00.000Z"));
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_250);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    const justFinishedResult = readPreviousResult("local", 60);
+
+    expect(justFinishedResult).toBeTruthy();
+    expect(justFinishedResult?.timeline?.some((point) => point.timeSeconds === 10)).toBe(true);
+
+    fireEvent.keyDown(window, { key: "Tab" });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    const marker = screen.getByTestId("previous-pace-marker");
+    expect(marker).toBeTruthy();
+    expect(marker.getAttribute("data-character-index")).toBe(String("Local fallback body text".length));
+
+    typeIncrementally(screen.getByLabelText("Typing input"), "L");
+
+    expect(screen.getByTestId("previous-pace-marker")).toBeTruthy();
+  });
+
+  it("removes the in-text previous pace marker when switching passages", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("local", "Local active", "Local fallback body text for typing."),
+        makePassage("other", "Other active", "Other passage body text for typing.")
+      ])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-21T12:00:00.000Z"));
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_250);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    fireEvent.keyDown(window, { key: "Tab" });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(screen.getByTestId("previous-pace-marker")).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyDown(window, { key: "Enter" });
+    fireEvent.keyUp(window, { key: "Tab" });
+    vi.useRealTimers();
+
+    fireEvent.change(screen.getByLabelText("Passage"), {
+      target: { value: "other" }
+    });
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Other passage body text for typing");
+    });
+    expect(screen.queryByTestId("previous-pace-marker")).toBeNull();
   });
 
   it("preserves 5-minute previous pace after restarting the same passage", async () => {

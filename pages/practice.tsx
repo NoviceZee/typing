@@ -24,6 +24,7 @@ import {
   CategoryFilter,
   PreviousTypingResult,
   PreviousResultScope,
+  PreviousPaceTimelinePoint,
   LibraryPassage,
   StoredPassage,
   StoredPassageTextMode,
@@ -72,6 +73,7 @@ type SessionStatus = "idle" | "running" | "finished";
 
 export type AttemptTimelinePoint = {
   timeSeconds: number;
+  characterIndex?: number;
   wpm: number;
   accuracy?: number;
 };
@@ -142,6 +144,16 @@ export default function PracticePage() {
     () => filterLibraryByCategory(availableLibrary, selectedCategory),
     [availableLibrary, selectedCategory]
   );
+  const previousComparisonMatches = Boolean(
+    passage?.id &&
+      previousResult &&
+      previousResult.passageId === passage.id &&
+      (!previousResult.durationSeconds || previousResult.durationSeconds === durationSeconds)
+  );
+  const previousPaceMarkerIndex =
+    previousComparisonMatches && status !== "finished"
+      ? getPreviousPaceIndex(previousResult?.timeline, elapsedSeconds)
+      : null;
   const choosePracticePassage = useCallback(
     ({
       library,
@@ -327,6 +339,7 @@ export default function PracticePage() {
       });
       const finalTimelinePoint: AttemptTimelinePoint = {
         timeSeconds: finalResult.timeUsedSeconds,
+        characterIndex: typedTextRef.current.length,
         wpm: finalResult.wpm,
         accuracy: finalResult.accuracy
       };
@@ -336,7 +349,13 @@ export default function PracticePage() {
 
       const comparisonPreviousResult = readPreviousResult(passage.id, previousResultScope);
       if (!isSuspicious) {
-        writePreviousResult(passage, finalResult, typedTextRef.current.length, previousResultScope);
+        writePreviousResult(
+          passage,
+          finalResult,
+          typedTextRef.current.length,
+          previousResultScope,
+          completedTimeline.map(toPreviousPaceTimelinePoint)
+        );
       }
       setPreviousResult(comparisonPreviousResult);
       setLastResult(finalResult);
@@ -862,13 +881,15 @@ export default function PracticePage() {
               {isPassageLoading ? (
                 <PassageLoadingPlaceholder />
               ) : (
-                comparison.characters.map((character, index) => {
+                <>
+                  {comparison.characters.map((character, index) => {
                 const isCurrent = character.status === "current";
                 const isLineBreak = character.expected === "\n" || character.actual === "\n";
 
                 if (isLineBreak) {
                   return (
                     <Fragment key={`${character.index}-${index}-${character.expected}-${character.actual}`}>
+                      {previousPaceMarkerIndex === index && <PreviousPaceMarker characterIndex={index} />}
                       <span
                         ref={isCurrent ? currentCharRef : undefined}
                         data-index={index}
@@ -887,18 +908,24 @@ export default function PracticePage() {
                 }
 
                 return (
-                  <span
-                    key={`${character.index}-${index}-${character.expected}-${character.actual}`}
-                    ref={isCurrent ? currentCharRef : undefined}
-                    data-index={index}
-                    className={clsx(
-                      characterClass(character.status, rules.showMistakesImmediately || isFinished)
-                    )}
-                  >
-                    {character.actual || character.expected}
-                  </span>
+                  <Fragment key={`${character.index}-${index}-${character.expected}-${character.actual}`}>
+                    {previousPaceMarkerIndex === index && <PreviousPaceMarker characterIndex={index} />}
+                    <span
+                      ref={isCurrent ? currentCharRef : undefined}
+                      data-index={index}
+                      className={clsx(
+                        characterClass(character.status, rules.showMistakesImmediately || isFinished)
+                      )}
+                    >
+                      {character.actual || character.expected}
+                    </span>
+                  </Fragment>
                 );
-                })
+                  })}
+                  {previousPaceMarkerIndex !== null && previousPaceMarkerIndex >= comparison.characters.length && (
+                    <PreviousPaceMarker characterIndex={comparison.characters.length} />
+                  )}
+                </>
               )}
             </p>
           </div>
@@ -966,6 +993,19 @@ function PassageLoadingPlaceholder() {
           style={{ width: `${width}%`, marginTop: index === 0 ? 0 : undefined }}
         />
       ))}
+    </span>
+  );
+}
+
+function PreviousPaceMarker({ characterIndex }: { characterIndex: number }) {
+  return (
+    <span
+      data-testid="previous-pace-marker"
+      data-character-index={characterIndex}
+      aria-hidden="true"
+      className="relative inline-block w-0 overflow-visible align-baseline"
+    >
+      <span className="absolute -left-px top-[-0.12em] h-[1.2em] w-px rounded-full bg-brass/75 shadow-[0_0_8px_rgba(221,167,75,0.4)]" />
     </span>
   );
 }
@@ -1569,9 +1609,65 @@ function buildAttemptTimelinePoint({
 
   return {
     timeSeconds: Math.round(elapsedSeconds),
+    characterIndex: typedText.length,
     wpm: roundOne(comparison.correctCharacters / 5 / minutes),
     accuracy: comparison.accuracy
   };
+}
+
+function toPreviousPaceTimelinePoint(point: AttemptTimelinePoint): PreviousPaceTimelinePoint {
+  return {
+    timeSeconds: point.timeSeconds,
+    characterIndex: Math.max(0, Math.round(point.characterIndex ?? 0)),
+    wpm: point.wpm
+  };
+}
+
+export function getPreviousPaceIndex(
+  timeline: PreviousPaceTimelinePoint[] | null | undefined,
+  currentElapsedSeconds: number
+) {
+  if (!timeline || timeline.length === 0) {
+    return null;
+  }
+
+  const sortedTimeline = timeline
+    .filter((point) => Number.isFinite(point.timeSeconds) && Number.isFinite(point.characterIndex))
+    .sort((left, right) => left.timeSeconds - right.timeSeconds);
+
+  if (sortedTimeline.length === 0) {
+    return null;
+  }
+
+  if (currentElapsedSeconds <= 0) {
+    return 0;
+  }
+
+  const exactPoint = sortedTimeline.find((point) => point.timeSeconds === Math.round(currentElapsedSeconds));
+  if (exactPoint) {
+    return Math.max(0, Math.round(exactPoint.characterIndex));
+  }
+
+  const nextPoint = sortedTimeline.find((point) => point.timeSeconds > currentElapsedSeconds);
+  if (!nextPoint) {
+    return Math.max(0, Math.round(sortedTimeline[sortedTimeline.length - 1].characterIndex));
+  }
+
+  const previousPointIndex = sortedTimeline.indexOf(nextPoint) - 1;
+  if (previousPointIndex < 0) {
+    return Math.max(0, Math.round(nextPoint.characterIndex));
+  }
+
+  const previousPoint = sortedTimeline[previousPointIndex];
+  const elapsedRange = nextPoint.timeSeconds - previousPoint.timeSeconds;
+  if (elapsedRange <= 0) {
+    return Math.max(0, Math.round(previousPoint.characterIndex));
+  }
+
+  const progress = (currentElapsedSeconds - previousPoint.timeSeconds) / elapsedRange;
+  const interpolatedIndex =
+    previousPoint.characterIndex + (nextPoint.characterIndex - previousPoint.characterIndex) * progress;
+  return Math.max(0, Math.round(interpolatedIndex));
 }
 
 export function addAttemptTimelinePoint(points: AttemptTimelinePoint[], point: AttemptTimelinePoint) {
