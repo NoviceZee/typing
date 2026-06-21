@@ -6,7 +6,6 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AccountPage from "../pages/profile/account";
 import { getSupabaseProfile, upsertSupabaseProfile } from "@/lib/profileStorage";
-import { getSupabaseOwnTypingResults } from "@/lib/typingResultStorage";
 
 const mockState = vi.hoisted(() => ({
   user: { id: "user-1", email: "typist@example.com" } as { id: string; email: string } | null,
@@ -39,27 +38,8 @@ vi.mock("@/lib/profileStorage", () => ({
   upsertSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Updated Typist" })
 }));
 
-vi.mock("@/lib/typingResultStorage", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/typingResultStorage")>("@/lib/typingResultStorage");
-
-  return {
-    ...actual,
-    getSupabaseOwnTypingResults: vi.fn().mockResolvedValue([
-      {
-        id: "result-1",
-        passage_title: "Board memo",
-        duration_seconds: 60,
-        wpm: 72,
-        accuracy: 98.2,
-        created_at: "2026-06-21T00:00:00.000Z"
-      }
-    ])
-  };
-});
-
 const mockedGetSupabaseProfile = vi.mocked(getSupabaseProfile);
 const mockedUpsertSupabaseProfile = vi.mocked(upsertSupabaseProfile);
-const mockedGetSupabaseOwnTypingResults = vi.mocked(getSupabaseOwnTypingResults);
 
 describe("Profile account page", () => {
   beforeEach(() => {
@@ -69,10 +49,9 @@ describe("Profile account page", () => {
     mockState.routerPush.mockClear();
     mockedGetSupabaseProfile.mockClear();
     mockedUpsertSupabaseProfile.mockClear();
-    mockedGetSupabaseOwnTypingResults.mockClear();
   });
 
-  it("renders original account settings functions", async () => {
+  it("renders simplified account settings without results", async () => {
     render(<AccountPage />);
 
     await waitFor(() => {
@@ -80,12 +59,13 @@ describe("Profile account page", () => {
     });
 
     expect(mockedGetSupabaseProfile).toHaveBeenCalledWith("user-1");
-    expect(mockedGetSupabaseOwnTypingResults).toHaveBeenCalledWith("user-1");
     expect(screen.getByText("Profile Settings")).toBeTruthy();
     expect(screen.getByText("This public name appears on leaderboard rows. Your email stays private.")).toBeTruthy();
-    expect(screen.getByText("My Results")).toBeTruthy();
-    expect(screen.getByText("Typing rules")).toBeTruthy();
-    expect(screen.getByText("Require Tab to start")).toBeTruthy();
+    expect(screen.getByText("Email")).toBeTruthy();
+    expect(screen.getByText("typist@example.com")).toBeTruthy();
+    expect(screen.getByText("Username and handle setup will be added later.")).toBeTruthy();
+    expect(screen.queryByText("My Results")).toBeNull();
+    expect(screen.queryByText("Typing rules")).toBeNull();
   });
 
   it("saves display name from account settings", async () => {
@@ -110,6 +90,5 @@ describe("Profile account page", () => {
       expect(mockState.routerPush).toHaveBeenCalledWith("/login?redirectTo=/profile/account");
     });
     expect(mockedGetSupabaseProfile).not.toHaveBeenCalled();
-    expect(mockedGetSupabaseOwnTypingResults).not.toHaveBeenCalled();
   });
 });

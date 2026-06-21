@@ -76,6 +76,9 @@ describe("ProfilePage", () => {
     expect(screen.getByText("Weakest: News article")).toBeTruthy();
     expect(screen.getByText("Activity")).toBeTruthy();
     expect(screen.getByText("Current streak")).toBeTruthy();
+    expect(screen.getByText("My Results")).toBeTruthy();
+    expect(screen.getByText("Recent attempts")).toBeTruthy();
+    expect(screen.getByText("Passage latest")).toBeTruthy();
     expect(screen.queryByText("Profile Settings")).toBeNull();
   });
 

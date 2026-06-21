@@ -123,6 +123,7 @@ export default function ProfilePage() {
             {results.length > 0 && (
               <>
                 <ProgressSummary analytics={analytics} />
+                <MyResults results={results} />
                 <Trends
                   range={trendRange}
                   results={trendResults}
@@ -139,6 +140,46 @@ export default function ProfilePage() {
         )}
       </section>
     </AppShell>
+  );
+}
+
+function MyResults({ results }: { results: SupabaseAnalyticsTypingResultRow[] }) {
+  const recentResults = [...results]
+    .sort((first, second) => Date.parse(second.created_at) - Date.parse(first.created_at))
+    .slice(0, 10);
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
+      <div className="border-b border-paper/10 px-4 py-4 md:px-5">
+        <h2 className="font-mono text-sm uppercase text-brass">My Results</h2>
+        <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">Recent attempts</p>
+      </div>
+      <div className="grid grid-cols-[9rem_minmax(0,1fr)_7rem_6rem_7rem] border-b border-paper/10 px-4 py-3 font-mono text-xs uppercase text-paper/40 max-md:hidden md:px-5">
+        <span>Date</span>
+        <span>Passage</span>
+        <span>Duration</span>
+        <span>WPM</span>
+        <span>Accuracy</span>
+      </div>
+      {recentResults.map((result) => (
+        <article
+          key={result.id}
+          className="grid gap-3 border-b border-paper/10 px-4 py-4 last:border-b-0 md:grid-cols-[9rem_minmax(0,1fr)_7rem_6rem_7rem] md:items-center md:px-5"
+        >
+          <ResultMetric label="Date" value={formatDate(result.created_at)} />
+          <div>
+            <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">Passage</div>
+            <div className="text-sm font-semibold text-paper">{result.passage_title}</div>
+            {result.passage_category && (
+              <div className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">{result.passage_category}</div>
+            )}
+          </div>
+          <ResultMetric label="Duration" value={formatDuration(result.duration_seconds)} />
+          <ResultMetric label="WPM" value={formatNumber(result.wpm)} strong />
+          <ResultMetric label="Accuracy" value={`${formatNumber(result.accuracy)}%`} />
+        </article>
+      ))}
+    </section>
   );
 }
 
@@ -358,6 +399,15 @@ function ActivitySection({ analytics }: { analytics: ReturnType<typeof buildProg
   );
 }
 
+function ResultMetric({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div>
+      <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">{label}</div>
+      <div className={`font-mono text-sm ${strong ? "font-semibold text-paper" : "text-paper/65"}`}>{value}</div>
+    </div>
+  );
+}
+
 function BreakdownMetric({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
@@ -407,6 +457,15 @@ function formatPracticeTime(seconds: number) {
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
+function formatDuration(seconds: number) {
+  if (seconds <= 0) {
+    return "Infinite";
+  }
+
+  const minutes = Math.round(seconds / 60);
+  return `${minutes}m`;
 }
 
 function formatDate(value: string) {

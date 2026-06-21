@@ -59,6 +59,7 @@ function HeaderAuthAction() {
   const { user, isLoading, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [isProfileLabelResolved, setIsProfileLabelResolved] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,18 +67,22 @@ function HeaderAuthAction() {
 
     if (!user) {
       setDisplayName("");
+      setIsProfileLabelResolved(false);
       setIsOpen(false);
       return;
     }
 
+    setIsProfileLabelResolved(false);
     getSupabaseProfile(user.id)
       .then((profile) => {
         if (!isMounted) return;
         setDisplayName(profile?.display_name ?? "");
+        setIsProfileLabelResolved(true);
       })
       .catch(() => {
         if (!isMounted) return;
         setDisplayName("");
+        setIsProfileLabelResolved(true);
       });
 
     return () => {
@@ -134,7 +139,7 @@ function HeaderAuthAction() {
     router.push("/practice");
   }
 
-  const accountLabel = displayName || user.email || "Account";
+  const accountLabel = isProfileLabelResolved ? displayName || user.email || "Account" : displayName || "Account";
 
   return (
     <div ref={menuRef} className="relative">

@@ -87,6 +87,16 @@ describe("AppShell account dropdown", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  it("does not render email while the display name is still loading", () => {
+    mockedGetSupabaseProfile.mockReturnValue(new Promise(() => {}) as any);
+
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    const accountButton = screen.getByRole("button", { name: /account menu/i });
+    expect(accountButton.textContent).not.toContain("typist@example.com");
+    expect(accountButton.textContent).toContain("Account");
+  });
+
   it("does not show the account dropdown for logged-out users", () => {
     mockState.user = null;
 
