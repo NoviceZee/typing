@@ -829,8 +829,8 @@ export default function PracticePage() {
               : "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
           )}
         >
-          {previousResult && status === "idle" && (
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-paper/45">
+          {previousResult && status !== "finished" && (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 font-mono text-xs text-paper/45">
               <span>Previous pace: {previousResult.wpm.toFixed(1)} WPM</span>
             </div>
           )}

@@ -133,6 +133,189 @@ describe("PracticePage passage loading", () => {
     expect((screen.getByLabelText("Typing input") as HTMLTextAreaElement).value).toBe("");
   });
 
+  it("keeps previous pace visible after starting the restarted same-passage attempt", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    const justFinishedResult = readPreviousResult("local", 60);
+
+    await waitFor(() => {
+      expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+
+    expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
+  });
+
+  it("preserves 5-minute previous pace after restarting the same passage", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for five minute typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for five minute typing");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "5m" }));
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for five minute typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    const justFinishedResult = readPreviousResult("local", 300);
+
+    await waitFor(() => {
+      expect(justFinishedResult).toBeTruthy();
+      expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
+    });
+    expect(readPreviousResult("local", 60)).toBeNull();
+    expect(screen.queryByText("WPM Over Time")).toBeNull();
+    expect((screen.getByLabelText("Typing input") as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("keeps previous comparison after closing the result modal and restarting", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restart" }));
+    const justFinishedResult = readPreviousResult("local", 60);
+
+    await waitFor(() => {
+      expect(justFinishedResult).toBeTruthy();
+      expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
+    });
+  });
+
+  it("shows the restarted same-passage attempt as the previous comparison in the next result modal", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    const firstResult = readPreviousResult("local", 60);
+
+    await waitFor(() => {
+      expect(firstResult).toBeTruthy();
+      expect(screen.getByText(`Previous pace: ${firstResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body");
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByText("Previous Attempt")).toBeTruthy();
+      expect(screen.getAllByText(`previous ${firstResult?.wpm.toFixed(1)}`).length).toBeGreaterThan(0);
+    });
+  });
+
+  it("changes the previous pace comparison when selecting a different passage", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("local", "Local active", "Local fallback body text for typing."),
+        makePassage("other", "Other active", "Other passage body text for typing.")
+      ])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    const localResult = readPreviousResult("local", 60);
+
+    await waitFor(() => {
+      expect(screen.getByText(`Previous pace: ${localResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText("Passage"), {
+      target: { value: "other" }
+    });
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Other passage body text for typing");
+    });
+    expect(screen.queryByText(`Previous pace: ${localResult?.wpm.toFixed(1)} WPM`)).toBeNull();
+  });
+
   it("prevents pasted text without showing a paste warning", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
