@@ -14,6 +14,8 @@ describe("buildProgressAnalytics", () => {
     expect(analytics.summary).toEqual({
       bestWpm: 72,
       averageWpm: 62.3,
+      averageWpmLast10: 62.3,
+      averageWpmLast100: 62.3,
       bestAccuracy: 100,
       totalTests: 4,
       totalPracticeSeconds: 540
@@ -41,6 +43,7 @@ describe("buildProgressAnalytics", () => {
         tests: 1
       }
     ]);
+    expect(analytics.weakestCategory?.category).toBe("Uncategorised");
   });
 
   it("keeps only the most recent 30 results for trend charts in chronological order", () => {
@@ -53,6 +56,37 @@ describe("buildProgressAnalytics", () => {
     expect(analytics.recentTrend).toHaveLength(30);
     expect(analytics.recentTrend[0].id).toBe("result-29");
     expect(analytics.recentTrend[29].id).toBe("result-0");
+  });
+
+  it("calculates all-time, last-10, and last-100 average WPM", () => {
+    const results = Array.from({ length: 120 }, (_, index) =>
+      makeResult(
+        `result-${index}`,
+        60,
+        index + 1,
+        95,
+        "Business email",
+        new Date(Date.UTC(2026, 5, 19, 0, index)).toISOString()
+      )
+    ).reverse();
+
+    const analytics = buildProgressAnalytics(results);
+
+    expect(analytics.summary.averageWpm).toBe(60.5);
+    expect(analytics.summary.averageWpmLast10).toBe(115.5);
+    expect(analytics.summary.averageWpmLast100).toBe(70.5);
+  });
+
+  it("calculates the current activity streak from saved result dates", () => {
+    const analytics = buildProgressAnalytics([
+      makeResult("latest", 60, 70, 98, "Business email", "2026-06-21T10:00:00.000Z"),
+      makeResult("same-day", 60, 68, 98, "Business email", "2026-06-21T08:00:00.000Z"),
+      makeResult("yesterday", 60, 65, 98, "Business email", "2026-06-20T10:00:00.000Z"),
+      makeResult("gap", 60, 62, 98, "Business email", "2026-06-18T10:00:00.000Z")
+    ]);
+
+    expect(analytics.activity.currentStreakDays).toBe(2);
+    expect(analytics.activity.activeDays).toBe(3);
   });
 });
 

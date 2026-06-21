@@ -6,10 +6,9 @@ import { useAuth } from "@/components/AuthProvider";
 
 const NAV_ITEMS = [
   { href: "/practice", label: "Practice" },
-  { href: "/analytics", label: "Analytics", requiresAuth: true },
+  { href: "/profile", label: "Profile", requiresAuth: true },
   { href: "/passages", label: "Passages" },
   { href: "/passages/manage", label: "Manage passages", requiresAuth: true },
-  { href: "/settings", label: "Settings" },
   { href: "/leaderboard", label: "Leaderboard" }
 ];
 

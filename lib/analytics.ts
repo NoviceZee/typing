@@ -4,6 +4,8 @@ export type ProgressAnalytics = {
   summary: {
     bestWpm: number;
     averageWpm: number;
+    averageWpmLast10: number;
+    averageWpmLast100: number;
     bestAccuracy: number;
     totalTests: number;
     totalPracticeSeconds: number;
@@ -20,6 +22,17 @@ export type ProgressAnalytics = {
     averageAccuracy: number;
     tests: number;
   }>;
+  weakestCategory: {
+    category: string;
+    averageWpm: number;
+    averageAccuracy: number;
+    tests: number;
+  } | null;
+  activity: {
+    currentStreakDays: number;
+    activeDays: number;
+    activeDates: string[];
+  };
 };
 
 const RECENT_TREND_LIMIT = 30;
@@ -31,15 +44,19 @@ export function buildProgressAnalytics(results: SupabaseAnalyticsTypingResultRow
     ...result,
     passage_category: normalizeCategory(result.passage_category)
   }));
+  const newestFirst = [...normalizedResults].sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
   const recentTrend = [...normalizedResults]
     .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
     .slice(0, RECENT_TREND_LIMIT)
     .reverse();
+  const categoryBreakdown = getCategoryBreakdown(normalizedResults);
 
   return {
     summary: {
       bestWpm: roundOne(maxOrZero(normalizedResults.map((result) => result.wpm))),
       averageWpm: roundOne(average(normalizedResults.map((result) => result.wpm))),
+      averageWpmLast10: roundOne(average(newestFirst.slice(0, 10).map((result) => result.wpm))),
+      averageWpmLast100: roundOne(average(newestFirst.slice(0, 100).map((result) => result.wpm))),
       bestAccuracy: roundOne(maxOrZero(normalizedResults.map((result) => result.accuracy))),
       totalTests: normalizedResults.length,
       totalPracticeSeconds: normalizedResults.reduce((total, result) => total + result.duration_seconds, 0)
@@ -50,7 +67,9 @@ export function buildProgressAnalytics(results: SupabaseAnalyticsTypingResultRow
       fastestFiveMinute: getFastestForDuration(normalizedResults, FIVE_MINUTE_SECONDS),
       highestAccuracy: getHighestAccuracy(normalizedResults)
     },
-    categoryBreakdown: getCategoryBreakdown(normalizedResults)
+    categoryBreakdown,
+    weakestCategory: getWeakestCategory(categoryBreakdown),
+    activity: getActivitySummary(normalizedResults)
   };
 }
 
@@ -89,6 +108,37 @@ function getCategoryBreakdown(results: SupabaseAnalyticsTypingResultRow[]) {
     .sort((left, right) => right.tests - left.tests || left.category.localeCompare(right.category));
 }
 
+function getWeakestCategory(categories: ProgressAnalytics["categoryBreakdown"]) {
+  return [...categories].sort((left, right) => left.averageWpm - right.averageWpm || left.averageAccuracy - right.averageAccuracy)[0] ?? null;
+}
+
+function getActivitySummary(results: SupabaseAnalyticsTypingResultRow[]) {
+  const activeDates = Array.from(new Set(results.map((result) => toDateKey(result.created_at)).filter(Boolean) as string[])).sort();
+
+  return {
+    currentStreakDays: getCurrentStreakDays(activeDates),
+    activeDays: activeDates.length,
+    activeDates
+  };
+}
+
+function getCurrentStreakDays(activeDates: string[]) {
+  if (activeDates.length === 0) {
+    return 0;
+  }
+
+  const activeDateSet = new Set(activeDates);
+  let streak = 0;
+  let cursor = parseDateKey(activeDates[activeDates.length - 1]);
+
+  while (activeDateSet.has(toDateKey(cursor.toISOString()))) {
+    streak += 1;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+
+  return streak;
+}
+
 function compareByWpmAccuracyAndDate(left: SupabaseAnalyticsTypingResultRow, right: SupabaseAnalyticsTypingResultRow) {
   if (right.wpm !== left.wpm) {
     return right.wpm - left.wpm;
@@ -103,6 +153,20 @@ function compareByWpmAccuracyAndDate(left: SupabaseAnalyticsTypingResultRow, rig
 
 function normalizeCategory(category: string | null) {
   return category?.trim() || "Uncategorised";
+}
+
+function toDateKey(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function parseDateKey(value: string) {
+  return new Date(`${value}T00:00:00.000Z`);
 }
 
 function average(values: number[]) {
