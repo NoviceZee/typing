@@ -265,7 +265,7 @@ export default function PracticePage() {
         return;
       }
 
-      attemptTimelineRef.current = [...attemptTimelineRef.current, point].slice(-80);
+      attemptTimelineRef.current = addAttemptTimelinePoint(attemptTimelineRef.current, point);
     },
     [rules, sourceText]
   );
@@ -1570,6 +1570,10 @@ function buildAttemptTimelinePoint({
   };
 }
 
+export function addAttemptTimelinePoint(points: AttemptTimelinePoint[], point: AttemptTimelinePoint) {
+  return upsertAttemptTimelinePoint(points, point);
+}
+
 function upsertAttemptTimelinePoint(points: AttemptTimelinePoint[], point: AttemptTimelinePoint) {
   const existingIndex = points.findIndex((timelinePoint) => timelinePoint.timeSeconds === point.timeSeconds);
 
@@ -1586,30 +1590,30 @@ function getAttemptGraphPoints(timeline: AttemptTimelinePoint[], result: TypingR
   const sortedPoints = timeline
     .filter((point) => point.timeSeconds >= 0)
     .sort((left, right) => left.timeSeconds - right.timeSeconds);
+  const points = sortedPoints[0]?.timeSeconds === 0 ? sortedPoints : [{ timeSeconds: 0, wpm: 0 }, ...sortedPoints];
+  const finalPoint: AttemptTimelinePoint = {
+    timeSeconds: result.timeUsedSeconds,
+    wpm: result.wpm,
+    accuracy: result.accuracy
+  };
 
-  if (sortedPoints.length >= 2) {
-    return sortedPoints;
+  if (!points.some((point) => point.timeSeconds === finalPoint.timeSeconds)) {
+    points.push(finalPoint);
   }
 
-  if (sortedPoints.length === 1) {
-    return [{ timeSeconds: 0, wpm: 0 }, sortedPoints[0]];
-  }
-
-  return [
-    { timeSeconds: 0, wpm: 0 },
-    { timeSeconds: result.timeUsedSeconds, wpm: result.wpm, accuracy: result.accuracy }
-  ];
+  return points.sort((left, right) => left.timeSeconds - right.timeSeconds);
 }
 
 export function getAttemptGraphLayout(points: AttemptTimelinePoint[], result: TypingResult): AttemptGraphLayout {
+  const normalizedPoints = getAttemptGraphPoints(points, result);
   const width = 640;
   const height = 280;
   const left = 48;
   const right = width - 18;
   const top = 32;
   const bottom = height - 46;
-  const maxTime = Math.max(result.timeUsedSeconds, ...points.map((point) => point.timeSeconds), 1);
-  const maxWpm = getStableGraphMax(points, result);
+  const maxTime = Math.max(result.timeUsedSeconds, ...normalizedPoints.map((point) => point.timeSeconds), 1);
+  const maxWpm = getStableGraphMax(normalizedPoints, result);
   const graphBase = {
     width,
     height,
@@ -1622,7 +1626,7 @@ export function getAttemptGraphLayout(points: AttemptTimelinePoint[], result: Ty
     yTicks: getWpmTicks(maxWpm),
     xTicks: getTimeTicks(maxTime)
   };
-  const positionedPoints = points.map((point) => ({
+  const positionedPoints = normalizedPoints.map((point) => ({
     ...point,
     x: getGraphX(point.timeSeconds, graphBase),
     y: getGraphY(point.wpm, graphBase)

@@ -4,7 +4,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ResultModal, getAttemptGraphLayout, getResultConsistency } from "../pages/practice";
+import { ResultModal, addAttemptTimelinePoint, getAttemptGraphLayout, getResultConsistency } from "../pages/practice";
 import type { StoredPassage } from "@/lib/app-storage";
 import type { TypingResult } from "@/lib/typing-engine";
 
@@ -118,6 +118,56 @@ describe("ResultModal", () => {
     );
 
     expect(layout.maxWpm).toBeLessThan(90);
+  });
+
+  it("keeps 5-minute WPM graph samples on elapsed seconds from 0 to 300", () => {
+    const result = { ...makeResult(), timeUsedSeconds: 300, durationSeconds: 300 };
+    const timeline = Array.from({ length: 301 }, (_, timeSeconds) => ({
+      timeSeconds,
+      wpm: timeSeconds === 0 ? 0 : 48,
+      accuracy: 100
+    })).reduce(addAttemptTimelinePoint, [] as Array<{ timeSeconds: number; wpm: number; accuracy?: number }>);
+    const layout = getAttemptGraphLayout(timeline, result);
+
+    expect(layout.maxTime).toBe(300);
+    expect(layout.xTicks).toContain(0);
+    expect(layout.xTicks).toContain(300);
+    expect(layout.positionedPoints[0].timeSeconds).toBe(0);
+    expect(layout.positionedPoints[layout.positionedPoints.length - 1].timeSeconds).toBe(300);
+    expect(layout.positionedPoints[0].x).toBeLessThan(layout.positionedPoints[layout.positionedPoints.length - 1].x);
+  });
+
+  it("adds a final time-up point at the duration instead of using remaining seconds", () => {
+    const result = { ...makeResult(), timeUsedSeconds: 300, durationSeconds: 300, wpm: 52, accuracy: 99 };
+    const timeline = [
+      { timeSeconds: 296, wpm: 51, accuracy: 99 },
+      { timeSeconds: 297, wpm: 51, accuracy: 99 }
+    ].reduce(addAttemptTimelinePoint, [] as Array<{ timeSeconds: number; wpm: number; accuracy?: number }>);
+    const completedTimeline = addAttemptTimelinePoint(timeline, {
+      timeSeconds: result.timeUsedSeconds,
+      wpm: result.wpm,
+      accuracy: result.accuracy
+    });
+    const layout = getAttemptGraphLayout(completedTimeline, result);
+
+    expect(completedTimeline.at(-1)?.timeSeconds).toBe(300);
+    expect(completedTimeline.some((point) => point.timeSeconds === 0 && point.wpm === result.wpm)).toBe(false);
+    expect(layout.maxTime).toBe(300);
+  });
+
+  it("anchors elapsed-time charts at zero even when the first recorded sample is after start", () => {
+    const result = { ...makeResult(), timeUsedSeconds: 300, durationSeconds: 300 };
+    const layout = getAttemptGraphLayout(
+      [
+        { timeSeconds: 1, wpm: 30, accuracy: 95 },
+        { timeSeconds: 120, wpm: 48, accuracy: 98 },
+        { timeSeconds: 300, wpm: 52, accuracy: 99 }
+      ],
+      result
+    );
+
+    expect(layout.positionedPoints[0].timeSeconds).toBe(0);
+    expect(layout.positionedPoints[0].x).toBe(layout.left);
   });
 
   it("renders the image-card action row and calls the generator", () => {

@@ -129,6 +129,8 @@ describe("PracticePage passage loading", () => {
       expect(justFinishedResult).toBeTruthy();
       expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
     });
+    expect(screen.queryByText("WPM Over Time")).toBeNull();
+    expect((screen.getByLabelText("Typing input") as HTMLTextAreaElement).value).toBe("");
   });
 
   it("prevents pasted text without showing a paste warning", async () => {
