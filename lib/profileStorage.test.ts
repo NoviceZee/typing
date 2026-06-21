@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   getProfileDisplayLabel,
+  getSupabasePublicProfileByHandle,
   normalizeHandle,
   setSupabaseProfileHandle,
   validateHandle
@@ -37,6 +38,24 @@ describe("profileStorage handles", () => {
     expect(getProfileDisplayLabel({ handle: "formal_typist" })).toBe("@formal_typist");
     expect(getProfileDisplayLabel({ handle: null })).toBe("Account");
     expect(getProfileDisplayLabel(null)).toBe("Account");
+  });
+
+  it("loads public profiles by normalized handle", async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: { handle: "formal_typist" },
+      error: null
+    });
+    const eq = vi.fn(() => ({ maybeSingle }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+
+    await expect(getSupabasePublicProfileByHandle(" Formal_Typist ", { from })).resolves.toEqual({
+      handle: "formal_typist"
+    });
+
+    expect(from).toHaveBeenCalledWith("public_profiles");
+    expect(select).toHaveBeenCalledWith("handle");
+    expect(eq).toHaveBeenCalledWith("handle", "formal_typist");
   });
 });
 

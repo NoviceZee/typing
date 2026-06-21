@@ -8,6 +8,10 @@ export type SupabaseProfile = {
   updated_at: string;
 };
 
+export type SupabasePublicProfile = {
+  handle: string;
+};
+
 export type HandleValidationResult =
   | { isValid: true; handle: string }
   | { isValid: false; message: string };
@@ -18,6 +22,29 @@ export async function getSupabaseProfile(userId: string): Promise<SupabaseProfil
   }
 
   const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function getSupabasePublicProfileByHandle(
+  handle: string,
+  client = requireSupabaseClient()
+): Promise<SupabasePublicProfile | null> {
+  const cleanHandle = normalizeHandle(handle);
+
+  if (!cleanHandle) {
+    return null;
+  }
+
+  const { data, error } = await client
+    .from("public_profiles")
+    .select("handle")
+    .eq("handle", cleanHandle)
+    .maybeSingle();
 
   if (error) {
     throw error;

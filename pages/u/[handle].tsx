@@ -5,7 +5,8 @@ import { Award, Copy, Flame, Lock, Medal, Target, Trophy } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useRouter } from "next/router";
 import { buildProgressAnalytics } from "@/lib/analytics";
-import { getSupabasePublicProfileByHandle, SupabasePublicProfile } from "@/lib/profileStorage";
+import { getSupabasePublicProfileByHandle } from "@/lib/profileStorage";
+import type { SupabasePublicProfile } from "@/lib/profileStorage";
 import {
   SupabaseAnalyticsTypingResultRow,
   getSupabasePublicTypingResultsByHandle

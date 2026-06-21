@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  getSupabasePublicTypingResultsByHandle,
   getSupabaseAnalyticsTypingResults,
   getSupabaseLeaderboardResults,
   toSupabaseTypingResultInsert
@@ -110,6 +111,7 @@ describe("typingResultStorage", () => {
           duration_seconds: 60,
           wpm: 72,
           accuracy: 98.5,
+          correct_chars: 360,
           created_at: "2026-06-19T00:00:00.000Z",
           passages: { category: "Business email" }
         },
@@ -119,6 +121,7 @@ describe("typingResultStorage", () => {
           duration_seconds: 300,
           wpm: 61,
           accuracy: 99,
+          correct_chars: 1525,
           created_at: "2026-06-18T00:00:00.000Z",
           passages: null
         }
@@ -138,6 +141,7 @@ describe("typingResultStorage", () => {
         duration_seconds: 60,
         wpm: 72,
         accuracy: 98.5,
+        correct_chars: 360,
         created_at: "2026-06-19T00:00:00.000Z"
       },
       {
@@ -147,12 +151,13 @@ describe("typingResultStorage", () => {
         duration_seconds: 300,
         wpm: 61,
         accuracy: 99,
+        correct_chars: 1525,
         created_at: "2026-06-18T00:00:00.000Z"
       }
     ]);
     expect(from).toHaveBeenCalledWith("typing_results");
     expect(select).toHaveBeenCalledWith(
-      "id,passage_title,duration_seconds,wpm,accuracy,created_at,passages(category)"
+      "id,passage_title,duration_seconds,wpm,accuracy,correct_chars,created_at,passages(category)"
     );
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
     expect(order).toHaveBeenCalledWith("created_at", { ascending: false });
@@ -189,5 +194,47 @@ describe("typingResultStorage", () => {
     expect(gte).toHaveBeenCalledWith("created_at", start.toISOString());
     expect(lt).toHaveBeenCalledWith("created_at", end.toISOString());
     expect(limit).toHaveBeenCalledWith(25);
+  });
+
+  it("loads public typing results by normalized handle without private fields", async () => {
+    const limit = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: "public-result",
+          passage_title: "Public passage",
+          passage_category: "Business email",
+          duration_seconds: 60,
+          wpm: 66,
+          accuracy: 99.2,
+          correct_chars: 330,
+          created_at: "2026-06-21T00:00:00.000Z"
+        }
+      ],
+      error: null
+    });
+    const order = vi.fn(() => ({ limit }));
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+
+    await expect(getSupabasePublicTypingResultsByHandle(" Formal_Typist ", 10, { from })).resolves.toEqual([
+      {
+        id: "public-result",
+        passage_title: "Public passage",
+        passage_category: "Business email",
+        duration_seconds: 60,
+        wpm: 66,
+        accuracy: 99.2,
+        correct_chars: 330,
+        created_at: "2026-06-21T00:00:00.000Z"
+      }
+    ]);
+
+    expect(from).toHaveBeenCalledWith("public_profile_typing_results");
+    expect(select).toHaveBeenCalledWith(
+      "id,passage_title,passage_category,duration_seconds,wpm,accuracy,correct_chars,created_at"
+    );
+    expect(eq).toHaveBeenCalledWith("handle", "formal_typist");
+    expect(limit).toHaveBeenCalledWith(10);
   });
 });

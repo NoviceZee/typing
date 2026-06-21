@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import AccountPage from "../pages/profile/account";
 import FriendsPage from "../pages/profile/friends";
 import PublicProfilePage from "../pages/profile/public";
+import { getSupabaseProfile } from "@/lib/profileStorage";
 
 const mockState = vi.hoisted(() => ({
   user: { id: "user-1", email: "typist@example.com" } as { id: string; email: string } | null,
@@ -35,7 +36,7 @@ vi.mock("next/router", () => ({
 }));
 
 vi.mock("@/lib/profileStorage", () => ({
-  getSupabaseProfile: vi.fn().mockResolvedValue(null),
+  getSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "formal_typist", handle: "formal_typist" }),
   upsertSupabaseProfile: vi.fn()
 }));
 
@@ -49,9 +50,12 @@ vi.mock("@/lib/typingResultStorage", async () => {
 });
 
 describe("profile subpages", () => {
+  const mockedGetSupabaseProfile = vi.mocked(getSupabaseProfile);
+
   beforeEach(() => {
     mockState.user = { id: "user-1", email: "typist@example.com" };
     mockState.routerPush.mockClear();
+    mockedGetSupabaseProfile.mockResolvedValue({ display_name: "formal_typist", handle: "formal_typist" } as any);
   });
 
   it("renders account settings route", async () => {
@@ -62,11 +66,14 @@ describe("profile subpages", () => {
     });
   });
 
-  it("renders public profile placeholder", () => {
+  it("links to the user's public profile", async () => {
     render(<PublicProfilePage />);
 
-    expect(screen.getByText("Public profile")).toBeTruthy();
-    expect(screen.getByText("Public profiles will be available later.")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText("Public profile")).toBeTruthy();
+    });
+    expect(screen.getByRole("link", { name: "View @formal_typist" }).getAttribute("href")).toBe("/u/formal_typist");
+    expect(screen.queryByText("Public profiles will be available later.")).toBeNull();
   });
 
   it("renders friends placeholder", () => {
