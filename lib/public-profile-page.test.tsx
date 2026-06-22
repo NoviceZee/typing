@@ -85,24 +85,41 @@ describe("PublicUserProfilePage", () => {
     ]);
   });
 
-  it("renders a public profile by handle without exposing email", async () => {
+  it("renders a compact public profile with stats without exposing email", async () => {
     render(<PublicUserProfilePage />);
 
     await waitFor(() => {
       expect(screen.getByText("@formal_typist")).toBeTruthy();
     });
 
+    expect(screen.getByText("Public typist")).toBeTruthy();
+    expect(screen.getByText("Joined date unavailable")).toBeTruthy();
     expect(screen.getByText("Level")).toBeTruthy();
+    expect(screen.getByText("XP progress")).toBeTruthy();
     expect(screen.getByText("Total XP")).toBeTruthy();
-    expect(screen.getByText("Total tests")).toBeTruthy();
-    expect(screen.getByText("Best WPM")).toBeTruthy();
-    expect(screen.getByText("Best accuracy")).toBeTruthy();
+    expect(screen.getByText("Tests completed")).toBeTruthy();
+    expect(screen.getAllByText("Best WPM").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Best accuracy").length).toBeGreaterThan(0);
     expect(screen.getByText("Current streak")).toBeTruthy();
-    expect(screen.getAllByText("Achievements").length).toBeGreaterThan(0);
+    expect(screen.getByText("Achievements")).toBeTruthy();
     expect(screen.getByText("Recent Results")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add friend" })).toBeTruthy();
     expect(screen.queryByText(/typist@example.com/i)).toBeNull();
     expect(screen.queryByText(/user-1/i)).toBeNull();
+  });
+
+  it("renders an intentional empty state with no public results", async () => {
+    mockedGetResults.mockResolvedValueOnce([]);
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@formal_typist")).toBeTruthy();
+    });
+    expect(screen.getByText("No public typing results yet.")).toBeTruthy();
+    expect(screen.getByText("This profile is ready; saved public results will appear here.")).toBeTruthy();
+    expect(screen.getAllByText("0.0").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("0.0%").length).toBeGreaterThan(0);
   });
 
   it("uses case-insensitive handle lookup", async () => {
@@ -157,6 +174,20 @@ describe("PublicUserProfilePage", () => {
     await waitFor(() => {
       expect(screen.getByText("@formal_typist")).toBeTruthy();
     });
+    expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
+  });
+
+  it("still renders the public profile when friend status lookup fails", async () => {
+    mockedGetFriendship.mockRejectedValueOnce(new Error("friend status unavailable"));
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@formal_typist")).toBeTruthy();
+    });
+    expect(screen.getByText("Friend status unavailable")).toBeTruthy();
+    expect(screen.getByText("Recent Results")).toBeTruthy();
+    expect(screen.queryByText("Public profile could not be loaded.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
   });
 });

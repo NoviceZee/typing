@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Award, Copy, Flame, Lock, Medal, Target, Trophy } from "lucide-react";
+import { Award, Copy, Target, Trophy, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/router";
@@ -27,6 +27,7 @@ export default function PublicUserProfilePage() {
   const [profile, setProfile] = useState<SupabasePublicProfile | null>(null);
   const [friendship, setFriendship] = useState<FriendListItem | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [isFriendStatusUnavailable, setIsFriendStatusUnavailable] = useState(false);
   const [friendActionMessage, setFriendActionMessage] = useState("");
   const [results, setResults] = useState<SupabaseAnalyticsTypingResultRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -48,6 +49,7 @@ export default function PublicUserProfilePage() {
     setCopyMessage("");
     setFriendship(null);
     setIsOwnProfile(false);
+    setIsFriendStatusUnavailable(false);
     setFriendActionMessage("");
     getSupabasePublicProfileByHandle(routeHandle)
       .then(async (publicProfile) => {
@@ -60,16 +62,21 @@ export default function PublicUserProfilePage() {
           return;
         }
 
-        const [publicResults, ownProfile, nextFriendship] = await Promise.all([
+        const [publicResults, ownProfile, friendshipResult] = await Promise.all([
           getSupabasePublicTypingResultsByHandle(publicProfile.handle),
           user ? getSupabaseProfile(user.id) : Promise.resolve(null),
-          user ? getFriendshipWithProfileHandle(publicProfile.handle) : Promise.resolve(null)
+          user
+            ? getFriendshipWithProfileHandle(publicProfile.handle)
+                .then((friendship) => ({ friendship, failed: false }))
+                .catch(() => ({ friendship: null, failed: true }))
+            : Promise.resolve({ friendship: null, failed: false })
         ]);
         if (!isMounted) return;
         setProfile(publicProfile);
         setResults(publicResults);
         setIsOwnProfile(ownProfile?.handle === publicProfile.handle);
-        setFriendship(nextFriendship);
+        setFriendship(friendshipResult.friendship);
+        setIsFriendStatusUnavailable(friendshipResult.failed);
         setLoadState("ready");
       })
       .catch(() => {
@@ -140,80 +147,27 @@ export default function PublicUserProfilePage() {
 
         {loadState === "ready" && profile && (
           <div className="space-y-6">
-            <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="font-mono text-xs uppercase text-brass">Public profile</p>
-                  <h1 className="mt-2 text-4xl font-semibold text-paper">@{profile.handle}</h1>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCopyUrl}
-                  className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/40 hover:text-paper"
-                >
-                  <Copy className="h-4 w-4" />
-                  {copyMessage || "Copy URL"}
-                </button>
-                {user && !isOwnProfile && (
-                  <FriendAction friendship={friendship} onAddFriend={handleAddFriend} />
-                )}
-              </div>
-              {friendActionMessage && (
-                <div className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
-                  {friendActionMessage}
-                </div>
-              )}
-            </section>
+            <ProfileCard
+              handle={profile.handle}
+              analytics={analytics}
+              copyMessage={copyMessage}
+              onCopyUrl={handleCopyUrl}
+              friendAction={
+                user && !isOwnProfile ? (
+                  <FriendAction
+                    friendship={friendship}
+                    isUnavailable={isFriendStatusUnavailable}
+                    onAddFriend={handleAddFriend}
+                  />
+                ) : null
+              }
+              friendActionMessage={friendActionMessage}
+            />
 
-            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <PublicStat label="Level" value={analytics.progression.currentLevel} icon={<Medal className="h-4 w-4" />} />
-              <PublicStat label="Total XP" value={analytics.progression.totalXp} icon={<Award className="h-4 w-4" />} />
-              <PublicStat label="Total tests" value={analytics.summary.totalTests} icon={<Target className="h-4 w-4" />} />
-              <PublicStat label="Best WPM" value={formatNumber(analytics.summary.bestWpm)} icon={<Trophy className="h-4 w-4" />} />
-              <PublicStat label="Best accuracy" value={`${formatNumber(analytics.summary.bestAccuracy)}%`} icon={<Target className="h-4 w-4" />} />
-              <PublicStat label="Current streak" value={`${analytics.activity.currentStreakDays} days`} icon={<Flame className="h-4 w-4" />} />
-              <PublicStat
-                label="Achievements"
-                value={`${analytics.achievements.unlockedCount}/${analytics.achievements.totalCount}`}
-                icon={<Award className="h-4 w-4" />}
-              />
+            <section className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
+              <PublicStatsPanel analytics={analytics} hasResults={results.length > 0} />
+              <RecentPublicResults results={recentResults} />
             </section>
-
-            <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h2 className="font-mono text-sm uppercase text-brass">Achievements</h2>
-                  <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">
-                    {analytics.achievements.unlockedCount} / {analytics.achievements.totalCount} unlocked
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {analytics.achievements.items.map((achievement) => (
-                  <article
-                    key={achievement.id}
-                    className={`rounded-md border px-4 py-4 ${
-                      achievement.isUnlocked ? "border-brass/30 bg-brass/10" : "border-paper/10 bg-ink-900/70 opacity-70"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-mono text-sm uppercase text-paper">{achievement.title}</h3>
-                        <p className="mt-2 text-sm leading-6 text-paper/50">{achievement.description}</p>
-                      </div>
-                      <span className={achievement.isUnlocked ? "text-brass" : "text-paper/30"} aria-hidden="true">
-                        {achievement.isUnlocked ? <Award className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                      </span>
-                    </div>
-                    <p className={`mt-4 font-mono text-[0.68rem] uppercase ${achievement.isUnlocked ? "text-brass" : "text-paper/35"}`}>
-                      {achievement.isUnlocked ? "Unlocked" : "Locked"}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <RecentPublicResults results={recentResults} />
           </div>
         )}
       </section>
@@ -223,11 +177,21 @@ export default function PublicUserProfilePage() {
 
 function FriendAction({
   friendship,
+  isUnavailable = false,
   onAddFriend
 }: {
   friendship: FriendListItem | null;
+  isUnavailable?: boolean;
   onAddFriend: () => void;
 }) {
+  if (isUnavailable) {
+    return (
+      <span className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/40">
+        Friend status unavailable
+      </span>
+    );
+  }
+
   if (friendship?.status === "accepted") {
     return (
       <span className="inline-flex items-center rounded-md border border-brass/25 bg-brass/10 px-3 py-2 font-mono text-xs text-brass">
@@ -255,14 +219,150 @@ function FriendAction({
   );
 }
 
-function PublicStat({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
+function ProfileCard({
+  handle,
+  analytics,
+  copyMessage,
+  onCopyUrl,
+  friendAction,
+  friendActionMessage
+}: {
+  handle: string;
+  analytics: ReturnType<typeof buildProgressAnalytics>;
+  copyMessage: string;
+  onCopyUrl: () => void;
+  friendAction: React.ReactNode;
+  friendActionMessage: string;
+}) {
   return (
-    <article className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-4 shadow-glow">
+    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <div className="flex min-w-0 gap-4">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-brass/25 bg-brass/10 text-brass">
+            <UserCircle className="h-9 w-9" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-xs uppercase text-brass">Public typist</p>
+            <h1 className="mt-1 break-words font-mono text-4xl font-semibold text-paper">@{handle}</h1>
+            <p className="mt-2 font-mono text-xs uppercase text-paper/35">Joined date unavailable</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 lg:justify-end">
+          <button
+            type="button"
+            onClick={onCopyUrl}
+            className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/40 hover:text-paper"
+          >
+            <Copy className="h-4 w-4" />
+            {copyMessage || "Copy URL"}
+          </button>
+          {friendAction}
+        </div>
+      </div>
+
+      {friendActionMessage && (
+        <div className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
+          {friendActionMessage}
+        </div>
+      )}
+
+      <div className="mt-6 rounded-md border border-paper/10 bg-ink-900/60 p-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="font-mono text-xs uppercase text-paper/40">Level</p>
+            <p className="mt-1 font-mono text-3xl font-semibold text-paper">{analytics.progression.currentLevel}</p>
+          </div>
+          <div className="text-right">
+            <p className="font-mono text-xs uppercase text-paper/40">Total XP</p>
+            <p className="mt-1 font-mono text-lg text-brass">{analytics.progression.totalXp}</p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <div className="flex items-center justify-between font-mono text-[0.68rem] uppercase text-paper/35">
+            <span>XP progress</span>
+            <span>{analytics.progression.xpToNextLevel} to next</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-paper/[0.06]">
+            <div className="h-full rounded-full bg-brass" style={{ width: `${analytics.progression.progressPercent}%` }} />
+          </div>
+        </div>
+      </div>
+
+      <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <SummaryStat label="Tests completed" value={analytics.summary.totalTests} />
+        <SummaryStat label="Best WPM" value={formatNumber(analytics.summary.bestWpm)} />
+        <SummaryStat label="Best accuracy" value={`${formatNumber(analytics.summary.bestAccuracy)}%`} />
+        <SummaryStat label="Current streak" value={`${analytics.activity.currentStreakDays} days`} />
+        <SummaryStat label="Total XP / Level" value={`${analytics.progression.totalXp} / ${analytics.progression.currentLevel}`} />
+      </section>
+    </section>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <article className="rounded-md border border-paper/10 bg-ink-900/60 px-4 py-3">
+      <p className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</p>
+      <p className="mt-2 font-mono text-xl font-semibold text-paper">{value}</p>
+    </article>
+  );
+}
+
+function PublicStatsPanel({
+  analytics,
+  hasResults
+}: {
+  analytics: ReturnType<typeof buildProgressAnalytics>;
+  hasResults: boolean;
+}) {
+  return (
+    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-mono text-sm uppercase text-brass">Public Stats</h2>
+        <Trophy className="h-4 w-4 text-brass" />
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <FeaturedStat label="Best WPM" value={formatNumber(analytics.summary.bestWpm)} icon={<Trophy className="h-4 w-4" />} />
+        <FeaturedStat label="Best accuracy" value={`${formatNumber(analytics.summary.bestAccuracy)}%`} icon={<Target className="h-4 w-4" />} />
+      </div>
+      {!hasResults && (
+        <div className="mt-5 rounded-md border border-paper/10 bg-ink-900/60 px-4 py-5">
+          <p className="font-mono text-sm text-paper">No best result yet.</p>
+          <p className="mt-2 text-sm leading-6 text-paper/45">Best WPM and accuracy will fill in after public results.</p>
+        </div>
+      )}
+      <div className="mt-5 rounded-md border border-paper/10 bg-ink-900/60 px-4 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-mono text-sm uppercase text-paper">Achievements</h3>
+            <p className="mt-1 font-mono text-xs uppercase text-paper/35">
+              {analytics.achievements.unlockedCount} / {analytics.achievements.totalCount} unlocked
+            </p>
+          </div>
+          <Award className="h-4 w-4 text-brass" />
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-paper/[0.06]">
+          <div
+            className="h-full rounded-full bg-brass"
+            style={{
+              width: `${Math.round((analytics.achievements.unlockedCount / analytics.achievements.totalCount) * 100)}%`
+            }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeaturedStat({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+  return (
+    <article className="rounded-md border border-brass/20 bg-brass/10 px-4 py-4">
       <div className="flex items-center justify-between gap-3 text-brass">
-        <p className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</p>
+        <p className="font-mono text-[0.68rem] uppercase text-paper/45">{label}</p>
         {icon}
       </div>
-      <p className="mt-3 font-mono text-2xl font-semibold text-paper">{value}</p>
+      <p className="mt-3 font-mono text-3xl font-semibold text-paper">{value}</p>
     </article>
   );
 }
@@ -274,7 +374,12 @@ function RecentPublicResults({ results }: { results: SupabaseAnalyticsTypingResu
         <h2 className="font-mono text-sm uppercase text-brass">Recent Results</h2>
       </div>
       {results.length === 0 && (
-        <p className="px-4 py-5 font-mono text-sm text-paper/45 md:px-5">No public results yet.</p>
+        <div className="px-4 py-8 md:px-5">
+          <p className="font-mono text-sm text-paper">No public typing results yet.</p>
+          <p className="mt-2 text-sm leading-6 text-paper/45">
+            This profile is ready; saved public results will appear here.
+          </p>
+        </div>
       )}
       {results.map((result) => (
         <article
