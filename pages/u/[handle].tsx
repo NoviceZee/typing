@@ -148,7 +148,7 @@ export default function PublicUserProfilePage() {
         {loadState === "ready" && profile && (
           <div className="space-y-6">
             <ProfileCard
-              handle={profile.handle}
+              profile={profile}
               analytics={analytics}
               copyMessage={copyMessage}
               onCopyUrl={handleCopyUrl}
@@ -220,31 +220,35 @@ function FriendAction({
 }
 
 function ProfileCard({
-  handle,
+  profile,
   analytics,
   copyMessage,
   onCopyUrl,
   friendAction,
   friendActionMessage
 }: {
-  handle: string;
+  profile: SupabasePublicProfile;
   analytics: ReturnType<typeof buildProgressAnalytics>;
   copyMessage: string;
   onCopyUrl: () => void;
   friendAction: React.ReactNode;
   friendActionMessage: string;
 }) {
+  const avatarStyle = profile.avatar_style || "default";
+
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="flex min-w-0 gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-brass/25 bg-brass/10 text-brass">
+          <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border ${getAvatarStyleClass(avatarStyle)}`}>
             <UserCircle className="h-9 w-9" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-mono text-xs uppercase text-brass">Public typist</p>
-            <h1 className="mt-1 break-words font-mono text-4xl font-semibold text-paper">@{handle}</h1>
-            <p className="mt-2 font-mono text-xs uppercase text-paper/35">Joined date unavailable</p>
+            <h1 className="mt-1 break-words font-mono text-4xl font-semibold text-paper">@{profile.handle}</h1>
+            <p className="mt-2 font-mono text-xs uppercase text-paper/35">{formatJoinedDate(profile.created_at)}</p>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/60">{profile.bio || "No bio yet."}</p>
+            <p className="mt-2 font-mono text-[0.68rem] uppercase text-paper/35">Avatar style: {avatarStyle}</p>
           </div>
         </div>
 
@@ -298,6 +302,37 @@ function ProfileCard({
       </section>
     </section>
   );
+}
+
+function getAvatarStyleClass(style: string) {
+  if (style === "slate") {
+    return "border-paper/15 bg-paper/[0.06] text-paper/65";
+  }
+
+  if (style === "ember") {
+    return "border-ember/25 bg-ember/10 text-ember";
+  }
+
+  return "border-brass/25 bg-brass/10 text-brass";
+}
+
+function formatJoinedDate(createdAt?: string | null) {
+  if (!createdAt) {
+    return "Joined date unavailable";
+  }
+
+  const date = new Date(createdAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Joined date unavailable";
+  }
+
+  return `Joined ${date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC"
+  })}`;
 }
 
 function SummaryStat({ label, value }: { label: string; value: string | number }) {

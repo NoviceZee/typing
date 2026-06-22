@@ -176,7 +176,11 @@ function HeaderAuthAction() {
         >
           <AccountMenuLink href="/profile" label="User stats" onClick={() => setIsOpen(false)} />
           <AccountMenuLink href="/profile/friends" label="Friends" onClick={() => setIsOpen(false)} />
-          <AccountMenuLink href="/profile/public" label="Public profile" onClick={() => setIsOpen(false)} />
+          <AccountMenuLink
+            href={profile?.handle ? `/u/${profile.handle}` : "/profile"}
+            label="Public profile"
+            onClick={() => setIsOpen(false)}
+          />
           <AccountMenuLink href="/profile/account" label="Account settings" onClick={() => setIsOpen(false)} />
           <button
             type="button"

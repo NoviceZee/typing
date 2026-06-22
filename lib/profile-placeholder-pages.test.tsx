@@ -72,14 +72,14 @@ describe("profile subpages", () => {
     });
   });
 
-  it("links to the user's public profile", async () => {
+  it("points public profile compatibility route back to profile identity", async () => {
     render(<PublicProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Public profile")).toBeTruthy();
+      expect(screen.getByText("Public profile moved")).toBeTruthy();
     });
-    expect(screen.getByRole("link", { name: "View @formal_typist" }).getAttribute("href")).toBe("/u/formal_typist");
-    expect(screen.queryByText("Public profiles will be available later.")).toBeNull();
+    expect(screen.getByRole("link", { name: "Go to Profile Identity" }).getAttribute("href")).toBe("/profile");
+    expect(screen.queryByRole("button", { name: /copy/i })).toBeNull();
   });
 
   it("renders friends empty states", async () => {

@@ -4,6 +4,7 @@ import {
   getSupabasePublicProfileByHandle,
   normalizeHandle,
   setSupabaseProfileHandle,
+  updateSupabaseProfileIdentity,
   validateHandle
 } from "./profileStorage";
 
@@ -54,8 +55,42 @@ describe("profileStorage handles", () => {
     });
 
     expect(from).toHaveBeenCalledWith("public_profiles");
-    expect(select).toHaveBeenCalledWith("handle");
+    expect(select).toHaveBeenCalledWith("handle,bio,avatar_style,created_at");
     expect(eq).toHaveBeenCalledWith("handle", "formal_typist");
+  });
+
+  it("updates public identity fields for the current profile", async () => {
+    const single = vi.fn().mockResolvedValue({
+      data: {
+        user_id: "user-1",
+        display_name: "Formal Typist",
+        handle: "formal_typist",
+        bio: "Quiet hands, loud WPM.",
+        avatar_style: "amber",
+        public_profile_enabled: true
+      },
+      error: null
+    });
+    const select = vi.fn(() => ({ single }));
+    const eq = vi.fn(() => ({ select }));
+    const update = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ update }));
+
+    await expect(
+      updateSupabaseProfileIdentity(
+        "user-1",
+        { bio: " Quiet hands, loud WPM. ", avatar_style: "amber", public_profile_enabled: true },
+        { from }
+      )
+    ).resolves.toMatchObject({ bio: "Quiet hands, loud WPM.", avatar_style: "amber" });
+
+    expect(from).toHaveBeenCalledWith("profiles");
+    expect(update).toHaveBeenCalledWith({
+      bio: "Quiet hands, loud WPM.",
+      avatar_style: "amber",
+      public_profile_enabled: true
+    });
+    expect(eq).toHaveBeenCalledWith("user_id", "user-1");
   });
 });
 

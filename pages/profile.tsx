@@ -3,10 +3,15 @@
 import React, { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { Activity, Award, Clock, Flame, Lock, Medal, Target, Trophy } from "lucide-react";
+import { Activity, Award, Clock, Copy, Flame, Lock, Medal, Target, Trophy, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
+import {
+  SupabaseProfile,
+  getSupabaseProfile,
+  updateSupabaseProfileIdentity
+} from "@/lib/profileStorage";
 import {
   SupabaseAnalyticsTypingResultRow,
   getSupabaseAnalyticsTypingResults
@@ -23,9 +28,17 @@ const TREND_RANGES: Array<{ id: TrendRange; label: string }> = [
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
+  const [profile, setProfile] = useState<SupabaseProfile | null>(null);
   const [results, setResults] = useState<SupabaseAnalyticsTypingResultRow[]>([]);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [resultsMessage, setResultsMessage] = useState("");
+  const [identityMessage, setIdentityMessage] = useState("");
+  const [identityError, setIdentityError] = useState("");
+  const [bio, setBio] = useState("");
+  const [avatarStyle, setAvatarStyle] = useState("amber");
+  const [isPublicProfileEnabled, setIsPublicProfileEnabled] = useState(true);
+  const [isSavingIdentity, setIsSavingIdentity] = useState(false);
+  const [copyMessage, setCopyMessage] = useState("");
   const [trendRange, setTrendRange] = useState<TrendRange>("30");
   const analytics = useMemo(() => buildProgressAnalytics(results), [results]);
   const trendResults = useMemo(() => getTrendResults(results, trendRange), [results, trendRange]);
@@ -42,6 +55,7 @@ export default function ProfilePage() {
     let isMounted = true;
 
     if (!user) {
+      setProfile(null);
       setResults([]);
       setResultsMessage("");
       setIsLoadingResults(false);
@@ -50,10 +64,14 @@ export default function ProfilePage() {
 
     setIsLoadingResults(true);
     setResultsMessage("");
-    getSupabaseAnalyticsTypingResults(user.id)
-      .then((typingResults) => {
+    Promise.all([getSupabaseAnalyticsTypingResults(user.id), getSupabaseProfile(user.id)])
+      .then(([typingResults, nextProfile]) => {
         if (!isMounted) return;
         setResults(typingResults);
+        setProfile(nextProfile);
+        setBio(nextProfile?.bio ?? "");
+        setAvatarStyle(nextProfile?.avatar_style ?? "amber");
+        setIsPublicProfileEnabled(nextProfile?.public_profile_enabled ?? true);
       })
       .catch((error) => {
         if (!isMounted) return;
@@ -68,6 +86,44 @@ export default function ProfilePage() {
       isMounted = false;
     };
   }, [user]);
+
+  async function handleCopyPublicProfileUrl() {
+    if (!profile?.handle || typeof navigator === "undefined" || !navigator.clipboard) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(getPublicProfileUrl(profile.handle));
+    setCopyMessage("Copied");
+  }
+
+  async function handleSaveIdentity(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!user) {
+      return;
+    }
+
+    setIsSavingIdentity(true);
+    setIdentityMessage("");
+    setIdentityError("");
+
+    try {
+      const nextProfile = await updateSupabaseProfileIdentity(user.id, {
+        bio,
+        avatar_style: avatarStyle,
+        public_profile_enabled: isPublicProfileEnabled
+      });
+      setProfile(nextProfile);
+      setBio(nextProfile.bio ?? "");
+      setAvatarStyle(nextProfile.avatar_style ?? "amber");
+      setIsPublicProfileEnabled(nextProfile.public_profile_enabled);
+      setIdentityMessage("Identity settings saved.");
+    } catch (error) {
+      setIdentityError(error instanceof Error ? error.message : "Identity settings could not be saved.");
+    } finally {
+      setIsSavingIdentity(false);
+    }
+  }
 
   return (
     <AppShell sideAd={false}>
@@ -96,6 +152,23 @@ export default function ProfilePage() {
 
         {user && (
           <div className="mt-6 space-y-6">
+            <ProfileIdentityCard
+              profile={profile}
+              analytics={analytics}
+              copyMessage={copyMessage}
+              onCopyPublicProfileUrl={handleCopyPublicProfileUrl}
+              bio={bio}
+              avatarStyle={avatarStyle}
+              isPublicProfileEnabled={isPublicProfileEnabled}
+              identityMessage={identityMessage}
+              identityError={identityError}
+              isSavingIdentity={isSavingIdentity}
+              onBioChange={setBio}
+              onAvatarStyleChange={setAvatarStyle}
+              onPublicProfileEnabledChange={setIsPublicProfileEnabled}
+              onSaveIdentity={handleSaveIdentity}
+            />
+
             {resultsMessage && (
               <div className="rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
                 {resultsMessage}
@@ -148,6 +221,168 @@ export default function ProfilePage() {
         )}
       </section>
     </AppShell>
+  );
+}
+
+function ProfileIdentityCard({
+  profile,
+  analytics,
+  copyMessage,
+  onCopyPublicProfileUrl,
+  bio,
+  avatarStyle,
+  isPublicProfileEnabled,
+  identityMessage,
+  identityError,
+  isSavingIdentity,
+  onBioChange,
+  onAvatarStyleChange,
+  onPublicProfileEnabledChange,
+  onSaveIdentity
+}: {
+  profile: SupabaseProfile | null;
+  analytics: ReturnType<typeof buildProgressAnalytics>;
+  copyMessage: string;
+  onCopyPublicProfileUrl: () => void;
+  bio: string;
+  avatarStyle: string;
+  isPublicProfileEnabled: boolean;
+  identityMessage: string;
+  identityError: string;
+  isSavingIdentity: boolean;
+  onBioChange: (value: string) => void;
+  onAvatarStyleChange: (value: string) => void;
+  onPublicProfileEnabledChange: (value: boolean) => void;
+  onSaveIdentity: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  const handle = profile?.handle;
+  const publicProfileUrl = handle ? getPublicProfileUrl(handle) : "Set a handle to publish your profile.";
+
+  return (
+    <section id="identity-settings" className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="flex min-w-0 gap-4">
+          <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border ${getAvatarStyleClass(avatarStyle)}`}>
+            <UserCircle className="h-9 w-9" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-xs uppercase text-brass">Profile Identity</p>
+            <h2 className="mt-1 break-words font-mono text-3xl font-semibold text-paper">
+              {handle ? `@${handle}` : "Handle not set"}
+            </h2>
+            <p className="mt-2 break-all font-mono text-xs text-paper/45">{publicProfileUrl}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onCopyPublicProfileUrl}
+                disabled={!handle}
+                aria-label="Copy public profile URL"
+                className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/40 hover:text-paper disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Copy className="h-4 w-4" />
+                {copyMessage || "Copy URL"}
+              </button>
+              {handle && (
+                <Link
+                  href={`/u/${handle}`}
+                  className="inline-flex items-center rounded-md border border-brass/35 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:border-brass/60 hover:bg-brass/15"
+                >
+                  View public profile
+                </Link>
+              )}
+              <Link
+                href="#identity-settings"
+                className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-paper/25 hover:text-paper"
+              >
+                Edit identity settings
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-md border border-paper/10 bg-ink-900/60 p-4">
+          <div className="flex items-center justify-between font-mono text-[0.68rem] uppercase text-paper/35">
+            <span>Level</span>
+            <span>{analytics.progression.xpToNextLevel} XP to next</span>
+          </div>
+          <p className="mt-2 font-mono text-3xl font-semibold text-paper">{analytics.progression.currentLevel}</p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-paper/[0.06]">
+            <div className="h-full rounded-full bg-brass" style={{ width: `${analytics.progression.progressPercent}%` }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <IdentityStat label="Total tests" value={analytics.summary.totalTests} />
+        <IdentityStat label="Best WPM" value={formatNumber(analytics.summary.bestWpm)} />
+        <IdentityStat label="Best accuracy" value={`${formatNumber(analytics.summary.bestAccuracy)}%`} />
+        <IdentityStat label="Current streak" value={`${analytics.activity.currentStreakDays} days`} />
+      </div>
+
+      <form onSubmit={onSaveIdentity} className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_14rem_12rem]">
+        <label className="block">
+          <span className="font-mono text-xs uppercase text-paper/45">Bio</span>
+          <textarea
+            value={bio}
+            onChange={(event) => onBioChange(event.target.value)}
+            maxLength={180}
+            rows={3}
+            className="mt-2 w-full resize-none rounded-md border border-paper/10 bg-ink-900 px-3 py-2 text-sm leading-6 text-paper outline-none transition placeholder:text-paper/30 focus:border-brass"
+            placeholder="A short public note for your FormalType profile."
+          />
+        </label>
+        <label className="block">
+          <span className="font-mono text-xs uppercase text-paper/45">Avatar style</span>
+          <select
+            value={avatarStyle}
+            onChange={(event) => onAvatarStyleChange(event.target.value)}
+            className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-sm text-paper outline-none transition focus:border-brass"
+          >
+            <option value="amber">amber</option>
+            <option value="slate">slate</option>
+            <option value="ember">ember</option>
+          </select>
+        </label>
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65">
+            <input
+              type="checkbox"
+              checked={isPublicProfileEnabled}
+              onChange={(event) => onPublicProfileEnabledChange(event.target.checked)}
+              className="accent-brass"
+            />
+            Public profile enabled
+          </label>
+          <button
+            type="submit"
+            disabled={isSavingIdentity}
+            className="w-full rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            {isSavingIdentity ? "Saving..." : "Save identity"}
+          </button>
+        </div>
+      </form>
+
+      {identityMessage && (
+        <div className="mt-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+          {identityMessage}
+        </div>
+      )}
+      {identityError && (
+        <div className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
+          {identityError}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function IdentityStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <article className="rounded-md border border-paper/10 bg-ink-900/60 px-4 py-3">
+      <p className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</p>
+      <p className="mt-2 font-mono text-xl font-semibold text-paper">{value}</p>
+    </article>
   );
 }
 
@@ -596,6 +831,22 @@ function buildChartPoints(values: number[]) {
 
 function formatNumber(value: number) {
   return Number(value).toFixed(1);
+}
+
+function getPublicProfileUrl(handle: string) {
+  return `https://formaltype.app/u/${handle}`;
+}
+
+function getAvatarStyleClass(style: string) {
+  if (style === "slate") {
+    return "border-paper/15 bg-paper/[0.06] text-paper/65";
+  }
+
+  if (style === "ember") {
+    return "border-ember/25 bg-ember/10 text-ember";
+  }
+
+  return "border-brass/25 bg-brass/10 text-brass";
 }
 
 function formatPracticeTime(seconds: number) {

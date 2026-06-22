@@ -67,7 +67,7 @@ describe("AppShell account dropdown", () => {
 
     expect(screen.getByRole("menuitem", { name: "User stats" }).getAttribute("href")).toBe("/profile");
     expect(screen.getByRole("menuitem", { name: "Friends" }).getAttribute("href")).toBe("/profile/friends");
-    expect(screen.getByRole("menuitem", { name: "Public profile" }).getAttribute("href")).toBe("/profile/public");
+    expect(screen.getByRole("menuitem", { name: "Public profile" }).getAttribute("href")).toBe("/u/formal_typist");
     expect(screen.getByRole("menuitem", { name: "Account settings" }).getAttribute("href")).toBe("/profile/account");
 
     const userStatsLink = screen.getByRole("menuitem", { name: "User stats" });
@@ -91,6 +91,21 @@ describe("AppShell account dropdown", () => {
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("routes public profile menu item to profile hub when no handle exists", async () => {
+    mockedGetSupabaseProfile.mockResolvedValue({ display_name: "Formal Typist", handle: null } as any);
+    mockState.pathname = "/onboarding/handle";
+    mockState.asPath = "/onboarding/handle";
+
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /account menu/i }).textContent).toContain("Account");
+    });
+    fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
+
+    expect(screen.getByRole("menuitem", { name: "Public profile" }).getAttribute("href")).toBe("/profile");
   });
 
   it("does not render email while the display name is still loading", () => {

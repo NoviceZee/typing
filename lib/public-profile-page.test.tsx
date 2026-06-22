@@ -41,7 +41,7 @@ vi.mock("@/lib/profileStorage", async () => {
 
   return {
     ...actual,
-    getSupabasePublicProfileByHandle: vi.fn().mockResolvedValue({ handle: "formal_typist" }),
+    getSupabasePublicProfileByHandle: vi.fn().mockResolvedValue(makePublicProfile()),
     getSupabaseProfile: vi.fn().mockResolvedValue({ user_id: "user-1", display_name: "Formal Typist", handle: "own_handle" })
   };
 });
@@ -76,7 +76,7 @@ describe("PublicUserProfilePage", () => {
     mockedGetOwnProfile.mockClear();
     mockedGetResults.mockClear();
     mockedGetFriendship.mockClear();
-    mockedGetProfile.mockResolvedValue({ handle: "formal_typist" });
+    mockedGetProfile.mockResolvedValue(makePublicProfile());
     mockedGetOwnProfile.mockResolvedValue({ user_id: "user-1", display_name: "Formal Typist", handle: "own_handle" } as any);
     mockedGetFriendship.mockResolvedValue(null);
     mockedGetResults.mockResolvedValue([
@@ -93,7 +93,9 @@ describe("PublicUserProfilePage", () => {
     });
 
     expect(screen.getByText("Public typist")).toBeTruthy();
-    expect(screen.getByText("Joined date unavailable")).toBeTruthy();
+    expect(screen.getByText("Joined Jun 20, 2026")).toBeTruthy();
+    expect(screen.getByText("I type with ceremonial precision.")).toBeTruthy();
+    expect(screen.getByText("Avatar style: amber")).toBeTruthy();
     expect(screen.getByText("Level")).toBeTruthy();
     expect(screen.getByText("XP progress")).toBeTruthy();
     expect(screen.getByText("Total XP")).toBeTruthy();
@@ -120,6 +122,18 @@ describe("PublicUserProfilePage", () => {
     expect(screen.getByText("This profile is ready; saved public results will appear here.")).toBeTruthy();
     expect(screen.getAllByText("0.0").length).toBeGreaterThan(0);
     expect(screen.getAllByText("0.0%").length).toBeGreaterThan(0);
+  });
+
+  it("renders bio and avatar fallbacks when identity fields are null", async () => {
+    mockedGetProfile.mockResolvedValueOnce(makePublicProfile({ bio: null, avatar_style: null }) as any);
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@formal_typist")).toBeTruthy();
+    });
+    expect(screen.getByText("No bio yet.")).toBeTruthy();
+    expect(screen.getByText("Avatar style: default")).toBeTruthy();
   });
 
   it("uses case-insensitive handle lookup", async () => {
@@ -222,6 +236,16 @@ function makeFriendship(overrides: Partial<Record<string, unknown>> = {}) {
     direction: "outgoing",
     created_at: "2026-06-22T00:00:00.000Z",
     updated_at: "2026-06-22T00:00:00.000Z",
+    ...overrides
+  };
+}
+
+function makePublicProfile(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    handle: "formal_typist",
+    bio: "I type with ceremonial precision.",
+    avatar_style: "amber",
+    created_at: "2026-06-20T00:00:00.000Z",
     ...overrides
   };
 }
