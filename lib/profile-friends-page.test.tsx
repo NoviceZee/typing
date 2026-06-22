@@ -107,6 +107,25 @@ describe("Profile friends page", () => {
     expect(screen.getByText("@linus_letters")).toBeTruthy();
   });
 
+  it("links friend and request handles to public profiles", async () => {
+    mockedListFriends.mockResolvedValueOnce([makeFriend({ handle: "ada_type" })]);
+    mockedListIncoming.mockResolvedValueOnce([makeFriend({ id: "request-1", handle: "grace_keys", direction: "incoming" })]);
+    mockedListOutgoing.mockResolvedValueOnce([makeFriend({ id: "request-2", handle: "linus_letters", direction: "outgoing" })]);
+
+    render(<FriendsPage />);
+
+    const friendLink = await screen.findByRole("link", { name: "@ada_type" });
+    const incomingLink = screen.getByRole("link", { name: "@grace_keys" });
+    const outgoingLink = screen.getByRole("link", { name: "@linus_letters" });
+
+    expect(friendLink.getAttribute("href")).toBe("/u/ada_type");
+    expect(incomingLink.getAttribute("href")).toBe("/u/grace_keys");
+    expect(outgoingLink.getAttribute("href")).toBe("/u/linus_letters");
+    expect(screen.getByRole("button", { name: "Remove @ada_type" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Accept @grace_keys" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancel @linus_letters" })).toBeTruthy();
+  });
+
   it("accepts incoming friend requests and refreshes lists", async () => {
     mockedListIncoming.mockResolvedValueOnce([
       makeFriend({ id: "request-1", handle: "grace_keys", direction: "incoming", status: "pending" })

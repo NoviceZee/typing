@@ -2,6 +2,7 @@
 
 import React from "react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
@@ -265,7 +266,9 @@ function FriendSection({
           className="flex flex-col gap-3 border-b border-paper/10 px-4 py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between md:px-5"
         >
           <div>
-            <p className="font-mono text-sm text-paper">@{item.handle}</p>
+            <Link href={`/u/${item.handle}`} className="font-mono text-sm text-paper transition hover:text-brass">
+              @{item.handle}
+            </Link>
             <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">{formatFriendState(item.direction)}</p>
           </div>
           <FriendActions item={item} pendingActionId={pendingActionId} action={actionForItem(item)} />
