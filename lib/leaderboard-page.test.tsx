@@ -75,6 +75,14 @@ describe("LeaderboardPage", () => {
     expect(screen.queryByText("typist@example.com")).toBeNull();
   });
 
+  it("links public handles to public profile pages", async () => {
+    render(<LeaderboardPage />);
+
+    const profileLink = await screen.findByRole("link", { name: "@formal_typist" });
+
+    expect(profileLink.getAttribute("href")).toBe("/u/formal_typist");
+  });
+
   it("defaults to today with the daily heading", async () => {
     render(<LeaderboardPage />);
 

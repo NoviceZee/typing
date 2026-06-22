@@ -27,7 +27,7 @@ export async function sendFriendRequestByProfileHandle(
   handle: string,
   client = requireSupabaseClient()
 ): Promise<SupabaseFriendship> {
-  const validation = validateHandle(handle);
+  const validation = validateHandle(normalizeFriendHandle(handle));
 
   if (!validation.isValid) {
     throw new Error(validation.message);
@@ -42,6 +42,10 @@ export async function sendFriendRequestByProfileHandle(
   }
 
   return data;
+}
+
+function normalizeFriendHandle(handle: string) {
+  return handle.trim().replace(/^@+/, "");
 }
 
 export async function acceptFriendRequest(

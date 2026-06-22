@@ -100,9 +100,16 @@ export default function PublicUserProfilePage() {
 
     setFriendActionMessage("");
     try {
-      await sendFriendRequestByProfileHandle(profile.handle);
-      const nextFriendship = await getFriendshipWithProfileHandle(profile.handle);
-      setFriendship(nextFriendship);
+      const request = await sendFriendRequestByProfileHandle(profile.handle);
+      setFriendship({
+        id: request.id,
+        user_id: request.addressee_id,
+        handle: profile.handle,
+        status: "pending",
+        direction: "outgoing",
+        created_at: request.created_at,
+        updated_at: request.updated_at
+      });
     } catch (error) {
       setFriendActionMessage(error instanceof Error ? error.message : "Friend request could not be sent.");
     }

@@ -1,14 +1,18 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import FriendsPage from "../pages/profile/friends";
 import {
+  acceptFriendRequest,
   listAcceptedFriends,
   listIncomingFriendRequests,
-  listOutgoingFriendRequests
+  listOutgoingFriendRequests,
+  rejectFriendRequest,
+  removeFriend,
+  sendFriendRequestByProfileHandle
 } from "@/lib/friendStorage";
 
 const mockState = vi.hoisted(() => ({
@@ -37,14 +41,22 @@ vi.mock("next/router", () => ({
 }));
 
 vi.mock("@/lib/friendStorage", () => ({
+  acceptFriendRequest: vi.fn().mockResolvedValue({}),
   listAcceptedFriends: vi.fn().mockResolvedValue([]),
   listIncomingFriendRequests: vi.fn().mockResolvedValue([]),
-  listOutgoingFriendRequests: vi.fn().mockResolvedValue([])
+  listOutgoingFriendRequests: vi.fn().mockResolvedValue([]),
+  rejectFriendRequest: vi.fn().mockResolvedValue(undefined),
+  removeFriend: vi.fn().mockResolvedValue(undefined),
+  sendFriendRequestByProfileHandle: vi.fn().mockResolvedValue({})
 }));
 
+const mockedAccept = vi.mocked(acceptFriendRequest);
 const mockedListFriends = vi.mocked(listAcceptedFriends);
 const mockedListIncoming = vi.mocked(listIncomingFriendRequests);
 const mockedListOutgoing = vi.mocked(listOutgoingFriendRequests);
+const mockedReject = vi.mocked(rejectFriendRequest);
+const mockedRemove = vi.mocked(removeFriend);
+const mockedSend = vi.mocked(sendFriendRequestByProfileHandle);
 
 describe("Profile friends page", () => {
   beforeEach(() => {
@@ -54,9 +66,17 @@ describe("Profile friends page", () => {
     mockedListFriends.mockClear();
     mockedListIncoming.mockClear();
     mockedListOutgoing.mockClear();
+    mockedAccept.mockClear();
+    mockedReject.mockClear();
+    mockedRemove.mockClear();
+    mockedSend.mockClear();
     mockedListFriends.mockResolvedValue([]);
     mockedListIncoming.mockResolvedValue([]);
     mockedListOutgoing.mockResolvedValue([]);
+    mockedAccept.mockResolvedValue({} as any);
+    mockedReject.mockResolvedValue(undefined);
+    mockedRemove.mockResolvedValue(undefined);
+    mockedSend.mockResolvedValue({} as any);
   });
 
   it("renders empty friend request sections", async () => {
@@ -85,6 +105,81 @@ describe("Profile friends page", () => {
 
     expect(screen.getByText("@grace_keys")).toBeTruthy();
     expect(screen.getByText("@linus_letters")).toBeTruthy();
+  });
+
+  it("accepts incoming friend requests and refreshes lists", async () => {
+    mockedListIncoming.mockResolvedValueOnce([
+      makeFriend({ id: "request-1", handle: "grace_keys", direction: "incoming", status: "pending" })
+    ]);
+    mockedListFriends.mockResolvedValueOnce([]).mockResolvedValueOnce([makeFriend({ handle: "grace_keys" })]);
+    mockedListIncoming.mockResolvedValueOnce([]);
+    mockedListOutgoing.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    render(<FriendsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@grace_keys")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Accept @grace_keys" }));
+
+    await waitFor(() => {
+      expect(mockedAccept).toHaveBeenCalledWith("request-1");
+    });
+    expect(await screen.findByText("Friend request accepted.")).toBeTruthy();
+  });
+
+  it("rejects incoming friend requests and refreshes lists", async () => {
+    mockedListIncoming.mockResolvedValueOnce([
+      makeFriend({ id: "request-1", handle: "grace_keys", direction: "incoming", status: "pending" })
+    ]);
+    mockedListIncoming.mockResolvedValueOnce([]);
+
+    render(<FriendsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@grace_keys")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reject @grace_keys" }));
+
+    await waitFor(() => {
+      expect(mockedReject).toHaveBeenCalledWith("request-1");
+    });
+    expect(await screen.findByText("Friend request rejected.")).toBeTruthy();
+  });
+
+  it("sends friend requests by handle from the friends page", async () => {
+    render(<FriendsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No friends yet.")).toBeTruthy();
+    });
+    fireEvent.change(screen.getByLabelText("Add friend by handle"), { target: { value: "@kkk" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+
+    await waitFor(() => {
+      expect(mockedSend).toHaveBeenCalledWith("@kkk");
+    });
+    expect(await screen.findByText("Friend request sent to @kkk.")).toBeTruthy();
+  });
+
+  it("cancels outgoing requests and removes accepted friends", async () => {
+    mockedListFriends.mockResolvedValueOnce([makeFriend({ id: "friend-1", handle: "ada_type" })]);
+    mockedListOutgoing.mockResolvedValueOnce([
+      makeFriend({ id: "request-2", handle: "linus_letters", direction: "outgoing", status: "pending" })
+    ]);
+
+    render(<FriendsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@ada_type")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel @linus_letters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove @ada_type" }));
+
+    await waitFor(() => {
+      expect(mockedReject).toHaveBeenCalledWith("request-2");
+      expect(mockedRemove).toHaveBeenCalledWith("friend-1");
+    });
   });
 
   it("redirects logged-out users to login", async () => {

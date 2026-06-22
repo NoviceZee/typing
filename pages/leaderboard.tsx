@@ -1,5 +1,6 @@
 import React from "react";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import {
@@ -208,7 +209,7 @@ export default function LeaderboardPage() {
                   <div>
                     <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">Name</div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-paper">{result.display_name}</span>
+                      <LeaderboardName displayName={result.display_name} />
                       {isOwnResult && (
                         <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-[0.65rem] font-semibold uppercase text-ink-950">
                           You
@@ -233,6 +234,28 @@ export default function LeaderboardPage() {
       </section>
     </AppShell>
   );
+}
+
+function LeaderboardName({ displayName }: { displayName: string }) {
+  const handle = getHandleFromDisplayName(displayName);
+
+  if (!handle) {
+    return <span className="font-semibold text-paper">{displayName}</span>;
+  }
+
+  return (
+    <Link href={`/u/${handle}`} className="font-semibold text-paper transition hover:text-brass">
+      {displayName}
+    </Link>
+  );
+}
+
+function getHandleFromDisplayName(displayName: string) {
+  if (!/^@[a-z0-9_]{3,20}$/.test(displayName)) {
+    return null;
+  }
+
+  return displayName.slice(1);
 }
 
 function FilterSelect({

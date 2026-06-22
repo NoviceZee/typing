@@ -24,6 +24,17 @@ describe("friendStorage", () => {
     expect(rpc).toHaveBeenCalledWith("send_friend_request_by_handle", { target_handle: "formal_typist" });
   });
 
+  it("accepts at-prefixed handles when sending friend requests", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: makeFriendship({ status: "pending" }),
+      error: null
+    });
+
+    await sendFriendRequestByProfileHandle("@Formal_Typist", { rpc });
+
+    expect(rpc).toHaveBeenCalledWith("send_friend_request_by_handle", { target_handle: "formal_typist" });
+  });
+
   it("rejects invalid handles before sending", async () => {
     const rpc = vi.fn();
 
