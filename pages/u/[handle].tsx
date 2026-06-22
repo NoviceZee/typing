@@ -3,10 +3,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Award, Copy, Flame, Lock, Medal, Target, Trophy } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/router";
 import { buildProgressAnalytics } from "@/lib/analytics";
-import { getSupabasePublicProfileByHandle } from "@/lib/profileStorage";
+import { getSupabaseProfile, getSupabasePublicProfileByHandle } from "@/lib/profileStorage";
 import type { SupabasePublicProfile } from "@/lib/profileStorage";
+import {
+  FriendListItem,
+  getFriendshipWithProfileHandle,
+  sendFriendRequestByProfileHandle
+} from "@/lib/friendStorage";
 import {
   SupabaseAnalyticsTypingResultRow,
   getSupabasePublicTypingResultsByHandle
@@ -16,8 +22,12 @@ type LoadState = "loading" | "ready" | "not-found" | "error";
 
 export default function PublicUserProfilePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const routeHandle = Array.isArray(router.query.handle) ? router.query.handle[0] : router.query.handle;
   const [profile, setProfile] = useState<SupabasePublicProfile | null>(null);
+  const [friendship, setFriendship] = useState<FriendListItem | null>(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [friendActionMessage, setFriendActionMessage] = useState("");
   const [results, setResults] = useState<SupabaseAnalyticsTypingResultRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [copyMessage, setCopyMessage] = useState("");
@@ -36,6 +46,9 @@ export default function PublicUserProfilePage() {
 
     setLoadState("loading");
     setCopyMessage("");
+    setFriendship(null);
+    setIsOwnProfile(false);
+    setFriendActionMessage("");
     getSupabasePublicProfileByHandle(routeHandle)
       .then(async (publicProfile) => {
         if (!isMounted) return;
@@ -47,10 +60,16 @@ export default function PublicUserProfilePage() {
           return;
         }
 
-        const publicResults = await getSupabasePublicTypingResultsByHandle(publicProfile.handle);
+        const [publicResults, ownProfile, nextFriendship] = await Promise.all([
+          getSupabasePublicTypingResultsByHandle(publicProfile.handle),
+          user ? getSupabaseProfile(user.id) : Promise.resolve(null),
+          user ? getFriendshipWithProfileHandle(publicProfile.handle) : Promise.resolve(null)
+        ]);
         if (!isMounted) return;
         setProfile(publicProfile);
         setResults(publicResults);
+        setIsOwnProfile(ownProfile?.handle === publicProfile.handle);
+        setFriendship(nextFriendship);
         setLoadState("ready");
       })
       .catch(() => {
@@ -63,7 +82,7 @@ export default function PublicUserProfilePage() {
     return () => {
       isMounted = false;
     };
-  }, [routeHandle, router.isReady]);
+  }, [routeHandle, router.isReady, user]);
 
   async function handleCopyUrl() {
     if (!profile || typeof window === "undefined" || !navigator.clipboard) {
@@ -72,6 +91,21 @@ export default function PublicUserProfilePage() {
 
     await navigator.clipboard.writeText(`${window.location.origin}/u/${profile.handle}`);
     setCopyMessage("Copied");
+  }
+
+  async function handleAddFriend() {
+    if (!profile) {
+      return;
+    }
+
+    setFriendActionMessage("");
+    try {
+      await sendFriendRequestByProfileHandle(profile.handle);
+      const nextFriendship = await getFriendshipWithProfileHandle(profile.handle);
+      setFriendship(nextFriendship);
+    } catch (error) {
+      setFriendActionMessage(error instanceof Error ? error.message : "Friend request could not be sent.");
+    }
   }
 
   return (
@@ -113,7 +147,15 @@ export default function PublicUserProfilePage() {
                   <Copy className="h-4 w-4" />
                   {copyMessage || "Copy URL"}
                 </button>
+                {user && !isOwnProfile && (
+                  <FriendAction friendship={friendship} onAddFriend={handleAddFriend} />
+                )}
               </div>
+              {friendActionMessage && (
+                <div className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
+                  {friendActionMessage}
+                </div>
+              )}
             </section>
 
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -169,6 +211,40 @@ export default function PublicUserProfilePage() {
         )}
       </section>
     </AppShell>
+  );
+}
+
+function FriendAction({
+  friendship,
+  onAddFriend
+}: {
+  friendship: FriendListItem | null;
+  onAddFriend: () => void;
+}) {
+  if (friendship?.status === "accepted") {
+    return (
+      <span className="inline-flex items-center rounded-md border border-brass/25 bg-brass/10 px-3 py-2 font-mono text-xs text-brass">
+        Friends
+      </span>
+    );
+  }
+
+  if (friendship?.status === "pending") {
+    return (
+      <span className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/55">
+        Request pending
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onAddFriend}
+      className="inline-flex items-center rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:border-brass/50 hover:bg-brass/15"
+    >
+      Add friend
+    </button>
   );
 }
 

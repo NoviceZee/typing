@@ -40,6 +40,12 @@ vi.mock("@/lib/profileStorage", () => ({
   upsertSupabaseProfile: vi.fn()
 }));
 
+vi.mock("@/lib/friendStorage", () => ({
+  listAcceptedFriends: vi.fn().mockResolvedValue([]),
+  listIncomingFriendRequests: vi.fn().mockResolvedValue([]),
+  listOutgoingFriendRequests: vi.fn().mockResolvedValue([])
+}));
+
 vi.mock("@/lib/typingResultStorage", async () => {
   const actual = await vi.importActual<typeof import("@/lib/typingResultStorage")>("@/lib/typingResultStorage");
 
@@ -76,10 +82,15 @@ describe("profile subpages", () => {
     expect(screen.queryByText("Public profiles will be available later.")).toBeNull();
   });
 
-  it("renders friends placeholder", () => {
+  it("renders friends empty states", async () => {
     render(<FriendsPage />);
 
-    expect(screen.getByText("Friends")).toBeTruthy();
-    expect(screen.getByText("Friends leaderboard will be available later.")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText("No friends yet.")).toBeTruthy();
+    });
+    expect(screen.getByText("Incoming requests")).toBeTruthy();
+    expect(screen.getByText("No incoming requests.")).toBeTruthy();
+    expect(screen.getByText("Outgoing requests")).toBeTruthy();
+    expect(screen.getByText("No outgoing requests.")).toBeTruthy();
   });
 });

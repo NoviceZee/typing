@@ -9,9 +9,12 @@ import {
   getSupabasePublicTypingResultsByHandle
 } from "@/lib/typingResultStorage";
 import { getSupabasePublicProfileByHandle } from "@/lib/profileStorage";
+import { getSupabaseProfile } from "@/lib/profileStorage";
+import { getFriendshipWithProfileHandle } from "@/lib/friendStorage";
 
 const mockState = vi.hoisted(() => ({
-  handle: "Formal_Typist"
+  handle: "Formal_Typist",
+  user: { id: "user-1", email: "typist@example.com" } as { id: string; email: string } | null
 }));
 
 vi.mock("@/components/AppShell", () => ({
@@ -25,14 +28,28 @@ vi.mock("next/router", () => ({
   })
 }));
 
+vi.mock("@/components/AuthProvider", () => ({
+  useAuth: () => ({
+    user: mockState.user,
+    isLoading: false,
+    isConfigured: true
+  })
+}));
+
 vi.mock("@/lib/profileStorage", async () => {
   const actual = await vi.importActual<typeof import("@/lib/profileStorage")>("@/lib/profileStorage");
 
   return {
     ...actual,
-    getSupabasePublicProfileByHandle: vi.fn().mockResolvedValue({ handle: "formal_typist" })
+    getSupabasePublicProfileByHandle: vi.fn().mockResolvedValue({ handle: "formal_typist" }),
+    getSupabaseProfile: vi.fn().mockResolvedValue({ user_id: "user-1", display_name: "Formal Typist", handle: "own_handle" })
   };
 });
+
+vi.mock("@/lib/friendStorage", () => ({
+  getFriendshipWithProfileHandle: vi.fn().mockResolvedValue(null),
+  sendFriendRequestByProfileHandle: vi.fn()
+}));
 
 vi.mock("@/lib/typingResultStorage", async () => {
   const actual = await vi.importActual<typeof import("@/lib/typingResultStorage")>("@/lib/typingResultStorage");
@@ -47,14 +64,21 @@ vi.mock("@/lib/typingResultStorage", async () => {
 });
 
 const mockedGetProfile = vi.mocked(getSupabasePublicProfileByHandle);
+const mockedGetOwnProfile = vi.mocked(getSupabaseProfile);
 const mockedGetResults = vi.mocked(getSupabasePublicTypingResultsByHandle);
+const mockedGetFriendship = vi.mocked(getFriendshipWithProfileHandle);
 
 describe("PublicUserProfilePage", () => {
   beforeEach(() => {
     mockState.handle = "Formal_Typist";
+    mockState.user = { id: "user-1", email: "typist@example.com" };
     mockedGetProfile.mockClear();
+    mockedGetOwnProfile.mockClear();
     mockedGetResults.mockClear();
+    mockedGetFriendship.mockClear();
     mockedGetProfile.mockResolvedValue({ handle: "formal_typist" });
+    mockedGetOwnProfile.mockResolvedValue({ user_id: "user-1", display_name: "Formal Typist", handle: "own_handle" } as any);
+    mockedGetFriendship.mockResolvedValue(null);
     mockedGetResults.mockResolvedValue([
       makeResult("recent", 60, 72, 98.2, "Business email", "2026-06-21T00:02:00.000Z", 360),
       makeResult("perfect", 60, 64, 100, "Legal", "2026-06-20T00:01:00.000Z", 320)
@@ -76,6 +100,7 @@ describe("PublicUserProfilePage", () => {
     expect(screen.getByText("Current streak")).toBeTruthy();
     expect(screen.getAllByText("Achievements").length).toBeGreaterThan(0);
     expect(screen.getByText("Recent Results")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add friend" })).toBeTruthy();
     expect(screen.queryByText(/typist@example.com/i)).toBeNull();
     expect(screen.queryByText(/user-1/i)).toBeNull();
   });
@@ -101,6 +126,39 @@ describe("PublicUserProfilePage", () => {
     });
     expect(screen.queryByText("@formal_typist")).toBeNull();
   });
+
+  it("shows pending friend state for outgoing requests", async () => {
+    mockedGetFriendship.mockResolvedValueOnce(makeFriendship({ direction: "outgoing", status: "pending" }) as any);
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Request pending")).toBeTruthy();
+    });
+    expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
+  });
+
+  it("shows friends state for accepted friendships", async () => {
+    mockedGetFriendship.mockResolvedValueOnce(makeFriendship({ direction: "accepted", status: "accepted" }) as any);
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Friends")).toBeTruthy();
+    });
+    expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
+  });
+
+  it("does not show add friend on the current user's own profile", async () => {
+    mockedGetOwnProfile.mockResolvedValueOnce({ user_id: "user-1", display_name: "Formal Typist", handle: "formal_typist" } as any);
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@formal_typist")).toBeTruthy();
+    });
+    expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
+  });
 });
 
 function makeResult(
@@ -121,5 +179,18 @@ function makeResult(
     accuracy,
     correct_chars: correctCharacters,
     created_at: createdAt
+  };
+}
+
+function makeFriendship(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: "friendship-1",
+    user_id: "user-2",
+    handle: "formal_typist",
+    status: "pending",
+    direction: "outgoing",
+    created_at: "2026-06-22T00:00:00.000Z",
+    updated_at: "2026-06-22T00:00:00.000Z",
+    ...overrides
   };
 }
