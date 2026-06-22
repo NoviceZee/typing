@@ -41,6 +41,7 @@ vi.mock("@/lib/profileStorage", async () => {
 
   return {
     ...actual,
+    getSupabaseAvatarPublicUrl: vi.fn((path: string | null) => (path ? `https://cdn.example.com/${path}` : null)),
     getSupabasePublicProfileByHandle: vi.fn().mockResolvedValue(makePublicProfile()),
     getSupabaseProfile: vi.fn().mockResolvedValue({ user_id: "user-1", display_name: "Formal Typist", handle: "own_handle" })
   };
@@ -125,7 +126,7 @@ describe("PublicUserProfilePage", () => {
   });
 
   it("renders bio and avatar fallbacks when identity fields are null", async () => {
-    mockedGetProfile.mockResolvedValueOnce(makePublicProfile({ bio: null, avatar_style: null }) as any);
+    mockedGetProfile.mockResolvedValueOnce(makePublicProfile({ bio: null, avatar_style: null, avatar_path: null }) as any);
 
     render(<PublicUserProfilePage />);
 
@@ -134,6 +135,19 @@ describe("PublicUserProfilePage", () => {
     });
     expect(screen.getByText("No bio yet.")).toBeTruthy();
     expect(screen.getByText("Avatar style: default")).toBeTruthy();
+  });
+
+  it("renders uploaded avatar images on public profiles", async () => {
+    mockedGetProfile.mockResolvedValueOnce(makePublicProfile({ avatar_path: "user-1/avatar.png" }) as any);
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByAltText("@formal_typist avatar")).toBeTruthy();
+    });
+    expect(screen.getByAltText("@formal_typist avatar").getAttribute("src")).toBe(
+      "https://cdn.example.com/user-1/avatar.png"
+    );
   });
 
   it("uses case-insensitive handle lookup", async () => {
@@ -156,6 +170,43 @@ describe("PublicUserProfilePage", () => {
       expect(screen.getByText("Profile not found")).toBeTruthy();
     });
     expect(screen.queryByText("@formal_typist")).toBeNull();
+  });
+
+  it("does not show a disabled public profile to visitors", async () => {
+    mockState.user = null;
+    mockedGetProfile.mockResolvedValueOnce(null);
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Profile not found")).toBeTruthy();
+    });
+    expect(screen.queryByText("I type with ceremonial precision.")).toBeNull();
+    expect(mockedGetResults).not.toHaveBeenCalled();
+  });
+
+  it("renders a disabled public profile for the profile owner", async () => {
+    mockedGetProfile.mockResolvedValueOnce(null);
+    mockedGetOwnProfile.mockResolvedValueOnce({
+      user_id: "user-1",
+      display_name: "Formal Typist",
+      handle: "formal_typist",
+      bio: "Keeping this quiet for now.",
+      avatar_style: "ember",
+      avatar_path: "user-1/private-avatar.png",
+      public_profile_enabled: false,
+      created_at: "2026-06-18T00:00:00.000Z",
+      updated_at: "2026-06-19T00:00:00.000Z"
+    } as any);
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@formal_typist")).toBeTruthy();
+    });
+    expect(screen.getByText("Keeping this quiet for now.")).toBeTruthy();
+    expect(screen.getByText("Avatar style: ember")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
   });
 
   it("shows pending friend state for outgoing requests", async () => {
@@ -245,6 +296,7 @@ function makePublicProfile(overrides: Partial<Record<string, unknown>> = {}) {
     handle: "formal_typist",
     bio: "I type with ceremonial precision.",
     avatar_style: "amber",
+    avatar_path: null,
     created_at: "2026-06-20T00:00:00.000Z",
     ...overrides
   };

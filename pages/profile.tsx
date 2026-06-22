@@ -2,14 +2,18 @@
 
 import React, { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/router";
-import { Activity, Award, Clock, Copy, Flame, Lock, Medal, Target, Trophy, UserCircle } from "lucide-react";
+import { Activity, Award, Camera, Clock, Copy, Flame, Lock, Medal, Target, Trash2, Trophy, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import {
   SupabaseProfile,
+  getSupabaseAvatarPublicUrl,
   getSupabaseProfile,
+  removeSupabaseProfileAvatar,
+  uploadSupabaseProfileAvatar,
   updateSupabaseProfileIdentity
 } from "@/lib/profileStorage";
 import {
@@ -38,6 +42,10 @@ export default function ProfilePage() {
   const [avatarStyle, setAvatarStyle] = useState("amber");
   const [isPublicProfileEnabled, setIsPublicProfileEnabled] = useState(true);
   const [isSavingIdentity, setIsSavingIdentity] = useState(false);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState("");
+  const [avatarError, setAvatarError] = useState("");
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
   const [trendRange, setTrendRange] = useState<TrendRange>("30");
   const analytics = useMemo(() => buildProgressAnalytics(results), [results]);
@@ -125,6 +133,70 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleAvatarFileChange(file: File | null) {
+    if (!user || !file) {
+      return;
+    }
+
+    setAvatarMessage("");
+    setAvatarError("");
+
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreviewUrl((currentPreviewUrl) => {
+      if (currentPreviewUrl) {
+        URL.revokeObjectURL(currentPreviewUrl);
+      }
+
+      return previewUrl;
+    });
+    setIsAvatarUploading(true);
+
+    try {
+      const preparedFile = await prepareAvatarUploadFile(file);
+      const nextProfile = await uploadSupabaseProfileAvatar(user.id, preparedFile);
+      setProfile(nextProfile);
+      setAvatarMessage("Avatar uploaded.");
+      setAvatarPreviewUrl((currentPreviewUrl) => {
+        if (currentPreviewUrl) {
+          URL.revokeObjectURL(currentPreviewUrl);
+        }
+
+        return null;
+      });
+    } catch (error) {
+      setAvatarError(error instanceof Error ? error.message : "Avatar could not be uploaded.");
+    } finally {
+      setIsAvatarUploading(false);
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    if (!user) {
+      return;
+    }
+
+    setAvatarMessage("");
+    setAvatarError("");
+    setIsAvatarUploading(true);
+
+    try {
+      const nextProfile = await removeSupabaseProfileAvatar(user.id, profile?.avatar_path);
+      setProfile(nextProfile);
+      setAvatarPreviewUrl((currentPreviewUrl) => {
+        if (currentPreviewUrl) {
+          URL.revokeObjectURL(currentPreviewUrl);
+        }
+
+        return null;
+      });
+      setAvatarMessage("Avatar removed.");
+    } catch (error) {
+      setAvatarError(error instanceof Error ? error.message : "Avatar could not be removed.");
+    } finally {
+      setIsAvatarUploading(false);
+    }
+  }
+
   return (
     <AppShell sideAd={false}>
       <section className="mx-auto max-w-6xl">
@@ -159,13 +231,20 @@ export default function ProfilePage() {
               onCopyPublicProfileUrl={handleCopyPublicProfileUrl}
               bio={bio}
               avatarStyle={avatarStyle}
+              avatarUrl={avatarPreviewUrl ?? getSupabaseAvatarPublicUrl(profile?.avatar_path)}
+              avatarPath={profile?.avatar_path ?? null}
               isPublicProfileEnabled={isPublicProfileEnabled}
               identityMessage={identityMessage}
               identityError={identityError}
+              avatarMessage={avatarMessage}
+              avatarError={avatarError}
               isSavingIdentity={isSavingIdentity}
+              isAvatarUploading={isAvatarUploading}
               onBioChange={setBio}
               onAvatarStyleChange={setAvatarStyle}
               onPublicProfileEnabledChange={setIsPublicProfileEnabled}
+              onAvatarFileChange={handleAvatarFileChange}
+              onRemoveAvatar={handleRemoveAvatar}
               onSaveIdentity={handleSaveIdentity}
             />
 
@@ -231,13 +310,20 @@ function ProfileIdentityCard({
   onCopyPublicProfileUrl,
   bio,
   avatarStyle,
+  avatarUrl,
+  avatarPath,
   isPublicProfileEnabled,
   identityMessage,
   identityError,
+  avatarMessage,
+  avatarError,
   isSavingIdentity,
+  isAvatarUploading,
   onBioChange,
   onAvatarStyleChange,
   onPublicProfileEnabledChange,
+  onAvatarFileChange,
+  onRemoveAvatar,
   onSaveIdentity
 }: {
   profile: SupabaseProfile | null;
@@ -246,13 +332,20 @@ function ProfileIdentityCard({
   onCopyPublicProfileUrl: () => void;
   bio: string;
   avatarStyle: string;
+  avatarUrl: string | null;
+  avatarPath: string | null;
   isPublicProfileEnabled: boolean;
   identityMessage: string;
   identityError: string;
+  avatarMessage: string;
+  avatarError: string;
   isSavingIdentity: boolean;
+  isAvatarUploading: boolean;
   onBioChange: (value: string) => void;
   onAvatarStyleChange: (value: string) => void;
   onPublicProfileEnabledChange: (value: boolean) => void;
+  onAvatarFileChange: (file: File | null) => void;
+  onRemoveAvatar: () => void;
   onSaveIdentity: (event: React.FormEvent<HTMLFormElement>) => void;
 }) {
   const handle = profile?.handle;
@@ -262,9 +355,7 @@ function ProfileIdentityCard({
     <section id="identity-settings" className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex min-w-0 gap-4">
-          <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border ${getAvatarStyleClass(avatarStyle)}`}>
-            <UserCircle className="h-9 w-9" />
-          </div>
+          <ProfileAvatar avatarUrl={avatarUrl} avatarStyle={avatarStyle} label={handle ? `@${handle}` : "Profile"} />
           <div className="min-w-0 flex-1">
             <p className="font-mono text-xs uppercase text-brass">Profile Identity</p>
             <h2 className="mt-1 break-words font-mono text-3xl font-semibold text-paper">
@@ -363,6 +454,48 @@ function ProfileIdentityCard({
         </div>
       </form>
 
+      <div className="mt-4 rounded-md border border-paper/10 bg-ink-900/60 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-mono text-xs uppercase text-paper/45">Avatar image</p>
+            <p className="mt-1 text-sm leading-6 text-paper/45">PNG, JPG, or WebP. Max 2MB.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15">
+              <Camera className="h-4 w-4" />
+              Upload avatar
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                aria-label="Upload avatar"
+                disabled={isAvatarUploading}
+                className="sr-only"
+                onChange={(event) => {
+                  onAvatarFileChange(event.target.files?.[0] ?? null);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+            {avatarPath && (
+              <button
+                type="button"
+                onClick={onRemoveAvatar}
+                disabled={isAvatarUploading}
+                className="inline-flex items-center gap-2 rounded-md border border-ember/25 bg-ember/10 px-3 py-2 font-mono text-xs uppercase text-ember transition hover:border-ember/45 disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                <Trash2 className="h-4 w-4" />
+                Remove avatar
+              </button>
+            )}
+          </div>
+        </div>
+        {(avatarMessage || avatarError || isAvatarUploading) && (
+          <p className={`mt-3 font-mono text-sm ${avatarError ? "text-ember" : "text-brass"}`}>
+            {avatarError || (isAvatarUploading ? "Updating avatar..." : avatarMessage)}
+          </p>
+        )}
+      </div>
+
       {identityMessage && (
         <div className="mt-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
           {identityMessage}
@@ -374,6 +507,44 @@ function ProfileIdentityCard({
         </div>
       )}
     </section>
+  );
+}
+
+function ProfileAvatar({
+  avatarUrl,
+  avatarStyle,
+  label
+}: {
+  avatarUrl: string | null;
+  avatarStyle: string;
+  label: string;
+}) {
+  const [hasImageError, setHasImageError] = useState(false);
+
+  useEffect(() => {
+    setHasImageError(false);
+  }, [avatarUrl]);
+
+  if (avatarUrl && !hasImageError) {
+    return (
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-brass/25 bg-ink-900">
+        <Image
+          src={avatarUrl}
+          alt={`${label} avatar`}
+          width={64}
+          height={64}
+          unoptimized
+          className="h-full w-full object-cover"
+          onError={() => setHasImageError(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full border ${getAvatarStyleClass(avatarStyle)}`}>
+      <UserCircle className="h-9 w-9" />
+    </div>
   );
 }
 
@@ -847,6 +1018,59 @@ function getAvatarStyleClass(style: string) {
   }
 
   return "border-brass/25 bg-brass/10 text-brass";
+}
+
+async function prepareAvatarUploadFile(file: File): Promise<File> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Choose a PNG, JPG, or WebP image.");
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    throw new Error("Avatar image must be 2MB or smaller.");
+  }
+
+  if (
+    typeof window === "undefined" ||
+    typeof createImageBitmap === "undefined" ||
+    typeof document === "undefined"
+  ) {
+    return file;
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const size = Math.min(bitmap.width, bitmap.height);
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      return file;
+    }
+
+    context.drawImage(
+      bitmap,
+      Math.floor((bitmap.width - size) / 2),
+      Math.floor((bitmap.height - size) / 2),
+      size,
+      size,
+      0,
+      0,
+      512,
+      512
+    );
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.86));
+
+    if (!blob || blob.size > 2 * 1024 * 1024) {
+      return file;
+    }
+
+    return new File([blob], "avatar.webp", { type: "image/webp" });
+  } catch {
+    return file;
+  }
 }
 
 function formatPracticeTime(seconds: number) {

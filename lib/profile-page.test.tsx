@@ -6,7 +6,12 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProfilePage from "../pages/profile";
 import { getSupabaseAnalyticsTypingResults } from "@/lib/typingResultStorage";
-import { getSupabaseProfile, updateSupabaseProfileIdentity } from "@/lib/profileStorage";
+import {
+  getSupabaseProfile,
+  removeSupabaseProfileAvatar,
+  updateSupabaseProfileIdentity,
+  uploadSupabaseProfileAvatar
+} from "@/lib/profileStorage";
 
 const mockState = vi.hoisted(() => ({
   user: { id: "user-1", email: "typist@example.com" } as { id: string; email: string } | null,
@@ -53,13 +58,18 @@ vi.mock("@/lib/profileStorage", async () => {
 
   return {
     ...actual,
+    getSupabaseAvatarPublicUrl: vi.fn((path: string | null) => (path ? `https://cdn.example.com/${path}` : null)),
     getSupabaseProfile: vi.fn().mockResolvedValue(makeProfile()),
+    removeSupabaseProfileAvatar: vi.fn().mockResolvedValue(makeProfile({ avatar_path: null })),
+    uploadSupabaseProfileAvatar: vi.fn().mockResolvedValue(makeProfile({ avatar_path: "user-1/avatar.png" })),
     updateSupabaseProfileIdentity: vi.fn().mockResolvedValue(makeProfile({ bio: "Updated bio", avatar_style: "slate" }))
   };
 });
 
 const mockedGetSupabaseAnalyticsTypingResults = vi.mocked(getSupabaseAnalyticsTypingResults);
 const mockedGetSupabaseProfile = vi.mocked(getSupabaseProfile);
+const mockedRemoveSupabaseProfileAvatar = vi.mocked(removeSupabaseProfileAvatar);
+const mockedUploadSupabaseProfileAvatar = vi.mocked(uploadSupabaseProfileAvatar);
 const mockedUpdateSupabaseProfileIdentity = vi.mocked(updateSupabaseProfileIdentity);
 
 describe("ProfilePage", () => {
@@ -70,8 +80,12 @@ describe("ProfilePage", () => {
     mockState.routerPush.mockClear();
     mockedGetSupabaseAnalyticsTypingResults.mockClear();
     mockedGetSupabaseProfile.mockClear();
+    mockedRemoveSupabaseProfileAvatar.mockClear();
+    mockedUploadSupabaseProfileAvatar.mockClear();
     mockedUpdateSupabaseProfileIdentity.mockClear();
     mockedGetSupabaseProfile.mockResolvedValue(makeProfile() as any);
+    mockedRemoveSupabaseProfileAvatar.mockResolvedValue(makeProfile({ avatar_path: null }) as any);
+    mockedUploadSupabaseProfileAvatar.mockResolvedValue(makeProfile({ avatar_path: "user-1/avatar.png" }) as any);
     mockedUpdateSupabaseProfileIdentity.mockResolvedValue(makeProfile({ bio: "Updated bio", avatar_style: "slate" }) as any);
   });
 
@@ -118,6 +132,36 @@ describe("ProfilePage", () => {
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(screen.queryByText("Profile Settings")).toBeNull();
+  });
+
+  it("renders uploaded avatar images in the Profile Identity card", async () => {
+    mockedGetSupabaseProfile.mockResolvedValueOnce(makeProfile({ avatar_path: "user-1/avatar.png" }) as any);
+
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByAltText("@formal_typist avatar")).toBeTruthy();
+    });
+    expect(screen.getByAltText("@formal_typist avatar").getAttribute("src")).toBe(
+      "https://cdn.example.com/user-1/avatar.png"
+    );
+    expect(screen.getByRole("button", { name: "Remove avatar" })).toBeTruthy();
+  });
+
+  it("removes an uploaded avatar from the Profile Identity card", async () => {
+    mockedGetSupabaseProfile.mockResolvedValueOnce(makeProfile({ avatar_path: "user-1/avatar.png" }) as any);
+
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Remove avatar" })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Remove avatar" }));
+
+    await waitFor(() => {
+      expect(mockedRemoveSupabaseProfileAvatar).toHaveBeenCalledWith("user-1", "user-1/avatar.png");
+    });
+    expect(screen.getByText("Avatar removed.")).toBeTruthy();
   });
 
   it("renders editable identity fields and saves changes", async () => {
@@ -180,6 +224,7 @@ function makeProfile(overrides: Partial<Record<string, unknown>> = {}) {
     handle: "formal_typist",
     bio: "I type with ceremonial precision.",
     avatar_style: "amber",
+    avatar_path: null,
     public_profile_enabled: true,
     created_at: "2026-06-20T00:00:00.000Z",
     updated_at: "2026-06-21T00:00:00.000Z",

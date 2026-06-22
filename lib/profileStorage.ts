@@ -1,11 +1,16 @@
 import { supabase } from "./supabaseClient";
 
+export const AVATAR_BUCKET = "avatars";
+export const MAX_AVATAR_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+const ALLOWED_AVATAR_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
+
 export type SupabaseProfile = {
   user_id: string;
   display_name: string;
   handle: string | null;
   bio: string | null;
   avatar_style: string | null;
+  avatar_path: string | null;
   public_profile_enabled: boolean;
   created_at: string;
   updated_at: string;
@@ -15,7 +20,8 @@ export type SupabasePublicProfile = {
   handle: string;
   bio: string | null;
   avatar_style: string | null;
-  created_at: string;
+  avatar_path: string | null;
+  created_at: string | null;
 };
 
 export type HandleValidationResult =
@@ -48,7 +54,109 @@ export async function getSupabasePublicProfileByHandle(
 
   const { data, error } = await client
     .from("public_profiles")
-    .select("handle,bio,avatar_style,created_at")
+    .select("handle,bio,avatar_style,avatar_path,created_at")
+    .eq("handle", cleanHandle)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingIdentityColumnError(error)) {
+      return getSupabaseLegacyPublicProfileByHandle(cleanHandle, client);
+    }
+
+    throw error;
+  }
+
+  return data;
+}
+
+export function getSupabaseAvatarPublicUrl(
+  avatarPath: string | null | undefined,
+  client = requireSupabaseClient()
+): string | null {
+  if (!avatarPath) {
+    return null;
+  }
+
+  const { data } = client.storage.from(AVATAR_BUCKET).getPublicUrl(avatarPath);
+  return data.publicUrl;
+}
+
+export async function uploadSupabaseProfileAvatar(
+  userId: string,
+  file: File | Blob,
+  client = requireSupabaseClient()
+): Promise<SupabaseProfile> {
+  const contentType = file.type || "application/octet-stream";
+  const fileSize = "size" in file ? file.size : 0;
+
+  if (!ALLOWED_AVATAR_MIME_TYPES.has(contentType)) {
+    throw new Error("Choose a PNG, JPG, or WebP image.");
+  }
+
+  if (fileSize > MAX_AVATAR_FILE_SIZE_BYTES) {
+    throw new Error("Avatar image must be 2MB or smaller.");
+  }
+
+  const avatarPath = `${userId}/avatar.${getAvatarExtension(contentType)}`;
+  const { error: uploadError } = await client.storage.from(AVATAR_BUCKET).upload(avatarPath, file, {
+    cacheControl: "3600",
+    contentType,
+    upsert: true
+  });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  return updateProfileAvatarPath(userId, avatarPath, client);
+}
+
+export async function removeSupabaseProfileAvatar(
+  userId: string,
+  avatarPath: string | null | undefined,
+  client = requireSupabaseClient()
+): Promise<SupabaseProfile> {
+  if (avatarPath) {
+    if (!avatarPath.startsWith(`${userId}/`)) {
+      throw new Error("Avatar path does not belong to this user.");
+    }
+
+    const { error: removeError } = await client.storage.from(AVATAR_BUCKET).remove([avatarPath]);
+
+    if (removeError) {
+      throw removeError;
+    }
+  }
+
+  return updateProfileAvatarPath(userId, null, client);
+}
+
+async function updateProfileAvatarPath(
+  userId: string,
+  avatarPath: string | null,
+  client: ReturnType<typeof requireSupabaseClient>
+): Promise<SupabaseProfile> {
+  const { data, error } = await client
+    .from("profiles")
+    .update({ avatar_path: avatarPath })
+    .eq("user_id", userId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+async function getSupabaseLegacyPublicProfileByHandle(
+  cleanHandle: string,
+  client: ReturnType<typeof requireSupabaseClient>
+): Promise<SupabasePublicProfile | null> {
+  const { data, error } = await client
+    .from("public_profiles")
+    .select("handle")
     .eq("handle", cleanHandle)
     .maybeSingle();
 
@@ -56,7 +164,17 @@ export async function getSupabasePublicProfileByHandle(
     throw error;
   }
 
-  return data;
+  if (!data) {
+    return null;
+  }
+
+  return {
+    handle: data.handle,
+    bio: null,
+    avatar_style: null,
+    avatar_path: null,
+    created_at: null
+  };
 }
 
 export async function updateSupabaseProfileIdentity(
@@ -203,4 +321,20 @@ function requireSupabaseClient(): any {
   }
 
   return supabase;
+}
+
+function isMissingIdentityColumnError(error: { code?: string; message?: string }) {
+  return error.code === "42703" || /column .* does not exist/i.test(error.message ?? "");
+}
+
+function getAvatarExtension(contentType: string) {
+  if (contentType === "image/png") {
+    return "png";
+  }
+
+  if (contentType === "image/webp") {
+    return "webp";
+  }
+
+  return "jpg";
 }

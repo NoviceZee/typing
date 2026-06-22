@@ -1,13 +1,19 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { Award, Copy, Target, Trophy, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/router";
 import { buildProgressAnalytics } from "@/lib/analytics";
-import { getSupabaseProfile, getSupabasePublicProfileByHandle } from "@/lib/profileStorage";
-import type { SupabasePublicProfile } from "@/lib/profileStorage";
+import {
+  getSupabaseAvatarPublicUrl,
+  getSupabaseProfile,
+  getSupabasePublicProfileByHandle,
+  normalizeHandle
+} from "@/lib/profileStorage";
+import type { SupabaseProfile, SupabasePublicProfile } from "@/lib/profileStorage";
 import {
   FriendListItem,
   getFriendshipWithProfileHandle,
@@ -55,26 +61,32 @@ export default function PublicUserProfilePage() {
       .then(async (publicProfile) => {
         if (!isMounted) return;
 
-        if (!publicProfile) {
+        const ownProfile = user ? await getSupabaseProfile(user.id).catch(() => null) : null;
+        const ownerProfile =
+          !publicProfile && ownProfile?.handle === normalizeHandle(routeHandle)
+            ? getOwnPublicProfileFallback(ownProfile)
+            : null;
+        const visibleProfile = publicProfile ?? ownerProfile;
+
+        if (!visibleProfile) {
           setProfile(null);
           setResults([]);
           setLoadState("not-found");
           return;
         }
 
-        const [publicResults, ownProfile, friendshipResult] = await Promise.all([
-          getSupabasePublicTypingResultsByHandle(publicProfile.handle),
-          user ? getSupabaseProfile(user.id) : Promise.resolve(null),
+        const [publicResults, friendshipResult] = await Promise.all([
+          getSupabasePublicTypingResultsByHandle(visibleProfile.handle),
           user
-            ? getFriendshipWithProfileHandle(publicProfile.handle)
+            ? getFriendshipWithProfileHandle(visibleProfile.handle)
                 .then((friendship) => ({ friendship, failed: false }))
                 .catch(() => ({ friendship: null, failed: true }))
             : Promise.resolve({ friendship: null, failed: false })
         ]);
         if (!isMounted) return;
-        setProfile(publicProfile);
+        setProfile(visibleProfile);
         setResults(publicResults);
-        setIsOwnProfile(ownProfile?.handle === publicProfile.handle);
+        setIsOwnProfile(ownProfile?.handle === visibleProfile.handle);
         setFriendship(friendshipResult.friendship);
         setIsFriendStatusUnavailable(friendshipResult.failed);
         setLoadState("ready");
@@ -175,6 +187,16 @@ export default function PublicUserProfilePage() {
   );
 }
 
+function getOwnPublicProfileFallback(profile: SupabaseProfile): SupabasePublicProfile {
+  return {
+    handle: profile.handle ?? "",
+    bio: profile.bio ?? null,
+    avatar_style: profile.avatar_style ?? null,
+    avatar_path: profile.avatar_path ?? null,
+    created_at: profile.created_at
+  };
+}
+
 function FriendAction({
   friendship,
   isUnavailable = false,
@@ -235,14 +257,13 @@ function ProfileCard({
   friendActionMessage: string;
 }) {
   const avatarStyle = profile.avatar_style || "default";
+  const avatarUrl = getSupabaseAvatarPublicUrl(profile.avatar_path);
 
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="flex min-w-0 gap-4">
-          <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border ${getAvatarStyleClass(avatarStyle)}`}>
-            <UserCircle className="h-9 w-9" />
-          </div>
+          <PublicAvatar avatarUrl={avatarUrl} avatarStyle={avatarStyle} label={`@${profile.handle}`} />
           <div className="min-w-0 flex-1">
             <p className="font-mono text-xs uppercase text-brass">Public typist</p>
             <h1 className="mt-1 break-words font-mono text-4xl font-semibold text-paper">@{profile.handle}</h1>
@@ -301,6 +322,44 @@ function ProfileCard({
         <SummaryStat label="Total XP / Level" value={`${analytics.progression.totalXp} / ${analytics.progression.currentLevel}`} />
       </section>
     </section>
+  );
+}
+
+function PublicAvatar({
+  avatarUrl,
+  avatarStyle,
+  label
+}: {
+  avatarUrl: string | null;
+  avatarStyle: string;
+  label: string;
+}) {
+  const [hasImageError, setHasImageError] = useState(false);
+
+  useEffect(() => {
+    setHasImageError(false);
+  }, [avatarUrl]);
+
+  if (avatarUrl && !hasImageError) {
+    return (
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-brass/25 bg-ink-900">
+        <Image
+          src={avatarUrl}
+          alt={`${label} avatar`}
+          width={64}
+          height={64}
+          unoptimized
+          className="h-full w-full object-cover"
+          onError={() => setHasImageError(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full border ${getAvatarStyleClass(avatarStyle)}`}>
+      <UserCircle className="h-9 w-9" />
+    </div>
   );
 }
 
