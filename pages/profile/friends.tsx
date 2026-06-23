@@ -326,10 +326,12 @@ function FriendsTable({
             <th className="px-3 py-3 font-normal">Level</th>
             <th className="px-3 py-3 font-normal">Tests</th>
             <th className="px-3 py-3 font-normal">Best WPM</th>
-            <th className="px-3 py-3 font-normal">Best acc</th>
+            <th className="px-3 py-3 font-normal">Acc</th>
             <th className="px-3 py-3 font-normal">Streak</th>
             <th className="px-3 py-3 font-normal">Latest</th>
-            <th className="px-4 py-3 text-right font-normal">Action</th>
+            <th className="px-4 py-3 text-right font-normal">
+              <span className="sr-only">Actions</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -402,7 +404,8 @@ function FriendTableRow({
           type="button"
           onClick={onRemove}
           disabled={isPending}
-          aria-label={`Remove @${friend.handle}`}
+          aria-label={`Remove friend @${friend.handle}`}
+          title={`Remove friend @${friend.handle}`}
           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-paper/10 bg-ink-900 text-paper/45 transition hover:border-ember/35 hover:text-ember disabled:cursor-not-allowed disabled:opacity-55"
         >
           <X className="h-4 w-4" />
@@ -489,6 +492,8 @@ function RequestRow({
   onSecondary?: () => void;
 }) {
   const isPending = pendingActionId === item.id;
+  const primaryActionLabel = `${primaryLabel} request @${item.handle}`;
+  const secondaryActionLabel = secondaryLabel ? `${secondaryLabel} request @${item.handle}` : "";
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-paper/10 bg-ink-900/60 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
@@ -503,7 +508,8 @@ function RequestRow({
           type="button"
           onClick={onPrimary}
           disabled={isPending}
-          aria-label={`${primaryLabel} @${item.handle}`}
+          aria-label={primaryActionLabel}
+          title={primaryActionLabel}
           className="rounded-md border border-brass/30 bg-brass/10 px-3 py-1.5 font-mono text-xs uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-55"
         >
           {primaryLabel}
@@ -513,7 +519,8 @@ function RequestRow({
             type="button"
             onClick={onSecondary}
             disabled={isPending}
-            aria-label={`${secondaryLabel} @${item.handle}`}
+            aria-label={secondaryActionLabel}
+            title={secondaryActionLabel}
             className="rounded-md border border-paper/10 bg-ink-900 px-3 py-1.5 font-mono text-xs uppercase text-paper/55 transition hover:border-ember/35 hover:text-ember disabled:cursor-not-allowed disabled:opacity-55"
           >
             {secondaryLabel}

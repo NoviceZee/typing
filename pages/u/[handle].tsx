@@ -40,10 +40,6 @@ export default function PublicUserProfilePage() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [copyMessage, setCopyMessage] = useState("");
   const analytics = useMemo(() => buildProgressAnalytics(results), [results]);
-  const recentResults = useMemo(
-    () => [...results].sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at)).slice(0, 5),
-    [results]
-  );
 
   useEffect(() => {
     let isMounted = true;
@@ -195,7 +191,6 @@ export default function PublicUserProfilePage() {
             />
 
             <PublicStatsPanel analytics={analytics} hasResults={results.length > 0} />
-            <RecentPublicResults results={recentResults} />
             <AchievementsSummary analytics={analytics} />
           </div>
         )}
@@ -520,57 +515,6 @@ function FeaturedStat({ label, value, icon }: { label: string; value: string; ic
   );
 }
 
-function RecentPublicResults({ results }: { results: SupabaseAnalyticsTypingResultRow[] }) {
-  return (
-    <section className="overflow-hidden rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
-      <div className="border-b border-paper/10 px-4 py-4 md:px-5">
-        <h2 className="font-mono text-sm uppercase text-brass">Recent Results</h2>
-      </div>
-      {results.length === 0 && (
-        <div className="px-4 py-8 md:px-5">
-          <p className="font-mono text-sm text-paper">No public typing results yet.</p>
-          <p className="mt-2 text-sm leading-6 text-paper/45">
-            This profile is ready; saved public results will appear here.
-          </p>
-        </div>
-      )}
-      {results.map((result) => (
-        <article
-          key={result.id}
-          className="grid gap-3 border-b border-paper/10 px-4 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_7rem_6rem_7rem] md:items-center md:px-5"
-        >
-          <div>
-            <div className="text-sm font-semibold text-paper">{result.passage_title}</div>
-            {result.passage_category && (
-              <div className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">{result.passage_category}</div>
-            )}
-          </div>
-          <PublicResultMetric label="Duration" value={formatDuration(result.duration_seconds)} />
-          <PublicResultMetric label="WPM" value={formatNumber(result.wpm)} strong />
-          <PublicResultMetric label="Accuracy" value={`${formatNumber(result.accuracy)}%`} />
-        </article>
-      ))}
-    </section>
-  );
-}
-
-function PublicResultMetric({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div>
-      <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">{label}</div>
-      <div className={`font-mono text-sm ${strong ? "font-semibold text-paper" : "text-paper/65"}`}>{value}</div>
-    </div>
-  );
-}
-
 function formatNumber(value: number) {
   return Number(value).toFixed(1);
-}
-
-function formatDuration(seconds: number) {
-  if (seconds <= 0) {
-    return "Infinite";
-  }
-
-  return `${Math.round(seconds / 60)}m`;
 }

@@ -134,9 +134,10 @@ describe("Profile friends page", () => {
     expect(screen.getByText("Level")).toBeTruthy();
     expect(screen.getByText("Tests")).toBeTruthy();
     expect(screen.getByText("Best WPM")).toBeTruthy();
-    expect(screen.getByText("Best acc")).toBeTruthy();
+    expect(screen.getByText("Acc")).toBeTruthy();
     expect(screen.getByText("Streak")).toBeTruthy();
     expect(screen.getByText("Latest")).toBeTruthy();
+    expect(screen.queryByText("Action")).toBeNull();
     expect(screen.getByText("72.0")).toBeTruthy();
     expect(screen.getByText("98.2%")).toBeTruthy();
     expect(screen.getByText("Passage latest")).toBeTruthy();
@@ -171,9 +172,12 @@ describe("Profile friends page", () => {
     expect(friendLink.getAttribute("href")).toBe("/u/ada_type");
     expect(incomingLink.getAttribute("href")).toBe("/u/grace_keys");
     expect(outgoingLink.getAttribute("href")).toBe("/u/linus_letters");
-    expect(screen.getByRole("button", { name: "Remove @ada_type" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Accept @grace_keys" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Cancel @linus_letters" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Remove friend @ada_type" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Accept request @grace_keys" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancel request @linus_letters" })).toBeTruthy();
+    expect(screen.getByTitle("Remove friend @ada_type")).toBeTruthy();
+    expect(screen.getByTitle("Accept request @grace_keys")).toBeTruthy();
+    expect(screen.getByTitle("Cancel request @linus_letters")).toBeTruthy();
   });
 
   it("accepts incoming friend requests and refreshes lists", async () => {
@@ -189,7 +193,7 @@ describe("Profile friends page", () => {
     await waitFor(() => {
       expect(screen.getByText("@grace_keys")).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole("button", { name: "Accept @grace_keys" }));
+    fireEvent.click(screen.getByRole("button", { name: "Accept request @grace_keys" }));
 
     await waitFor(() => {
       expect(mockedAccept).toHaveBeenCalledWith("request-1");
@@ -208,7 +212,7 @@ describe("Profile friends page", () => {
     await waitFor(() => {
       expect(screen.getByText("@grace_keys")).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole("button", { name: "Reject @grace_keys" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reject request @grace_keys" }));
 
     await waitFor(() => {
       expect(mockedReject).toHaveBeenCalledWith("request-1");
@@ -256,8 +260,8 @@ describe("Profile friends page", () => {
     await waitFor(() => {
       expect(screen.getByText("@ada_type")).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole("button", { name: "Cancel @linus_letters" }));
-    fireEvent.click(screen.getByRole("button", { name: "Remove @ada_type" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel request @linus_letters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove friend @ada_type" }));
 
     await waitFor(() => {
       expect(mockedReject).toHaveBeenCalledWith("request-2");

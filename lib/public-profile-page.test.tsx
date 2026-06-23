@@ -105,11 +105,9 @@ describe("PublicUserProfilePage", () => {
     expect(screen.getAllByText("Best accuracy").length).toBeGreaterThan(0);
     expect(screen.getByText("Current streak")).toBeTruthy();
     expect(screen.getByText("Achievements")).toBeTruthy();
-    expect(screen.getByText("Recent Results")).toBeTruthy();
-    expect(
-      screen.getByText("Recent Results").compareDocumentPosition(screen.getByText("Achievements")) &
-        Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
+    expect(screen.queryByText("Recent Results")).toBeNull();
+    expect(screen.queryByText("Passage recent")).toBeNull();
+    expect(screen.queryByText("Passage perfect")).toBeNull();
     expect(screen.getByRole("button", { name: "Add friend" })).toBeTruthy();
     expect(screen.queryByText(/typist@example.com/i)).toBeNull();
     expect(screen.queryByText(/user-1/i)).toBeNull();
@@ -123,8 +121,9 @@ describe("PublicUserProfilePage", () => {
     await waitFor(() => {
       expect(screen.getByText("@formal_typist")).toBeTruthy();
     });
-    expect(screen.getByText("No public typing results yet.")).toBeTruthy();
-    expect(screen.getByText("This profile is ready; saved public results will appear here.")).toBeTruthy();
+    expect(screen.queryByText("No public typing results yet.")).toBeNull();
+    expect(screen.queryByText("This profile is ready; saved public results will appear here.")).toBeNull();
+    expect(screen.queryByText("Recent Results")).toBeNull();
     expect(screen.getAllByText("0.0").length).toBeGreaterThan(0);
     expect(screen.getAllByText("0.0%").length).toBeGreaterThan(0);
   });
@@ -268,7 +267,8 @@ describe("PublicUserProfilePage", () => {
       expect(screen.getByText("@formal_typist")).toBeTruthy();
     });
     expect(screen.getByText("Friend status unavailable")).toBeTruthy();
-    expect(screen.getByText("Recent Results")).toBeTruthy();
+    expect(screen.queryByText("Recent Results")).toBeNull();
+    expect(screen.queryByText("Passage recent")).toBeNull();
     expect(screen.queryByText("Public profile could not be loaded.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
   });
