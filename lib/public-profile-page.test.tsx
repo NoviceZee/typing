@@ -176,21 +176,30 @@ describe("PublicUserProfilePage", () => {
     expect(screen.queryByText("@formal_typist")).toBeNull();
   });
 
-  it("does not show a disabled public profile to visitors", async () => {
+  it("shows a private profile state for disabled public profiles", async () => {
     mockState.user = null;
-    mockedGetProfile.mockResolvedValueOnce(null);
+    mockedGetProfile.mockResolvedValueOnce(
+      makePublicProfile({ public_profile_enabled: false, bio: null, avatar_path: null }) as any
+    );
 
     render(<PublicUserProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Profile not found")).toBeTruthy();
+      expect(screen.getByText("This profile is private.")).toBeTruthy();
     });
+    expect(screen.getByText("@formal_typist")).toBeTruthy();
     expect(screen.queryByText("I type with ceremonial precision.")).toBeNull();
+    expect(screen.queryByText("Public Stats")).toBeNull();
+    expect(screen.queryByText("Recent Results")).toBeNull();
+    expect(screen.queryByText("Achievements")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
     expect(mockedGetResults).not.toHaveBeenCalled();
   });
 
-  it("renders a disabled public profile for the profile owner", async () => {
-    mockedGetProfile.mockResolvedValueOnce(null);
+  it("shows a private profile state with a profile settings hint for the owner", async () => {
+    mockedGetProfile.mockResolvedValueOnce(
+      makePublicProfile({ public_profile_enabled: false, bio: null, avatar_path: "user-1/private-avatar.png" }) as any
+    );
     mockedGetOwnProfile.mockResolvedValueOnce({
       user_id: "user-1",
       display_name: "Formal Typist",
@@ -206,11 +215,15 @@ describe("PublicUserProfilePage", () => {
     render(<PublicUserProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByText("@formal_typist")).toBeTruthy();
+      expect(screen.getByText("This profile is private.")).toBeTruthy();
     });
-    expect(screen.getByText("Keeping this quiet for now.")).toBeTruthy();
-    expect(screen.queryByText(/avatar style/i)).toBeNull();
+    expect(screen.getByText("@formal_typist")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Manage visibility" }).getAttribute("href")).toBe("/profile");
+    expect(screen.queryByText("Public Stats")).toBeNull();
+    expect(screen.queryByText("Recent Results")).toBeNull();
+    expect(screen.queryByText("Achievements")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
+    expect(mockedGetResults).not.toHaveBeenCalled();
   });
 
   it("shows pending friend state for outgoing requests", async () => {
@@ -301,6 +314,7 @@ function makePublicProfile(overrides: Partial<Record<string, unknown>> = {}) {
     bio: "I type with ceremonial precision.",
     avatar_style: "amber",
     avatar_path: null,
+    public_profile_enabled: true,
     created_at: "2026-06-20T00:00:00.000Z",
     ...overrides
   };

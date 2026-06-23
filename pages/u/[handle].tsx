@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Award, Copy, Target, Trophy, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
@@ -75,6 +76,18 @@ export default function PublicUserProfilePage() {
           return;
         }
 
+        const isOwnVisibleProfile = ownProfile?.handle === visibleProfile.handle;
+
+        if (visibleProfile.public_profile_enabled === false) {
+          setProfile(visibleProfile);
+          setResults([]);
+          setIsOwnProfile(isOwnVisibleProfile);
+          setFriendship(null);
+          setIsFriendStatusUnavailable(false);
+          setLoadState("ready");
+          return;
+        }
+
         const [publicResults, friendshipResult] = await Promise.all([
           getSupabasePublicTypingResultsByHandle(visibleProfile.handle),
           user
@@ -86,7 +99,7 @@ export default function PublicUserProfilePage() {
         if (!isMounted) return;
         setProfile(visibleProfile);
         setResults(publicResults);
-        setIsOwnProfile(ownProfile?.handle === visibleProfile.handle);
+        setIsOwnProfile(isOwnVisibleProfile);
         setFriendship(friendshipResult.friendship);
         setIsFriendStatusUnavailable(friendshipResult.failed);
         setLoadState("ready");
@@ -157,7 +170,11 @@ export default function PublicUserProfilePage() {
           </section>
         )}
 
-        {loadState === "ready" && profile && (
+        {loadState === "ready" && profile && profile.public_profile_enabled === false && (
+          <PrivateProfileCard profile={profile} isOwnProfile={isOwnProfile} />
+        )}
+
+        {loadState === "ready" && profile && profile.public_profile_enabled !== false && (
           <div className="space-y-6">
             <ProfileCard
               profile={profile}
@@ -193,8 +210,38 @@ function getOwnPublicProfileFallback(profile: SupabaseProfile): SupabasePublicPr
     bio: profile.bio ?? null,
     avatar_style: profile.avatar_style ?? null,
     avatar_path: profile.avatar_path ?? null,
+    public_profile_enabled: profile.public_profile_enabled,
     created_at: profile.created_at
   };
+}
+
+function PrivateProfileCard({
+  profile,
+  isOwnProfile
+}: {
+  profile: SupabasePublicProfile;
+  isOwnProfile: boolean;
+}) {
+  const avatarStyle = profile.avatar_style || "default";
+  const avatarUrl = getSupabaseAvatarPublicUrl(profile.avatar_path);
+
+  return (
+    <section className="mx-auto max-w-xl rounded-lg border border-paper/10 bg-ink-950/75 px-5 py-8 text-center shadow-glow">
+      <div className="flex justify-center">
+        <PublicAvatar avatarUrl={avatarUrl} avatarStyle={avatarStyle} label={`@${profile.handle}`} />
+      </div>
+      <h1 className="mt-4 break-words font-mono text-3xl font-semibold text-paper">@{profile.handle}</h1>
+      <p className="mt-3 text-sm leading-6 text-paper/55">This profile is private.</p>
+      {isOwnProfile && (
+        <Link
+          href="/profile"
+          className="mt-5 inline-flex items-center rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:border-brass/50 hover:bg-brass/15"
+        >
+          Manage visibility
+        </Link>
+      )}
+    </section>
+  );
 }
 
 function FriendAction({

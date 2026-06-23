@@ -47,7 +47,14 @@ describe("profileStorage handles", () => {
 
   it("loads public profiles by normalized handle", async () => {
     const maybeSingle = vi.fn().mockResolvedValue({
-      data: { handle: "formal_typist" },
+      data: {
+        handle: "formal_typist",
+        bio: null,
+        avatar_style: null,
+        avatar_path: null,
+        public_profile_enabled: true,
+        created_at: null
+      },
       error: null
     });
     const eq = vi.fn(() => ({ maybeSingle }));
@@ -55,11 +62,16 @@ describe("profileStorage handles", () => {
     const from = vi.fn(() => ({ select }));
 
     await expect(getSupabasePublicProfileByHandle(" Formal_Typist ", { from })).resolves.toEqual({
-      handle: "formal_typist"
+      handle: "formal_typist",
+      bio: null,
+      avatar_style: null,
+      avatar_path: null,
+      public_profile_enabled: true,
+      created_at: null
     });
 
     expect(from).toHaveBeenCalledWith("public_profiles");
-    expect(select).toHaveBeenCalledWith("handle,bio,avatar_style,avatar_path,created_at");
+    expect(select).toHaveBeenCalledWith("handle,bio,avatar_style,avatar_path,public_profile_enabled,created_at");
     expect(eq).toHaveBeenCalledWith("handle", "formal_typist");
   });
 
@@ -117,8 +129,8 @@ describe("profileStorage handles", () => {
     const update = vi.fn(() => ({ eq }));
     const from = vi
       .fn()
-      .mockReturnValueOnce({ remove })
-      .mockReturnValueOnce({ update });
+      .mockReturnValueOnce({ update })
+      .mockReturnValueOnce({ remove });
     const client = { storage: { from }, from };
 
     await expect(removeSupabaseProfileAvatar("user-1", "user-1/avatar.png", client as any)).resolves.toMatchObject({
@@ -127,6 +139,29 @@ describe("profileStorage handles", () => {
 
     expect(remove).toHaveBeenCalledWith(["user-1/avatar.png"]);
     expect(update).toHaveBeenCalledWith({ avatar_path: null });
+  });
+
+  it("still clears the profile avatar path when storage deletion fails", async () => {
+    const remove = vi.fn().mockResolvedValue({ data: null, error: new Error("storage delete failed") });
+    const single = vi.fn().mockResolvedValue({
+      data: { user_id: "user-1", avatar_path: null },
+      error: null
+    });
+    const select = vi.fn(() => ({ single }));
+    const eq = vi.fn(() => ({ select }));
+    const update = vi.fn(() => ({ eq }));
+    const from = vi
+      .fn()
+      .mockReturnValueOnce({ update })
+      .mockReturnValueOnce({ remove });
+    const client = { storage: { from }, from };
+
+    await expect(removeSupabaseProfileAvatar("user-1", "user-1/avatar.png", client as any)).resolves.toMatchObject({
+      avatar_path: null
+    });
+
+    expect(update).toHaveBeenCalledWith({ avatar_path: null });
+    expect(remove).toHaveBeenCalledWith(["user-1/avatar.png"]);
   });
 
   it("falls back to handle-only public profile reads before identity migration is applied", async () => {
@@ -151,10 +186,11 @@ describe("profileStorage handles", () => {
       bio: null,
       avatar_style: null,
       avatar_path: null,
+      public_profile_enabled: true,
       created_at: null
     });
 
-    expect(select).toHaveBeenNthCalledWith(1, "handle,bio,avatar_style,avatar_path,created_at");
+    expect(select).toHaveBeenNthCalledWith(1, "handle,bio,avatar_style,avatar_path,public_profile_enabled,created_at");
     expect(select).toHaveBeenNthCalledWith(2, "handle");
   });
 

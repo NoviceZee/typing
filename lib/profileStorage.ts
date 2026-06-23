@@ -21,6 +21,7 @@ export type SupabasePublicProfile = {
   bio: string | null;
   avatar_style: string | null;
   avatar_path: string | null;
+  public_profile_enabled: boolean;
   created_at: string | null;
 };
 
@@ -54,7 +55,7 @@ export async function getSupabasePublicProfileByHandle(
 
   const { data, error } = await client
     .from("public_profiles")
-    .select("handle,bio,avatar_style,avatar_path,created_at")
+    .select("handle,bio,avatar_style,avatar_path,public_profile_enabled,created_at")
     .eq("handle", cleanHandle)
     .maybeSingle();
 
@@ -120,15 +121,16 @@ export async function removeSupabaseProfileAvatar(
     if (!avatarPath.startsWith(`${userId}/`)) {
       throw new Error("Avatar path does not belong to this user.");
     }
-
-    const { error: removeError } = await client.storage.from(AVATAR_BUCKET).remove([avatarPath]);
-
-    if (removeError) {
-      throw removeError;
-    }
   }
 
-  return updateProfileAvatarPath(userId, null, client);
+  const nextProfile = await updateProfileAvatarPath(userId, null, client);
+
+  if (avatarPath) {
+    const { error: removeError } = await client.storage.from(AVATAR_BUCKET).remove([avatarPath]);
+    void removeError;
+  }
+
+  return nextProfile;
 }
 
 async function updateProfileAvatarPath(
@@ -173,6 +175,7 @@ async function getSupabaseLegacyPublicProfileByHandle(
     bio: null,
     avatar_style: null,
     avatar_path: null,
+    public_profile_enabled: true,
     created_at: null
   };
 }

@@ -184,6 +184,7 @@ describe("ProfilePage", () => {
       expect(mockedRemoveSupabaseProfileAvatar).toHaveBeenCalledWith("user-1", "user-1/avatar.png");
     });
     expect(screen.getByText("Avatar removed.")).toBeTruthy();
+    expect(screen.queryByAltText("@formal_typist avatar")).toBeNull();
   });
 
   it("renders editable identity fields and saves changes", async () => {
@@ -195,7 +196,7 @@ describe("ProfilePage", () => {
 
     fireEvent.change(screen.getByLabelText("Bio"), { target: { value: "Updated bio" } });
     fireEvent.change(screen.getByLabelText("Fallback avatar"), { target: { value: "slate" } });
-    fireEvent.click(screen.getByLabelText("Public profile enabled"));
+    fireEvent.click(screen.getByLabelText("Public profile visible"));
     fireEvent.click(screen.getByRole("button", { name: "Save identity" }));
 
     await waitFor(() => {

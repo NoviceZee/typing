@@ -467,7 +467,7 @@ function ProfileIdentityCard({
               onChange={(event) => onPublicProfileEnabledChange(event.target.checked)}
               className="accent-brass"
             />
-            Public profile enabled
+            Public profile visible
           </label>
           <button
             type="submit"
