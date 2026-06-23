@@ -164,6 +164,7 @@ export default function PublicUserProfilePage() {
               analytics={analytics}
               copyMessage={copyMessage}
               onCopyUrl={handleCopyUrl}
+              isOwnProfile={isOwnProfile}
               friendAction={
                 user && !isOwnProfile ? (
                   <FriendAction
@@ -176,10 +177,9 @@ export default function PublicUserProfilePage() {
               friendActionMessage={friendActionMessage}
             />
 
-            <section className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
-              <PublicStatsPanel analytics={analytics} hasResults={results.length > 0} />
-              <RecentPublicResults results={recentResults} />
-            </section>
+            <PublicStatsPanel analytics={analytics} hasResults={results.length > 0} />
+            <RecentPublicResults results={recentResults} />
+            <AchievementsSummary analytics={analytics} />
           </div>
         )}
       </section>
@@ -246,6 +246,7 @@ function ProfileCard({
   analytics,
   copyMessage,
   onCopyUrl,
+  isOwnProfile,
   friendAction,
   friendActionMessage
 }: {
@@ -253,6 +254,7 @@ function ProfileCard({
   analytics: ReturnType<typeof buildProgressAnalytics>;
   copyMessage: string;
   onCopyUrl: () => void;
+  isOwnProfile: boolean;
   friendAction: React.ReactNode;
   friendActionMessage: string;
 }) {
@@ -268,8 +270,11 @@ function ProfileCard({
             <p className="font-mono text-xs uppercase text-brass">Public typist</p>
             <h1 className="mt-1 break-words font-mono text-4xl font-semibold text-paper">@{profile.handle}</h1>
             <p className="mt-2 font-mono text-xs uppercase text-paper/35">{formatJoinedDate(profile.created_at)}</p>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/60">{profile.bio || "No bio yet."}</p>
-            <p className="mt-2 font-mono text-[0.68rem] uppercase text-paper/35">Avatar style: {avatarStyle}</p>
+            {profile.bio ? (
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/60">{profile.bio}</p>
+            ) : isOwnProfile ? (
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/35">No bio yet.</p>
+            ) : null}
           </div>
         </div>
 
@@ -314,10 +319,8 @@ function ProfileCard({
         </div>
       </div>
 
-      <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="mt-5 grid gap-3 sm:grid-cols-3">
         <SummaryStat label="Tests completed" value={analytics.summary.totalTests} />
-        <SummaryStat label="Best WPM" value={formatNumber(analytics.summary.bestWpm)} />
-        <SummaryStat label="Best accuracy" value={`${formatNumber(analytics.summary.bestAccuracy)}%`} />
         <SummaryStat label="Current streak" value={`${analytics.activity.currentStreakDays} days`} />
         <SummaryStat label="Total XP / Level" value={`${analytics.progression.totalXp} / ${analytics.progression.currentLevel}`} />
       </section>
@@ -426,25 +429,34 @@ function PublicStatsPanel({
           <p className="mt-2 text-sm leading-6 text-paper/45">Best WPM and accuracy will fill in after public results.</p>
         </div>
       )}
-      <div className="mt-5 rounded-md border border-paper/10 bg-ink-900/60 px-4 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="font-mono text-sm uppercase text-paper">Achievements</h3>
-            <p className="mt-1 font-mono text-xs uppercase text-paper/35">
-              {analytics.achievements.unlockedCount} / {analytics.achievements.totalCount} unlocked
-            </p>
-          </div>
-          <Award className="h-4 w-4 text-brass" />
+    </section>
+  );
+}
+
+function AchievementsSummary({ analytics }: { analytics: ReturnType<typeof buildProgressAnalytics> }) {
+  const unlockedPercent = Math.round((analytics.achievements.unlockedCount / analytics.achievements.totalCount) * 100);
+
+  return (
+    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-mono text-sm uppercase text-brass">Achievements</h2>
+          <p className="mt-1 font-mono text-xs uppercase text-paper/35">
+            {analytics.achievements.unlockedCount} / {analytics.achievements.totalCount} unlocked
+          </p>
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-paper/[0.06]">
-          <div
-            className="h-full rounded-full bg-brass"
-            style={{
-              width: `${Math.round((analytics.achievements.unlockedCount / analytics.achievements.totalCount) * 100)}%`
-            }}
-          />
-        </div>
+        <Award className="h-4 w-4 text-brass" />
       </div>
+      {analytics.achievements.unlockedCount === 0 ? (
+        <div className="mt-5 rounded-md border border-paper/10 bg-ink-900/60 px-4 py-5">
+          <p className="font-mono text-sm text-paper">No achievements unlocked yet.</p>
+          <p className="mt-2 text-sm leading-6 text-paper/45">Milestones will appear here as public results build up.</p>
+        </div>
+      ) : (
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-paper/[0.06]">
+          <div className="h-full rounded-full bg-brass" style={{ width: `${unlockedPercent}%` }} />
+        </div>
+      )}
     </section>
   );
 }

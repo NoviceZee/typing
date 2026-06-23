@@ -93,17 +93,19 @@ describe("ProfilePage", () => {
     render(<ProfilePage />);
 
     await waitFor(() => {
-    expect(screen.getByText("Progress Summary")).toBeTruthy();
+      expect(screen.getByText("Summary Stats")).toBeTruthy();
     });
 
     expect(mockedGetSupabaseAnalyticsTypingResults).toHaveBeenCalledWith("user-1");
     expect(mockedGetSupabaseProfile).toHaveBeenCalledWith("user-1");
     expect(screen.getByText("Profile Identity")).toBeTruthy();
     expect(screen.getByText("@formal_typist")).toBeTruthy();
+    expect(screen.getByText("Joined Jun 20, 2026")).toBeTruthy();
+    expect(screen.getAllByText("I type with ceremonial precision.").length).toBeGreaterThan(0);
     expect(screen.getByText("https://formaltype.app/u/formal_typist")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Copy public profile URL" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "View public profile" }).getAttribute("href")).toBe("/u/formal_typist");
-    expect(screen.getByRole("link", { name: "Edit identity settings" }).getAttribute("href")).toBe("#identity-settings");
+    expect(screen.queryByRole("link", { name: "Edit identity settings" })).toBeNull();
     expect(screen.getByText("Average WPM last 10")).toBeTruthy();
     expect(screen.getByText("Average WPM last 100")).toBeTruthy();
     expect(screen.getByText("Trends")).toBeTruthy();
@@ -128,10 +130,12 @@ describe("ProfilePage", () => {
     expect(screen.getByText("Recent attempts")).toBeTruthy();
     expect(screen.getByText("Passage latest")).toBeTruthy();
     expect(
-      screen.getByText("Activity").compareDocumentPosition(screen.getByText("My Results")) &
+      screen.getByText("Achievements").compareDocumentPosition(screen.getByText("My Results")) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(screen.queryByText("Profile Settings")).toBeNull();
+    expect(screen.queryByText(/avatar style/i)).toBeNull();
+    expect(screen.queryByText("Avatar image")).toBeNull();
   });
 
   it("renders uploaded avatar images in the Profile Identity card", async () => {
@@ -146,6 +150,24 @@ describe("ProfilePage", () => {
       "https://cdn.example.com/user-1/avatar.png"
     );
     expect(screen.getByRole("button", { name: "Remove avatar" })).toBeTruthy();
+    expect(screen.getByLabelText("Change avatar")).toBeTruthy();
+    expect(screen.queryByText("Avatar image")).toBeNull();
+  });
+
+  it("triggers avatar upload from the avatar itself", async () => {
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Change avatar")).toBeTruthy();
+    });
+
+    const file = new File(["avatar"], "avatar.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("Change avatar"), { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(mockedUploadSupabaseProfileAvatar).toHaveBeenCalledWith("user-1", file);
+    });
+    expect(screen.getByText("Avatar uploaded.")).toBeTruthy();
   });
 
   it("removes an uploaded avatar from the Profile Identity card", async () => {
@@ -172,7 +194,7 @@ describe("ProfilePage", () => {
     });
 
     fireEvent.change(screen.getByLabelText("Bio"), { target: { value: "Updated bio" } });
-    fireEvent.change(screen.getByLabelText("Avatar style"), { target: { value: "slate" } });
+    fireEvent.change(screen.getByLabelText("Fallback avatar"), { target: { value: "slate" } });
     fireEvent.click(screen.getByLabelText("Public profile enabled"));
     fireEvent.click(screen.getByRole("button", { name: "Save identity" }));
 
@@ -213,7 +235,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("0 / 23 unlocked")).toBeTruthy();
     expect(screen.getByText("First Test")).toBeTruthy();
     expect(screen.getAllByText("Locked").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Progress Summary")).toBeNull();
+    expect(screen.queryByText("Summary Stats")).toBeNull();
   });
 });
 

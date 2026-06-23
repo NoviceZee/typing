@@ -96,7 +96,7 @@ describe("PublicUserProfilePage", () => {
     expect(screen.getByText("Public typist")).toBeTruthy();
     expect(screen.getByText("Joined Jun 20, 2026")).toBeTruthy();
     expect(screen.getByText("I type with ceremonial precision.")).toBeTruthy();
-    expect(screen.getByText("Avatar style: amber")).toBeTruthy();
+    expect(screen.queryByText(/avatar style/i)).toBeNull();
     expect(screen.getByText("Level")).toBeTruthy();
     expect(screen.getByText("XP progress")).toBeTruthy();
     expect(screen.getByText("Total XP")).toBeTruthy();
@@ -106,6 +106,10 @@ describe("PublicUserProfilePage", () => {
     expect(screen.getByText("Current streak")).toBeTruthy();
     expect(screen.getByText("Achievements")).toBeTruthy();
     expect(screen.getByText("Recent Results")).toBeTruthy();
+    expect(
+      screen.getByText("Recent Results").compareDocumentPosition(screen.getByText("Achievements")) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add friend" })).toBeTruthy();
     expect(screen.queryByText(/typist@example.com/i)).toBeNull();
     expect(screen.queryByText(/user-1/i)).toBeNull();
@@ -133,8 +137,8 @@ describe("PublicUserProfilePage", () => {
     await waitFor(() => {
       expect(screen.getByText("@formal_typist")).toBeTruthy();
     });
-    expect(screen.getByText("No bio yet.")).toBeTruthy();
-    expect(screen.getByText("Avatar style: default")).toBeTruthy();
+    expect(screen.queryByText("No bio yet.")).toBeNull();
+    expect(screen.queryByText(/avatar style/i)).toBeNull();
   });
 
   it("renders uploaded avatar images on public profiles", async () => {
@@ -205,7 +209,7 @@ describe("PublicUserProfilePage", () => {
       expect(screen.getByText("@formal_typist")).toBeTruthy();
     });
     expect(screen.getByText("Keeping this quiet for now.")).toBeTruthy();
-    expect(screen.getByText("Avatar style: ember")).toBeTruthy();
+    expect(screen.queryByText(/avatar style/i)).toBeNull();
     expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
   });
 

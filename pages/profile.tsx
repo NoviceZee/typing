@@ -4,7 +4,7 @@ import React, { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import { Activity, Award, Camera, Clock, Copy, Flame, Lock, Medal, Target, Trash2, Trophy, UserCircle } from "lucide-react";
+import { Activity, Award, Camera, Clock, Copy, ExternalLink, Flame, Lock, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
@@ -141,14 +141,17 @@ export default function ProfilePage() {
     setAvatarMessage("");
     setAvatarError("");
 
-    const previewUrl = URL.createObjectURL(file);
-    setAvatarPreviewUrl((currentPreviewUrl) => {
-      if (currentPreviewUrl) {
-        URL.revokeObjectURL(currentPreviewUrl);
-      }
+    const previewUrl = typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : null;
 
-      return previewUrl;
-    });
+    if (previewUrl) {
+      setAvatarPreviewUrl((currentPreviewUrl) => {
+        if (currentPreviewUrl && typeof URL.revokeObjectURL === "function") {
+          URL.revokeObjectURL(currentPreviewUrl);
+        }
+
+        return previewUrl;
+      });
+    }
     setIsAvatarUploading(true);
 
     try {
@@ -157,7 +160,7 @@ export default function ProfilePage() {
       setProfile(nextProfile);
       setAvatarMessage("Avatar uploaded.");
       setAvatarPreviewUrl((currentPreviewUrl) => {
-        if (currentPreviewUrl) {
+        if (currentPreviewUrl && typeof URL.revokeObjectURL === "function") {
           URL.revokeObjectURL(currentPreviewUrl);
         }
 
@@ -183,7 +186,7 @@ export default function ProfilePage() {
       const nextProfile = await removeSupabaseProfileAvatar(user.id, profile?.avatar_path);
       setProfile(nextProfile);
       setAvatarPreviewUrl((currentPreviewUrl) => {
-        if (currentPreviewUrl) {
+        if (currentPreviewUrl && typeof URL.revokeObjectURL === "function") {
           URL.revokeObjectURL(currentPreviewUrl);
         }
 
@@ -271,7 +274,6 @@ export default function ProfilePage() {
                     to build your progress profile.
                   </p>
                 </section>
-                <ProgressionSection analytics={analytics} />
                 <ChallengesSection analytics={analytics} />
                 <AchievementsSection analytics={analytics} />
               </>
@@ -280,9 +282,6 @@ export default function ProfilePage() {
             {results.length > 0 && (
               <>
                 <ProgressSummary analytics={analytics} />
-                <ProgressionSection analytics={analytics} />
-                <ChallengesSection analytics={analytics} />
-                <AchievementsSection analytics={analytics} />
                 <Trends
                   range={trendRange}
                   results={trendResults}
@@ -293,6 +292,8 @@ export default function ProfilePage() {
                   <CategoryBreakdown analytics={analytics} />
                 </section>
                 <ActivitySection analytics={analytics} />
+                <ChallengesSection analytics={analytics} />
+                <AchievementsSection analytics={analytics} />
                 <MyResults results={results} />
               </>
             )}
@@ -355,13 +356,34 @@ function ProfileIdentityCard({
     <section id="identity-settings" className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex min-w-0 gap-4">
-          <ProfileAvatar avatarUrl={avatarUrl} avatarStyle={avatarStyle} label={handle ? `@${handle}` : "Profile"} />
+          <div className="space-y-2">
+            <ProfileAvatar
+              avatarUrl={avatarUrl}
+              avatarStyle={avatarStyle}
+              isUploading={isAvatarUploading}
+              label={handle ? `@${handle}` : "Profile"}
+              onAvatarFileChange={onAvatarFileChange}
+            />
+            {avatarPath && (
+              <button
+                type="button"
+                aria-label="Remove avatar"
+                onClick={onRemoveAvatar}
+                disabled={isAvatarUploading}
+                className="block w-16 text-center font-mono text-[0.65rem] uppercase text-paper/35 transition hover:text-ember disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Remove
+              </button>
+            )}
+          </div>
           <div className="min-w-0 flex-1">
             <p className="font-mono text-xs uppercase text-brass">Profile Identity</p>
             <h2 className="mt-1 break-words font-mono text-3xl font-semibold text-paper">
               {handle ? `@${handle}` : "Handle not set"}
             </h2>
-            <p className="mt-2 break-all font-mono text-xs text-paper/45">{publicProfileUrl}</p>
+            <p className="mt-2 font-mono text-xs uppercase text-paper/35">{formatJoinedDate(profile?.created_at)}</p>
+            {bio ? <p className="mt-3 max-w-2xl text-sm leading-6 text-paper/60">{bio}</p> : null}
+            <p className="mt-3 break-all font-mono text-xs text-paper/45">{publicProfileUrl}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -376,30 +398,33 @@ function ProfileIdentityCard({
               {handle && (
                 <Link
                   href={`/u/${handle}`}
-                  className="inline-flex items-center rounded-md border border-brass/35 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:border-brass/60 hover:bg-brass/15"
+                  className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:border-brass/60 hover:bg-brass/15"
                 >
+                  <ExternalLink className="h-4 w-4" />
                   View public profile
                 </Link>
               )}
-              <Link
-                href="#identity-settings"
-                className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-paper/25 hover:text-paper"
-              >
-                Edit identity settings
-              </Link>
             </div>
           </div>
         </div>
 
         <div className="rounded-md border border-paper/10 bg-ink-900/60 p-4">
-          <div className="flex items-center justify-between font-mono text-[0.68rem] uppercase text-paper/35">
-            <span>Level</span>
-            <span>{analytics.progression.xpToNextLevel} XP to next</span>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-mono text-[0.68rem] uppercase text-paper/35">Level</p>
+              <p className="mt-2 font-mono text-3xl font-semibold text-paper">{analytics.progression.currentLevel}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-mono text-[0.68rem] uppercase text-paper/35">Total XP</p>
+              <p className="mt-2 font-mono text-lg text-brass">{analytics.progression.totalXp}</p>
+            </div>
           </div>
-          <p className="mt-2 font-mono text-3xl font-semibold text-paper">{analytics.progression.currentLevel}</p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-paper/[0.06]">
             <div className="h-full rounded-full bg-brass" style={{ width: `${analytics.progression.progressPercent}%` }} />
           </div>
+          <p className="mt-2 text-right font-mono text-[0.68rem] uppercase text-paper/35">
+            {analytics.progression.xpToNextLevel} XP to next
+          </p>
         </div>
       </div>
 
@@ -423,7 +448,7 @@ function ProfileIdentityCard({
           />
         </label>
         <label className="block">
-          <span className="font-mono text-xs uppercase text-paper/45">Avatar style</span>
+          <span className="font-mono text-xs uppercase text-paper/45">Fallback avatar</span>
           <select
             value={avatarStyle}
             onChange={(event) => onAvatarStyleChange(event.target.value)}
@@ -453,48 +478,11 @@ function ProfileIdentityCard({
           </button>
         </div>
       </form>
-
-      <div className="mt-4 rounded-md border border-paper/10 bg-ink-900/60 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="font-mono text-xs uppercase text-paper/45">Avatar image</p>
-            <p className="mt-1 text-sm leading-6 text-paper/45">PNG, JPG, or WebP. Max 2MB.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15">
-              <Camera className="h-4 w-4" />
-              Upload avatar
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/jpg,image/webp"
-                aria-label="Upload avatar"
-                disabled={isAvatarUploading}
-                className="sr-only"
-                onChange={(event) => {
-                  onAvatarFileChange(event.target.files?.[0] ?? null);
-                  event.target.value = "";
-                }}
-              />
-            </label>
-            {avatarPath && (
-              <button
-                type="button"
-                onClick={onRemoveAvatar}
-                disabled={isAvatarUploading}
-                className="inline-flex items-center gap-2 rounded-md border border-ember/25 bg-ember/10 px-3 py-2 font-mono text-xs uppercase text-ember transition hover:border-ember/45 disabled:cursor-not-allowed disabled:opacity-55"
-              >
-                <Trash2 className="h-4 w-4" />
-                Remove avatar
-              </button>
-            )}
-          </div>
-        </div>
-        {(avatarMessage || avatarError || isAvatarUploading) && (
-          <p className={`mt-3 font-mono text-sm ${avatarError ? "text-ember" : "text-brass"}`}>
-            {avatarError || (isAvatarUploading ? "Updating avatar..." : avatarMessage)}
-          </p>
-        )}
-      </div>
+      {(avatarMessage || avatarError || isAvatarUploading) && (
+        <p className={`mt-4 font-mono text-sm ${avatarError ? "text-ember" : "text-brass"}`}>
+          {avatarError || (isAvatarUploading ? "Updating avatar..." : avatarMessage)}
+        </p>
+      )}
 
       {identityMessage && (
         <div className="mt-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
@@ -513,11 +501,15 @@ function ProfileIdentityCard({
 function ProfileAvatar({
   avatarUrl,
   avatarStyle,
-  label
+  isUploading,
+  label,
+  onAvatarFileChange
 }: {
   avatarUrl: string | null;
   avatarStyle: string;
+  isUploading: boolean;
   label: string;
+  onAvatarFileChange: (file: File | null) => void;
 }) {
   const [hasImageError, setHasImageError] = useState(false);
 
@@ -525,9 +517,9 @@ function ProfileAvatar({
     setHasImageError(false);
   }, [avatarUrl]);
 
-  if (avatarUrl && !hasImageError) {
-    return (
-      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-brass/25 bg-ink-900">
+  return (
+    <label className="group relative block h-16 w-16 shrink-0 cursor-pointer overflow-hidden rounded-full border border-brass/25 bg-ink-900">
+      {avatarUrl && !hasImageError ? (
         <Image
           src={avatarUrl}
           alt={`${label} avatar`}
@@ -537,14 +529,26 @@ function ProfileAvatar({
           className="h-full w-full object-cover"
           onError={() => setHasImageError(true)}
         />
-      </div>
-    );
-  }
-
-  return (
-    <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full border ${getAvatarStyleClass(avatarStyle)}`}>
-      <UserCircle className="h-9 w-9" />
-    </div>
+      ) : (
+        <span className={`flex h-full w-full items-center justify-center ${getAvatarStyleClass(avatarStyle)}`}>
+          <UserCircle className="h-9 w-9" />
+        </span>
+      )}
+      <span className="absolute inset-0 flex items-center justify-center bg-ink-950/70 opacity-0 transition group-hover:opacity-100">
+        <Camera className="h-4 w-4 text-brass" />
+      </span>
+      <input
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        aria-label="Change avatar"
+        disabled={isUploading}
+        className="sr-only"
+        onChange={(event) => {
+          onAvatarFileChange(event.target.files?.[0] ?? null);
+          event.target.value = "";
+        }}
+      />
+    </label>
   );
 }
 
@@ -553,44 +557,6 @@ function IdentityStat({ label, value }: { label: string; value: string | number 
     <article className="rounded-md border border-paper/10 bg-ink-900/60 px-4 py-3">
       <p className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</p>
       <p className="mt-2 font-mono text-xl font-semibold text-paper">{value}</p>
-    </article>
-  );
-}
-
-function ProgressionSection({ analytics }: { analytics: ReturnType<typeof buildProgressAnalytics> }) {
-  return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="font-mono text-sm uppercase text-brass">Level</h2>
-          <p className="mt-2 font-mono text-4xl font-semibold text-paper">{analytics.progression.currentLevel}</p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <ProgressionMetric label="Total XP" value={analytics.progression.totalXp} />
-          <ProgressionMetric label="XP to next level" value={analytics.progression.xpToNextLevel} />
-        </div>
-      </div>
-      <div className="mt-5">
-        <div className="flex items-center justify-between font-mono text-[0.68rem] uppercase text-paper/35">
-          <span>{analytics.progression.currentLevelXp} XP</span>
-          <span>{analytics.progression.xpForNextLevel} XP</span>
-        </div>
-        <div className="mt-2 h-3 overflow-hidden rounded-full bg-paper/[0.06]" aria-label="Level progress">
-          <div
-            className="h-full rounded-full bg-brass"
-            style={{ width: `${analytics.progression.progressPercent}%` }}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ProgressionMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <article className="min-w-40 rounded-md border border-paper/10 bg-ink-900/70 px-4 py-3 text-right">
-      <p className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</p>
-      <p className="mt-2 font-mono text-2xl text-paper">{value}</p>
     </article>
   );
 }
@@ -743,12 +709,9 @@ function MyResults({ results }: { results: SupabaseAnalyticsTypingResultRow[] })
 function ProgressSummary({ analytics }: { analytics: ReturnType<typeof buildProgressAnalytics> }) {
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
-      <h2 className="font-mono text-sm uppercase text-brass">Progress Summary</h2>
+      <h2 className="font-mono text-sm uppercase text-brass">Summary Stats</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="Total tests" value={analytics.summary.totalTests} icon={<Medal className="h-4 w-4" />} />
         <SummaryCard label="Total practice time" value={formatPracticeTime(analytics.summary.totalPracticeSeconds)} icon={<Clock className="h-4 w-4" />} />
-        <SummaryCard label="All-time best WPM" value={formatNumber(analytics.summary.bestWpm)} icon={<Trophy className="h-4 w-4" />} />
-        <SummaryCard label="All-time best accuracy" value={`${formatNumber(analytics.summary.bestAccuracy)}%`} icon={<Target className="h-4 w-4" />} />
         <SummaryCard label="Average WPM all-time" value={formatNumber(analytics.summary.averageWpm)} icon={<Activity className="h-4 w-4" />} />
         <SummaryCard label="Average WPM last 10" value={formatNumber(analytics.summary.averageWpmLast10)} icon={<Activity className="h-4 w-4" />} />
         <SummaryCard label="Average WPM last 100" value={formatNumber(analytics.summary.averageWpmLast100)} icon={<Activity className="h-4 w-4" />} />
@@ -1018,6 +981,25 @@ function getAvatarStyleClass(style: string) {
   }
 
   return "border-brass/25 bg-brass/10 text-brass";
+}
+
+function formatJoinedDate(createdAt?: string | null) {
+  if (!createdAt) {
+    return "Joined date unavailable";
+  }
+
+  const date = new Date(createdAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Joined date unavailable";
+  }
+
+  return `Joined ${date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC"
+  })}`;
 }
 
 async function prepareAvatarUploadFile(file: File): Promise<File> {
