@@ -242,22 +242,71 @@ describe("ResultModal", () => {
     expect(within(historySection as HTMLElement).getByText("1")).toBeTruthy();
   });
 
-  it("calculates consistency from WPM variance instead of net/raw ratio", () => {
-    const stable = getResultConsistency([
-      { timeSeconds: 5, wpm: 46 },
-      { timeSeconds: 20, wpm: 48 },
-      { timeSeconds: 40, wpm: 47 },
-      { timeSeconds: 60, wpm: 48 }
+  it("calculates consistency from coefficient of variation", () => {
+    expect(
+      getResultConsistency([
+        { timeSeconds: 5, wpm: 50 },
+        { timeSeconds: 20, wpm: 50 },
+        { timeSeconds: 40, wpm: 50 }
+      ])
+    ).toBe(100);
+
+    const smallVariation = getResultConsistency([
+      { timeSeconds: 5, wpm: 48 },
+      { timeSeconds: 20, wpm: 50 },
+      { timeSeconds: 40, wpm: 52 },
+      { timeSeconds: 60, wpm: 50 }
     ]);
-    const spiky = getResultConsistency([
-      { timeSeconds: 5, wpm: 20 },
-      { timeSeconds: 20, wpm: 65 },
-      { timeSeconds: 40, wpm: 28 },
-      { timeSeconds: 60, wpm: 70 }
+    const largerVariation = getResultConsistency([
+      { timeSeconds: 5, wpm: 30 },
+      { timeSeconds: 20, wpm: 50 },
+      { timeSeconds: 40, wpm: 70 }
     ]);
 
-    expect(stable).toBeGreaterThan(90);
-    expect(spiky).toBeLessThan(75);
+    expect(smallVariation).toBe(93.7);
+    expect(largerVariation).toBe(47.2);
+  });
+
+  it("returns unavailable consistency with fewer than three usable timeline points", () => {
+    expect(
+      getResultConsistency([
+        { timeSeconds: 5, wpm: 48 },
+        { timeSeconds: 20, wpm: 50 }
+      ])
+    ).toBeNull();
+  });
+
+  it("ignores early WPM points when enough later points exist", () => {
+    expect(
+      getResultConsistency([
+        { timeSeconds: 1, wpm: 200 },
+        { timeSeconds: 5, wpm: 50 },
+        { timeSeconds: 20, wpm: 50 },
+        { timeSeconds: 40, wpm: 50 }
+      ])
+    ).toBe(100);
+  });
+
+  it("explains consistency as WPM coefficient of variation", () => {
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByLabelText(
+        "Consistency shows how steady your WPM stayed during the test. It is based on the coefficient of variation of your WPM timeline."
+      )
+    ).toBeTruthy();
   });
 });
 

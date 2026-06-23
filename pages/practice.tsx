@@ -88,6 +88,8 @@ const RANDOM_PASSAGE_ID = "__random__";
 const SUSPICIOUS_RESULT_NOTE = "This result was not saved because suspicious input was detected.";
 const MAX_CHARACTERS_PER_INPUT_EVENT = 5;
 const SUSPICIOUS_WPM_THRESHOLD = 250;
+const CONSISTENCY_HELP_TEXT =
+  "Consistency shows how steady your WPM stayed during the test. It is based on the coefficient of variation of your WPM timeline.";
 
 export default function PracticePage() {
   const { user } = useAuth();
@@ -1270,6 +1272,8 @@ function ThisResultColumn({
   timeline: AttemptTimelinePoint[];
   imageAction: React.ReactNode;
 }) {
+  const consistency = getResultConsistency(timeline);
+
   return (
     <section>
       <p className="font-mono text-sm uppercase text-brass">This Result</p>
@@ -1286,8 +1290,8 @@ function ThisResultColumn({
         <ResultMetricRow label="Time" value={formatTime(result.timeUsedSeconds)} />
         <ResultMetricRow
           label="Consistency"
-          value={`${getResultConsistency(timeline).toFixed(0)}%`}
-          helpText="Based on WPM variance during this attempt."
+          value={consistency === null ? "N/A" : `${consistency.toFixed(1)}%`}
+          helpText={CONSISTENCY_HELP_TEXT}
         />
       </div>
       {imageAction}
@@ -1793,31 +1797,27 @@ function getStableGraphMax(points: AttemptTimelinePoint[], result: TypingResult)
 
 function getStableTimelinePoints(points: AttemptTimelinePoint[]) {
   const stablePoints = points.filter((point) => point.timeSeconds >= 5);
-  return stablePoints.length >= 2 ? stablePoints : points;
+  return stablePoints.length >= 3 ? stablePoints : points;
 }
 
 export function getResultConsistency(timeline: AttemptTimelinePoint[]) {
   const stablePoints = getStableTimelinePoints(timeline).filter((point) => point.wpm > 0);
 
-  if (stablePoints.length < 2) {
-    return 100;
+  if (stablePoints.length < 3) {
+    return null;
   }
 
   const values = stablePoints.map((point) => point.wpm);
   const average = values.reduce((total, value) => total + value, 0) / values.length;
 
   if (average <= 0) {
-    return 100;
+    return null;
   }
 
   const variance = values.reduce((total, value) => total + (value - average) ** 2, 0) / values.length;
   const standardDeviation = Math.sqrt(variance);
-  const averageDelta =
-    values.slice(1).reduce((total, value, index) => total + Math.abs(value - values[index]), 0) /
-    Math.max(values.length - 1, 1);
-  const volatilityRatio = standardDeviation / average;
-  const swingRatio = averageDelta / average;
-  const consistency = 100 - volatilityRatio * 120 - swingRatio * 35;
+  const coefficientOfVariation = standardDeviation / average;
+  const consistency = 100 * Math.exp(-2.3 * coefficientOfVariation);
 
   return roundOne(Math.max(0, Math.min(100, consistency)));
 }
