@@ -248,7 +248,8 @@ describe("PracticePage passage loading", () => {
     expect(marker.style.position).toBe("absolute");
     expect(marker.style.pointerEvents).toBe("none");
     expect(marker.style.transform).toContain("translate3d(");
-    expect(marker.style.transition).toContain("transform 180ms linear");
+    expect(marker.style.willChange).toBe("transform");
+    expect(marker.style.transition).toBe("opacity 120ms ease");
     expect(characterLayer.contains(marker)).toBe(false);
     expect(marker.textContent).toBe("");
     expect(marker.style.height).toBe("0.95em");

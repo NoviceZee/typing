@@ -116,6 +116,7 @@ export default function PracticePage() {
   const typingWindowRef = useRef<HTMLDivElement>(null);
   const typingTextRef = useRef<HTMLDivElement>(null);
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
+  const previousPaceMarkerRef = useRef<HTMLSpanElement | null>(null);
   const characterRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const finishedRef = useRef(false);
   const statusRef = useRef<SessionStatus>("idle");
@@ -127,11 +128,7 @@ export default function PracticePage() {
   const libraryRef = useRef<LibraryPassage[]>([]);
   const isTabPressedRef = useRef(false);
   const scrollFrameRef = useRef<number | null>(null);
-  const [previousPaceMarkerPosition, setPreviousPaceMarkerPosition] = useState<{
-    characterIndex: number;
-    x: number;
-    y: number;
-  } | null>(null);
+  const previousPaceAnimationFrameRef = useRef<number | null>(null);
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
@@ -159,10 +156,9 @@ export default function PracticePage() {
       previousResult.passageId === passage.id &&
       (!previousResult.durationSeconds || previousResult.durationSeconds === durationSeconds)
   );
-  const previousPaceMarkerIndex =
-    previousComparisonMatches && isRunning && !isResultModalOpen
-      ? getPreviousPaceIndex(previousResult?.previousPaceTimeline, elapsedSeconds)
-      : null;
+  const shouldShowPreviousPaceMarker = Boolean(
+    previousComparisonMatches && isRunning && !isResultModalOpen && previousResult?.previousPaceTimeline?.length
+  );
   const setCharacterRef = useCallback(
     (index: number, isCurrent: boolean) => (node: HTMLSpanElement | null) => {
       characterRefs.current[index] = node;
@@ -510,43 +506,84 @@ export default function PracticePage() {
   }, [comparison.characters.length]);
 
   useEffect(() => {
-    const container = typingTextRef.current;
+    if (previousPaceAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(previousPaceAnimationFrameRef.current);
+      previousPaceAnimationFrameRef.current = null;
+    }
 
-    if (
-      previousPaceMarkerIndex === null ||
-      previousPaceMarkerIndex < 0 ||
-      !container ||
-      comparison.characters.length === 0
-    ) {
-      setPreviousPaceMarkerPosition(null);
+    const timeline = previousResult?.previousPaceTimeline;
+    if (!shouldShowPreviousPaceMarker || !timeline || timeline.length === 0) {
+      if (previousPaceMarkerRef.current) {
+        previousPaceMarkerRef.current.style.opacity = "0";
+      }
       return;
     }
 
-    const clampedIndex = Math.min(previousPaceMarkerIndex, comparison.characters.length);
-    const targetCharacter =
-      clampedIndex >= comparison.characters.length
-        ? characterRefs.current[comparison.characters.length - 1]
-        : characterRefs.current[clampedIndex];
+    const animatePreviousPaceMarker = () => {
+      const marker = previousPaceMarkerRef.current;
+      const container = typingTextRef.current;
+      const startedAtMs = startedAtRef.current;
 
-    if (!targetCharacter || !container.contains(targetCharacter)) {
-      setPreviousPaceMarkerPosition(null);
-      return;
-    }
+      if (!marker || !container || !startedAtMs || statusRef.current !== "running" || isResultModalOpen) {
+        if (marker) {
+          marker.style.opacity = "0";
+        }
+        previousPaceAnimationFrameRef.current = window.requestAnimationFrame(animatePreviousPaceMarker);
+        return;
+      }
 
-    const containerBounds = container.getBoundingClientRect();
-    const targetBounds = targetCharacter.getBoundingClientRect();
-    const x =
-      clampedIndex >= comparison.characters.length
-        ? targetBounds.right - containerBounds.left
-        : targetBounds.left - containerBounds.left;
-    const y = targetBounds.top - containerBounds.top;
+      const liveElapsedSeconds = Math.max(0, (Date.now() - startedAtMs) / 1000);
+      const interpolatedIndex = getInterpolatedPreviousPaceIndex(timeline, liveElapsedSeconds);
 
-    setPreviousPaceMarkerPosition({
-      characterIndex: clampedIndex,
-      x,
-      y
-    });
-  }, [comparison.characters.length, previousPaceMarkerIndex, typedText]);
+      if (interpolatedIndex === null || comparison.characters.length === 0) {
+        marker.style.opacity = "0";
+        previousPaceAnimationFrameRef.current = window.requestAnimationFrame(animatePreviousPaceMarker);
+        return;
+      }
+
+      const maxIndex = Math.max(0, comparison.characters.length - 1);
+      const boundedIndex = Math.max(0, Math.min(interpolatedIndex, maxIndex));
+      const baseIndex = Math.floor(boundedIndex);
+      const fraction = boundedIndex - baseIndex;
+      const currentCharacter = characterRefs.current[baseIndex];
+      const nextCharacter = characterRefs.current[Math.min(baseIndex + 1, maxIndex)] ?? currentCharacter;
+
+      if (!currentCharacter || !nextCharacter || !container.contains(currentCharacter) || !container.contains(nextCharacter)) {
+        marker.style.opacity = "0";
+        previousPaceAnimationFrameRef.current = window.requestAnimationFrame(animatePreviousPaceMarker);
+        return;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      const currentRect = currentCharacter.getBoundingClientRect();
+      const nextRect = nextCharacter.getBoundingClientRect();
+      const x = currentRect.left - containerRect.left + (nextRect.left - currentRect.left) * fraction;
+      const y = currentRect.top - containerRect.top + (nextRect.top - currentRect.top) * fraction;
+
+      marker.dataset.characterIndex = String(Math.round(boundedIndex));
+      marker.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      marker.style.opacity = "1";
+      previousPaceAnimationFrameRef.current = window.requestAnimationFrame(animatePreviousPaceMarker);
+    };
+
+    previousPaceAnimationFrameRef.current = window.requestAnimationFrame(animatePreviousPaceMarker);
+
+    return () => {
+      if (previousPaceAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(previousPaceAnimationFrameRef.current);
+        previousPaceAnimationFrameRef.current = null;
+      }
+      if (previousPaceMarkerRef.current) {
+        previousPaceMarkerRef.current.style.opacity = "0";
+      }
+    };
+  }, [
+    comparison.characters.length,
+    isResultModalOpen,
+    previousResult?.previousPaceTimeline,
+    shouldShowPreviousPaceMarker,
+    typedText
+  ]);
 
   useEffect(() => {
     const currentCharacter = currentCharRef.current;
@@ -987,7 +1024,7 @@ export default function PracticePage() {
                   </>
                 )}
               </p>
-              {previousPaceMarkerPosition && <PreviousPaceMarker position={previousPaceMarkerPosition} />}
+              {shouldShowPreviousPaceMarker && <PreviousPaceMarker ref={previousPaceMarkerRef} />}
             </div>
           </div>
 
@@ -1058,20 +1095,13 @@ function PassageLoadingPlaceholder() {
   );
 }
 
-function PreviousPaceMarker({
-  position
-}: {
-  position: {
-    characterIndex: number;
-    x: number;
-    y: number;
-  };
-}) {
+const PreviousPaceMarker = React.forwardRef<HTMLSpanElement>(function PreviousPaceMarker(_, ref) {
   return (
     <span
       data-testid="previous-pace-marker"
-      data-character-index={position.characterIndex}
+      data-character-index="0"
       aria-hidden="true"
+      ref={ref}
       className="formaltype-previous-pace-marker"
       style={{
         position: "absolute",
@@ -1081,15 +1111,16 @@ function PreviousPaceMarker({
         width: 2,
         height: "0.95em",
         background: "rgba(221, 167, 75, 0.82)",
-        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-        transition: "transform 180ms linear, opacity 120ms ease",
-        opacity: 0.9,
+        transform: "translate3d(0px, 0px, 0)",
+        transition: "opacity 120ms ease",
+        opacity: 0,
         pointerEvents: "none",
+        willChange: "transform",
         boxShadow: "0 0 7px rgba(221, 167, 75, 0.28)"
       }}
     />
   );
-}
+});
 
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
@@ -1710,6 +1741,15 @@ export function getPreviousPaceIndex(
   timeline: PreviousPaceTimelinePoint[] | null | undefined,
   currentElapsedSeconds: number
 ) {
+  const interpolatedIndex = getInterpolatedPreviousPaceIndex(timeline, currentElapsedSeconds);
+
+  return interpolatedIndex === null ? null : Math.max(0, Math.round(interpolatedIndex));
+}
+
+export function getInterpolatedPreviousPaceIndex(
+  timeline: PreviousPaceTimelinePoint[] | null | undefined,
+  currentElapsedSeconds: number
+) {
   if (!timeline || timeline.length === 0) {
     return null;
   }
@@ -1726,31 +1766,31 @@ export function getPreviousPaceIndex(
     return 0;
   }
 
-  const exactPoint = sortedTimeline.find((point) => point.timeSeconds === Math.round(currentElapsedSeconds));
+  const exactPoint = sortedTimeline.find((point) => point.timeSeconds === currentElapsedSeconds);
   if (exactPoint) {
-    return Math.max(0, Math.round(exactPoint.characterIndex));
+    return Math.max(0, exactPoint.characterIndex);
   }
 
   const nextPoint = sortedTimeline.find((point) => point.timeSeconds > currentElapsedSeconds);
   if (!nextPoint) {
-    return Math.max(0, Math.round(sortedTimeline[sortedTimeline.length - 1].characterIndex));
+    return Math.max(0, sortedTimeline[sortedTimeline.length - 1].characterIndex);
   }
 
   const previousPointIndex = sortedTimeline.indexOf(nextPoint) - 1;
   if (previousPointIndex < 0) {
-    return Math.max(0, Math.round(nextPoint.characterIndex));
+    return Math.max(0, nextPoint.characterIndex);
   }
 
   const previousPoint = sortedTimeline[previousPointIndex];
   const elapsedRange = nextPoint.timeSeconds - previousPoint.timeSeconds;
   if (elapsedRange <= 0) {
-    return Math.max(0, Math.round(previousPoint.characterIndex));
+    return Math.max(0, previousPoint.characterIndex);
   }
 
   const progress = (currentElapsedSeconds - previousPoint.timeSeconds) / elapsedRange;
   const interpolatedIndex =
     previousPoint.characterIndex + (nextPoint.characterIndex - previousPoint.characterIndex) * progress;
-  return Math.max(0, Math.round(interpolatedIndex));
+  return Math.max(0, interpolatedIndex);
 }
 
 export function addAttemptTimelinePoint(points: AttemptTimelinePoint[], point: AttemptTimelinePoint) {

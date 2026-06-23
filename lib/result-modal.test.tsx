@@ -8,6 +8,7 @@ import {
   ResultModal,
   addAttemptTimelinePoint,
   getAttemptGraphLayout,
+  getInterpolatedPreviousPaceIndex,
   getPreviousPaceIndex,
   getResultConsistency
 } from "../pages/practice";
@@ -153,6 +154,18 @@ describe("ResultModal", () => {
         10
       )
     ).toBe(40);
+  });
+
+  it("keeps fractional previous pace progress for smooth marker animation", () => {
+    expect(
+      getInterpolatedPreviousPaceIndex(
+        [
+          { timeSeconds: 5, characterIndex: 20, wpm: 48 },
+          { timeSeconds: 15, characterIndex: 61, wpm: 48 }
+        ],
+        10
+      )
+    ).toBe(40.5);
   });
 
   it("adds a final time-up point at the duration instead of using remaining seconds", () => {
