@@ -14,6 +14,8 @@ import {
   removeFriend,
   sendFriendRequestByProfileHandle
 } from "@/lib/friendStorage";
+import { getSupabasePublicProfileByHandle } from "@/lib/profileStorage";
+import { getSupabasePublicTypingResultsByHandle } from "@/lib/typingResultStorage";
 
 const mockState = vi.hoisted(() => ({
   user: { id: "user-1", email: "typist@example.com" } as { id: string; email: string } | null,
@@ -50,6 +52,25 @@ vi.mock("@/lib/friendStorage", () => ({
   sendFriendRequestByProfileHandle: vi.fn().mockResolvedValue({})
 }));
 
+vi.mock("@/lib/profileStorage", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/profileStorage")>("@/lib/profileStorage");
+
+  return {
+    ...actual,
+    getSupabaseAvatarPublicUrl: vi.fn((path: string | null) => (path ? `https://cdn.example.com/${path}` : null)),
+    getSupabasePublicProfileByHandle: vi.fn().mockResolvedValue(makePublicProfile())
+  };
+});
+
+vi.mock("@/lib/typingResultStorage", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/typingResultStorage")>("@/lib/typingResultStorage");
+
+  return {
+    ...actual,
+    getSupabasePublicTypingResultsByHandle: vi.fn().mockResolvedValue([makeResult("latest", 72, 98.2)])
+  };
+});
+
 const mockedAccept = vi.mocked(acceptFriendRequest);
 const mockedListFriends = vi.mocked(listAcceptedFriends);
 const mockedListIncoming = vi.mocked(listIncomingFriendRequests);
@@ -57,6 +78,8 @@ const mockedListOutgoing = vi.mocked(listOutgoingFriendRequests);
 const mockedReject = vi.mocked(rejectFriendRequest);
 const mockedRemove = vi.mocked(removeFriend);
 const mockedSend = vi.mocked(sendFriendRequestByProfileHandle);
+const mockedGetPublicProfile = vi.mocked(getSupabasePublicProfileByHandle);
+const mockedGetPublicResults = vi.mocked(getSupabasePublicTypingResultsByHandle);
 
 describe("Profile friends page", () => {
   beforeEach(() => {
@@ -70,6 +93,8 @@ describe("Profile friends page", () => {
     mockedReject.mockClear();
     mockedRemove.mockClear();
     mockedSend.mockClear();
+    mockedGetPublicProfile.mockClear();
+    mockedGetPublicResults.mockClear();
     mockedListFriends.mockResolvedValue([]);
     mockedListIncoming.mockResolvedValue([]);
     mockedListOutgoing.mockResolvedValue([]);
@@ -77,34 +102,59 @@ describe("Profile friends page", () => {
     mockedReject.mockResolvedValue(undefined);
     mockedRemove.mockResolvedValue(undefined);
     mockedSend.mockResolvedValue({} as any);
+    mockedGetPublicProfile.mockResolvedValue(makePublicProfile() as any);
+    mockedGetPublicResults.mockResolvedValue([makeResult("latest", 72, 98.2)] as any);
   });
 
-  it("renders empty friend request sections", async () => {
+  it("renders a calm empty friends table state without large empty request boxes", async () => {
     render(<FriendsPage />);
 
     await waitFor(() => {
       expect(screen.getByText("No friends yet.")).toBeTruthy();
     });
 
-    expect(screen.getByText("Incoming requests")).toBeTruthy();
-    expect(screen.getByText("No incoming requests.")).toBeTruthy();
-    expect(screen.getByText("Outgoing requests")).toBeTruthy();
-    expect(screen.getByText("No outgoing requests.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add friend" })).toBeTruthy();
+    expect(screen.queryByText("No incoming requests.")).toBeNull();
+    expect(screen.queryByText("No outgoing requests.")).toBeNull();
   });
 
-  it("renders friends, incoming requests, and outgoing requests", async () => {
-    mockedListFriends.mockResolvedValueOnce([makeFriend({ handle: "ada_type" })]);
+  it("renders a compact friends stats table", async () => {
+    mockedListFriends.mockResolvedValueOnce([makeFriend({ handle: "ada_type", updated_at: "2026-06-19T00:00:00.000Z" })]);
+    mockedGetPublicProfile.mockResolvedValueOnce(makePublicProfile({ handle: "ada_type", avatar_path: "user-2/avatar.png" }) as any);
+
+    render(<FriendsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("table", { name: "Friends stats" })).toBeTruthy();
+    });
+
+    expect(screen.getByRole("link", { name: "@ada_type" }).getAttribute("href")).toBe("/u/ada_type");
+    expect(screen.getByAltText("@ada_type avatar").getAttribute("src")).toBe("https://cdn.example.com/user-2/avatar.png");
+    expect(screen.getByText("Friends since Jun 19, 2026")).toBeTruthy();
+    expect(screen.getByText("Level")).toBeTruthy();
+    expect(screen.getByText("Tests")).toBeTruthy();
+    expect(screen.getByText("Best WPM")).toBeTruthy();
+    expect(screen.getByText("Best acc")).toBeTruthy();
+    expect(screen.getByText("Streak")).toBeTruthy();
+    expect(screen.getByText("Latest")).toBeTruthy();
+    expect(screen.getByText("72.0")).toBeTruthy();
+    expect(screen.getByText("98.2%")).toBeTruthy();
+    expect(screen.getByText("Passage latest")).toBeTruthy();
+  });
+
+  it("renders incoming and outgoing requests compactly", async () => {
     mockedListIncoming.mockResolvedValueOnce([makeFriend({ id: "request-1", handle: "grace_keys", direction: "incoming" })]);
     mockedListOutgoing.mockResolvedValueOnce([makeFriend({ id: "request-2", handle: "linus_letters", direction: "outgoing" })]);
 
     render(<FriendsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("@ada_type")).toBeTruthy();
+      expect(screen.getByText("Requests")).toBeTruthy();
     });
 
     expect(screen.getByText("@grace_keys")).toBeTruthy();
     expect(screen.getByText("@linus_letters")).toBeTruthy();
+    expect(screen.getByText("Pending")).toBeTruthy();
   });
 
   it("links friend and request handles to public profiles", async () => {
@@ -172,6 +222,7 @@ describe("Profile friends page", () => {
     await waitFor(() => {
       expect(screen.getByText("No friends yet.")).toBeTruthy();
     });
+    fireEvent.click(screen.getByRole("button", { name: "Add friend" }));
     fireEvent.change(screen.getByLabelText("Add friend by handle"), { target: { value: "@kkk" } });
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
 
@@ -179,6 +230,19 @@ describe("Profile friends page", () => {
       expect(mockedSend).toHaveBeenCalledWith("@kkk");
     });
     expect(await screen.findByText("Friend request sent to @kkk.")).toBeTruthy();
+  });
+
+  it("renders private friend stats as dashes without breaking the friends table", async () => {
+    mockedListFriends.mockResolvedValueOnce([makeFriend({ handle: "private_keys" })]);
+    mockedGetPublicProfile.mockResolvedValueOnce(makePublicProfile({ handle: "private_keys", public_profile_enabled: false }) as any);
+    mockedGetPublicResults.mockResolvedValueOnce([] as any);
+
+    render(<FriendsPage />);
+
+    const link = await screen.findByRole("link", { name: "@private_keys" });
+    expect(link.getAttribute("href")).toBe("/u/private_keys");
+    expect(screen.getByText("Private")).toBeTruthy();
+    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(5);
   });
 
   it("cancels outgoing requests and removes accepted friends", async () => {
@@ -224,4 +288,29 @@ function makeFriend(overrides: Partial<Record<string, unknown>> = {}) {
     updated_at: "2026-06-22T00:00:00.000Z",
     ...overrides
   } as any;
+}
+
+function makePublicProfile(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    handle: "formal_typist",
+    bio: null,
+    avatar_style: "amber",
+    avatar_path: null,
+    public_profile_enabled: true,
+    created_at: "2026-06-20T00:00:00.000Z",
+    ...overrides
+  };
+}
+
+function makeResult(id: string, wpm: number, accuracy: number) {
+  return {
+    id,
+    passage_title: `Passage ${id}`,
+    passage_category: "Letters",
+    duration_seconds: 60,
+    wpm,
+    accuracy,
+    correct_chars: Math.round(wpm * 5),
+    created_at: "2026-06-22T00:00:00.000Z"
+  };
 }

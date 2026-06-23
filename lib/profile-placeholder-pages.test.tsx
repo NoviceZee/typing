@@ -82,15 +82,14 @@ describe("profile subpages", () => {
     expect(screen.queryByRole("button", { name: /copy/i })).toBeNull();
   });
 
-  it("renders friends empty states", async () => {
+  it("renders friends compact empty state", async () => {
     render(<FriendsPage />);
 
     await waitFor(() => {
       expect(screen.getByText("No friends yet.")).toBeTruthy();
     });
-    expect(screen.getByText("Incoming requests")).toBeTruthy();
-    expect(screen.getByText("No incoming requests.")).toBeTruthy();
-    expect(screen.getByText("Outgoing requests")).toBeTruthy();
-    expect(screen.getByText("No outgoing requests.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add friend" })).toBeTruthy();
+    expect(screen.queryByText("No incoming requests.")).toBeNull();
+    expect(screen.queryByText("No outgoing requests.")).toBeNull();
   });
 });
