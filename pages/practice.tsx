@@ -114,7 +114,9 @@ export default function PracticePage() {
   const [selectedPassageId, setSelectedPassageId] = useState(RANDOM_PASSAGE_ID);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typingWindowRef = useRef<HTMLDivElement>(null);
+  const typingTextRef = useRef<HTMLDivElement>(null);
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
+  const characterRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const finishedRef = useRef(false);
   const statusRef = useRef<SessionStatus>("idle");
   const startedAtRef = useRef<number | null>(null);
@@ -125,6 +127,11 @@ export default function PracticePage() {
   const libraryRef = useRef<LibraryPassage[]>([]);
   const isTabPressedRef = useRef(false);
   const scrollFrameRef = useRef<number | null>(null);
+  const [previousPaceMarkerPosition, setPreviousPaceMarkerPosition] = useState<{
+    characterIndex: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
@@ -153,9 +160,18 @@ export default function PracticePage() {
       (!previousResult.durationSeconds || previousResult.durationSeconds === durationSeconds)
   );
   const previousPaceMarkerIndex =
-    previousComparisonMatches && status !== "finished"
+    previousComparisonMatches && isRunning && !isResultModalOpen
       ? getPreviousPaceIndex(previousResult?.previousPaceTimeline, elapsedSeconds)
       : null;
+  const setCharacterRef = useCallback(
+    (index: number, isCurrent: boolean) => (node: HTMLSpanElement | null) => {
+      characterRefs.current[index] = node;
+      if (isCurrent) {
+        currentCharRef.current = node;
+      }
+    },
+    []
+  );
   const choosePracticePassage = useCallback(
     ({
       library,
@@ -488,6 +504,49 @@ export default function PracticePage() {
       inputRef.current?.focus({ preventScroll: true });
     }
   }, [isRunning]);
+
+  useEffect(() => {
+    characterRefs.current = characterRefs.current.slice(0, comparison.characters.length);
+  }, [comparison.characters.length]);
+
+  useEffect(() => {
+    const container = typingTextRef.current;
+
+    if (
+      previousPaceMarkerIndex === null ||
+      previousPaceMarkerIndex < 0 ||
+      !container ||
+      comparison.characters.length === 0
+    ) {
+      setPreviousPaceMarkerPosition(null);
+      return;
+    }
+
+    const clampedIndex = Math.min(previousPaceMarkerIndex, comparison.characters.length);
+    const targetCharacter =
+      clampedIndex >= comparison.characters.length
+        ? characterRefs.current[comparison.characters.length - 1]
+        : characterRefs.current[clampedIndex];
+
+    if (!targetCharacter || !container.contains(targetCharacter)) {
+      setPreviousPaceMarkerPosition(null);
+      return;
+    }
+
+    const containerBounds = container.getBoundingClientRect();
+    const targetBounds = targetCharacter.getBoundingClientRect();
+    const x =
+      clampedIndex >= comparison.characters.length
+        ? targetBounds.right - containerBounds.left
+        : targetBounds.left - containerBounds.left;
+    const y = targetBounds.top - containerBounds.top;
+
+    setPreviousPaceMarkerPosition({
+      characterIndex: clampedIndex,
+      x,
+      y
+    });
+  }, [comparison.characters.length, previousPaceMarkerIndex, typedText]);
 
   useEffect(() => {
     const currentCharacter = currentCharRef.current;
@@ -874,62 +933,62 @@ export default function PracticePage() {
                 : "h-[340px] overflow-y-auto overscroll-contain rounded-md bg-ink-900/55 px-4 py-6 md:h-[420px] md:px-8 md:py-8"
             )}
           >
-            <p
-              className={clsx(
-                "mx-auto max-w-4xl whitespace-pre-wrap break-words font-mono text-[1.7rem] leading-[2.55rem] text-paper/45 md:text-[2.15rem] md:leading-[3.25rem]",
-                isRunning && "text-paper/50"
-              )}
+            <div
+              ref={typingTextRef}
+              className="relative mx-auto max-w-4xl"
+              data-testid="typing-text-container"
             >
-              {isPassageLoading ? (
-                <PassageLoadingPlaceholder />
-              ) : (
-                <>
-                  {comparison.characters.map((character, index) => {
-                const isCurrent = character.status === "current";
-                const isLineBreak = character.expected === "\n" || character.actual === "\n";
+              <p
+                data-testid="typing-character-layer"
+                className={clsx(
+                  "whitespace-pre-wrap break-words font-mono text-[1.7rem] leading-[2.55rem] text-paper/45 md:text-[2.15rem] md:leading-[3.25rem]",
+                  isRunning && "text-paper/50"
+                )}
+              >
+                {isPassageLoading ? (
+                  <PassageLoadingPlaceholder />
+                ) : (
+                  <>
+                    {comparison.characters.map((character, index) => {
+                      const isCurrent = character.status === "current";
+                      const isLineBreak = character.expected === "\n" || character.actual === "\n";
 
-                if (isLineBreak) {
-                  return (
-                    <Fragment key={`${character.index}-${index}-${character.expected}-${character.actual}`}>
-                      {previousPaceMarkerIndex === index && <PreviousPaceMarker characterIndex={index} />}
-                      <span
-                        ref={isCurrent ? currentCharRef : undefined}
-                        data-index={index}
-                        aria-label={character.status === "wrong" ? "Missed line break" : "Line break"}
-                        className={clsx(
-                          "inline-block min-w-[0.7em]",
-                          characterClass(character.status, rules.showMistakesImmediately || isFinished),
-                          character.status === "untyped" && "text-paper/20"
-                        )}
-                      >
-                        {shouldShowLineBreakMarker(character.status, rules.showMistakesImmediately || isFinished) ? "↵" : ""}
-                      </span>
-                      <br />
-                    </Fragment>
-                  );
-                }
+                      if (isLineBreak) {
+                        return (
+                          <Fragment key={`${character.index}-${index}-${character.expected}-${character.actual}`}>
+                            <span
+                              ref={setCharacterRef(index, isCurrent)}
+                              data-index={index}
+                              aria-label={character.status === "wrong" ? "Missed line break" : "Line break"}
+                              className={clsx(
+                                "inline-block min-w-[0.7em]",
+                                characterClass(character.status, rules.showMistakesImmediately || isFinished),
+                                character.status === "untyped" && "text-paper/20"
+                              )}
+                            >
+                              {shouldShowLineBreakMarker(character.status, rules.showMistakesImmediately || isFinished) ? "↵" : ""}
+                            </span>
+                            <br />
+                          </Fragment>
+                        );
+                      }
 
-                return (
-                  <Fragment key={`${character.index}-${index}-${character.expected}-${character.actual}`}>
-                    {previousPaceMarkerIndex === index && <PreviousPaceMarker characterIndex={index} />}
-                    <span
-                      ref={isCurrent ? currentCharRef : undefined}
-                      data-index={index}
-                      className={clsx(
-                        characterClass(character.status, rules.showMistakesImmediately || isFinished)
-                      )}
-                    >
-                      {character.actual || character.expected}
-                    </span>
-                  </Fragment>
-                );
-                  })}
-                  {previousPaceMarkerIndex !== null && previousPaceMarkerIndex >= comparison.characters.length && (
-                    <PreviousPaceMarker characterIndex={comparison.characters.length} />
-                  )}
-                </>
-              )}
-            </p>
+                      return (
+                        <span
+                          key={`${character.index}-${index}-${character.expected}-${character.actual}`}
+                          ref={setCharacterRef(index, isCurrent)}
+                          data-index={index}
+                          className={clsx(characterClass(character.status, rules.showMistakesImmediately || isFinished))}
+                        >
+                          {character.actual || character.expected}
+                        </span>
+                      );
+                    })}
+                  </>
+                )}
+              </p>
+              {previousPaceMarkerPosition && <PreviousPaceMarker position={previousPaceMarkerPosition} />}
+            </div>
           </div>
 
           <textarea
@@ -999,24 +1058,33 @@ function PassageLoadingPlaceholder() {
   );
 }
 
-function PreviousPaceMarker({ characterIndex }: { characterIndex: number }) {
+function PreviousPaceMarker({
+  position
+}: {
+  position: {
+    characterIndex: number;
+    x: number;
+    y: number;
+  };
+}) {
   return (
     <span
       data-testid="previous-pace-marker"
-      data-character-index={characterIndex}
+      data-character-index={position.characterIndex}
       aria-hidden="true"
       className="formaltype-previous-pace-marker"
       style={{
-        display: "inline-block",
-        width: 0,
+        position: "absolute",
+        left: 0,
+        top: 0,
+        display: "block",
+        width: 2,
         height: "0.95em",
-        borderLeft: "2px solid rgba(221, 167, 75, 0.82)",
-        marginLeft: -1,
-        marginRight: -1,
-        verticalAlign: "-0.08em",
+        background: "rgba(221, 167, 75, 0.82)",
+        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+        transition: "transform 180ms linear, opacity 120ms ease",
         opacity: 0.9,
         pointerEvents: "none",
-        position: "static",
         boxShadow: "0 0 7px rgba(221, 167, 75, 0.28)"
       }}
     />

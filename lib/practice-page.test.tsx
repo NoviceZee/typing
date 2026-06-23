@@ -205,7 +205,7 @@ describe("PracticePage passage loading", () => {
     expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
   });
 
-  it("renders the in-text previous pace marker after a time-up same-passage restart", async () => {
+  it("renders the previous pace marker as an overlay after a time-up same-passage restart", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
       JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
@@ -240,22 +240,61 @@ describe("PracticePage passage loading", () => {
     });
 
     const marker = screen.getByTestId("previous-pace-marker");
+    const characterLayer = screen.getByTestId("typing-character-layer");
+
     expect(marker).toBeTruthy();
     expect(marker.getAttribute("data-character-index")).toBe(String("Local fallback body text".length));
     expect(marker.className).toContain("formaltype-previous-pace-marker");
-    expect(marker.style.display).toBe("inline-block");
-    expect(marker.style.width).toBe("0px");
+    expect(marker.style.position).toBe("absolute");
+    expect(marker.style.pointerEvents).toBe("none");
+    expect(marker.style.transform).toContain("translate3d(");
+    expect(marker.style.transition).toContain("transform 180ms linear");
+    expect(characterLayer.contains(marker)).toBe(false);
+    expect(marker.textContent).toBe("");
     expect(marker.style.height).toBe("0.95em");
-    expect(marker.style.position).toBe("static");
-    expect(marker.style.verticalAlign).toBe("-0.08em");
-    expect(marker.querySelector(".absolute")).toBeNull();
 
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
     expect(screen.getByTestId("previous-pace-marker")).toBeTruthy();
   });
 
-  it("removes the in-text previous pace marker when switching passages", async () => {
+  it("keeps character text unchanged when the previous pace marker is visible", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    const initialCharacterLayer = screen.getByTestId("typing-character-layer");
+    const initialCharacterText = initialCharacterLayer.textContent;
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-21T12:00:00.000Z"));
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_250);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    fireEvent.keyDown(window, { key: "Tab" });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(screen.getByTestId("previous-pace-marker")).toBeTruthy();
+    expect(screen.getByTestId("typing-character-layer").textContent).toBe(initialCharacterText);
+  });
+
+  it("removes the previous pace marker overlay when switching passages", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
       JSON.stringify([
