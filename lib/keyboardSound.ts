@@ -3,7 +3,24 @@ export type KeyboardSoundKeyType = "normal" | "space" | "enter" | "backspace";
 
 export const KEYBOARD_SOUND_STORAGE_KEY = "formaltype.keyboard_sound.v1";
 
-const KEYBOARD_SOUND_SETTINGS: KeyboardSoundSetting[] = ["off", "mechanical"];
+export const KEYBOARD_SOUND_OPTIONS: Array<{
+  value: KeyboardSoundSetting;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "off",
+    label: "Sound off",
+    description: "No keyboard sounds during practice."
+  },
+  {
+    value: "mechanical",
+    label: "Mechanical",
+    description: "A short synthesized mechanical-style click."
+  }
+];
+
+const KEYBOARD_SOUND_SETTINGS = KEYBOARD_SOUND_OPTIONS.map((option) => option.value);
 
 type AudioWindow = Window & {
   webkitAudioContext?: typeof AudioContext;

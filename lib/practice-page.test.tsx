@@ -516,30 +516,6 @@ describe("PracticePage passage loading", () => {
     expect((input as HTMLTextAreaElement).value).toBe("");
   });
 
-  it("defaults keyboard sound to off and persists the selected sound", async () => {
-    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
-
-    render(<PracticePage />);
-
-    const keyboardSound = await screen.findByLabelText("Keyboard sound");
-    expect((keyboardSound as HTMLSelectElement).value).toBe("off");
-
-    fireEvent.change(keyboardSound, { target: { value: "mechanical" } });
-
-    expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe("mechanical");
-    expect((keyboardSound as HTMLSelectElement).value).toBe("mechanical");
-  });
-
-  it("loads the persisted keyboard sound setting", async () => {
-    window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
-    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
-
-    render(<PracticePage />);
-
-    const keyboardSound = await screen.findByLabelText("Keyboard sound");
-    expect((keyboardSound as HTMLSelectElement).value).toBe("mechanical");
-  });
-
   it("plays keyboard sound only for valid typing changes during a running session", async () => {
     window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
     window.localStorage.setItem(
@@ -573,6 +549,31 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(input, { key: "v", metaKey: true });
     fireEvent.paste(input);
     expect(audioMock.oscillators).toHaveLength(1);
+  });
+
+  it("does not render sound settings and respects a saved off sound setting", async () => {
+    window.localStorage.setItem("formaltype.keyboard_sound.v1", "off");
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    const audioMock = installAudioContextMock();
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    expect(screen.queryByLabelText("Keyboard sound")).toBeNull();
+
+    const input = screen.getByLabelText("Typing input");
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyDown(input, { key: "a" });
+    fireEvent.change(input, { target: { value: "a" } });
+
+    expect(audioMock.oscillators).toHaveLength(0);
   });
 
   it("flags suspicious bursts and does not save or update previous pace", async () => {
