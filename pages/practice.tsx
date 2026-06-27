@@ -62,6 +62,15 @@ import {
   buildConsistencySeries,
   getConsistencySummary
 } from "@/lib/practiceConsistency";
+import {
+  KeyboardSoundKeyType,
+  KeyboardSoundSetting,
+  createKeyboardSoundPlayer,
+  getKeyboardSoundKeyType,
+  isTypingSoundKey,
+  readKeyboardSoundSetting,
+  writeKeyboardSoundSetting
+} from "@/lib/keyboardSound";
 import { isRestartShortcut } from "@/lib/practiceShortcuts";
 import {
   SupabaseOwnTypingResultRow,
@@ -112,6 +121,7 @@ export default function PracticePage() {
   const [availableLibrary, setAvailableLibrary] = useState<LibraryPassage[]>([]);
   const [selectedCategory, setSelectedCategoryState] = useState<CategoryFilter>(ALL_FILTER);
   const [selectedPassageId, setSelectedPassageId] = useState(RANDOM_PASSAGE_ID);
+  const [keyboardSoundSetting, setKeyboardSoundSetting] = useState<KeyboardSoundSetting>("off");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typingWindowRef = useRef<HTMLDivElement>(null);
   const typingTextRef = useRef<HTMLDivElement>(null);
@@ -129,6 +139,9 @@ export default function PracticePage() {
   const isTabPressedRef = useRef(false);
   const scrollFrameRef = useRef<number | null>(null);
   const previousPaceAnimationFrameRef = useRef<number | null>(null);
+  const keyboardSoundSettingRef = useRef<KeyboardSoundSetting>("off");
+  const keyboardSoundPlayerRef = useRef(createKeyboardSoundPlayer());
+  const pendingSoundKeyTypeRef = useRef<KeyboardSoundKeyType | null>(null);
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
@@ -245,6 +258,9 @@ export default function PracticePage() {
     }
 
     setRules(readStoredRules());
+    const initialKeyboardSoundSetting = readKeyboardSoundSetting();
+    keyboardSoundSettingRef.current = initialKeyboardSoundSetting;
+    setKeyboardSoundSetting(initialKeyboardSoundSetting);
     loadInitialPracticeState();
 
     return () => {
@@ -259,6 +275,10 @@ export default function PracticePage() {
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
+
+  useEffect(() => {
+    keyboardSoundSettingRef.current = keyboardSoundSetting;
+  }, [keyboardSoundSetting]);
 
   useEffect(() => {
     startedAtRef.current = startedAt;
@@ -567,14 +587,15 @@ export default function PracticePage() {
     };
 
     previousPaceAnimationFrameRef.current = window.requestAnimationFrame(animatePreviousPaceMarker);
+    const markerToReset = previousPaceMarkerRef.current;
 
     return () => {
       if (previousPaceAnimationFrameRef.current !== null) {
         window.cancelAnimationFrame(previousPaceAnimationFrameRef.current);
         previousPaceAnimationFrameRef.current = null;
       }
-      if (previousPaceMarkerRef.current) {
-        previousPaceMarkerRef.current.style.opacity = "0";
+      if (markerToReset) {
+        markerToReset.style.opacity = "0";
       }
     };
   }, [
@@ -669,17 +690,39 @@ export default function PracticePage() {
 
     setTypedText((previous) => {
       const nextValue = enforceBackspacePolicy(previous, value, rules.allowBackspace);
+      const didTypingChange = nextValue !== previous;
       if (isSuspiciousInputChange(previous, nextValue, elapsedSecondsRef.current)) {
         markAttemptSuspicious();
       }
       typedTextRef.current = nextValue;
       recordAttemptTimelinePoint(elapsedSecondsRef.current, nextValue);
+      if (didTypingChange) {
+        playPendingKeyboardSound();
+      }
       return nextValue;
     });
   }
 
   function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    pendingSoundKeyTypeRef.current = null;
     event.preventDefault();
+  }
+
+  function handleKeyboardSoundSetting(nextSetting: KeyboardSoundSetting) {
+    keyboardSoundSettingRef.current = nextSetting;
+    setKeyboardSoundSetting(nextSetting);
+    writeKeyboardSoundSetting(nextSetting);
+  }
+
+  function playPendingKeyboardSound() {
+    const keyType = pendingSoundKeyTypeRef.current;
+    pendingSoundKeyTypeRef.current = null;
+
+    if (!keyType || statusRef.current !== "running") {
+      return;
+    }
+
+    keyboardSoundPlayerRef.current.play(keyboardSoundSettingRef.current, keyType);
   }
 
   function markAttemptSuspicious() {
@@ -862,7 +905,7 @@ export default function PracticePage() {
           )}
           aria-hidden={isRunning}
         >
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1.5 md:grid-cols-[minmax(8rem,0.75fr)_minmax(14rem,1.3fr)_minmax(16rem,0.95fr)] md:items-center">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1.5 md:grid-cols-[minmax(8rem,0.75fr)_minmax(14rem,1.3fr)_minmax(12rem,0.85fr)_minmax(16rem,0.95fr)] md:items-center">
             <label className="min-w-0">
               <span className="sr-only">Category</span>
               <select
@@ -895,6 +938,19 @@ export default function PracticePage() {
                     {libraryPassage.title}
                   </option>
                 ))}
+              </select>
+            </label>
+
+            <label className="min-w-0">
+              <span className="sr-only">Keyboard sound</span>
+              <select
+                value={keyboardSoundSetting}
+                onChange={(event) => handleKeyboardSoundSetting(event.target.value as KeyboardSoundSetting)}
+                disabled={isRunning}
+                className="h-9 w-full min-w-0 rounded-full border-0 bg-paper/[0.035] px-4 font-mono text-xs text-paper/70 outline-none transition hover:bg-paper/[0.055] focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/30 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="off">Sound off</option>
+                <option value="mechanical">Mechanical</option>
               </select>
             </label>
 
@@ -1034,11 +1090,19 @@ export default function PracticePage() {
             disabled={isPassageLoading || isFinished || (!isRunning && rules.requireTabToStart)}
             onKeyDown={(event) => {
               if (isPassageLoading || isFinished || (!isRunning && rules.requireTabToStart)) {
+                pendingSoundKeyTypeRef.current = null;
                 event.preventDefault();
                 return;
               }
               if (!rules.allowBackspace && event.key === "Backspace") {
+                pendingSoundKeyTypeRef.current = null;
                 event.preventDefault();
+                return;
+              }
+              pendingSoundKeyTypeRef.current =
+                isRunning && isTypingSoundKey(event.nativeEvent) ? getKeyboardSoundKeyType(event.key) : null;
+              if (event.key === "Backspace" && typedTextRef.current.length === 0) {
+                pendingSoundKeyTypeRef.current = null;
               }
             }}
             onPaste={handlePaste}

@@ -516,6 +516,65 @@ describe("PracticePage passage loading", () => {
     expect((input as HTMLTextAreaElement).value).toBe("");
   });
 
+  it("defaults keyboard sound to off and persists the selected sound", async () => {
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+
+    const keyboardSound = await screen.findByLabelText("Keyboard sound");
+    expect((keyboardSound as HTMLSelectElement).value).toBe("off");
+
+    fireEvent.change(keyboardSound, { target: { value: "mechanical" } });
+
+    expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe("mechanical");
+    expect((keyboardSound as HTMLSelectElement).value).toBe("mechanical");
+  });
+
+  it("loads the persisted keyboard sound setting", async () => {
+    window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+
+    const keyboardSound = await screen.findByLabelText("Keyboard sound");
+    expect((keyboardSound as HTMLSelectElement).value).toBe("mechanical");
+  });
+
+  it("plays keyboard sound only for valid typing changes during a running session", async () => {
+    window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    const audioMock = installAudioContextMock();
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    const input = screen.getByLabelText("Typing input");
+
+    fireEvent.keyDown(input, { key: "a" });
+    fireEvent.change(input, { target: { value: "a" } });
+    expect(audioMock.oscillators).toHaveLength(0);
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyDown(input, { key: "Shift", shiftKey: true });
+    expect(audioMock.oscillators).toHaveLength(0);
+
+    fireEvent.keyDown(input, { key: "a" });
+    fireEvent.change(input, { target: { value: "a" } });
+    expect(audioMock.oscillators).toHaveLength(1);
+
+    fireEvent.keyDown(input, { key: "Meta", metaKey: true });
+    fireEvent.keyDown(input, { key: "v", metaKey: true });
+    fireEvent.paste(input);
+    expect(audioMock.oscillators).toHaveLength(1);
+  });
+
   it("flags suspicious bursts and does not save or update previous pace", async () => {
     authState.user = { id: "user-1" };
     window.localStorage.setItem(
@@ -570,4 +629,46 @@ function typeIncrementally(input: HTMLElement, value: string) {
       target: { value: currentValue }
     });
   }
+}
+
+function installAudioContextMock() {
+  const oscillators: Array<{ frequency: { value: number }; type: OscillatorType; start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }> = [];
+  const gains: Array<{ gain: { setValueAtTime: ReturnType<typeof vi.fn>; exponentialRampToValueAtTime: ReturnType<typeof vi.fn> } }> = [];
+
+  class AudioContextMock {
+    currentTime = 1;
+    destination = {};
+    state = "running";
+    resume = vi.fn().mockResolvedValue(undefined);
+    createOscillator = vi.fn(() => {
+      const oscillator = {
+        frequency: { value: 0 },
+        type: "square" as OscillatorType,
+        connect: vi.fn(),
+        start: vi.fn(),
+        stop: vi.fn()
+      };
+      oscillators.push(oscillator);
+      return oscillator;
+    });
+    createGain = vi.fn(() => {
+      const gain = {
+        gain: {
+          setValueAtTime: vi.fn(),
+          exponentialRampToValueAtTime: vi.fn()
+        },
+        connect: vi.fn()
+      };
+      gains.push(gain);
+      return gain;
+    });
+  }
+
+  Object.defineProperty(window, "AudioContext", {
+    configurable: true,
+    writable: true,
+    value: AudioContextMock
+  });
+
+  return { oscillators, gains };
 }
