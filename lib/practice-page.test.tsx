@@ -551,6 +551,33 @@ describe("PracticePage passage loading", () => {
     expect(audioMock.oscillators).toHaveLength(1);
   });
 
+  it("uses the saved keyboard sound volume during practice playback", async () => {
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.5);
+    window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
+    window.localStorage.setItem("formaltype.keyboard_sound_volume.v1", "0.25");
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    const audioMock = installAudioContextMock();
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    const input = screen.getByLabelText("Typing input");
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyDown(input, { key: "a" });
+    fireEvent.change(input, { target: { value: "a" } });
+
+    expect(audioMock.gains[0].gain.setValueAtTime.mock.calls[0][0]).toBeCloseTo(0.00528);
+    expect(audioMock.gains[0].gain.setValueAtTime.mock.calls[0][1]).toBe(1);
+    randomSpy.mockRestore();
+  });
+
   it("does not render sound settings and respects a saved off sound setting", async () => {
     window.localStorage.setItem("formaltype.keyboard_sound.v1", "off");
     window.localStorage.setItem(

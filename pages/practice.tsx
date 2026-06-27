@@ -68,7 +68,8 @@ import {
   createKeyboardSoundPlayer,
   getKeyboardSoundKeyType,
   isTypingSoundKey,
-  readKeyboardSoundSetting
+  readKeyboardSoundSetting,
+  readKeyboardSoundVolume
 } from "@/lib/keyboardSound";
 import { isRestartShortcut } from "@/lib/practiceShortcuts";
 import {
@@ -138,6 +139,7 @@ export default function PracticePage() {
   const scrollFrameRef = useRef<number | null>(null);
   const previousPaceAnimationFrameRef = useRef<number | null>(null);
   const keyboardSoundSettingRef = useRef<KeyboardSoundSetting>("off");
+  const keyboardSoundVolumeRef = useRef(0.5);
   const keyboardSoundPlayerRef = useRef(createKeyboardSoundPlayer());
   const pendingSoundKeyTypeRef = useRef<KeyboardSoundKeyType | null>(null);
 
@@ -257,6 +259,7 @@ export default function PracticePage() {
 
     setRules(readStoredRules());
     keyboardSoundSettingRef.current = readKeyboardSoundSetting();
+    keyboardSoundVolumeRef.current = readKeyboardSoundVolume();
     loadInitialPracticeState();
 
     return () => {
@@ -708,7 +711,7 @@ export default function PracticePage() {
       return;
     }
 
-    keyboardSoundPlayerRef.current.play(keyboardSoundSettingRef.current, keyType);
+    keyboardSoundPlayerRef.current.play(keyboardSoundSettingRef.current, keyType, keyboardSoundVolumeRef.current);
   }
 
   function markAttemptSuspicious() {

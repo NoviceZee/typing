@@ -58,18 +58,23 @@ describe("SettingsPage", () => {
     expect(mockState.routerReplace).not.toHaveBeenCalled();
   });
 
-  it("renders the keyboard sound option in a sound section", () => {
+  it("renders the keyboard sound dropdown and volume slider in a sound section", () => {
     render(<SettingsPage />);
 
     expect(screen.getByRole("heading", { name: "Sound" })).toBeTruthy();
     const keyboardSound = screen.getByLabelText("Keyboard sound");
+    const keyboardSoundVolume = screen.getByLabelText("Keyboard sound volume");
 
+    expect(keyboardSound.tagName).toBe("SELECT");
     expect((keyboardSound as HTMLSelectElement).value).toBe("off");
+    expect((keyboardSoundVolume as HTMLInputElement).value).toBe("50");
     expect(screen.getByRole("option", { name: "Sound off" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Mechanical" })).toBeTruthy();
   });
 
-  it("persists keyboard sound changes to localStorage", () => {
+  it("selecting mechanical persists and triggers a preview", () => {
+    const audioMock = installAudioContextMock();
+
     render(<SettingsPage />);
 
     const keyboardSound = screen.getByLabelText("Keyboard sound");
@@ -77,6 +82,21 @@ describe("SettingsPage", () => {
 
     expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe("mechanical");
     expect((keyboardSound as HTMLSelectElement).value).toBe("mechanical");
+    expect(audioMock.oscillators).toHaveLength(1);
+  });
+
+  it("persists keyboard sound volume changes and previews when sound is enabled", () => {
+    window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
+    const audioMock = installAudioContextMock();
+
+    render(<SettingsPage />);
+
+    const keyboardSoundVolume = screen.getByLabelText("Keyboard sound volume");
+    fireEvent.change(keyboardSoundVolume, { target: { value: "70" } });
+
+    expect(window.localStorage.getItem("formaltype.keyboard_sound_volume.v1")).toBe("0.7");
+    expect((keyboardSoundVolume as HTMLInputElement).value).toBe("70");
+    expect(audioMock.oscillators).toHaveLength(1);
   });
 
   it("plays a preview sound for the selected sound pack", () => {
@@ -87,6 +107,15 @@ describe("SettingsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Test sound" }));
 
     expect(audioMock.oscillators).toHaveLength(1);
+  });
+
+  it("does not play a preview on initial render", () => {
+    window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
+    const audioMock = installAudioContextMock();
+
+    render(<SettingsPage />);
+
+    expect(audioMock.oscillators).toHaveLength(0);
   });
 });
 
