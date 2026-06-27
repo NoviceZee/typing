@@ -39,6 +39,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         currentSettings.mode === "system" ? (mediaQuery?.matches ? "light" : "dark") : currentSettings.mode;
       document.documentElement.dataset.theme = resolvedMode;
       document.documentElement.dataset.themeMode = currentSettings.mode;
+      document.documentElement.dataset.themePreset = currentSettings.themePreset;
       document.documentElement.dataset.accent = currentSettings.accentColor;
     }
 

@@ -6,6 +6,8 @@ import {
   ACCENT_COLOR_OPTIONS,
   DEFAULT_THEME_SETTINGS,
   THEME_MODE_OPTIONS,
+  THEME_PRESET_OPTIONS,
+  ThemePresetOption,
   TYPING_FONT_OPTIONS,
   TYPING_TEXT_SIZE_OPTIONS,
   TYPING_WIDTH_OPTIONS,
@@ -74,16 +76,39 @@ export default function SettingsPage() {
     });
   }
 
+  function handleThemePreset(preset: ThemePresetOption) {
+    setThemeSettings((current) => {
+      const nextSettings: ThemeSettings = {
+        ...current,
+        themePreset: preset.value,
+        mode: preset.mode,
+        accentColor: preset.accentColor
+      };
+      writeThemeSettings(nextSettings);
+      return nextSettings;
+    });
+  }
+
   return (
     <AppShell>
-      <section className="mx-auto w-full max-w-4xl px-1">
-        <div className="mb-6">
+      <section className="mx-auto w-full max-w-6xl px-1">
+        <div className="mb-6 rounded-xl border border-paper/10 bg-ink-900/45 p-5 shadow-glow backdrop-blur">
           <p className="font-mono text-xs uppercase text-brass">Preferences</p>
           <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Settings</h1>
+          <p className="mt-2 max-w-2xl text-sm text-paper/55">
+            Tune the typing room without changing your practice behavior, sound pack, or saved results.
+          </p>
         </div>
 
-        <div className="grid gap-5">
-          <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
+        <div className="grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start">
+          <aside className="rounded-xl border border-paper/10 bg-ink-900/45 p-3 font-mono text-xs text-paper/45 shadow-glow backdrop-blur">
+            <div className="rounded-lg bg-brass/15 px-3 py-2 text-brass">Appearance</div>
+            <div className="mt-1 px-3 py-2">Typing</div>
+            <div className="mt-1 px-3 py-2">Sound</div>
+          </aside>
+
+          <div className="grid gap-5">
+          <section className="rounded-xl border border-paper/10 bg-ink-950/80 p-5 shadow-glow backdrop-blur">
             <div>
               <p className="font-mono text-xs uppercase text-brass">Appearance</p>
               <h2 className="mt-1 text-xl font-semibold text-paper">Appearance</h2>
@@ -92,6 +117,18 @@ export default function SettingsPage() {
               </p>
             </div>
 
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {THEME_PRESET_OPTIONS.map((preset) => (
+                <ThemePreviewCard
+                  key={preset.value}
+                  preset={preset}
+                  isSelected={themeSettings.themePreset === preset.value}
+                  onSelect={() => handleThemePreset(preset)}
+                />
+              ))}
+            </div>
+
+            <div className="mt-6 border-t border-paper/10 pt-1">
             <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] md:items-center">
               <SettingLabel id="theme-mode" label="Mode" description="Choose a light, dark, or system-matched shell." />
               <select
@@ -106,6 +143,7 @@ export default function SettingsPage() {
                   </option>
                 ))}
               </select>
+            </div>
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] md:items-center">
@@ -173,7 +211,7 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
+          <section className="rounded-xl border border-paper/10 bg-ink-950/80 p-5 shadow-glow backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="font-mono text-xs uppercase text-brass">Sound</p>
@@ -234,9 +272,55 @@ export default function SettingsPage() {
             />
           </div>
           </section>
+          </div>
         </div>
       </section>
     </AppShell>
+  );
+}
+
+function ThemePreviewCard({
+  preset,
+  isSelected,
+  onSelect
+}: {
+  preset: ThemePresetOption;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`${preset.label} theme preview`}
+      aria-pressed={isSelected}
+      onClick={onSelect}
+      className={`group overflow-hidden rounded-xl border p-3 text-left transition ${
+        isSelected
+          ? "border-brass/70 bg-brass/10 shadow-[0_0_0_1px_rgb(var(--color-accent)/0.24),0_18px_60px_rgb(var(--color-accent)/0.12)]"
+          : "border-paper/10 bg-paper/[0.035] hover:border-brass/45 hover:bg-paper/[0.055]"
+      }`}
+    >
+      <div className="rounded-lg border border-white/10 p-3" style={{ backgroundColor: preset.swatches[0] }}>
+        <div className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: preset.swatches[2] }} />
+          <span className="h-2 w-2 rounded-full bg-white/25" />
+          <span className="h-2 w-2 rounded-full bg-white/15" />
+        </div>
+        <div className="mt-5 h-2 w-3/5 rounded-full" style={{ backgroundColor: preset.swatches[2] }} />
+        <div className="mt-2 h-2 w-4/5 rounded-full bg-white/20" />
+        <div className="mt-2 h-2 w-2/5 rounded-full" style={{ backgroundColor: preset.swatches[1] }} />
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <span className="font-mono text-xs font-semibold text-paper">{preset.label}</span>
+        <span
+          className={`rounded-full px-2 py-0.5 font-mono text-[0.62rem] uppercase ${
+            isSelected ? "bg-brass text-ink-950" : "bg-paper/10 text-paper/45"
+          }`}
+        >
+          {isSelected ? "Active" : preset.mode}
+        </span>
+      </div>
+    </button>
   );
 }
 

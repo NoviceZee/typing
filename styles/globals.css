@@ -9,17 +9,62 @@
   --color-ink-700: 37 43 36;
   --color-paper: 236 231 215;
   --color-accent: 202 164 93;
+  --color-card: 12 14 13;
+  --color-card-soft: 25 29 24;
   color-scheme: dark;
   background: rgb(var(--color-ink-950));
 }
 
+:root[data-theme-preset="light"],
 :root[data-theme="light"] {
   --color-ink-950: 248 246 239;
   --color-ink-900: 239 235 224;
   --color-ink-800: 229 223 210;
   --color-ink-700: 213 204 187;
   --color-paper: 33 37 32;
+  --color-card: 255 252 244;
+  --color-card-soft: 239 235 224;
   color-scheme: light;
+}
+
+:root[data-theme-preset="dracula"] {
+  --color-ink-950: 15 12 22;
+  --color-ink-900: 25 22 34;
+  --color-ink-800: 40 36 54;
+  --color-ink-700: 68 63 90;
+  --color-paper: 248 248 242;
+  --color-card: 25 22 34;
+  --color-card-soft: 40 36 54;
+}
+
+:root[data-theme-preset="nord"] {
+  --color-ink-950: 17 24 39;
+  --color-ink-900: 30 41 59;
+  --color-ink-800: 36 49 66;
+  --color-ink-700: 59 75 96;
+  --color-paper: 236 239 244;
+  --color-card: 24 34 50;
+  --color-card-soft: 36 49 66;
+}
+
+:root[data-theme-preset="catppuccin-mocha"] {
+  --color-ink-950: 17 17 27;
+  --color-ink-900: 24 24 37;
+  --color-ink-800: 30 30 46;
+  --color-ink-700: 49 50 68;
+  --color-paper: 205 214 244;
+  --color-card: 24 24 37;
+  --color-card-soft: 30 30 46;
+}
+
+:root[data-theme-preset="tokyo-night"] {
+  --color-ink-950: 10 15 31;
+  --color-ink-900: 15 23 42;
+  --color-ink-800: 26 27 38;
+  --color-ink-700: 41 45 62;
+  --color-paper: 192 202 245;
+  --color-card: 17 24 39;
+  --color-card-soft: 26 27 38;
 }
 
 :root[data-accent="blue"] {
@@ -150,6 +195,31 @@ textarea {
 .formaltype-previous-pace-marker {
   background: rgb(var(--color-accent) / 0.82);
   box-shadow: 0 0 7px rgb(var(--color-accent) / 0.28);
+}
+
+.formaltype-glass-panel {
+  background:
+    linear-gradient(135deg, rgb(var(--color-card) / 0.9), rgb(var(--color-card-soft) / 0.64)),
+    radial-gradient(circle at top right, rgb(var(--color-accent) / 0.12), transparent 42%);
+  border: 1px solid rgb(var(--color-paper) / 0.1);
+  box-shadow:
+    0 0 0 1px rgb(var(--color-accent) / 0.08),
+    0 24px 80px rgb(0 0 0 / 0.32);
+  backdrop-filter: blur(18px);
+}
+
+.formaltype-practice-shell {
+  background:
+    radial-gradient(circle at 12% 0%, rgb(var(--color-accent) / 0.15), transparent 34%),
+    linear-gradient(180deg, rgb(var(--color-card) / 0.9), rgb(var(--color-ink-950) / 0.74));
+}
+
+.formaltype-typing-surface {
+  background:
+    linear-gradient(180deg, rgb(var(--color-ink-950) / 0.72), rgb(var(--color-card) / 0.88)),
+    radial-gradient(circle at bottom left, rgb(var(--color-accent) / 0.08), transparent 35%);
+  border: 1px solid rgb(var(--color-paper) / 0.08);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
 }
 
 @media (min-width: 768px) {

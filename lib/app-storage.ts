@@ -123,8 +123,10 @@ export type AccentColor = "blue" | "purple" | "emerald" | "rose" | "amber";
 export type TypingFont = "system" | "inter" | "jetbrains-mono" | "ibm-plex-mono";
 export type TypingTextSize = "small" | "medium" | "large";
 export type TypingWidth = "compact" | "comfortable" | "wide";
+export type ThemePreset = "default-dark" | "light" | "dracula" | "nord" | "catppuccin-mocha" | "tokyo-night";
 
 export type ThemeSettings = {
+  themePreset: ThemePreset;
   mode: ThemeMode;
   accentColor: AccentColor;
   typingFont: TypingFont;
@@ -133,12 +135,66 @@ export type ThemeSettings = {
 };
 
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
+  themePreset: "default-dark",
   mode: "dark",
   accentColor: "amber",
   typingFont: "system",
   typingTextSize: "medium",
   typingWidth: "comfortable"
 };
+
+export type ThemePresetOption = {
+  value: ThemePreset;
+  label: string;
+  mode: ThemeMode;
+  accentColor: AccentColor;
+  swatches: [string, string, string];
+};
+
+export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
+  {
+    value: "default-dark",
+    label: "Default Dark",
+    mode: "dark",
+    accentColor: "amber",
+    swatches: ["#070807", "#191d18", "#caa45d"]
+  },
+  {
+    value: "light",
+    label: "Light",
+    mode: "light",
+    accentColor: "blue",
+    swatches: ["#f8f6ef", "#e5dfd2", "#5b9dff"]
+  },
+  {
+    value: "dracula",
+    label: "Dracula",
+    mode: "dark",
+    accentColor: "purple",
+    swatches: ["#191622", "#282436", "#bd93f9"]
+  },
+  {
+    value: "nord",
+    label: "Nord",
+    mode: "dark",
+    accentColor: "blue",
+    swatches: ["#111827", "#243142", "#88c0d0"]
+  },
+  {
+    value: "catppuccin-mocha",
+    label: "Catppuccin Mocha",
+    mode: "dark",
+    accentColor: "rose",
+    swatches: ["#11111b", "#1e1e2e", "#f5c2e7"]
+  },
+  {
+    value: "tokyo-night",
+    label: "Tokyo Night",
+    mode: "dark",
+    accentColor: "blue",
+    swatches: ["#0f172a", "#1a1b26", "#7aa2f7"]
+  }
+];
 
 export const THEME_MODE_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
   { value: "dark", label: "Dark" },
@@ -727,6 +783,7 @@ function normaliseThemeSettings(settings: unknown): ThemeSettings {
   }
 
   return {
+    themePreset: isThemePreset(settings.themePreset) ? settings.themePreset : DEFAULT_THEME_SETTINGS.themePreset,
     mode: isThemeMode(settings.mode) ? settings.mode : DEFAULT_THEME_SETTINGS.mode,
     accentColor: isAccentColor(settings.accentColor) ? settings.accentColor : DEFAULT_THEME_SETTINGS.accentColor,
     typingFont: isTypingFont(settings.typingFont) ? settings.typingFont : DEFAULT_THEME_SETTINGS.typingFont,
@@ -735,6 +792,17 @@ function normaliseThemeSettings(settings: unknown): ThemeSettings {
       : DEFAULT_THEME_SETTINGS.typingTextSize,
     typingWidth: isTypingWidth(settings.typingWidth) ? settings.typingWidth : DEFAULT_THEME_SETTINGS.typingWidth
   };
+}
+
+function isThemePreset(value: unknown): value is ThemePreset {
+  return (
+    value === "default-dark" ||
+    value === "light" ||
+    value === "dracula" ||
+    value === "nord" ||
+    value === "catppuccin-mocha" ||
+    value === "tokyo-night"
+  );
 }
 
 function isThemeMode(value: unknown): value is ThemeMode {

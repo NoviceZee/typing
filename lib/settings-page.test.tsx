@@ -99,6 +99,7 @@ describe("SettingsPage", () => {
     window.localStorage.setItem(
       "formaltype.theme.v1",
       JSON.stringify({
+        themePreset: "dracula",
         mode: "light",
         accentColor: "purple",
         typingFont: "ibm-plex-mono",
@@ -110,6 +111,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     expect(screen.getByRole("heading", { name: "Appearance" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Dracula theme preview/i }).getAttribute("aria-pressed")).toBe("true");
     expect((screen.getByLabelText("Mode") as HTMLSelectElement).value).toBe("light");
     expect((screen.getByLabelText("Accent color") as HTMLSelectElement).value).toBe("purple");
     expect((screen.getByLabelText("Typing font") as HTMLSelectElement).value).toBe("ibm-plex-mono");
@@ -130,11 +132,27 @@ describe("SettingsPage", () => {
 
     expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe("mechanical");
     expect(JSON.parse(window.localStorage.getItem("formaltype.theme.v1") ?? "{}")).toEqual({
+      themePreset: "default-dark",
       mode: "system",
       accentColor: "rose",
       typingFont: "jetbrains-mono",
       typingTextSize: "small",
       typingWidth: "compact"
+    });
+  });
+
+  it("persists selected theme preview cards with preset mode and accent", () => {
+    render(<SettingsPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Tokyo Night theme preview/i }));
+
+    expect(screen.getByRole("button", { name: /Tokyo Night theme preview/i }).getAttribute("aria-pressed")).toBe(
+      "true"
+    );
+    expect(JSON.parse(window.localStorage.getItem("formaltype.theme.v1") ?? "{}")).toMatchObject({
+      themePreset: "tokyo-night",
+      mode: "dark",
+      accentColor: "blue"
     });
   });
 

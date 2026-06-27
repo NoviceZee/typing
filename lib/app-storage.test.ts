@@ -212,6 +212,7 @@ describe("theme settings storage", () => {
     storage.set("formaltype.keyboard_sound.v1", "mechanical");
 
     writeThemeSettings({
+      themePreset: "nord",
       mode: "light",
       accentColor: "emerald",
       typingFont: "jetbrains-mono",
@@ -221,6 +222,7 @@ describe("theme settings storage", () => {
 
     expect(storage.get(THEME_SETTINGS_STORAGE_KEY)).toBe(
       JSON.stringify({
+        themePreset: "nord",
         mode: "light",
         accentColor: "emerald",
         typingFont: "jetbrains-mono",
@@ -230,6 +232,7 @@ describe("theme settings storage", () => {
     );
     expect(storage.get("formaltype.keyboard_sound.v1")).toBe("mechanical");
     expect(readThemeSettings()).toEqual({
+      themePreset: "nord",
       mode: "light",
       accentColor: "emerald",
       typingFont: "jetbrains-mono",
@@ -243,6 +246,7 @@ describe("theme settings storage", () => {
       THEME_SETTINGS_STORAGE_KEY,
       JSON.stringify({
         mode: "sepia",
+        themePreset: "solarized",
         accentColor: "rose",
         typingFont: "papyrus",
         typingTextSize: "tiny",
