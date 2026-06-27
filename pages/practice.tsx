@@ -883,11 +883,7 @@ export default function PracticePage() {
   return (
     <AppShell>
       <section className="mx-auto min-w-0 max-w-6xl w-[calc(100vw-2.5rem)] overflow-x-hidden sm:w-full">
-        <div className="mb-4 rounded-xl border border-paper/10 bg-ink-900/45 px-4 py-3 shadow-glow backdrop-blur">
-          <p className="font-mono text-xs uppercase text-brass">Practice</p>
-          <h1 className="sr-only">Practice</h1>
-          <div className="mt-2 h-px w-24 bg-brass/70" />
-        </div>
+        <h1 className="sr-only">Practice</h1>
 
         {passageNotice && (
           <div className="mb-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
@@ -900,7 +896,7 @@ export default function PracticePage() {
             "max-w-full overflow-hidden transition-all duration-200",
             isRunning
               ? "mb-1 max-h-0 opacity-0"
-              : "mb-3 max-h-40 rounded-xl border border-paper/10 bg-ink-900/45 p-1.5 shadow-glow backdrop-blur"
+              : "mb-3 max-h-40 rounded-md bg-paper/[0.018] p-1.5"
           )}
           aria-hidden={isRunning}
         >
@@ -911,7 +907,7 @@ export default function PracticePage() {
                 value={selectedCategory}
                 onChange={(event) => handleCategorySelection(event.target.value as CategoryFilter)}
                 disabled={isRunning || isPassageLoading}
-                className="h-9 w-full min-w-0 rounded-full border border-paper/10 bg-ink-950/55 px-4 font-mono text-xs text-paper/70 outline-none transition hover:border-brass/30 hover:bg-paper/[0.045] focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/30 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-9 w-full min-w-0 rounded-full border-0 bg-paper/[0.035] px-4 font-mono text-xs text-paper/70 outline-none transition hover:bg-paper/[0.055] focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/30 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {[ALL_FILTER, ...categoryOptions].map((category) => (
                   <option key={category} value={category}>
@@ -927,7 +923,7 @@ export default function PracticePage() {
                 value={selectedPassageId}
                 onChange={(event) => handlePassageSelection(event.target.value)}
                 disabled={isRunning || isPassageLoading || selectablePassages.length === 0}
-                className="h-9 w-full min-w-0 rounded-full border border-paper/10 bg-ink-950/55 px-4 font-mono text-xs text-paper/70 outline-none transition hover:border-brass/30 hover:bg-paper/[0.045] focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/30 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-9 w-full min-w-0 rounded-full border-0 bg-paper/[0.035] px-4 font-mono text-xs text-paper/70 outline-none transition hover:bg-paper/[0.055] focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/30 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value={RANDOM_PASSAGE_ID}>
                   {selectablePassages.length > 0 ? "Random from selected category" : "Default generated passage"}
@@ -940,7 +936,7 @@ export default function PracticePage() {
               </select>
             </label>
 
-            <div className="grid min-w-0 grid-cols-4 rounded-full border border-paper/10 bg-ink-950/55 p-1">
+            <div className="grid min-w-0 grid-cols-4 rounded-full bg-paper/[0.035] p-1">
               <span className="sr-only">Practice mode</span>
               {PRACTICE_MODE_OPTIONS.map((mode) => (
                 <button
@@ -965,11 +961,11 @@ export default function PracticePage() {
         {isRunning ? (
           null
         ) : status === "idle" && passage ? (
-          <div className="mb-3 grid max-w-full grid-cols-2 gap-2 overflow-hidden font-mono text-xs transition md:grid-cols-4">
-            <PracticeMeta label="Passage" value={passage.title ?? "Untitled passage"} />
-            <PracticeMeta label="Category" value={passage.category} />
-            <PracticeMeta label="Style" value={passage.style} />
-            <PracticeMeta label="Mode" value={practiceMode.label} />
+          <div className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden px-1 font-mono text-xs text-paper/40 transition">
+            <div className="w-full min-w-0 truncate sm:w-auto">
+              <span className="font-semibold text-paper/70">{passage.title ?? "Untitled passage"}</span> ·{" "}
+              {passage.category} · {passage.style} · {practiceMode.label}
+            </div>
           </div>
         ) : null}
 
@@ -993,8 +989,8 @@ export default function PracticePage() {
           className={clsx(
             "formaltype-practice-shell relative max-w-full outline-none transition",
             isRunning
-              ? "flex h-[60vh] max-h-[60vh] flex-col overflow-hidden rounded-xl border border-paper/10 p-0 shadow-glow md:h-[68vh] md:max-h-[72vh]"
-              : "overflow-hidden rounded-xl border border-paper/10 p-3 shadow-glow ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
+              ? "flex h-[60vh] max-h-[60vh] flex-col overflow-hidden rounded-none bg-transparent p-0 md:h-[68vh] md:max-h-[72vh]"
+              : "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
           )}
         >
           <div className="h-1 overflow-hidden rounded-full bg-paper/[0.06]">
@@ -1014,8 +1010,8 @@ export default function PracticePage() {
             className={clsx(
               "typing-scrollbar min-h-0 transition",
               isRunning
-                ? "formaltype-typing-surface h-full flex-1 overflow-y-auto overscroll-contain px-4 py-5 md:px-8 md:py-7"
-                : "formaltype-typing-surface h-[340px] overflow-y-auto overscroll-contain rounded-lg px-4 py-6 md:h-[420px] md:px-8 md:py-8"
+                ? "h-full flex-1 overflow-y-auto overscroll-contain px-1 py-3 md:px-6 md:py-5"
+                : "formaltype-typing-surface h-[340px] overflow-y-auto overscroll-contain rounded-md px-4 py-6 md:h-[420px] md:px-8 md:py-8"
             )}
           >
             <div
@@ -1177,15 +1173,6 @@ const PreviousPaceMarker = React.forwardRef<HTMLSpanElement>(function PreviousPa
     />
   );
 });
-
-function PracticeMeta({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-lg border border-paper/10 bg-ink-900/55 px-3 py-2">
-      <div className="font-mono text-[0.62rem] uppercase text-paper/35">{label}</div>
-      <div className="mt-1 truncate font-mono text-xs font-semibold text-paper/70">{value}</div>
-    </div>
-  );
-}
 
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (

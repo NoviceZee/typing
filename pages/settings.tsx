@@ -101,14 +101,20 @@ export default function SettingsPage() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start">
-          <aside className="rounded-xl border border-paper/10 bg-ink-900/45 p-3 font-mono text-xs text-paper/45 shadow-glow backdrop-blur">
-            <div className="rounded-lg bg-brass/15 px-3 py-2 text-brass">Appearance</div>
-            <div className="mt-1 px-3 py-2">Typing</div>
-            <div className="mt-1 px-3 py-2">Sound</div>
+          <aside className="sticky top-5 rounded-xl bg-ink-900/35 p-2 font-mono text-xs text-paper/45 backdrop-blur">
+            <a href="#appearance" className="block rounded-lg bg-brass/15 px-3 py-2 text-brass transition hover:bg-brass/20">
+              Appearance
+            </a>
+            <a href="#typing" className="mt-1 block rounded-lg px-3 py-2 transition hover:bg-paper/10 hover:text-paper/70">
+              Typing
+            </a>
+            <a href="#sound" className="mt-1 block rounded-lg px-3 py-2 transition hover:bg-paper/10 hover:text-paper/70">
+              Sound
+            </a>
           </aside>
 
           <div className="grid gap-5">
-          <section className="rounded-xl border border-paper/10 bg-ink-950/80 p-5 shadow-glow backdrop-blur">
+          <section id="appearance" className="scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur">
             <div>
               <p className="font-mono text-xs uppercase text-brass">Appearance</p>
               <h2 className="mt-1 text-xl font-semibold text-paper">Appearance</h2>
@@ -117,7 +123,7 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-5 grid grid-cols-[repeat(auto-fit,8.75rem)] gap-3">
               {THEME_PRESET_OPTIONS.map((preset) => (
                 <ThemePreviewCard
                   key={preset.value}
@@ -129,7 +135,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="mt-6 border-t border-paper/10 pt-1">
-            <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] md:items-center">
+            <div id="typing" className="mt-5 grid scroll-mt-5 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] md:items-center">
               <SettingLabel id="theme-mode" label="Mode" description="Choose a light, dark, or system-matched shell." />
               <select
                 id="theme-mode"
@@ -211,7 +217,7 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-paper/10 bg-ink-950/80 p-5 shadow-glow backdrop-blur">
+          <section id="sound" className="scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="font-mono text-xs uppercase text-brass">Sound</p>
@@ -298,22 +304,22 @@ function ThemePreviewCard({
         isSelected
           ? "border-brass/70 bg-brass/10 shadow-[0_0_0_1px_rgb(var(--color-accent)/0.24),0_18px_60px_rgb(var(--color-accent)/0.12)]"
           : "border-paper/10 bg-paper/[0.035] hover:border-brass/45 hover:bg-paper/[0.055]"
-      }`}
+      } h-32 w-[8.75rem]`}
     >
-      <div className="rounded-lg border border-white/10 p-3" style={{ backgroundColor: preset.swatches[0] }}>
+      <div className="rounded-lg border border-white/10 p-2" style={{ backgroundColor: preset.swatches[0] }}>
         <div className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: preset.swatches[2] }} />
           <span className="h-2 w-2 rounded-full bg-white/25" />
           <span className="h-2 w-2 rounded-full bg-white/15" />
         </div>
-        <div className="mt-5 h-2 w-3/5 rounded-full" style={{ backgroundColor: preset.swatches[2] }} />
-        <div className="mt-2 h-2 w-4/5 rounded-full bg-white/20" />
-        <div className="mt-2 h-2 w-2/5 rounded-full" style={{ backgroundColor: preset.swatches[1] }} />
+        <div className="mt-4 h-1.5 w-3/5 rounded-full" style={{ backgroundColor: preset.swatches[2] }} />
+        <div className="mt-1.5 h-1.5 w-4/5 rounded-full bg-white/20" />
+        <div className="mt-1.5 h-1.5 w-2/5 rounded-full" style={{ backgroundColor: preset.swatches[1] }} />
       </div>
-      <div className="mt-3 flex items-center justify-between gap-3">
+      <div className="mt-2 flex items-center justify-between gap-2">
         <span className="font-mono text-xs font-semibold text-paper">{preset.label}</span>
         <span
-          className={`rounded-full px-2 py-0.5 font-mono text-[0.62rem] uppercase ${
+          className={`rounded-full px-1.5 py-0.5 font-mono text-[0.56rem] uppercase ${
             isSelected ? "bg-brass text-ink-950" : "bg-paper/10 text-paper/45"
           }`}
         >

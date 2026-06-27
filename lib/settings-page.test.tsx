@@ -156,6 +156,16 @@ describe("SettingsPage", () => {
     });
   });
 
+  it("renders compact theme preview cards and real section links", () => {
+    render(<SettingsPage />);
+
+    expect(screen.getByRole("link", { name: "Appearance" }).getAttribute("href")).toBe("#appearance");
+    expect(screen.getByRole("link", { name: "Typing" }).getAttribute("href")).toBe("#typing");
+    expect(screen.getByRole("link", { name: "Sound" }).getAttribute("href")).toBe("#sound");
+    expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("w-[8.75rem]");
+    expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("h-32");
+  });
+
   it.each(SOUND_PACK_OPTIONS.filter((option) => option.value !== "off"))(
     "selecting $label persists and triggers a preview",
     async ({ value }) => {
