@@ -45,6 +45,7 @@ vi.mock("@/lib/typingResultStorage", async () => {
 });
 
 const mockedSaveSupabaseTypingResult = vi.mocked(saveSupabaseTypingResult);
+const SOUND_PACKS = ["mechanical", "clicky", "soft", "typewriter", "laptop"];
 
 describe("PracticePage passage loading", () => {
   beforeEach(() => {
@@ -576,6 +577,52 @@ describe("PracticePage passage loading", () => {
     expect(audioMock.gains[0].gain.setValueAtTime.mock.calls[0][0]).toBeCloseTo(0.00528);
     expect(audioMock.gains[0].gain.setValueAtTime.mock.calls[0][1]).toBe(1);
     randomSpy.mockRestore();
+  });
+
+  it.each(SOUND_PACKS)("respects saved %s keyboard sound during practice playback", async (soundPack) => {
+    window.localStorage.setItem("formaltype.keyboard_sound.v1", soundPack);
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    const audioMock = installAudioContextMock();
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    const input = screen.getByLabelText("Typing input");
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyDown(input, { key: "a" });
+    fireEvent.change(input, { target: { value: "a" } });
+
+    expect(audioMock.oscillators).toHaveLength(1);
+  });
+
+  it("falls back safely when the saved keyboard sound is unknown", async () => {
+    window.localStorage.setItem("formaltype.keyboard_sound.v1", "mystery-pack");
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    const audioMock = installAudioContextMock();
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    const input = screen.getByLabelText("Typing input");
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyDown(input, { key: "a" });
+    fireEvent.change(input, { target: { value: "a" } });
+
+    expect(audioMock.oscillators).toHaveLength(0);
   });
 
   it("does not render sound settings and respects a saved off sound setting", async () => {

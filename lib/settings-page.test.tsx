@@ -6,6 +6,15 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SettingsPage from "../pages/settings";
 
+const SOUND_PACK_OPTIONS = [
+  { value: "off", label: "Off" },
+  { value: "mechanical", label: "Mechanical" },
+  { value: "clicky", label: "Clicky" },
+  { value: "soft", label: "Soft" },
+  { value: "typewriter", label: "Typewriter" },
+  { value: "laptop", label: "Laptop" }
+];
+
 const mockState = vi.hoisted(() => ({
   user: null as { id: string } | null,
   isLoading: false,
@@ -68,21 +77,40 @@ describe("SettingsPage", () => {
     expect(keyboardSound.tagName).toBe("SELECT");
     expect((keyboardSound as HTMLSelectElement).value).toBe("off");
     expect((keyboardSoundVolume as HTMLInputElement).value).toBe("50");
-    expect(screen.getByRole("option", { name: "Sound off" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Mechanical" })).toBeTruthy();
+    for (const option of SOUND_PACK_OPTIONS) {
+      const renderedOption = screen.getByRole("option", { name: option.label }) as HTMLOptionElement;
+      expect(renderedOption.value).toBe(option.value);
+    }
   });
 
-  it("selecting mechanical persists and triggers a preview", () => {
+  it.each(SOUND_PACK_OPTIONS.filter((option) => option.value !== "off"))(
+    "selecting $label persists and triggers a preview",
+    ({ value }) => {
+      const audioMock = installAudioContextMock();
+
+      render(<SettingsPage />);
+
+      const keyboardSound = screen.getByLabelText("Keyboard sound");
+      fireEvent.change(keyboardSound, { target: { value } });
+
+      expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe(value);
+      expect((keyboardSound as HTMLSelectElement).value).toBe(value);
+      expect(audioMock.oscillators).toHaveLength(1);
+    }
+  );
+
+  it("selecting off persists and does not trigger a preview", () => {
+    window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
     const audioMock = installAudioContextMock();
 
     render(<SettingsPage />);
 
     const keyboardSound = screen.getByLabelText("Keyboard sound");
-    fireEvent.change(keyboardSound, { target: { value: "mechanical" } });
+    fireEvent.change(keyboardSound, { target: { value: "off" } });
 
-    expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe("mechanical");
-    expect((keyboardSound as HTMLSelectElement).value).toBe("mechanical");
-    expect(audioMock.oscillators).toHaveLength(1);
+    expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe("off");
+    expect((keyboardSound as HTMLSelectElement).value).toBe("off");
+    expect(audioMock.oscillators).toHaveLength(0);
   });
 
   it("persists keyboard sound volume changes and previews when sound is enabled", () => {

@@ -1,4 +1,4 @@
-export type KeyboardSoundSetting = "off" | "mechanical";
+export type KeyboardSoundSetting = "off" | "mechanical" | "clicky" | "soft" | "typewriter" | "laptop";
 export type KeyboardSoundKeyType = "normal" | "space" | "enter" | "backspace";
 
 export const KEYBOARD_SOUND_STORAGE_KEY = "formaltype.keyboard_sound.v1";
@@ -12,13 +12,33 @@ export const KEYBOARD_SOUND_OPTIONS: Array<{
 }> = [
   {
     value: "off",
-    label: "Sound off",
+    label: "Off",
     description: "No keyboard sounds during practice."
   },
   {
     value: "mechanical",
     label: "Mechanical",
     description: "A short synthesized mechanical-style click."
+  },
+  {
+    value: "clicky",
+    label: "Clicky",
+    description: "A brighter, sharper click with a crisp top end."
+  },
+  {
+    value: "soft",
+    label: "Soft",
+    description: "A quieter, rounded tap for low-distraction practice."
+  },
+  {
+    value: "typewriter",
+    label: "Typewriter",
+    description: "A punchier tap inspired by classic type bars."
+  },
+  {
+    value: "laptop",
+    label: "Laptop",
+    description: "A short, muted scissor-switch style tick."
   }
 ];
 
@@ -33,6 +53,41 @@ type KeyboardSoundProfile = {
   durationSeconds: number;
   volume: number;
   type: OscillatorType;
+};
+
+type KeyboardSoundPack = Exclude<KeyboardSoundSetting, "off">;
+
+const KEYBOARD_SOUND_PROFILES: Record<KeyboardSoundPack, Record<KeyboardSoundKeyType, KeyboardSoundProfile>> = {
+  mechanical: {
+    normal: { frequency: 1650, durationSeconds: 0.024, volume: 0.022, type: "square" },
+    space: { frequency: 1050, durationSeconds: 0.032, volume: 0.02, type: "triangle" },
+    enter: { frequency: 720, durationSeconds: 0.038, volume: 0.024, type: "square" },
+    backspace: { frequency: 1320, durationSeconds: 0.028, volume: 0.018, type: "sawtooth" }
+  },
+  clicky: {
+    normal: { frequency: 2350, durationSeconds: 0.018, volume: 0.018, type: "square" },
+    space: { frequency: 1780, durationSeconds: 0.024, volume: 0.017, type: "square" },
+    enter: { frequency: 1280, durationSeconds: 0.031, volume: 0.021, type: "sawtooth" },
+    backspace: { frequency: 2680, durationSeconds: 0.019, volume: 0.016, type: "square" }
+  },
+  soft: {
+    normal: { frequency: 820, durationSeconds: 0.035, volume: 0.014, type: "triangle" },
+    space: { frequency: 640, durationSeconds: 0.045, volume: 0.013, type: "sine" },
+    enter: { frequency: 520, durationSeconds: 0.052, volume: 0.016, type: "triangle" },
+    backspace: { frequency: 950, durationSeconds: 0.032, volume: 0.012, type: "sine" }
+  },
+  typewriter: {
+    normal: { frequency: 1450, durationSeconds: 0.042, volume: 0.027, type: "sawtooth" },
+    space: { frequency: 680, durationSeconds: 0.055, volume: 0.024, type: "square" },
+    enter: { frequency: 420, durationSeconds: 0.07, volume: 0.03, type: "sawtooth" },
+    backspace: { frequency: 1120, durationSeconds: 0.038, volume: 0.022, type: "square" }
+  },
+  laptop: {
+    normal: { frequency: 1250, durationSeconds: 0.016, volume: 0.012, type: "triangle" },
+    space: { frequency: 980, durationSeconds: 0.022, volume: 0.011, type: "triangle" },
+    enter: { frequency: 760, durationSeconds: 0.026, volume: 0.014, type: "square" },
+    backspace: { frequency: 1500, durationSeconds: 0.018, volume: 0.011, type: "triangle" }
+  }
 };
 
 export function readKeyboardSoundSetting(): KeyboardSoundSetting {
@@ -138,7 +193,7 @@ export function createKeyboardSoundPlayer() {
         void context.resume();
       }
 
-      const profile = getSoundProfile(keyType);
+      const profile = getSoundProfile(setting, keyType);
       const now = context.currentTime;
       const pitchVariation = 0.94 + Math.random() * 0.12;
       const volumeVariation = 0.82 + Math.random() * 0.28;
@@ -160,16 +215,10 @@ export function createKeyboardSoundPlayer() {
   };
 }
 
-function getSoundProfile(keyType: KeyboardSoundKeyType): KeyboardSoundProfile {
-  switch (keyType) {
-    case "space":
-      return { frequency: 1050, durationSeconds: 0.032, volume: 0.02, type: "triangle" };
-    case "enter":
-      return { frequency: 720, durationSeconds: 0.038, volume: 0.024, type: "square" };
-    case "backspace":
-      return { frequency: 1320, durationSeconds: 0.028, volume: 0.018, type: "sawtooth" };
-    case "normal":
-    default:
-      return { frequency: 1650, durationSeconds: 0.024, volume: 0.022, type: "square" };
+function getSoundProfile(setting: KeyboardSoundSetting, keyType: KeyboardSoundKeyType): KeyboardSoundProfile {
+  if (setting === "off") {
+    return KEYBOARD_SOUND_PROFILES.mechanical[keyType];
   }
+
+  return KEYBOARD_SOUND_PROFILES[setting]?.[keyType] ?? KEYBOARD_SOUND_PROFILES.mechanical[keyType];
 }
