@@ -532,6 +532,40 @@ describe("PracticePage passage loading", () => {
     expect((input as HTMLTextAreaElement).value).toBe("");
   });
 
+  it("applies saved typing appearance only to the practice text container", async () => {
+    window.localStorage.setItem(
+      "formaltype.theme.v1",
+      JSON.stringify({
+        mode: "dark",
+        accentColor: "amber",
+        typingFont: "ibm-plex-mono",
+        typingTextSize: "large",
+        typingWidth: "compact"
+      })
+    );
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    const typingTextContainer = screen.getByTestId("typing-text-container");
+    const characterLayer = screen.getByTestId("typing-character-layer");
+
+    expect(typingTextContainer.className).toContain("formaltype-typing-width-compact");
+    expect(characterLayer.className).toContain("formaltype-typing-font-ibm-plex-mono");
+    expect(characterLayer.className).toContain("formaltype-typing-size-large");
+    expect(container.querySelector(".formaltype-typing-font-ibm-plex-mono")?.getAttribute("data-testid")).toBe(
+      "typing-character-layer"
+    );
+  });
+
   it("plays keyboard sound only for valid typing changes during a running session", async () => {
     window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
     window.localStorage.setItem(

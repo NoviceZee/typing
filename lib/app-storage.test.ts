@@ -4,13 +4,17 @@ import {
   LibraryPassage,
   PASSAGE_LIBRARY_STORAGE_KEY,
   PREVIOUS_RESULTS_STORAGE_KEY,
+  THEME_SETTINGS_STORAGE_KEY,
+  DEFAULT_THEME_SETTINGS,
   extractPassageTitle,
   filterLibraryPassages,
   mergeImportedPassages,
   readPreviousResult,
+  readThemeSettings,
   readPracticePassageFromLibrary,
   splitTextIntoPassages,
   toStoredPassage,
+  writeThemeSettings,
   writePreviousResult
 } from "./app-storage";
 import type { StoredPassage } from "./app-storage";
@@ -196,6 +200,61 @@ describe("previous result storage", () => {
 
     expect(readPreviousResult("passage-1", 60)?.wpm).toBe(44);
     expect(readPreviousResult("passage-1", 600)?.wpm).toBe(61);
+  });
+});
+
+describe("theme settings storage", () => {
+  it("returns defaults when no theme settings are saved", () => {
+    expect(readThemeSettings()).toEqual(DEFAULT_THEME_SETTINGS);
+  });
+
+  it("persists valid theme settings without affecting other settings", () => {
+    storage.set("formaltype.keyboard_sound.v1", "mechanical");
+
+    writeThemeSettings({
+      mode: "light",
+      accentColor: "emerald",
+      typingFont: "jetbrains-mono",
+      typingTextSize: "large",
+      typingWidth: "wide"
+    });
+
+    expect(storage.get(THEME_SETTINGS_STORAGE_KEY)).toBe(
+      JSON.stringify({
+        mode: "light",
+        accentColor: "emerald",
+        typingFont: "jetbrains-mono",
+        typingTextSize: "large",
+        typingWidth: "wide"
+      })
+    );
+    expect(storage.get("formaltype.keyboard_sound.v1")).toBe("mechanical");
+    expect(readThemeSettings()).toEqual({
+      mode: "light",
+      accentColor: "emerald",
+      typingFont: "jetbrains-mono",
+      typingTextSize: "large",
+      typingWidth: "wide"
+    });
+  });
+
+  it("falls back per field when stored theme settings are unknown", () => {
+    storage.set(
+      THEME_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        mode: "sepia",
+        accentColor: "rose",
+        typingFont: "papyrus",
+        typingTextSize: "tiny",
+        typingWidth: "compact"
+      })
+    );
+
+    expect(readThemeSettings()).toEqual({
+      ...DEFAULT_THEME_SETTINGS,
+      accentColor: "rose",
+      typingWidth: "compact"
+    });
   });
 });
 

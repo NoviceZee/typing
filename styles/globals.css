@@ -3,8 +3,43 @@
 @tailwind utilities;
 
 :root {
+  --color-ink-950: 7 8 7;
+  --color-ink-900: 16 18 15;
+  --color-ink-800: 25 29 24;
+  --color-ink-700: 37 43 36;
+  --color-paper: 236 231 215;
+  --color-accent: 202 164 93;
   color-scheme: dark;
-  background: #070807;
+  background: rgb(var(--color-ink-950));
+}
+
+:root[data-theme="light"] {
+  --color-ink-950: 248 246 239;
+  --color-ink-900: 239 235 224;
+  --color-ink-800: 229 223 210;
+  --color-ink-700: 213 204 187;
+  --color-paper: 33 37 32;
+  color-scheme: light;
+}
+
+:root[data-accent="blue"] {
+  --color-accent: 91 157 255;
+}
+
+:root[data-accent="purple"] {
+  --color-accent: 168 125 255;
+}
+
+:root[data-accent="emerald"] {
+  --color-accent: 76 189 138;
+}
+
+:root[data-accent="rose"] {
+  --color-accent: 244 101 135;
+}
+
+:root[data-accent="amber"] {
+  --color-accent: 202 164 93;
 }
 
 * {
@@ -13,14 +48,14 @@
 
 html {
   min-height: 100%;
-  background: #070807;
+  background: rgb(var(--color-ink-950));
 }
 
 body {
   min-height: 100%;
   margin: 0;
-  background: #070807;
-  color: #ece7d7;
+  background: rgb(var(--color-ink-950));
+  color: rgb(var(--color-paper));
   font-family:
     "Avenir Next",
     Avenir,
@@ -39,8 +74,99 @@ textarea {
 }
 
 ::selection {
-  background: rgba(202, 164, 93, 0.35);
-  color: #fff8df;
+  background: rgb(var(--color-accent) / 0.35);
+  color: rgb(var(--color-paper));
+}
+
+.formaltype-typing-font-system {
+  font-family:
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    ui-monospace,
+    monospace;
+}
+
+.formaltype-typing-font-inter {
+  font-family:
+    Inter,
+    "Avenir Next",
+    Avenir,
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+}
+
+.formaltype-typing-font-jetbrains-mono {
+  font-family:
+    "JetBrains Mono",
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    ui-monospace,
+    monospace;
+}
+
+.formaltype-typing-font-ibm-plex-mono {
+  font-family:
+    "IBM Plex Mono",
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    ui-monospace,
+    monospace;
+}
+
+.formaltype-typing-size-small {
+  font-size: 1.45rem;
+  line-height: 2.2rem;
+}
+
+.formaltype-typing-size-medium {
+  font-size: 1.7rem;
+  line-height: 2.55rem;
+}
+
+.formaltype-typing-size-large {
+  font-size: 1.95rem;
+  line-height: 2.9rem;
+}
+
+.formaltype-typing-width-compact {
+  max-width: 42rem;
+}
+
+.formaltype-typing-width-comfortable {
+  max-width: 56rem;
+}
+
+.formaltype-typing-width-wide {
+  max-width: 72rem;
+}
+
+.formaltype-previous-pace-marker {
+  background: rgb(var(--color-accent) / 0.82);
+  box-shadow: 0 0 7px rgb(var(--color-accent) / 0.28);
+}
+
+@media (min-width: 768px) {
+  .formaltype-typing-size-small {
+    font-size: 1.85rem;
+    line-height: 2.8rem;
+  }
+
+  .formaltype-typing-size-medium {
+    font-size: 2.15rem;
+    line-height: 3.25rem;
+  }
+
+  .formaltype-typing-size-large {
+    font-size: 2.45rem;
+    line-height: 3.7rem;
+  }
 }
 
 .typing-scrollbar {

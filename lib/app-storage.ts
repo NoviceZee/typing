@@ -17,7 +17,10 @@ export const PASSAGE_SELECTION_MODE_STORAGE_KEY = "formaltype_passage_selection_
 export const SELECTED_CATEGORY_STORAGE_KEY = "formaltype_selected_category";
 export const SELECTED_STYLE_STORAGE_KEY = "formaltype_selected_style";
 export const PREVIOUS_RESULTS_STORAGE_KEY = "formaltype_previous_results";
+export const THEME_SETTINGS_STORAGE_KEY = "formaltype.theme.v1";
 export const ALL_FILTER = "All";
+
+export const THEME_SETTING_CHANGE_EVENT = "formaltype-theme-settings-change";
 
 export const CATEGORIES: PracticeCategory[] = [
   "Business email",
@@ -115,6 +118,61 @@ export type PassageLibraryImportResult = {
   summary: PassageLibraryImportSummary;
 };
 
+export type ThemeMode = "dark" | "light" | "system";
+export type AccentColor = "blue" | "purple" | "emerald" | "rose" | "amber";
+export type TypingFont = "system" | "inter" | "jetbrains-mono" | "ibm-plex-mono";
+export type TypingTextSize = "small" | "medium" | "large";
+export type TypingWidth = "compact" | "comfortable" | "wide";
+
+export type ThemeSettings = {
+  mode: ThemeMode;
+  accentColor: AccentColor;
+  typingFont: TypingFont;
+  typingTextSize: TypingTextSize;
+  typingWidth: TypingWidth;
+};
+
+export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
+  mode: "dark",
+  accentColor: "amber",
+  typingFont: "system",
+  typingTextSize: "medium",
+  typingWidth: "comfortable"
+};
+
+export const THEME_MODE_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
+  { value: "dark", label: "Dark" },
+  { value: "light", label: "Light" },
+  { value: "system", label: "System" }
+];
+
+export const ACCENT_COLOR_OPTIONS: Array<{ value: AccentColor; label: string }> = [
+  { value: "blue", label: "Blue" },
+  { value: "purple", label: "Purple" },
+  { value: "emerald", label: "Emerald" },
+  { value: "rose", label: "Rose" },
+  { value: "amber", label: "Amber" }
+];
+
+export const TYPING_FONT_OPTIONS: Array<{ value: TypingFont; label: string }> = [
+  { value: "system", label: "System" },
+  { value: "inter", label: "Inter" },
+  { value: "jetbrains-mono", label: "JetBrains Mono" },
+  { value: "ibm-plex-mono", label: "IBM Plex Mono" }
+];
+
+export const TYPING_TEXT_SIZE_OPTIONS: Array<{ value: TypingTextSize; label: string }> = [
+  { value: "small", label: "Small" },
+  { value: "medium", label: "Medium" },
+  { value: "large", label: "Large" }
+];
+
+export const TYPING_WIDTH_OPTIONS: Array<{ value: TypingWidth; label: string }> = [
+  { value: "compact", label: "Compact" },
+  { value: "comfortable", label: "Comfortable" },
+  { value: "wide", label: "Wide" }
+];
+
 export function readStoredRules(): TypingRules {
   if (typeof window === "undefined") {
     return DEFAULT_RULES;
@@ -130,6 +188,28 @@ export function readStoredRules(): TypingRules {
 
 export function writeStoredRules(rules: TypingRules) {
   window.localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(rules));
+}
+
+export function readThemeSettings(): ThemeSettings {
+  if (typeof window === "undefined") {
+    return DEFAULT_THEME_SETTINGS;
+  }
+
+  try {
+    const stored = window.localStorage.getItem(THEME_SETTINGS_STORAGE_KEY);
+    const parsed = stored ? JSON.parse(stored) : {};
+
+    return normaliseThemeSettings(parsed);
+  } catch {
+    return DEFAULT_THEME_SETTINGS;
+  }
+}
+
+export function writeThemeSettings(settings: ThemeSettings) {
+  window.localStorage.setItem(THEME_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  if (typeof window.dispatchEvent === "function" && typeof CustomEvent !== "undefined") {
+    window.dispatchEvent(new CustomEvent(THEME_SETTING_CHANGE_EVENT, { detail: settings }));
+  }
 }
 
 export function getDefaultPassage(durationSeconds = 60): StoredPassage {
@@ -639,6 +719,42 @@ function restoreImportedSettings(settings: unknown, library: LibraryPassage[]) {
   } else if (settings.activePassageId === null) {
     window.localStorage.removeItem(ACTIVE_PASSAGE_ID_STORAGE_KEY);
   }
+}
+
+function normaliseThemeSettings(settings: unknown): ThemeSettings {
+  if (!isRecord(settings)) {
+    return DEFAULT_THEME_SETTINGS;
+  }
+
+  return {
+    mode: isThemeMode(settings.mode) ? settings.mode : DEFAULT_THEME_SETTINGS.mode,
+    accentColor: isAccentColor(settings.accentColor) ? settings.accentColor : DEFAULT_THEME_SETTINGS.accentColor,
+    typingFont: isTypingFont(settings.typingFont) ? settings.typingFont : DEFAULT_THEME_SETTINGS.typingFont,
+    typingTextSize: isTypingTextSize(settings.typingTextSize)
+      ? settings.typingTextSize
+      : DEFAULT_THEME_SETTINGS.typingTextSize,
+    typingWidth: isTypingWidth(settings.typingWidth) ? settings.typingWidth : DEFAULT_THEME_SETTINGS.typingWidth
+  };
+}
+
+function isThemeMode(value: unknown): value is ThemeMode {
+  return value === "dark" || value === "light" || value === "system";
+}
+
+function isAccentColor(value: unknown): value is AccentColor {
+  return value === "blue" || value === "purple" || value === "emerald" || value === "rose" || value === "amber";
+}
+
+function isTypingFont(value: unknown): value is TypingFont {
+  return value === "system" || value === "inter" || value === "jetbrains-mono" || value === "ibm-plex-mono";
+}
+
+function isTypingTextSize(value: unknown): value is TypingTextSize {
+  return value === "small" || value === "medium" || value === "large";
+}
+
+function isTypingWidth(value: unknown): value is TypingWidth {
+  return value === "compact" || value === "comfortable" || value === "wide";
 }
 
 function normaliseImportedLibraryPassage(item: unknown): LibraryPassage | null {

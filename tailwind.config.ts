@@ -12,13 +12,13 @@ const config: Config = {
     extend: {
       colors: {
         ink: {
-          950: "#070807",
-          900: "#10120f",
-          800: "#191d18",
-          700: "#252b24"
+          950: "rgb(var(--color-ink-950) / <alpha-value>)",
+          900: "rgb(var(--color-ink-900) / <alpha-value>)",
+          800: "rgb(var(--color-ink-800) / <alpha-value>)",
+          700: "rgb(var(--color-ink-700) / <alpha-value>)"
         },
-        paper: "#ece7d7",
-        brass: "#caa45d",
+        paper: "rgb(var(--color-paper) / <alpha-value>)",
+        brass: "rgb(var(--color-accent) / <alpha-value>)",
         mint: "#72d6a2",
         ember: "#ff715b",
         cyan: "#75d6ff"
@@ -29,7 +29,7 @@ const config: Config = {
         mono: ["SFMono-Regular", "Menlo", "Monaco", "Consolas", "ui-monospace", "monospace"]
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(202, 164, 93, 0.18), 0 24px 80px rgba(0, 0, 0, 0.36)"
+        glow: "0 0 0 1px rgb(var(--color-accent) / 0.18), 0 24px 80px rgb(0 0 0 / 0.36)"
       }
     }
   },

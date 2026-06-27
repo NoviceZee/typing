@@ -28,11 +28,14 @@ import {
   LibraryPassage,
   StoredPassage,
   StoredPassageTextMode,
+  ThemeSettings,
+  DEFAULT_THEME_SETTINGS,
   filterLibraryPassages,
   getDefaultPassage,
   readPreviousResult,
   readStoredPassage,
   readStoredRules,
+  readThemeSettings,
   selectDifferentLibraryPassage,
   selectRandomLibraryPassage,
   toStoredPassage,
@@ -121,6 +124,7 @@ export default function PracticePage() {
   const [availableLibrary, setAvailableLibrary] = useState<LibraryPassage[]>([]);
   const [selectedCategory, setSelectedCategoryState] = useState<CategoryFilter>(ALL_FILTER);
   const [selectedPassageId, setSelectedPassageId] = useState(RANDOM_PASSAGE_ID);
+  const [themeSettings, setThemeSettings] = useState<ThemeSettings>(DEFAULT_THEME_SETTINGS);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typingWindowRef = useRef<HTMLDivElement>(null);
   const typingTextRef = useRef<HTMLDivElement>(null);
@@ -258,6 +262,7 @@ export default function PracticePage() {
     }
 
     setRules(readStoredRules());
+    setThemeSettings(readThemeSettings());
     keyboardSoundSettingRef.current = readKeyboardSoundSetting();
     keyboardSoundVolumeRef.current = readKeyboardSoundVolume();
     keyboardSoundPlayerRef.current.preload(keyboardSoundSettingRef.current);
@@ -1005,13 +1010,15 @@ export default function PracticePage() {
           >
             <div
               ref={typingTextRef}
-              className="relative mx-auto max-w-4xl"
+              className={clsx("relative mx-auto", `formaltype-typing-width-${themeSettings.typingWidth}`)}
               data-testid="typing-text-container"
             >
               <p
                 data-testid="typing-character-layer"
                 className={clsx(
-                  "whitespace-pre-wrap break-words font-mono text-[1.7rem] leading-[2.55rem] text-paper/45 md:text-[2.15rem] md:leading-[3.25rem]",
+                  "whitespace-pre-wrap break-words text-paper/45",
+                  `formaltype-typing-font-${themeSettings.typingFont}`,
+                  `formaltype-typing-size-${themeSettings.typingTextSize}`,
                   isRunning && "text-paper/50"
                 )}
               >
@@ -1151,13 +1158,11 @@ const PreviousPaceMarker = React.forwardRef<HTMLSpanElement>(function PreviousPa
         display: "block",
         width: 2,
         height: "0.95em",
-        background: "rgba(221, 167, 75, 0.82)",
         transform: "translate3d(0px, 0px, 0)",
         transition: "opacity 120ms ease",
         opacity: 0,
         pointerEvents: "none",
-        willChange: "transform",
-        boxShadow: "0 0 7px rgba(221, 167, 75, 0.28)"
+        willChange: "transform"
       }}
     />
   );

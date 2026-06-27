@@ -1,6 +1,7 @@
 import type { AppProps } from "next/app";
 import Head from "next/head";
 import { AuthProvider } from "@/components/AuthProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "@/styles/globals.css";
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -13,9 +14,11 @@ export default function App({ Component, pageProps }: AppProps) {
           content="Custom typing practice for formal English, business writing, and tender-style passages."
         />
       </Head>
-      <AuthProvider>
-        <Component {...pageProps} />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Component {...pageProps} />
+        </AuthProvider>
+      </ThemeProvider>
     </>
   );
 }
