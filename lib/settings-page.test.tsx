@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SettingsPage from "../pages/settings";
@@ -12,7 +12,16 @@ const SOUND_PACK_OPTIONS = [
   { value: "clicky", label: "Clicky" },
   { value: "soft", label: "Soft" },
   { value: "typewriter", label: "Typewriter" },
-  { value: "laptop", label: "Laptop" }
+  { value: "laptop", label: "Laptop" },
+  { value: "recorded", label: "Recorded Mix" },
+  { value: "recorded-1", label: "Tone Beep" },
+  { value: "recorded-2", label: "Fast Typing" },
+  { value: "recorded-3", label: "Quick Load" },
+  { value: "recorded-4", label: "Footstep Tap" },
+  { value: "recorded-5", label: "Boiling Tap" },
+  { value: "recorded-6", label: "Keyboard Tap" },
+  { value: "recorded-9", label: "iPhone Tap" },
+  { value: "recorded-10", label: "Computer Beep" }
 ];
 
 const mockState = vi.hoisted(() => ({
@@ -81,11 +90,14 @@ describe("SettingsPage", () => {
       const renderedOption = screen.getByRole("option", { name: option.label }) as HTMLOptionElement;
       expect(renderedOption.value).toBe(option.value);
     }
+    expect(screen.queryByRole("option", { name: /Recorded 7/i })).toBeNull();
+    expect(screen.queryByRole("option", { name: /Recorded 8/i })).toBeNull();
+    expect(screen.queryByRole("option", { name: "Recorded 9 — iPhone Tap" })).toBeNull();
   });
 
   it.each(SOUND_PACK_OPTIONS.filter((option) => option.value !== "off"))(
     "selecting $label persists and triggers a preview",
-    ({ value }) => {
+    async ({ value }) => {
       const audioMock = installAudioContextMock();
 
       render(<SettingsPage />);
@@ -95,7 +107,9 @@ describe("SettingsPage", () => {
 
       expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe(value);
       expect((keyboardSound as HTMLSelectElement).value).toBe(value);
-      expect(audioMock.oscillators).toHaveLength(1);
+      await waitFor(() => {
+        expect(audioMock.oscillators).toHaveLength(1);
+      });
     }
   );
 

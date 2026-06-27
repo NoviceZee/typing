@@ -7,3 +7,7 @@ tsconfig.tsbuildinfo
 
 formaltype-passage-library-*.json
 .DS_Store
+
+# Local keyboard sound source/candidates
+Sound Pack/
+public/sounds/keyboard/candidates/

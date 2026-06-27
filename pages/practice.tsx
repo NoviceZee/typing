@@ -260,6 +260,7 @@ export default function PracticePage() {
     setRules(readStoredRules());
     keyboardSoundSettingRef.current = readKeyboardSoundSetting();
     keyboardSoundVolumeRef.current = readKeyboardSoundVolume();
+    keyboardSoundPlayerRef.current.preload(keyboardSoundSettingRef.current);
     loadInitialPracticeState();
 
     return () => {

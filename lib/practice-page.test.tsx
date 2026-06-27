@@ -45,7 +45,22 @@ vi.mock("@/lib/typingResultStorage", async () => {
 });
 
 const mockedSaveSupabaseTypingResult = vi.mocked(saveSupabaseTypingResult);
-const SOUND_PACKS = ["mechanical", "clicky", "soft", "typewriter", "laptop"];
+const SOUND_PACKS = [
+  "mechanical",
+  "clicky",
+  "soft",
+  "typewriter",
+  "laptop",
+  "recorded",
+  "recorded-1",
+  "recorded-2",
+  "recorded-3",
+  "recorded-4",
+  "recorded-5",
+  "recorded-6",
+  "recorded-9",
+  "recorded-10"
+];
 
 describe("PracticePage passage loading", () => {
   beforeEach(() => {

@@ -6,6 +6,7 @@ import {
   KEYBOARD_SOUND_OPTIONS,
   KeyboardSoundSetting,
   createKeyboardSoundPlayer,
+  isRecordedKeyboardSoundSetting,
   readKeyboardSoundSetting,
   readKeyboardSoundVolume,
   writeKeyboardSoundSetting,
@@ -22,13 +23,23 @@ export default function SettingsPage() {
   );
 
   useEffect(() => {
-    setKeyboardSoundSetting(readKeyboardSoundSetting());
+    const savedSoundSetting = readKeyboardSoundSetting();
+    setKeyboardSoundSetting(savedSoundSetting);
     setKeyboardSoundVolume(readKeyboardSoundVolume());
+    soundPlayer.current.preload(savedSoundSetting);
   }, []);
 
   function handleKeyboardSoundSetting(nextSetting: KeyboardSoundSetting) {
     setKeyboardSoundSetting(nextSetting);
     writeKeyboardSoundSetting(nextSetting);
+    if (isRecordedKeyboardSoundSetting(nextSetting)) {
+      void soundPlayer.current.reload(nextSetting).then(() => {
+        soundPlayer.current.play(nextSetting, "normal", keyboardSoundVolume);
+      });
+      return;
+    }
+
+    soundPlayer.current.preload(nextSetting);
     if (nextSetting !== "off") {
       soundPlayer.current.play(nextSetting, "normal", keyboardSoundVolume);
     }
