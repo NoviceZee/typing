@@ -9,7 +9,8 @@ const NAV_ITEMS = [
   { href: "/practice", label: "Practice" },
   { href: "/passages", label: "Passages" },
   { href: "/passages/manage", label: "Manage passages", requiresAuth: true },
-  { href: "/leaderboard", label: "Leaderboard" }
+  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/settings", label: "Settings" }
 ];
 
 export function AppShell({ children, sideAd = true }: { children: ReactNode; sideAd?: boolean }) {

@@ -6,13 +6,56 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SettingsPage from "../pages/settings";
 
-vi.mock("@/components/AppShell", () => ({
-  AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>
+const mockState = vi.hoisted(() => ({
+  user: null as { id: string } | null,
+  isLoading: false,
+  pathname: "/settings",
+  asPath: "/settings",
+  routerReplace: vi.fn(),
+  routerPush: vi.fn(),
+  signOut: vi.fn()
+}));
+
+vi.mock("@/components/AuthProvider", () => ({
+  useAuth: () => ({
+    user: mockState.user,
+    isLoading: mockState.isLoading,
+    signOut: mockState.signOut
+  })
+}));
+
+vi.mock("next/router", () => ({
+  useRouter: () => ({
+    pathname: mockState.pathname,
+    asPath: mockState.asPath,
+    push: mockState.routerPush,
+    replace: mockState.routerReplace
+  })
+}));
+
+vi.mock("@/lib/profileStorage", () => ({
+  getProfileDisplayLabel: () => "Account",
+  getSupabaseProfile: vi.fn().mockResolvedValue(null)
 }));
 
 describe("SettingsPage", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    mockState.user = null;
+    mockState.isLoading = false;
+    mockState.pathname = "/settings";
+    mockState.asPath = "/settings";
+    mockState.routerReplace.mockReset();
+    mockState.routerPush.mockReset();
+    mockState.signOut.mockReset();
+  });
+
+  it("is accessible to logged-out users", () => {
+    render(<SettingsPage />);
+
+    expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /login/i })).toBeTruthy();
+    expect(mockState.routerReplace).not.toHaveBeenCalled();
   });
 
   it("renders the keyboard sound option in a sound section", () => {

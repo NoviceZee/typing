@@ -76,6 +76,15 @@ describe("AppShell account dropdown", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  it("shows Settings in the main navbar for logged-in users", async () => {
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /account menu/i }).textContent).toContain("@formal_typist");
+    });
+    expect(screen.getByRole("navigation").querySelector('a[href="/settings"]')?.textContent).toBe("Settings");
+  });
+
   it("does not use display name as an account label fallback and closes on Escape", async () => {
     mockedGetSupabaseProfile.mockResolvedValue({ display_name: "Formal Typist", handle: null } as any);
 
@@ -146,5 +155,24 @@ describe("AppShell account dropdown", () => {
 
     expect(screen.queryByRole("button", { name: /account menu/i })).toBeNull();
     expect(screen.getByRole("link", { name: /login/i })).toBeTruthy();
+  });
+
+  it("shows Settings in the main navbar for logged-out users", () => {
+    mockState.user = null;
+
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    expect(screen.getByRole("navigation").querySelector('a[href="/settings"]')?.textContent).toBe("Settings");
+  });
+
+  it("marks Settings as active on the settings route", () => {
+    mockState.user = null;
+    mockState.pathname = "/settings";
+    mockState.asPath = "/settings";
+
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    const settingsLink = screen.getByRole("navigation").querySelector('a[href="/settings"]');
+    expect(settingsLink?.className).toContain("bg-paper text-ink-950");
   });
 });
