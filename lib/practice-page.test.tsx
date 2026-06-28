@@ -13,7 +13,7 @@ import {
   readPreviousResult
 } from "@/lib/app-storage";
 import { getSupabasePassageLibrary } from "@/lib/passageStorage";
-import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
+import { getSupabaseAnalyticsTypingResults, saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 
 vi.mock("@/components/AppShell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>
@@ -41,6 +41,7 @@ vi.mock("@/lib/typingResultStorage", async () => {
 
   return {
     ...actual,
+    getSupabaseAnalyticsTypingResults: vi.fn().mockResolvedValue([]),
     getSupabaseOwnTypingResults: vi.fn().mockResolvedValue([]),
     saveSupabaseTypingResult: vi.fn().mockResolvedValue({
       id: "saved-result",
@@ -49,6 +50,7 @@ vi.mock("@/lib/typingResultStorage", async () => {
   };
 });
 
+const mockedGetSupabaseAnalyticsTypingResults = vi.mocked(getSupabaseAnalyticsTypingResults);
 const mockedSaveSupabaseTypingResult = vi.mocked(saveSupabaseTypingResult);
 const SOUND_PACKS = [
   "mechanical",
@@ -73,6 +75,7 @@ describe("PracticePage passage loading", () => {
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
     authState.user = null;
     mockedGetSupabasePassageLibrary.mockReset();
+    mockedGetSupabaseAnalyticsTypingResults.mockClear();
     mockedSaveSupabaseTypingResult.mockClear();
   });
 

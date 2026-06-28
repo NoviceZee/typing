@@ -75,8 +75,11 @@ import {
   readKeyboardSoundVolume
 } from "@/lib/keyboardSound";
 import { isRestartShortcut } from "@/lib/practiceShortcuts";
+import { buildProgressAnalytics } from "@/lib/analytics";
 import {
+  SupabaseAnalyticsTypingResultRow,
   SupabaseOwnTypingResultRow,
+  getSupabaseAnalyticsTypingResults,
   getSupabaseOwnTypingResults,
   saveSupabaseTypingResult
 } from "@/lib/typingResultStorage";
@@ -102,6 +105,17 @@ const MAX_CHARACTERS_PER_INPUT_EVENT = 5;
 const SUSPICIOUS_WPM_THRESHOLD = 250;
 const CONSISTENCY_HELP_TEXT =
   "Consistency shows how steady your WPM stayed during the test. It is based on the coefficient of variation of your WPM timeline.";
+const ACHIEVEMENT_POP_DISMISS_MS = 5000;
+
+type CelebrationMilestone = {
+  id: string;
+  title: string;
+  value: string;
+  subtitle?: string;
+  effect?: "ribbons" | "quiet";
+};
+
+const EMPTY_CELEBRATION_MILESTONES: CelebrationMilestone[] = [];
 
 export default function PracticePage() {
   const { user } = useAuth();
@@ -117,6 +131,7 @@ export default function PracticePage() {
   const [lastResult, setLastResult] = useState<TypingResult | null>(null);
   const [attemptTimeline, setAttemptTimeline] = useState<AttemptTimelinePoint[]>([]);
   const [recentResults, setRecentResults] = useState<SupabaseOwnTypingResultRow[]>([]);
+  const [progressMilestones, setProgressMilestones] = useState<CelebrationMilestone[]>([]);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [passageNotice, setPassageNotice] = useState("");
   const [isAttemptSuspicious, setIsAttemptSuspicious] = useState(false);
@@ -328,6 +343,7 @@ export default function PracticePage() {
     setStartedAt(null);
     setFinishedAt(null);
     setLastResult(null);
+    setProgressMilestones([]);
     setIsResultModalOpen(false);
     setPreviousResult(passage ? readPreviousResult(passage.id, previousResultScope) : null);
     setStatus("idle");
@@ -358,6 +374,7 @@ export default function PracticePage() {
       setStatus("finished");
       setIsResultModalOpen(true);
       setRecentResults([]);
+      setProgressMilestones([]);
       const finalResult = calculateResult({
         target: sourceText,
         typed: typedTextRef.current,
@@ -406,9 +423,25 @@ export default function PracticePage() {
             result: finalResult,
             typedCharacters: typedTextRef.current.length,
             supabasePassageId: passage.id ?? null
-          }).catch((error) => {
-            console.warn("Supabase typing result save failed", error);
-          });
+          })
+            .then((savedResult) => {
+              void getSupabaseAnalyticsTypingResults(user.id)
+                .then((typingResults) => {
+                  setProgressMilestones(
+                    buildProgressCelebrationMilestones(
+                      typingResults.filter((typingResult) => typingResult.id !== savedResult.id),
+                      passage,
+                      { ...finalResult, completedAt: savedResult.created_at }
+                    )
+                  );
+                })
+                .catch((error) => {
+                  console.warn("Supabase progress analytics load failed", error);
+                });
+            })
+            .catch((error) => {
+              console.warn("Supabase typing result save failed", error);
+            });
         }
       }
     },
@@ -436,6 +469,7 @@ export default function PracticePage() {
     setStartedAt(now);
     setFinishedAt(null);
     setLastResult(null);
+    setProgressMilestones([]);
     setPreviousResult(readPreviousResult(passage.id, previousResultScope));
     setStatus("running");
   }, [durationSeconds, isFinished, isTimedMode, passage, previousResultScope, sourceText]);
@@ -676,6 +710,7 @@ export default function PracticePage() {
       elapsedSecondsRef.current = 0;
       setElapsedSeconds(0);
       setAttemptTimeline([]);
+      setProgressMilestones([]);
       setStartedAt(now);
       setFinishedAt(null);
       setRemainingSeconds(isTimedMode ? durationSeconds : 0);
@@ -1085,6 +1120,7 @@ export default function PracticePage() {
             onNextPassage={loadNextPassage}
             previousResult={previousResult}
             recentResults={user ? recentResults : null}
+            progressMilestones={progressMilestones}
             attemptTimeline={attemptTimeline}
             modeLabel={practiceMode.label}
             isSuspicious={isAttemptSuspicious}
@@ -1228,6 +1264,7 @@ export function ResultModal({
   onNextPassage,
   previousResult,
   recentResults,
+  progressMilestones = EMPTY_CELEBRATION_MILESTONES,
   attemptTimeline,
   modeLabel,
   isSuspicious = false,
@@ -1240,6 +1277,7 @@ export function ResultModal({
   onNextPassage: () => void;
   previousResult: PreviousTypingResult | null;
   recentResults: SupabaseOwnTypingResultRow[] | null;
+  progressMilestones?: CelebrationMilestone[];
   attemptTimeline: AttemptTimelinePoint[];
   modeLabel: string;
   isSuspicious?: boolean;
@@ -1258,9 +1296,14 @@ export function ResultModal({
           completedAt: result.completedAt
         })
     : [];
+  const milestones = useMemo(
+    () => buildCelebrationMilestones(result, previousResult, progressMilestones),
+    [progressMilestones, result, previousResult]
+  );
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/85 px-3 py-3 backdrop-blur md:px-4">
+      <CelebrationToast milestones={milestones} />
       <section className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-brass/25 bg-ink-900 shadow-glow">
         <div className="sticky top-0 z-10 border-b border-paper/10 bg-ink-900/95 px-4 py-3 backdrop-blur md:px-5">
           <div className="flex items-start justify-between gap-4">
@@ -1349,6 +1392,152 @@ export function ResultModal({
           </button>
         </div>
       </section>
+    </div>
+  );
+}
+
+function buildCelebrationMilestones(
+  result: TypingResult,
+  previousResult: PreviousTypingResult | null,
+  progressMilestones: CelebrationMilestone[] = []
+): CelebrationMilestone[] {
+  const milestones: CelebrationMilestone[] = [];
+
+  if (previousResult && result.wpm > previousResult.wpm) {
+    milestones.push({
+      id: "personal-best-wpm",
+      title: "New Personal Best",
+      value: `${previousResult.wpm.toFixed(1)} -> ${result.wpm.toFixed(1)} WPM`,
+      effect: "ribbons"
+    });
+  }
+
+  milestones.push(...progressMilestones);
+
+  if (previousResult && result.accuracy > previousResult.accuracy) {
+    milestones.push({
+      id: "best-accuracy",
+      title: "New Best Accuracy",
+      value: `${previousResult.accuracy.toFixed(2)}% -> ${result.accuracy.toFixed(2)}% accuracy`,
+      effect: "quiet"
+    });
+  }
+
+  return milestones;
+}
+
+function buildProgressCelebrationMilestones(
+  savedResults: SupabaseAnalyticsTypingResultRow[],
+  passage: StoredPassage,
+  result: TypingResult
+): CelebrationMilestone[] {
+  const previousAnalytics = buildProgressAnalytics(savedResults);
+  const nextAnalytics = buildProgressAnalytics([toCurrentAnalyticsResult(passage, result), ...savedResults]);
+  const milestones: CelebrationMilestone[] = [];
+
+  if (nextAnalytics.progression.currentLevel > previousAnalytics.progression.currentLevel) {
+    milestones.push({
+      id: `level-up-${nextAnalytics.progression.currentLevel}`,
+      title: "Level Up",
+      value: `Level ${previousAnalytics.progression.currentLevel} -> Level ${nextAnalytics.progression.currentLevel}`,
+      effect: "ribbons"
+    });
+  }
+
+  const previouslyUnlockedAchievementIds = new Set(
+    previousAnalytics.achievements.items
+      .filter((achievement) => achievement.isUnlocked)
+      .map((achievement) => achievement.id)
+  );
+
+  for (const achievement of nextAnalytics.achievements.items) {
+    if (achievement.isUnlocked && !previouslyUnlockedAchievementIds.has(achievement.id)) {
+      milestones.push({
+        id: `achievement-${achievement.id}`,
+        title: "Achievement Unlocked",
+        value: achievement.title,
+        subtitle: achievement.description,
+        effect: "quiet"
+      });
+    }
+  }
+
+  return milestones;
+}
+
+function toCurrentAnalyticsResult(
+  passage: StoredPassage,
+  result: TypingResult
+): SupabaseAnalyticsTypingResultRow {
+  return {
+    id: "__current_result__",
+    passage_title: passage.title?.trim() || "Untitled passage",
+    passage_category: passage.category,
+    duration_seconds: result.durationSeconds,
+    wpm: result.wpm,
+    accuracy: result.accuracy,
+    correct_chars: result.correctCharacters,
+    created_at: result.completedAt
+  };
+}
+
+function CelebrationToast({ milestones }: { milestones: CelebrationMilestone[] }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [milestones]);
+
+  useEffect(() => {
+    if (milestones.length === 0 || activeIndex >= milestones.length) {
+      return;
+    }
+
+    const dismissTimer = window.setTimeout(() => {
+      setActiveIndex((currentIndex) => currentIndex + 1);
+    }, ACHIEVEMENT_POP_DISMISS_MS);
+
+    return () => window.clearTimeout(dismissTimer);
+  }, [activeIndex, milestones.length]);
+
+  const activeMilestone = milestones[activeIndex];
+
+  if (!activeMilestone) {
+    return null;
+  }
+
+  return (
+    <div
+      className="formaltype-celebration-stack pointer-events-none fixed right-4 top-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col gap-2 md:right-6 md:top-6"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <div
+        key={`${activeMilestone.id}-${activeIndex}`}
+        className={clsx(
+          "formaltype-celebration-toast",
+          activeMilestone.effect === "quiet" && "formaltype-celebration-toast-quiet"
+        )}
+        role="status"
+      >
+        {activeMilestone.effect !== "quiet" && (
+          <>
+            <span className="formaltype-celebration-burst formaltype-celebration-burst-left" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+            <span className="formaltype-celebration-burst formaltype-celebration-burst-right" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+          </>
+        )}
+        <p className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-brass">{activeMilestone.title}</p>
+        <p className="mt-1 font-mono text-sm font-semibold text-paper">{activeMilestone.value}</p>
+        {activeMilestone.subtitle && <p className="mt-1 font-mono text-xs leading-5 text-paper/55">{activeMilestone.subtitle}</p>}
+      </div>
     </div>
   );
 }

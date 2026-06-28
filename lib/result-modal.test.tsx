@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -103,6 +103,272 @@ describe("ResultModal", () => {
     expect(chart.querySelector('[data-testid="attempt-chart-grid"]')?.getAttribute("stroke")).toBe(
       "rgb(var(--chart-grid))"
     );
+  });
+
+  it("shows a personal-best celebration when net WPM improves over the previous result", () => {
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={{
+          passageId: "passage-1",
+          passageTitle: "The Importance of Time Management",
+          wpm: 42.4,
+          rawWpm: 43,
+          accuracy: 98.9,
+          errors: 1,
+          correctCharacters: 212,
+          typedCharacters: 214,
+          elapsedSeconds: 60,
+          completedAt: "2026-06-18T00:00:00.000Z",
+          completionReason: "time_up"
+        }}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("New Personal Best")).toBeTruthy();
+    expect(screen.getByText("42.4 -> 48.0 WPM")).toBeTruthy();
+  });
+
+  it("keeps the personal-best celebration readable before auto-dismissing", () => {
+    vi.useFakeTimers();
+
+    try {
+      render(
+        <ResultModal
+          result={makeResult()}
+          passage={makePassage()}
+          onRestart={vi.fn()}
+          onNextPassage={vi.fn()}
+          previousResult={{
+            passageId: "passage-1",
+            passageTitle: "The Importance of Time Management",
+            wpm: 42.4,
+            rawWpm: 43,
+            accuracy: 98.9,
+            errors: 1,
+            correctCharacters: 212,
+            typedCharacters: 214,
+            elapsedSeconds: 60,
+            completedAt: "2026-06-18T00:00:00.000Z",
+            completionReason: "time_up"
+          }}
+          recentResults={[]}
+          attemptTimeline={makeTimeline()}
+          modeLabel="1m"
+          onClose={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText("New Personal Best")).toBeTruthy();
+
+      act(() => {
+        vi.advanceTimersByTime(4000);
+      });
+
+      expect(screen.getByText("New Personal Best")).toBeTruthy();
+
+      act(() => {
+        vi.advanceTimersByTime(1100);
+      });
+
+      expect(screen.queryByText("New Personal Best")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows a level-up celebration when level-up data is available", () => {
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        progressMilestones={[
+          {
+            id: "level-up",
+            title: "Level Up",
+            value: "Level 4 -> Level 5",
+            subtitle: "Formal Specialist",
+            effect: "ribbons"
+          }
+        ]}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Level Up")).toBeTruthy();
+    expect(screen.getByText("Level 4 -> Level 5")).toBeTruthy();
+    expect(screen.getByText("Formal Specialist")).toBeTruthy();
+  });
+
+  it("shows an achievement-unlocked celebration when unlock data is available", () => {
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        progressMilestones={[
+          {
+            id: "achievement-speed-50",
+            title: "Achievement Unlocked",
+            value: "Speed 50",
+            subtitle: "Reach 50 WPM in a saved result.",
+            effect: "quiet"
+          }
+        ]}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Achievement Unlocked")).toBeTruthy();
+    expect(screen.getByText("Speed 50")).toBeTruthy();
+    expect(screen.getByText("Reach 50 WPM in a saved result.")).toBeTruthy();
+  });
+
+  it("queues multiple celebrations instead of rendering them all at once", () => {
+    vi.useFakeTimers();
+
+    try {
+      render(
+        <ResultModal
+          result={makeResult()}
+          passage={makePassage()}
+          onRestart={vi.fn()}
+          onNextPassage={vi.fn()}
+          previousResult={{
+            passageId: "passage-1",
+            passageTitle: "The Importance of Time Management",
+            wpm: 42.4,
+            rawWpm: 43,
+            accuracy: 98.9,
+            errors: 1,
+            correctCharacters: 212,
+            typedCharacters: 214,
+            elapsedSeconds: 60,
+            completedAt: "2026-06-18T00:00:00.000Z",
+            completionReason: "time_up"
+          }}
+          recentResults={[]}
+          attemptTimeline={makeTimeline()}
+          modeLabel="1m"
+          progressMilestones={[
+            {
+              id: "level-up",
+              title: "Level Up",
+              value: "Level 4 -> Level 5",
+              effect: "ribbons"
+            },
+            {
+              id: "achievement-speed-50",
+              title: "Achievement Unlocked",
+              value: "Speed 50",
+              subtitle: "Reach 50 WPM in a saved result.",
+              effect: "quiet"
+            }
+          ]}
+          onClose={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText("New Personal Best")).toBeTruthy();
+      expect(screen.queryByText("Level Up")).toBeNull();
+      expect(screen.queryByText("Achievement Unlocked")).toBeNull();
+
+      act(() => {
+        vi.advanceTimersByTime(5100);
+      });
+
+      expect(screen.queryByText("New Personal Best")).toBeNull();
+      expect(screen.getByText("Level Up")).toBeTruthy();
+      expect(screen.queryByText("Achievement Unlocked")).toBeNull();
+
+      act(() => {
+        vi.advanceTimersByTime(5100);
+      });
+
+      expect(screen.queryByText("Level Up")).toBeNull();
+      expect(screen.getByText("Achievement Unlocked")).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows a best-accuracy celebration when accuracy improves over the previous result", () => {
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={{
+          passageId: "passage-1",
+          passageTitle: "The Importance of Time Management",
+          wpm: 48,
+          rawWpm: 50,
+          accuracy: 98.9,
+          errors: 1,
+          correctCharacters: 238,
+          typedCharacters: 240,
+          elapsedSeconds: 60,
+          completedAt: "2026-06-18T00:00:00.000Z",
+          completionReason: "time_up"
+        }}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("New Best Accuracy")).toBeTruthy();
+    expect(screen.getByText("98.90% -> 100.00% accuracy")).toBeTruthy();
+  });
+
+  it("does not show a personal-best celebration for an ordinary result", () => {
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={{
+          passageId: "passage-1",
+          passageTitle: "The Importance of Time Management",
+          wpm: 48,
+          rawWpm: 50,
+          accuracy: 100,
+          errors: 0,
+          correctCharacters: 240,
+          typedCharacters: 240,
+          elapsedSeconds: 60,
+          completedAt: "2026-06-18T00:00:00.000Z",
+          completionReason: "time_up"
+        }}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText("New Personal Best")).toBeNull();
   });
 
   it("shows the attempt graph tooltip with time, WPM, and accuracy", () => {
