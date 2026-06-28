@@ -81,8 +81,15 @@ describe("SettingsPage", () => {
 
     expect(screen.getByRole("heading", { name: "Sound" })).toBeTruthy();
     const keyboardSoundVolume = screen.getByLabelText("Keyboard sound volume");
+    const keyboardSoundRow = screen.getByRole("group", { name: "Keyboard sound" });
+    const keyboardSoundInlineRow = screen.getByTestId("keyboard-sound-row");
 
-    expect(screen.getByRole("group", { name: "Keyboard sound" })).toBeTruthy();
+    expect(keyboardSoundRow).toBeTruthy();
+    expect(keyboardSoundInlineRow.className).toContain("formaltype-setting-row");
+    expect(screen.queryByRole("group", { name: "Off sound packs" })).toBeNull();
+    expect(screen.getByRole("group", { name: "Synthetic sound packs" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Recorded sound packs" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Effects sound packs" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Off sound" }).getAttribute("aria-pressed")).toBe("true");
     expect(keyboardSoundVolume.className).toContain("formaltype-themed-range");
     expect((keyboardSoundVolume as HTMLInputElement).value).toBe("50");
@@ -114,11 +121,16 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage />);
 
-    expect(screen.getByText("Personalization")).toBeTruthy();
+    expect(screen.getAllByText("Personalization").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("heading", { name: "Theme" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Workspace presets" })).toBeNull();
     expect(screen.getByRole("button", { name: /Dracula theme preview/i }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Light mode" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Purple accent" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Purple accent" }).className).toContain("h-9");
+    expect(screen.getAllByTestId("accent-swatch")).toHaveLength(9);
+    expect(screen.getByRole("group", { name: "Accent color" }).className).toContain("flex flex-wrap");
+    expect(screen.getByRole("group", { name: "Accent color" }).className).not.toContain("md:grid-cols");
     expect(screen.getByRole("button", { name: "Serif app font" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Serif font" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByRole("button", { name: "Geist app font" })).toBeNull();
@@ -168,6 +180,82 @@ describe("SettingsPage", () => {
     });
   });
 
+  it("renders and persists typing behavior rules separately from personalization", () => {
+    window.localStorage.setItem(
+      "formaltype.rules.v1",
+      JSON.stringify({
+        requireTabToStart: false,
+        requireTwoSpacesAfterPeriod: true,
+        enforceUppercase: false,
+        enforceLowercase: true,
+        caseSensitive: false,
+        punctuationSensitive: false,
+        enforceExtraSpaces: false,
+        enforceMissingSpaces: true,
+        autoCapitalisationHints: false,
+        showMistakesImmediately: false,
+        allowBackspace: false
+      })
+    );
+
+    render(<SettingsPage />);
+
+    expect(screen.getByText("Typing Rules")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Behavior" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Character rules" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Formatting rules" })).toBeNull();
+    expect(screen.getByRole("group", { name: "Start with Tab" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Off start with Tab" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Off start with Tab" }).closest("fieldset")?.className).toContain(
+      "formaltype-setting-row"
+    );
+    expect(screen.getByRole("button", { name: "On two spaces after period" }).getAttribute("aria-pressed")).toBe(
+      "true"
+    );
+    expect(screen.getByRole("button", { name: "Off strict punctuation" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Off strict capitalization" }).getAttribute("aria-pressed")).toBe(
+      "true"
+    );
+    expect(screen.getByRole("button", { name: "Off require uppercase" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "On require lowercase" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Off extra spaces" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "On missing spaces" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Off capitalization hints" }).getAttribute("aria-pressed")).toBe(
+      "true"
+    );
+    expect(screen.getByRole("button", { name: "Off show mistakes immediately" }).getAttribute("aria-pressed")).toBe(
+      "true"
+    );
+    expect(screen.getByRole("button", { name: "Off allow backspace" }).getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "On start with Tab" }));
+    fireEvent.click(screen.getByRole("button", { name: "Off two spaces after period" }));
+    fireEvent.click(screen.getByRole("button", { name: "On strict punctuation" }));
+    fireEvent.click(screen.getByRole("button", { name: "On strict capitalization" }));
+    fireEvent.click(screen.getByRole("button", { name: "On require uppercase" }));
+    fireEvent.click(screen.getByRole("button", { name: "Off require lowercase" }));
+    fireEvent.click(screen.getByRole("button", { name: "On extra spaces" }));
+    fireEvent.click(screen.getByRole("button", { name: "Off missing spaces" }));
+    fireEvent.click(screen.getByRole("button", { name: "On capitalization hints" }));
+    fireEvent.click(screen.getByRole("button", { name: "On show mistakes immediately" }));
+    fireEvent.click(screen.getByRole("button", { name: "On allow backspace" }));
+
+    expect(JSON.parse(window.localStorage.getItem("formaltype.rules.v1") ?? "{}")).toMatchObject({
+      requireTabToStart: true,
+      requireTwoSpacesAfterPeriod: false,
+      enforceUppercase: true,
+      enforceLowercase: false,
+      caseSensitive: true,
+      punctuationSensitive: true,
+      enforceExtraSpaces: true,
+      enforceMissingSpaces: false,
+      autoCapitalisationHints: true,
+      showMistakesImmediately: true,
+      allowBackspace: true
+    });
+    expect(window.localStorage.getItem("formaltype.theme.v1")).toBeNull();
+  });
+
   it("persists selected theme preview cards with preset mode and accent", () => {
     render(<SettingsPage />);
 
@@ -186,12 +274,19 @@ describe("SettingsPage", () => {
   it("renders a sticky live preview and direct setting controls", () => {
     render(<SettingsPage />);
 
-    expect(screen.getByTestId("settings-live-preview").className).toContain("sticky");
-    expect(screen.queryByRole("link", { name: "Appearance" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Personalization" })).toBeNull();
+    expect(screen.getByTestId("settings-layout").className).toContain(
+      "lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]"
+    );
+    expect(screen.getByTestId("settings-sidebar").className).toContain("lg:sticky");
+    expect(screen.getByTestId("settings-sidebar").className).toContain("min-w-0");
+    expect(screen.getByTestId("settings-content").className).toContain("min-w-0");
+    expect(screen.getByTestId("settings-live-preview")).toBeTruthy();
     expect(screen.getByRole("group", { name: "Mode" })).toBeTruthy();
     expect(screen.getByRole("group", { name: "App font" })).toBeTruthy();
     expect(screen.getByRole("group", { name: "Caret style" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "System Mono font" }).closest("fieldset")?.className).toContain(
+      "formaltype-setting-row"
+    );
     expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("w-[8.25rem]");
     expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("h-9");
     expect(screen.getByRole("button", { name: /Rose Pine Dawn theme preview/i })).toBeTruthy();
@@ -202,6 +297,35 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("button", { name: /Paper theme preview/i })).toBeTruthy();
     expect(screen.getAllByTestId("theme-preview-card")).toHaveLength(12);
     expect(screen.getAllByTestId("theme-preview-accent-dot")).toHaveLength(12);
+  });
+
+  it("renders functional sidebar links for real settings sections", () => {
+    render(<SettingsPage />);
+
+    const sections = [
+      { label: "Behavior", id: "behavior" },
+      { label: "Personalization", id: "personalization" },
+      { label: "Typing", id: "typing" },
+      { label: "Sound", id: "sound" }
+    ];
+
+    expect(screen.getByRole("navigation", { name: "Settings sections" })).toBeTruthy();
+    for (const section of sections) {
+      const link = screen.getByRole("link", { name: section.label });
+      expect(link.getAttribute("href")).toBe(`#${section.id}`);
+      expect(document.getElementById(section.id)).toBeTruthy();
+    }
+    expect(document.getElementById("behavior")?.className).toContain("order-1");
+    expect(document.getElementById("personalization")?.className).toContain("order-2");
+    expect(document.getElementById("typing")?.className).toContain("order-3");
+    expect(document.getElementById("sound")?.className).toContain("order-4");
+    expect(screen.queryByRole("link", { name: "Appearance" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /account/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /privacy/i })).toBeNull();
+
+    expect(screen.getByRole("link", { name: "Behavior" }).getAttribute("aria-current")).toBe("true");
+    fireEvent.click(screen.getByRole("link", { name: "Sound" }));
+    expect(screen.getByRole("link", { name: "Sound" }).getAttribute("aria-current")).toBe("true");
   });
 
   it("updates the live typing preview size and width from button choices", () => {

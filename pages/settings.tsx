@@ -16,9 +16,12 @@ import {
   TYPING_TEXT_SIZE_OPTIONS,
   TYPING_WIDTH_OPTIONS,
   ThemeSettings,
+  readStoredRules,
   readThemeSettings,
+  writeStoredRules,
   writeThemeSettings
 } from "@/lib/app-storage";
+import { DEFAULT_RULES, TypingRules } from "@/lib/typing-engine";
 import {
   KEYBOARD_SOUND_OPTIONS,
   KeyboardSoundSetting,
@@ -34,6 +37,8 @@ export default function SettingsPage() {
   const [keyboardSoundSetting, setKeyboardSoundSetting] = useState<KeyboardSoundSetting>("off");
   const [keyboardSoundVolume, setKeyboardSoundVolume] = useState(0.5);
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(DEFAULT_THEME_SETTINGS);
+  const [rules, setRules] = useState<TypingRules>(DEFAULT_RULES);
+  const [activeSectionId, setActiveSectionId] = useState(SETTINGS_NAV_ITEMS[0].id);
   const soundPlayer = useRef(createKeyboardSoundPlayer());
   const selectedSoundOption = useMemo(
     () => KEYBOARD_SOUND_OPTIONS.find((option) => option.value === keyboardSoundSetting) ?? KEYBOARD_SOUND_OPTIONS[0],
@@ -45,7 +50,34 @@ export default function SettingsPage() {
     setKeyboardSoundSetting(savedSoundSetting);
     setKeyboardSoundVolume(readKeyboardSoundVolume());
     setThemeSettings(readThemeSettings());
+    setRules(readStoredRules());
     soundPlayer.current.preload(savedSoundSetting);
+  }, []);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const sections = SETTINGS_NAV_ITEMS.map((item) => document.getElementById(item.id)).filter(
+      (section): section is HTMLElement => Boolean(section)
+    );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((first, second) => first.boundingClientRect.top - second.boundingClientRect.top)[0];
+
+        if (visibleEntry?.target.id) {
+          setActiveSectionId(visibleEntry.target.id);
+        }
+      },
+      { rootMargin: "-20% 0px -65% 0px", threshold: 0.01 }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+
+    return () => observer.disconnect();
   }, []);
 
   function handleKeyboardSoundSetting(nextSetting: KeyboardSoundSetting) {
@@ -93,19 +125,29 @@ export default function SettingsPage() {
     });
   }
 
+  function handleRuleSetting<Key extends keyof TypingRules>(key: Key, value: TypingRules[Key]) {
+    setRules((current) => {
+      const nextRules = { ...current, [key]: value };
+      writeStoredRules(nextRules);
+      return nextRules;
+    });
+  }
+
   return (
     <AppShell>
       <section className="mx-auto w-full max-w-6xl px-1">
         <div className="mb-6 rounded-xl border border-paper/10 bg-ink-900/45 p-5 shadow-glow backdrop-blur">
           <p className="font-mono text-xs uppercase text-brass">Preferences</p>
           <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Settings</h1>
-          <p className="mt-2 max-w-2xl text-sm text-paper/55">
-            Tune the typing room without changing your practice behavior, sound pack, or saved results.
-          </p>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start">
-          <SettingsLivePreview
+        <div
+          data-testid="settings-layout"
+          className="grid w-full gap-5 lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] lg:items-start"
+        >
+          <SettingsSidebar
+            activeSectionId={activeSectionId}
+            onSelectSection={setActiveSectionId}
             themeSettings={themeSettings}
             soundLabel={selectedSoundOption.label}
             keyboardSoundSetting={keyboardSoundSetting}
@@ -113,12 +155,14 @@ export default function SettingsPage() {
             onTestSound={() => soundPlayer.current.play(keyboardSoundSetting, "normal", keyboardSoundVolume)}
           />
 
-          <div className="grid gap-5">
-            <section id="appearance" className="scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur">
+          <div data-testid="settings-content" className="grid min-w-0 gap-5">
+            <section
+              id="personalization"
+              className="formaltype-settings-card order-2 scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur"
+            >
               <SectionHeading
                 eyebrow="Personalization"
                 title="Theme"
-                description="Choose the overall room color and accent identity."
               />
 
               <div className="mt-5 grid grid-cols-[repeat(auto-fit,8.25rem)] gap-2">
@@ -135,26 +179,19 @@ export default function SettingsPage() {
               <div className="mt-6 grid gap-5">
                 <ButtonGroup
                   label="Mode"
-                  description="Choose a light, dark, or system-matched shell."
                   options={THEME_MODE_OPTIONS}
                   value={themeSettings.mode}
                   getAriaLabel={(option) => `${option.label} mode`}
                   onChange={(value) => handleThemeSetting("mode", value as ThemeSettings["mode"])}
                 />
 
-                <ButtonGroup
-                  label="Accent color"
-                  description="Used for primary actions, focus, tabs, charts, and pace."
-                  options={ACCENT_COLOR_OPTIONS}
+                <AccentSelector
                   value={themeSettings.accentColor}
-                  getAriaLabel={(option) => `${option.label} accent`}
-                  renderPrefix={(option) => <AccentDot accent={option.value} />}
-                  onChange={(value) => handleThemeSetting("accentColor", value as ThemeSettings["accentColor"])}
+                  onChange={(value) => handleThemeSetting("accentColor", value)}
                 />
 
                 <ButtonGroup
                   label="App font"
-                  description="Applies to the overall site UI."
                   options={APP_FONT_OPTIONS}
                   value={themeSettings.appFont}
                   getAriaLabel={(option) => `${option.label} app font`}
@@ -163,17 +200,18 @@ export default function SettingsPage() {
               </div>
             </section>
 
-            <section id="typing" className="scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur">
+            <section
+              id="typing"
+              className="formaltype-settings-card order-3 scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur"
+            >
               <SectionHeading
                 eyebrow="Typing"
                 title="Typing Area"
-                description="These controls apply only to the practice text and active caret."
               />
 
-              <div className="mt-5 grid gap-5">
+              <div className="mt-5 grid gap-6 md:gap-7">
                 <ButtonGroup
                   label="Typing font"
-                  description="Applies only to the typing practice text and this preview."
                   options={TYPING_FONT_OPTIONS}
                   value={themeSettings.typingFont}
                   getAriaLabel={(option) => `${option.label} font`}
@@ -182,7 +220,6 @@ export default function SettingsPage() {
 
                 <ButtonGroup
                   label="Typing text size"
-                  description="Changes the practice text scale only."
                   options={TYPING_TEXT_SIZE_OPTIONS}
                   value={themeSettings.typingTextSize}
                   getAriaLabel={(option) => `${option.label} text size`}
@@ -191,7 +228,6 @@ export default function SettingsPage() {
 
                 <ButtonGroup
                   label="Typing width"
-                  description="Adjusts the reading measure inside practice."
                   options={TYPING_WIDTH_OPTIONS}
                   value={themeSettings.typingWidth}
                   getAriaLabel={(option) => `${option.label} typing width`}
@@ -200,7 +236,6 @@ export default function SettingsPage() {
 
                 <ButtonGroup
                   label="Caret style"
-                  description="Controls the active typing position only."
                   options={CARET_STYLE_OPTIONS}
                   value={themeSettings.caretStyle}
                   getAriaLabel={(option) => `${option.label} caret style`}
@@ -209,7 +244,6 @@ export default function SettingsPage() {
 
                 <ButtonGroup
                   label="Blink"
-                  description="Toggle caret blinking during practice."
                   options={CARET_BLINK_OPTIONS}
                   value={themeSettings.caretBlink}
                   getAriaLabel={(option) => `${option.label} blink`}
@@ -218,7 +252,6 @@ export default function SettingsPage() {
 
                 <ButtonGroup
                   label="Typing colors"
-                  description="Changes pending, correct, wrong, and current text states."
                   options={TYPING_COLOR_STYLE_OPTIONS}
                   value={themeSettings.typingColorStyle}
                   getAriaLabel={(option) => `${option.label} typing colors`}
@@ -227,25 +260,99 @@ export default function SettingsPage() {
               </div>
             </section>
 
-            <section id="sound" className="scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur">
+            <section
+              id="behavior"
+              className="formaltype-settings-card order-1 scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur"
+            >
+              <SectionHeading
+                eyebrow="Typing Rules"
+                title="Behavior"
+              />
+
+              <div className="mt-5 grid gap-4">
+                <BooleanRuleGroup
+                  label="Start with Tab"
+                  value={rules.requireTabToStart}
+                  onChange={(value) => handleRuleSetting("requireTabToStart", value)}
+                />
+
+                <BooleanRuleGroup
+                  label="Two spaces after period"
+                  value={rules.requireTwoSpacesAfterPeriod}
+                  onChange={(value) => handleRuleSetting("requireTwoSpacesAfterPeriod", value)}
+                />
+
+                <BooleanRuleGroup
+                  label="Strict capitalization"
+                  value={rules.caseSensitive}
+                  onChange={(value) => handleRuleSetting("caseSensitive", value)}
+                />
+
+                <BooleanRuleGroup
+                  label="Require uppercase"
+                  value={rules.enforceUppercase}
+                  onChange={(value) => handleRuleSetting("enforceUppercase", value)}
+                />
+
+                <BooleanRuleGroup
+                  label="Require lowercase"
+                  value={rules.enforceLowercase}
+                  onChange={(value) => handleRuleSetting("enforceLowercase", value)}
+                />
+
+                <BooleanRuleGroup
+                  label="Strict punctuation"
+                  value={rules.punctuationSensitive}
+                  onChange={(value) => handleRuleSetting("punctuationSensitive", value)}
+                />
+
+                <BooleanRuleGroup
+                  label="Extra spaces"
+                  value={rules.enforceExtraSpaces}
+                  onChange={(value) => handleRuleSetting("enforceExtraSpaces", value)}
+                />
+
+                <BooleanRuleGroup
+                  label="Missing spaces"
+                  value={rules.enforceMissingSpaces}
+                  onChange={(value) => handleRuleSetting("enforceMissingSpaces", value)}
+                />
+
+                <BooleanRuleGroup
+                  label="Capitalization hints"
+                  value={rules.autoCapitalisationHints}
+                  onChange={(value) => handleRuleSetting("autoCapitalisationHints", value)}
+                />
+
+                <BooleanRuleGroup
+                  label="Show mistakes immediately"
+                  value={rules.showMistakesImmediately}
+                  onChange={(value) => handleRuleSetting("showMistakesImmediately", value)}
+                />
+
+                <BooleanRuleGroup
+                  label="Allow backspace"
+                  value={rules.allowBackspace}
+                  onChange={(value) => handleRuleSetting("allowBackspace", value)}
+                />
+              </div>
+            </section>
+
+            <section
+              id="sound"
+              className="formaltype-settings-card order-4 scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur"
+            >
               <SectionHeading
                 eyebrow="Sound"
                 title="Sound"
-                description="Choose the keyboard sound pack used while typing in practice."
               />
 
-              <div className="mt-5">
-                <ButtonGroup
-                  label="Keyboard sound"
-                  description={selectedSoundOption.description}
-                  options={KEYBOARD_SOUND_OPTIONS}
-                  value={keyboardSoundSetting}
-                  getAriaLabel={(option) => `${option.label} sound`}
-                  onChange={(value) => handleKeyboardSoundSetting(value as KeyboardSoundSetting)}
-                />
-              </div>
+              <SoundPackSelector
+                value={keyboardSoundSetting}
+                onChange={handleKeyboardSoundSetting}
+              />
 
-              <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] md:items-center">
+              <div className="mt-6 grid gap-x-8 gap-y-3 py-1 lg:grid-cols-[minmax(280px,1fr)_minmax(12rem,16rem)] lg:items-center">
                 <div>
                   <label htmlFor="keyboard-sound-volume" className="font-mono text-sm text-paper/80">
                     Keyboard sound volume
@@ -311,6 +418,64 @@ function ThemePreviewCard({
   );
 }
 
+function SettingsSidebar({
+  activeSectionId,
+  onSelectSection,
+  themeSettings,
+  soundLabel,
+  keyboardSoundSetting,
+  keyboardSoundVolume,
+  onTestSound
+}: {
+  activeSectionId: string;
+  onSelectSection: (sectionId: string) => void;
+  themeSettings: ThemeSettings;
+  soundLabel: string;
+  keyboardSoundSetting: KeyboardSoundSetting;
+  keyboardSoundVolume: number;
+  onTestSound: () => void;
+}) {
+  return (
+    <aside data-testid="settings-sidebar" className="grid w-full min-w-0 gap-4 self-start lg:sticky lg:top-5">
+      <nav
+        aria-label="Settings sections"
+        className="rounded-xl border border-paper/10 bg-ink-950/80 p-3 shadow-glow backdrop-blur"
+      >
+        <p className="px-2 font-mono text-xs uppercase text-brass">Settings</p>
+        <div className="mt-3 grid gap-1">
+          {SETTINGS_NAV_ITEMS.map((item) => {
+            const isActive = activeSectionId === item.id;
+
+            return (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                aria-current={isActive ? "true" : undefined}
+                onClick={() => onSelectSection(item.id)}
+                className={`rounded-md px-2.5 py-2 font-mono text-sm transition ${
+                  isActive
+                    ? "bg-brass/15 text-brass shadow-[0_0_0_1px_rgb(var(--color-accent)/0.12)]"
+                    : "text-paper/55 hover:bg-paper/[0.055] hover:text-paper/80"
+                }`}
+              >
+                {item.label}
+              </a>
+            );
+          })}
+        </div>
+      </nav>
+
+      <SettingsLivePreview
+        themeSettings={themeSettings}
+        soundLabel={soundLabel}
+        keyboardSoundSetting={keyboardSoundSetting}
+        keyboardSoundVolume={keyboardSoundVolume}
+        onTestSound={onTestSound}
+      />
+    </aside>
+  );
+}
+
 function SettingsLivePreview({
   themeSettings,
   soundLabel,
@@ -327,7 +492,7 @@ function SettingsLivePreview({
   return (
     <aside
       data-testid="settings-live-preview"
-      className="sticky top-5 rounded-xl border border-paper/10 bg-ink-950/80 p-4 shadow-glow backdrop-blur"
+      className="rounded-xl border border-paper/10 bg-ink-950/80 p-4 shadow-glow backdrop-blur"
     >
       <p className="font-mono text-xs uppercase text-brass">Live preview</p>
       <div
@@ -376,13 +541,147 @@ function SettingsLivePreview({
   );
 }
 
-function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
+function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
   return (
     <div>
       <p className="font-mono text-xs uppercase text-brass">{eyebrow}</p>
       <h2 className="mt-1 text-xl font-semibold text-paper">{title}</h2>
-      <p className="mt-1 max-w-2xl text-sm text-paper/55">{description}</p>
+      {description && <p className="mt-1 max-w-2xl text-sm text-paper/55">{description}</p>}
     </div>
+  );
+}
+
+function AccentSelector({
+  value,
+  onChange
+}: {
+  value: ThemeSettings["accentColor"];
+  onChange: (value: ThemeSettings["accentColor"]) => void;
+}) {
+  return (
+    <fieldset className="grid gap-x-8 gap-y-3 py-1">
+      <div>
+        <legend className="font-mono text-sm text-paper/80">Accent</legend>
+      </div>
+      <div role="group" aria-label="Accent color" className="flex flex-wrap gap-2">
+        {ACCENT_COLOR_OPTIONS.map((option) => {
+          const isSelected = option.value === value;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-label={`${option.label} accent`}
+              aria-pressed={isSelected}
+              title={option.label}
+              onClick={() => onChange(option.value)}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
+                isSelected
+                  ? "border-brass/80 bg-brass/15 shadow-[0_0_0_1px_rgb(var(--color-accent)/0.2)]"
+                  : "border-paper/10 bg-paper/[0.035] hover:border-paper/25 hover:bg-paper/[0.06]"
+              }`}
+            >
+              <AccentDot accent={option.value} />
+              <span className="sr-only">{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+function SoundPackSelector({
+  value,
+  onChange
+}: {
+  value: KeyboardSoundSetting;
+  onChange: (value: KeyboardSoundSetting) => void;
+}) {
+  const offOption = KEYBOARD_SOUND_OPTIONS.find((option) => option.value === "off");
+
+  return (
+    <div className="mt-5 grid gap-5">
+      <div role="group" aria-labelledby="keyboard-sound-label" className="grid gap-3 py-1">
+        <div data-testid="keyboard-sound-row" className="formaltype-setting-row">
+          <p id="keyboard-sound-label" className="font-mono text-sm text-paper/80">
+            Keyboard sound
+          </p>
+          <div className="formaltype-setting-row-controls">
+            {offOption && (
+              <button
+                type="button"
+                aria-label={`${offOption.label} sound`}
+                aria-pressed={value === offOption.value}
+                onClick={() => onChange(offOption.value)}
+                className={`inline-flex min-h-10 items-center rounded-md border px-3 py-2 font-mono text-xs transition ${
+                  value === offOption.value
+                    ? "border-brass/70 bg-brass/15 text-brass shadow-[0_0_0_1px_rgb(var(--color-accent)/0.14)]"
+                    : "border-paper/10 bg-paper/[0.035] text-paper/60 hover:border-paper/20 hover:bg-paper/[0.06] hover:text-paper/80"
+                }`}
+              >
+                {offOption.label}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4">
+        {SOUND_PACK_GROUPS.map((group) => (
+          <fieldset key={group.label} role="group" aria-label={`${group.label} sound packs`} className="grid gap-2">
+            <legend className="font-mono text-[0.68rem] uppercase text-paper/35">{group.label}</legend>
+            <div className="flex flex-wrap gap-2">
+              {group.options.map((option) => {
+                const isSelected = option.value === value;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-label={`${option.label} sound`}
+                    aria-pressed={isSelected}
+                    onClick={() => onChange(option.value)}
+                    className={`inline-flex min-h-10 items-center rounded-md border px-3 py-2 font-mono text-xs transition ${
+                      isSelected
+                        ? "border-brass/70 bg-brass/15 text-brass shadow-[0_0_0_1px_rgb(var(--color-accent)/0.14)]"
+                        : "border-paper/10 bg-paper/[0.035] text-paper/60 hover:border-paper/20 hover:bg-paper/[0.06] hover:text-paper/80"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BooleanRuleGroup({
+  label,
+  description,
+  value,
+  onChange
+}: {
+  label: string;
+  description?: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  const ariaLabelSuffix = lowerFirst(label);
+
+  return (
+    <ButtonGroup
+      label={label}
+      description={description}
+      options={BOOLEAN_OPTIONS}
+      value={String(value)}
+      getAriaLabel={(option) => `${option.label} ${ariaLabelSuffix}`}
+      onChange={(nextValue) => onChange(nextValue === "true")}
+    />
   );
 }
 
@@ -392,24 +691,30 @@ function ButtonGroup<Option extends { value: string; label: string }>({
   options,
   value,
   getAriaLabel,
+  layout = "inline",
   renderPrefix,
   onChange
 }: {
   label: string;
-  description: string;
+  description?: string;
   options: Option[];
   value: string;
   getAriaLabel: (option: Option) => string;
+  layout?: "inline" | "stacked";
   renderPrefix?: (option: Option) => React.ReactNode;
   onChange: (value: string) => void;
 }) {
+  const isStacked = layout === "stacked";
+
   return (
-    <fieldset className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(16rem,1.25fr)] md:items-start">
+    <fieldset
+      className={isStacked ? "grid gap-x-8 gap-y-3 py-1" : "formaltype-setting-row py-1"}
+    >
       <div>
         <legend className="font-mono text-sm text-paper/80">{label}</legend>
-        <p className="mt-1 text-sm text-paper/45">{description}</p>
+        {description && <p className="mt-1 text-sm text-paper/45">{description}</p>}
       </div>
-      <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+      <div role="group" aria-label={label} className={isStacked ? "flex flex-wrap gap-2" : "formaltype-setting-row-controls"}>
         {options.map((option) => {
           const isSelected = option.value === value;
 
@@ -436,9 +741,14 @@ function ButtonGroup<Option extends { value: string; label: string }>({
   );
 }
 
+function lowerFirst(value: string) {
+  return value ? `${value[0].toLocaleLowerCase()}${value.slice(1)}` : value;
+}
+
 function AccentDot({ accent }: { accent: string }) {
   return (
     <span
+      data-testid="accent-swatch"
       className="h-3 w-3 rounded-full border border-white/20"
       style={{ backgroundColor: ACCENT_SWATCHES[accent] ?? "rgb(var(--color-accent))" }}
     />
@@ -456,3 +766,39 @@ const ACCENT_SWATCHES: Record<string, string> = {
   red: "rgb(239 68 68)",
   orange: "rgb(249 115 22)"
 };
+
+const BOOLEAN_OPTIONS = [
+  { value: "true", label: "On" },
+  { value: "false", label: "Off" }
+];
+
+const SOUND_PACK_GROUPS: Array<{
+  label: "Synthetic" | "Recorded" | "Effects";
+  options: typeof KEYBOARD_SOUND_OPTIONS;
+}> = [
+  {
+    label: "Synthetic",
+    options: getSoundOptions(["mechanical", "clicky", "soft", "laptop", "typewriter"])
+  },
+  {
+    label: "Recorded",
+    options: getSoundOptions(["recorded", "recorded-6", "recorded-9", "recorded-2"])
+  },
+  {
+    label: "Effects",
+    options: getSoundOptions(["recorded-3", "recorded-1", "recorded-10", "recorded-4", "recorded-5"])
+  }
+];
+
+function getSoundOptions(values: KeyboardSoundSetting[]) {
+  return values
+    .map((value) => KEYBOARD_SOUND_OPTIONS.find((option) => option.value === value))
+    .filter((option): option is (typeof KEYBOARD_SOUND_OPTIONS)[number] => Boolean(option));
+}
+
+const SETTINGS_NAV_ITEMS = [
+  { id: "behavior", label: "Behavior" },
+  { id: "personalization", label: "Personalization" },
+  { id: "typing", label: "Typing" },
+  { id: "sound", label: "Sound" }
+];

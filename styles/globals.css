@@ -435,6 +435,37 @@ textarea {
   box-shadow: 0 0 0 4px rgb(var(--color-accent) / 0.28);
 }
 
+.formaltype-settings-card {
+  container-type: inline-size;
+}
+
+.formaltype-setting-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: center;
+  column-gap: 2rem;
+  row-gap: 0.75rem;
+}
+
+.formaltype-setting-row-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: 0.5rem;
+}
+
+@container (max-width: 34rem) {
+  .formaltype-setting-row {
+    grid-template-columns: 1fr;
+  }
+
+  .formaltype-setting-row-controls {
+    justify-content: flex-start;
+    justify-self: start;
+  }
+}
+
 .formaltype-typing-font-system-mono {
   font-family:
     SFMono-Regular,
