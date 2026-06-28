@@ -6,6 +6,7 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProfilePage from "../pages/profile";
 import { getSupabaseAnalyticsTypingResults } from "@/lib/typingResultStorage";
+import { TYPING_ATTEMPT_DETAILS_STORAGE_KEY } from "@/lib/typingStatistics";
 import {
   getSupabaseProfile,
   removeSupabaseProfileAvatar,
@@ -87,9 +88,45 @@ describe("ProfilePage", () => {
     mockedRemoveSupabaseProfileAvatar.mockResolvedValue(makeProfile({ avatar_path: null }) as any);
     mockedUploadSupabaseProfileAvatar.mockResolvedValue(makeProfile({ avatar_path: "user-1/avatar.png" }) as any);
     mockedUpdateSupabaseProfileIdentity.mockResolvedValue(makeProfile({ bio: "Updated bio", avatar_style: "slate" }) as any);
+    window.localStorage.clear();
   });
 
   it("renders progress analytics for an authenticated user", async () => {
+    window.localStorage.setItem(
+      TYPING_ATTEMPT_DETAILS_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: "detail-1",
+          userId: "user-1",
+          completedAt: "2026-06-21T00:02:00.000Z",
+          durationSeconds: 60,
+          wpm: 72,
+          accuracy: 98.2,
+          timeline: [
+            { timeSeconds: 10, wpm: 104 },
+            { timeSeconds: 20, wpm: 100 },
+            { timeSeconds: 30, wpm: 99 },
+            { timeSeconds: 40, wpm: 96 },
+            { timeSeconds: 50, wpm: 90 },
+            { timeSeconds: 60, wpm: 88 }
+          ],
+          characters: [
+            ...Array.from({ length: 20 }, (_, index) => ({
+              expected: "q",
+              actual: "q",
+              index,
+              status: "correct",
+              delayMs: 100
+            })),
+            { expected: "q", actual: "w", index: 20, status: "wrong", delayMs: 260 },
+            { expected: "q", actual: "w", index: 21, status: "wrong", delayMs: 240 },
+            { expected: " ", actual: "", index: 22, status: "wrong", delayMs: null },
+            { expected: "", actual: "x", index: 23, status: "extra", delayMs: 180 }
+          ]
+        }
+      ])
+    );
+
     render(<ProfilePage />);
 
     await waitFor(() => {
@@ -112,6 +149,33 @@ describe("ProfilePage", () => {
     expect(screen.getByRole("button", { name: "Last 90" })).toBeTruthy();
     expect(screen.getByText("Consistency")).toBeTruthy();
     expect(screen.getByText("Not enough data yet")).toBeTruthy();
+    expect(screen.getByText("Typing Insights")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Accuracy" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Speed" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Mistakes" })).toBeTruthy();
+    expect(screen.getByTestId("keyboard-heatmap")).toBeTruthy();
+    expect(screen.getByTestId("keyboard-key-q").textContent).toContain("Q");
+    expect(screen.getByTestId("keyboard-key-backspace").textContent).toContain("Backspace");
+    expect(screen.getByTestId("keyboard-key-enter").textContent).toContain("Enter");
+    expect(screen.getByText("Legend")).toBeTruthy();
+    expect(screen.getByText("Weak Keys")).toBeTruthy();
+    expect(screen.getByText("Common Mistakes")).toBeTruthy();
+    expect(screen.getByText("Recent Error Replay")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
+    expect(screen.getByLabelText("Replay timeline")).toBeTruthy();
+    expect(screen.getByLabelText("Show only mistakes")).toBeTruthy();
+    expect(screen.getByText("Finger Analysis")).toBeTruthy();
+    expect(screen.getByText("Reaction Time")).toBeTruthy();
+    expect(screen.getByText("Burst Speed")).toBeTruthy();
+    expect(screen.getByText("Speed Drop")).toBeTruthy();
+    expect(screen.getByText("Left Pinky")).toBeTruthy();
+    expect(screen.getByText("Average Keystroke")).toBeTruthy();
+    expect(screen.getByText("Peak 3s")).toBeTruthy();
+    expect(screen.getByText("Start")).toBeTruthy();
+    expect(screen.getByText("expected q, typed w")).toBeTruthy();
+    expect(screen.getByText("50.0%")).toBeTruthy();
+    expect(screen.getByText("missed space")).toBeTruthy();
+    expect(screen.getByText("extra x")).toBeTruthy();
     expect(screen.getAllByText("Level").length).toBeGreaterThan(0);
     expect(screen.getByText("Total XP")).toBeTruthy();
     expect(screen.getByText("Daily Challenge")).toBeTruthy();
@@ -130,7 +194,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("Recent attempts")).toBeTruthy();
     expect(screen.getByText("Passage latest")).toBeTruthy();
     expect(
-      screen.getByText("Achievements").compareDocumentPosition(screen.getByText("My Results")) &
+      screen.getByText("Typing Insights").compareDocumentPosition(screen.getByText("My Results")) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(screen.queryByText("Profile Settings")).toBeNull();

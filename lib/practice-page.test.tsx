@@ -14,6 +14,7 @@ import {
 } from "@/lib/app-storage";
 import { getSupabasePassageLibrary } from "@/lib/passageStorage";
 import { getSupabaseAnalyticsTypingResults, saveSupabaseTypingResult } from "@/lib/typingResultStorage";
+import { readTypingAttemptDetails } from "@/lib/typingStatistics";
 
 vi.mock("@/components/AppShell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>
@@ -647,6 +648,35 @@ describe("PracticePage passage loading", () => {
     expect(wrongCharacter?.className).not.toContain("border");
   });
 
+  it("shows finger and classification metadata in the session review for mistakes", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Aocal fallback body text");
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByText("Session review")).toBeTruthy();
+    });
+
+    expect(screen.getByText("Expected finger")).toBeTruthy();
+    expect(screen.getByText("Typed finger")).toBeTruthy();
+    expect(screen.getByText("Classification")).toBeTruthy();
+    expect(screen.getByText("Right Ring")).toBeTruthy();
+    expect(screen.getAllByText("Left Pinky").length).toBeGreaterThan(0);
+    expect(screen.getByText("Wrong hand")).toBeTruthy();
+  });
+
   it("plays keyboard sound only for valid typing changes during a running session", async () => {
     window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
     window.localStorage.setItem(
@@ -778,6 +808,34 @@ describe("PracticePage passage loading", () => {
     fireEvent.change(input, { target: { value: "a" } });
 
     expect(audioMock.oscillators).toHaveLength(0);
+  });
+
+  it("stores private attempt details for typing statistics when a user completes an attempt", async () => {
+    authState.user = { id: "user-1" };
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    });
+
+    const details = readTypingAttemptDetails("user-1");
+    expect(details).toHaveLength(1);
+    expect(details[0].userId).toBe("user-1");
+    expect(details[0].characters.some((character) => character.expected === "L" && character.actual === "L")).toBe(true);
   });
 
   it("flags suspicious bursts and does not save or update previous pace", async () => {

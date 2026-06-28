@@ -20,8 +20,16 @@ import {
   SupabaseAnalyticsTypingResultRow,
   getSupabaseAnalyticsTypingResults
 } from "@/lib/typingResultStorage";
+import {
+  aggregateTypingStatistics,
+  buildTypingReplayEvents,
+  getFullKeyboardLayout,
+  readTypingAttemptDetails
+} from "@/lib/typingStatistics";
+import type { KeyStatistic, TypingAttemptDetail, TypingReplayEvent, TypingStatistics } from "@/lib/typingStatistics";
 
 type TrendRange = "30" | "90" | "all";
+type HeatmapMode = "accuracy" | "speed" | "mistakes";
 
 const TREND_RANGES: Array<{ id: TrendRange; label: string }> = [
   { id: "30", label: "Last 30" },
@@ -48,8 +56,15 @@ export default function ProfilePage() {
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
   const [trendRange, setTrendRange] = useState<TrendRange>("30");
+  const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>("accuracy");
   const analytics = useMemo(() => buildProgressAnalytics(results), [results]);
   const trendResults = useMemo(() => getTrendResults(results, trendRange), [results, trendRange]);
+  const typingAttemptDetails = useMemo(() => (user ? readTypingAttemptDetails(user.id) : []), [user]);
+  const typingStatistics = useMemo(
+    () => aggregateTypingStatistics(typingAttemptDetails),
+    [typingAttemptDetails]
+  );
+  const latestTypingAttempt = typingAttemptDetails[0] ?? null;
 
   useEffect(() => {
     if (isAuthLoading || user) {
@@ -274,6 +289,14 @@ export default function ProfilePage() {
                     to build your progress profile.
                   </p>
                 </section>
+                {typingStatistics.keys.length > 0 && (
+                  <TypingWeaknessesSection
+                    statistics={typingStatistics}
+                    latestAttempt={latestTypingAttempt}
+                    heatmapMode={heatmapMode}
+                    onHeatmapModeChange={setHeatmapMode}
+                  />
+                )}
                 <ChallengesSection analytics={analytics} />
                 <AchievementsSection analytics={analytics} />
               </>
@@ -282,6 +305,12 @@ export default function ProfilePage() {
             {results.length > 0 && (
               <>
                 <ProgressSummary analytics={analytics} />
+                <TypingWeaknessesSection
+                  statistics={typingStatistics}
+                  latestAttempt={latestTypingAttempt}
+                  heatmapMode={heatmapMode}
+                  onHeatmapModeChange={setHeatmapMode}
+                />
                 <Trends
                   range={trendRange}
                   results={trendResults}
@@ -867,6 +896,477 @@ function TrendChart({
   );
 }
 
+const KEYBOARD_ROWS = getFullKeyboardLayout();
+
+const HEATMAP_MODES: Array<{ id: HeatmapMode; label: string }> = [
+  { id: "accuracy", label: "Accuracy" },
+  { id: "speed", label: "Speed" },
+  { id: "mistakes", label: "Mistakes" }
+];
+
+function TypingWeaknessesSection({
+  statistics,
+  latestAttempt,
+  heatmapMode,
+  onHeatmapModeChange
+}: {
+  statistics: TypingStatistics;
+  latestAttempt: TypingAttemptDetail | null;
+  heatmapMode: HeatmapMode;
+  onHeatmapModeChange: (mode: HeatmapMode) => void;
+}) {
+  const keysByCharacter = new Map(statistics.keys.map((keyStatistic) => [keyStatistic.key, keyStatistic]));
+  const hasStatistics = statistics.keys.length > 0;
+
+  return (
+    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="font-mono text-sm uppercase text-brass">Typing Insights</h2>
+          <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">
+            Private insights from completed attempts
+          </p>
+        </div>
+        <div className="flex rounded-full bg-paper/[0.035] p-1">
+          {HEATMAP_MODES.map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              onClick={() => onHeatmapModeChange(mode.id)}
+              className={`rounded-full px-3 py-1.5 font-mono text-xs transition ${
+                heatmapMode === mode.id ? "bg-brass/85 text-ink-950" : "text-paper/50 hover:bg-paper/5 hover:text-paper/80"
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!hasStatistics ? (
+        <p className="mt-4 text-sm leading-6 text-paper/50">
+          Complete a new typing attempt to start collecting key-level insights. Older saved results are ignored here.
+        </p>
+      ) : (
+        <>
+          <div className="mt-5">
+            <KeyboardHeatmap keysByCharacter={keysByCharacter} mode={heatmapMode} />
+          </div>
+          <div className="mt-4 grid gap-4 xl:grid-cols-[0.74fr_0.74fr_1.4fr]">
+            <WeakKeysPanel keys={statistics.weakKeys} />
+            <CommonMistakesPanel mistakes={statistics.commonMistakes} />
+            <RecentErrorReplayPanel attempt={latestAttempt} />
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+            <FingerAnalysisPanel statistics={statistics} />
+            <ReactionTimePanel statistics={statistics} />
+            <BurstSpeedPanel statistics={statistics} />
+            <SpeedDropPanel statistics={statistics} />
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function KeyboardHeatmap({
+  keysByCharacter,
+  mode
+}: {
+  keysByCharacter: Map<string, KeyStatistic>;
+  mode: HeatmapMode;
+}) {
+  return (
+    <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-mono text-xs uppercase text-paper/70">Keyboard Heatmap</h3>
+          <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">{getHeatmapModeLabel(mode)}</p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_11rem] xl:items-center">
+        <div data-testid="keyboard-heatmap" className="space-y-2 overflow-x-auto pb-1">
+        {KEYBOARD_ROWS.map((row, rowIndex) => (
+          <div
+            key={row.map((key) => key.key).join("-")}
+            className={`flex min-w-max justify-center gap-1.5 ${rowIndex === 1 ? "pl-6" : rowIndex === 2 ? "pl-10" : rowIndex === 3 ? "pl-14" : ""}`}
+          >
+            {row.map((key) => {
+              const keyStatistic = keysByCharacter.get(key.key);
+              const intensity = getHeatmapIntensity(keyStatistic, mode);
+
+              return (
+                <div
+                  key={key.key}
+                  data-testid={`keyboard-key-${keyboardTestId(key.key)}`}
+                  title={formatKeyStatisticTitle(keyStatistic)}
+                  className="flex h-11 items-center justify-center rounded-md border border-paper/10 px-2 font-mono text-xs text-paper transition"
+                  style={{
+                    width: `${(key.width ?? 1) * 2.75}rem`,
+                    backgroundColor: `rgb(var(${getHeatmapColorVariable(mode)}) / ${intensity})`
+                  }}
+                >
+                  <span>{key.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+        </div>
+        <HeatmapLegend mode={mode} />
+      </div>
+    </section>
+  );
+}
+
+function HeatmapLegend({ mode }: { mode: HeatmapMode }) {
+  const rows =
+    mode === "accuracy"
+      ? [
+          ["98%+", "var(--chart-positive)", 0.48],
+          ["95-98%", "var(--chart-positive)", 0.3],
+          ["90-95%", "var(--chart-warning)", 0.45],
+          ["80-90%", "var(--chart-warning)", 0.7],
+          ["<80%", "var(--chart-danger)", 0.75]
+        ]
+      : mode === "speed"
+        ? [
+            ["Fast", "var(--chart-line-secondary)", 0.22],
+            ["Steady", "var(--chart-line-secondary)", 0.4],
+            ["Slow", "var(--chart-line-secondary)", 0.7]
+          ]
+        : [
+            ["Few", "var(--chart-warning)", 0.25],
+            ["Some", "var(--chart-warning)", 0.5],
+            ["Many", "var(--chart-warning)", 0.8]
+          ];
+
+  return (
+    <div className="rounded-md border border-paper/10 bg-ink-950/45 p-3">
+      <p className="font-mono text-[0.68rem] uppercase text-paper/45">Legend</p>
+      <div className="mt-3 space-y-2">
+        {rows.map(([label, color, opacity]) => (
+          <div key={String(label)} className="flex items-center gap-2 font-mono text-[0.68rem] uppercase text-paper/40">
+            <span
+              className="h-3 w-3 rounded-full"
+              style={{ backgroundColor: `rgb(${color} / ${opacity})` }}
+              aria-hidden="true"
+            />
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WeakKeysPanel({ keys }: { keys: KeyStatistic[] }) {
+  return (
+    <section className="overflow-hidden rounded-md border border-paper/10 bg-ink-900/70">
+      <div className="border-b border-paper/10 px-4 py-3">
+        <h3 className="font-mono text-xs uppercase text-paper/70">Weak Keys</h3>
+      </div>
+      {keys.length === 0 ? (
+        <p className="px-4 py-4 text-sm leading-6 text-paper/50">More samples needed before ranking weak keys.</p>
+      ) : (
+        <div>
+          <div className="grid grid-cols-[2.5rem_1fr_4rem_4rem] gap-3 border-b border-paper/10 px-4 py-2 font-mono text-[0.62rem] uppercase text-paper/35">
+            <span>Key</span>
+            <span>Accuracy</span>
+            <span>Mistakes</span>
+            <span>Hits</span>
+          </div>
+          {keys.slice(0, 5).map((keyStatistic) => (
+            <article
+              key={keyStatistic.key}
+              className="grid grid-cols-[2.5rem_1fr_4rem_4rem] items-center gap-3 border-b border-paper/10 px-4 py-3 last:border-b-0"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-md border border-ember/25 bg-ember/10 font-mono text-sm text-paper">
+                {formatKeyLabel(keyStatistic.key)}
+              </span>
+              <div className="min-w-0">
+                <p className="font-mono text-xs text-paper">{formatNumber(keyStatistic.accuracy)}% accuracy</p>
+              </div>
+              <p className="font-mono text-xs text-paper/65">{keyStatistic.mistakeCount}</p>
+              <p className="font-mono text-xs text-paper/65">{keyStatistic.hitCount}</p>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CommonMistakesPanel({ mistakes }: { mistakes: TypingStatistics["commonMistakes"] }) {
+  const totalMistakes = mistakes.reduce((total, mistake) => total + mistake.count, 0);
+
+  return (
+    <section className="overflow-hidden rounded-md border border-paper/10 bg-ink-900/70">
+      <div className="border-b border-paper/10 px-4 py-3">
+        <h3 className="font-mono text-xs uppercase text-paper/70">Common Mistakes</h3>
+      </div>
+      {mistakes.length === 0 ? (
+        <p className="px-4 py-4 text-sm leading-6 text-paper/50">No repeated mistake patterns yet.</p>
+      ) : (
+        <div>
+          {mistakes.slice(0, 5).map((mistake) => (
+            <article
+              key={mistake.id}
+              className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-3 border-b border-paper/10 px-4 py-3 last:border-b-0"
+            >
+              <p className="min-w-0 text-sm text-paper/70">{formatMistakeLabel(mistake)}</p>
+              <span className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-[0.68rem] uppercase text-paper/45">
+                {mistake.count}x
+              </span>
+              <span className="font-mono text-[0.68rem] uppercase text-paper/45">
+                {totalMistakes === 0 ? "0.0%" : `${formatNumber((mistake.count / totalMistakes) * 100)}%`}
+              </span>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | null }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [showOnlyMistakes, setShowOnlyMistakes] = useState(false);
+  const [currentTimeMs, setCurrentTimeMs] = useState(0);
+  const events = useMemo(() => buildTypingReplayEvents(attempt, { onlyMistakes: showOnlyMistakes }), [attempt, showOnlyMistakes]);
+  const durationMs = events.length > 0 ? Math.max(...events.map((event) => event.timeMs), 1) : 0;
+  const activeEvent = getActiveReplayEvent(events, currentTimeMs);
+  const visibleMistakeEvents = events.filter((event) => event.isMistake && event.timeMs <= currentTimeMs).slice(-5);
+
+  useEffect(() => {
+    setCurrentTimeMs(0);
+    setIsPlaying(false);
+  }, [attempt, showOnlyMistakes]);
+
+  useEffect(() => {
+    if (!isPlaying || durationMs === 0) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setCurrentTimeMs((currentTime) => {
+        const nextTime = currentTime + 120 * speed;
+
+        if (nextTime >= durationMs) {
+          setIsPlaying(false);
+          return durationMs;
+        }
+
+        return nextTime;
+      });
+    }, 120);
+
+    return () => window.clearInterval(timer);
+  }, [durationMs, isPlaying, speed]);
+
+  if (!attempt || events.length === 0 || durationMs === 0) {
+    return (
+      <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
+        <h3 className="font-mono text-xs uppercase text-paper/70">Recent Error Replay</h3>
+        <p className="mt-3 text-sm leading-6 text-paper/50">Replay will appear after a completed attempt with timing data.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="font-mono text-xs uppercase text-paper/70">Recent Error Replay</h3>
+          <p className="mt-1 text-sm leading-6 text-paper/45">Replay your latest attempt showing where mistakes happened.</p>
+        </div>
+        <label className="flex items-center gap-2 font-mono text-xs text-paper/55">
+          <span>Show only mistakes</span>
+          <input
+            type="checkbox"
+            aria-label="Show only mistakes"
+            checked={showOnlyMistakes}
+            onChange={(event) => setShowOnlyMistakes(event.target.checked)}
+            className="accent-brass"
+          />
+        </label>
+      </div>
+
+      <div className="relative mt-4 overflow-x-auto rounded-md bg-paper/[0.025] p-2">
+        <ReplayPathOverlay events={visibleMistakeEvents} />
+        <div className="relative z-10 space-y-1.5">
+          {KEYBOARD_ROWS.map((row, rowIndex) => (
+            <div key={row.map((key) => key.key).join("-")} className={`flex min-w-max justify-center gap-1 ${rowIndex === 1 ? "pl-5" : rowIndex === 2 ? "pl-8" : rowIndex === 3 ? "pl-11" : ""}`}>
+              {row.map((key) => {
+                const isActive = activeEvent?.key === key.key;
+                const isMistake = isActive && activeEvent?.isMistake;
+
+                return (
+                  <div
+                    key={key.key}
+                    className={`flex h-8 items-center justify-center rounded border px-1.5 font-mono text-[0.62rem] transition ${
+                      isMistake
+                        ? "border-ember/50 bg-ember/70 text-ink-950"
+                        : isActive
+                          ? "border-brass/50 bg-brass/50 text-ink-950"
+                          : "border-paper/10 bg-paper/[0.055] text-paper/65"
+                    }`}
+                    style={{ width: `${(key.width ?? 1) * 2.2}rem` }}
+                  >
+                    {key.label}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2 rounded-md border border-paper/10 bg-ink-950/35 p-2 sm:grid-cols-[auto_5rem_minmax(0,1fr)_4.5rem] sm:items-center">
+        <button
+          type="button"
+          onClick={() => setIsPlaying((current) => !current)}
+          className="rounded-md border border-paper/10 bg-paper/[0.04] px-3 py-2 font-mono text-xs text-paper/75 transition hover:border-brass/40 hover:text-paper"
+        >
+          {isPlaying ? "Pause" : "Play"}
+        </button>
+        <select
+          aria-label="Replay speed"
+          value={speed}
+          onChange={(event) => setSpeed(Number(event.target.value))}
+          className="rounded-md border border-paper/10 bg-ink-900 px-2 py-2 font-mono text-xs text-paper/75"
+        >
+          <option value={0.5}>0.5x</option>
+          <option value={1}>1x</option>
+          <option value={2}>2x</option>
+        </select>
+        <input
+          type="range"
+          min={0}
+          max={durationMs}
+          value={currentTimeMs}
+          aria-label="Replay timeline"
+          onChange={(event) => {
+            setCurrentTimeMs(Number(event.target.value));
+            setIsPlaying(false);
+          }}
+          className="w-full accent-brass"
+        />
+        <p className="text-right font-mono text-[0.68rem] text-paper/45">
+          {formatReplayTime(currentTimeMs)} / {formatReplayTime(durationMs)}
+        </p>
+      </div>
+
+      {visibleMistakeEvents.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {visibleMistakeEvents.map((event, index) => (
+            <span key={event.id} className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-[0.68rem] text-paper/60">
+              {index + 1}. Expected: {formatKeyLabel(event.expected)} {"->"} Typed: {formatKeyLabel(event.actual)}
+            </span>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ReplayPathOverlay({ events }: { events: TypingReplayEvent[] }) {
+  const points = events
+    .map((event) => getReplayKeyPoint(event.key))
+    .filter((point): point is { x: number; y: number } => Boolean(point));
+  const path = points.map((point) => `${point.x},${point.y}`).join(" ");
+
+  return (
+    <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full" viewBox="0 0 100 58" preserveAspectRatio="none" aria-hidden="true">
+      {points.length > 1 && <polyline points={path} fill="none" stroke="rgb(var(--chart-danger) / 0.55)" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round" />}
+      {points.map((point, index) => (
+        <circle key={`${point.x}-${point.y}-${index}`} cx={point.x} cy={point.y} r="1.4" fill="rgb(var(--chart-danger) / 0.8)" />
+      ))}
+    </svg>
+  );
+}
+
+function FingerAnalysisPanel({ statistics }: { statistics: TypingStatistics }) {
+  const fingers = [...statistics.fingers]
+    .sort((first, second) => first.accuracy - second.accuracy || second.hitCount - first.hitCount)
+    .slice(0, 4);
+
+  return (
+    <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
+      <h3 className="font-mono text-xs uppercase text-paper/70">Finger Analysis</h3>
+      <div className="mt-3 space-y-2">
+        {fingers.length === 0 ? (
+          <p className="text-sm leading-6 text-paper/50">More key data needed.</p>
+        ) : (
+          fingers.map((finger) => (
+            <div key={finger.finger} className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-xs text-paper">{finger.finger}</p>
+                <p className="mt-0.5 font-mono text-[0.68rem] uppercase text-paper/35">
+                  {finger.hitCount} hits · {formatDelay(finger.averageDelayMs)}
+                </p>
+              </div>
+              <p className="font-mono text-lg text-paper">{formatNumber(finger.accuracy)}%</p>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ReactionTimePanel({ statistics }: { statistics: TypingStatistics }) {
+  return (
+    <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
+      <h3 className="font-mono text-xs uppercase text-paper/70">Reaction Time</h3>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <CompactInsightMetric label="Average Keystroke" value={formatDelay(statistics.reactionTime.averageKeystrokeMs)} />
+        <CompactInsightMetric label="Correct" value={formatDelay(statistics.reactionTime.correctKeystrokeMs)} />
+        <CompactInsightMetric label="Wrong" value={formatDelay(statistics.reactionTime.wrongKeystrokeMs)} />
+      </div>
+    </section>
+  );
+}
+
+function BurstSpeedPanel({ statistics }: { statistics: TypingStatistics }) {
+  return (
+    <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
+      <h3 className="font-mono text-xs uppercase text-paper/70">Burst Speed</h3>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <CompactInsightMetric label="Peak 3s" value={formatNullableWpm(statistics.burstSpeed.peak3SecondWpm)} />
+        <CompactInsightMetric label="Peak 5s" value={formatNullableWpm(statistics.burstSpeed.peak5SecondWpm)} />
+        <CompactInsightMetric label="Peak 10s" value={formatNullableWpm(statistics.burstSpeed.peak10SecondWpm)} />
+      </div>
+    </section>
+  );
+}
+
+function SpeedDropPanel({ statistics }: { statistics: TypingStatistics }) {
+  return (
+    <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
+      <h3 className="font-mono text-xs uppercase text-paper/70">Speed Drop</h3>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <CompactInsightMetric label="Start" value={formatNullableWpm(statistics.speedDrop.startWpm)} />
+        <CompactInsightMetric label="Middle" value={formatNullableWpm(statistics.speedDrop.middleWpm)} />
+        <CompactInsightMetric label="End" value={formatNullableWpm(statistics.speedDrop.endWpm)} />
+      </div>
+      <p className="mt-3 font-mono text-[0.68rem] uppercase text-paper/35">
+        Avg slowdown {statistics.speedDrop.averageSlowdownPercent === null ? "n/a" : `${formatNumber(statistics.speedDrop.averageSlowdownPercent)}%`}
+      </p>
+    </section>
+  );
+}
+
+function CompactInsightMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-paper/[0.035] px-2 py-2">
+      <p className="font-mono text-[0.62rem] uppercase leading-4 text-paper/35">{label}</p>
+      <p className="mt-1 font-mono text-sm text-paper">{value}</p>
+    </div>
+  );
+}
+
 function ConsistencySection() {
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
@@ -984,6 +1484,123 @@ function buildChartPoints(values: number[]) {
     x: values.length > 1 ? left + step * index : (left + right) / 2,
     y: bottom - ((value - min) / range) * (bottom - top)
   }));
+}
+
+function getHeatmapIntensity(keyStatistic: KeyStatistic | undefined, mode: HeatmapMode) {
+  if (!keyStatistic || keyStatistic.hitCount < 20) {
+    return 0.05;
+  }
+
+  if (mode === "accuracy") {
+    return 0.12 + ((100 - keyStatistic.accuracy) / 100) * 0.72;
+  }
+
+  if (mode === "mistakes") {
+    return Math.min(0.88, 0.12 + keyStatistic.mistakeCount * 0.12);
+  }
+
+  if (!keyStatistic.averageDelayMs) {
+    return 0.08;
+  }
+
+  return Math.min(0.88, 0.12 + Math.max(0, keyStatistic.averageDelayMs - 100) / 500);
+}
+
+function getHeatmapColorVariable(mode: HeatmapMode) {
+  return mode === "accuracy" ? "--chart-danger" : mode === "mistakes" ? "--chart-warning" : "--chart-line-secondary";
+}
+
+function getHeatmapModeLabel(mode: HeatmapMode) {
+  return mode === "accuracy" ? "Lower accuracy glows hotter" : mode === "speed" ? "Slower keys glow brighter" : "More mistakes glow brighter";
+}
+
+function formatKeyStatisticTitle(keyStatistic: KeyStatistic | undefined) {
+  if (!keyStatistic || keyStatistic.hitCount < 20) {
+    return "Not enough samples yet";
+  }
+
+  const delay = keyStatistic.averageDelayMs === null ? "delay unavailable" : `${keyStatistic.averageDelayMs}ms avg delay`;
+
+  return `${formatKeyLabel(keyStatistic.key)}: ${keyStatistic.hitCount} hits, ${formatNumber(keyStatistic.accuracy)}% accuracy, ${keyStatistic.mistakeCount} mistakes, ${delay}`;
+}
+
+function formatMistakeLabel(mistake: TypingStatistics["commonMistakes"][number]) {
+  if (mistake.type === "missed") {
+    return `missed ${formatKeyLabel(mistake.expected)}`;
+  }
+
+  if (mistake.type === "extra") {
+    return `extra ${formatKeyLabel(mistake.actual)}`;
+  }
+
+  return `expected ${formatKeyLabel(mistake.expected)}, typed ${formatKeyLabel(mistake.actual)}`;
+}
+
+function formatKeyLabel(key: string) {
+  if (!key) {
+    return "none";
+  }
+
+  if (key === " ") {
+    return "space";
+  }
+
+  if (key === "\n") {
+    return "enter";
+  }
+
+  return key;
+}
+
+function keyboardTestId(key: string) {
+  if (key === " ") {
+    return "space";
+  }
+
+  return key.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "key";
+}
+
+function getActiveReplayEvent(events: TypingReplayEvent[], currentTimeMs: number) {
+  return [...events].reverse().find((event) => event.timeMs <= currentTimeMs) ?? events[0] ?? null;
+}
+
+function getReplayKeyPoint(key: string) {
+  for (let rowIndex = 0; rowIndex < KEYBOARD_ROWS.length; rowIndex += 1) {
+    const row = KEYBOARD_ROWS[rowIndex];
+    const totalWidth = row.reduce((total, layoutKey) => total + (layoutKey.width ?? 1), 0);
+    let cursor = (14 - totalWidth) / 2;
+
+    for (const layoutKey of row) {
+      const width = layoutKey.width ?? 1;
+
+      if (layoutKey.key === key) {
+        return {
+          x: ((cursor + width / 2) / 14) * 100,
+          y: 8 + rowIndex * 10
+        };
+      }
+
+      cursor += width;
+    }
+  }
+
+  return null;
+}
+
+function formatReplayTime(valueMs: number) {
+  const totalSeconds = Math.max(0, Math.round(valueMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatDelay(value: number | null) {
+  return value === null ? "n/a" : `${value} ms`;
+}
+
+function formatNullableWpm(value: number | null) {
+  return value === null ? "n/a" : `${formatNumber(value)}`;
 }
 
 function formatNumber(value: number) {

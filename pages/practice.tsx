@@ -83,6 +83,12 @@ import {
   getSupabaseOwnTypingResults,
   saveSupabaseTypingResult
 } from "@/lib/typingResultStorage";
+import {
+  appendTypingAttemptDetail,
+  buildTypingAttemptDetail,
+  classifyDetailedMistake,
+  getFingerForKey
+} from "@/lib/typingStatistics";
 
 type SessionStatus = "idle" | "running" | "finished";
 
@@ -161,6 +167,8 @@ export default function PracticePage() {
   const keyboardSoundVolumeRef = useRef(0.5);
   const keyboardSoundPlayerRef = useRef(createKeyboardSoundPlayer());
   const pendingSoundKeyTypeRef = useRef<KeyboardSoundKeyType | null>(null);
+  const typedCharacterDelaysRef = useRef<number[]>([]);
+  const lastTypedCharacterAtRef = useRef<number | null>(null);
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
@@ -334,6 +342,8 @@ export default function PracticePage() {
     typedTextRef.current = "";
     attemptTimelineRef.current = [];
     suspiciousAttemptRef.current = false;
+    typedCharacterDelaysRef.current = [];
+    lastTypedCharacterAtRef.current = null;
     setTypedText("");
     setAttemptTimeline([]);
     setIsAttemptSuspicious(false);
@@ -403,6 +413,16 @@ export default function PracticePage() {
           previousResultScope,
           completedTimeline.map(toPreviousPaceTimelinePoint)
         );
+        if (user) {
+          appendTypingAttemptDetail(
+            buildTypingAttemptDetail({
+              userId: user.id,
+              result: finalResult,
+              typedCharacterDelaysMs: typedCharacterDelaysRef.current,
+              timeline: completedTimeline
+            })
+          );
+        }
       }
       setPreviousResult(comparisonPreviousResult);
       setLastResult(finalResult);
@@ -460,6 +480,8 @@ export default function PracticePage() {
     typedTextRef.current = "";
     attemptTimelineRef.current = [];
     suspiciousAttemptRef.current = false;
+    typedCharacterDelaysRef.current = [];
+    lastTypedCharacterAtRef.current = null;
     setTypedText("");
     setAttemptTimeline([]);
     setIsAttemptSuspicious(false);
@@ -707,6 +729,8 @@ export default function PracticePage() {
       statusRef.current = "running";
       startedAtRef.current = now;
       attemptTimelineRef.current = [];
+      typedCharacterDelaysRef.current = [];
+      lastTypedCharacterAtRef.current = null;
       elapsedSecondsRef.current = 0;
       setElapsedSeconds(0);
       setAttemptTimeline([]);
@@ -722,6 +746,7 @@ export default function PracticePage() {
     setTypedText((previous) => {
       const nextValue = enforceBackspacePolicy(previous, value, rules.allowBackspace);
       const didTypingChange = nextValue !== previous;
+      recordTypedCharacterDelays(previous, nextValue);
       if (isSuspiciousInputChange(previous, nextValue, elapsedSecondsRef.current)) {
         markAttemptSuspicious();
       }
@@ -732,6 +757,25 @@ export default function PracticePage() {
       }
       return nextValue;
     });
+  }
+
+  function recordTypedCharacterDelays(previousValue: string, nextValue: string) {
+    if (nextValue.length <= previousValue.length) {
+      typedCharacterDelaysRef.current = typedCharacterDelaysRef.current.slice(0, nextValue.length);
+      lastTypedCharacterAtRef.current = Date.now();
+      return;
+    }
+
+    const now = Date.now();
+    const previousTimestamp = lastTypedCharacterAtRef.current ?? startedAtRef.current ?? now;
+    const addedCharacters = nextValue.length - previousValue.length;
+    const delay = Math.max(0, now - previousTimestamp);
+
+    typedCharacterDelaysRef.current = [
+      ...typedCharacterDelaysRef.current.slice(0, previousValue.length),
+      ...Array.from({ length: addedCharacters }, (_, index) => (index === 0 ? delay : 0))
+    ];
+    lastTypedCharacterAtRef.current = now;
   }
 
   function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
@@ -2316,20 +2360,28 @@ function SessionReview({ result }: { result: TypingResult }) {
 
       {mismatches.length > 0 && (
         <div className="mt-4 overflow-x-auto rounded-md bg-paper/[0.025]">
-          <div className="grid min-w-[34rem] grid-cols-[4rem_1fr_1fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-[0.68rem] uppercase text-paper/35">
+          <div className="grid min-w-[64rem] grid-cols-[4rem_1fr_1fr_1fr_1fr_1fr_1.2fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-[0.68rem] uppercase text-paper/35">
             <span>Pos</span>
             <span>Expected</span>
             <span>Typed</span>
+            <span>Finger</span>
+            <span>Expected finger</span>
+            <span>Typed finger</span>
+            <span>Classification</span>
             <span>Type</span>
           </div>
           {mismatches.map((mismatch, index) => (
             <div
               key={`${mismatch.index}-${index}-${mismatch.expected}-${mismatch.actual}`}
-              className="grid min-w-[34rem] grid-cols-[4rem_1fr_1fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-xs text-paper/70 last:border-b-0"
+              className="grid min-w-[64rem] grid-cols-[4rem_1fr_1fr_1fr_1fr_1fr_1.2fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-xs text-paper/70 last:border-b-0"
             >
               <span className="text-paper/40">{mismatch.index + 1}</span>
               <span>{formatReviewCharacter(mismatch.expected, "Missing")}</span>
               <span>{formatReviewCharacter(mismatch.actual, "Extra")}</span>
+              <span>{formatReviewFinger(getFingerForKey(mismatch.actual) ?? getFingerForKey(mismatch.expected))}</span>
+              <span>{formatReviewFinger(getFingerForKey(mismatch.expected))}</span>
+              <span>{formatReviewFinger(getFingerForKey(mismatch.actual))}</span>
+              <span>{classifyDetailedMistake(mismatch)}</span>
               <span>{formatMistakeType(classifyMistake(mismatch))}</span>
             </div>
           ))}
@@ -2425,6 +2477,10 @@ function formatMistakeType(type: MistakeType) {
   }
 
   return type.charAt(0).toLocaleUpperCase() + type.slice(1);
+}
+
+function formatReviewFinger(finger: string | null) {
+  return finger ?? "N/A";
 }
 
 function formatReviewCharacter(character: string, emptyLabel: string) {
