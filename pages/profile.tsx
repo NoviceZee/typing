@@ -824,11 +824,18 @@ function TrendChart({
       </div>
       <div className="mt-4 h-56 w-full overflow-hidden rounded-md bg-ink-950/70">
         <svg viewBox="0 0 420 220" role="img" aria-label={title} className="h-full w-full">
-          <line x1="38" y1="174" x2="390" y2="174" stroke="rgba(238, 232, 212, 0.18)" />
-          <line x1="38" y1="36" x2="38" y2="174" stroke="rgba(238, 232, 212, 0.18)" />
-          <line x1="38" y1="105" x2="390" y2="105" stroke="rgba(238, 232, 212, 0.08)" strokeDasharray="5 7" />
+          <line x1="38" y1="174" x2="390" y2="174" stroke="rgb(var(--color-chart-grid))" />
+          <line x1="38" y1="36" x2="38" y2="174" stroke="rgb(var(--color-chart-grid))" />
+          <line x1="38" y1="105" x2="390" y2="105" stroke="rgb(var(--color-chart-grid))" strokeDasharray="5 7" />
           {points.length > 1 && (
-            <path d={path} fill="none" stroke="rgb(196, 165, 96)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d={path}
+              fill="none"
+              stroke="rgb(var(--color-accent))"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           )}
           {points.map((point, index) => (
             <circle
@@ -836,7 +843,7 @@ function TrendChart({
               cx={point.x}
               cy={point.y}
               r={index === points.length - 1 ? 4 : 3}
-              fill={index === points.length - 1 ? "rgb(238, 232, 212)" : "rgb(196, 165, 96)"}
+              fill={index === points.length - 1 ? "rgb(var(--color-paper))" : "rgb(var(--color-accent))"}
               stroke="rgb(15, 20, 24)"
               strokeWidth="2"
             />

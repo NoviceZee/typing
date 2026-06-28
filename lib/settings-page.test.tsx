@@ -76,23 +76,23 @@ describe("SettingsPage", () => {
     expect(mockState.routerReplace).not.toHaveBeenCalled();
   });
 
-  it("renders the keyboard sound dropdown and volume slider in a sound section", () => {
+  it("renders keyboard sound choices and volume slider in a sound section", () => {
     render(<SettingsPage />);
 
     expect(screen.getByRole("heading", { name: "Sound" })).toBeTruthy();
-    const keyboardSound = screen.getByLabelText("Keyboard sound");
     const keyboardSoundVolume = screen.getByLabelText("Keyboard sound volume");
 
-    expect(keyboardSound.tagName).toBe("SELECT");
-    expect((keyboardSound as HTMLSelectElement).value).toBe("off");
+    expect(screen.getByRole("group", { name: "Keyboard sound" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Off sound" }).getAttribute("aria-pressed")).toBe("true");
+    expect(keyboardSoundVolume.className).toContain("formaltype-themed-range");
     expect((keyboardSoundVolume as HTMLInputElement).value).toBe("50");
+
     for (const option of SOUND_PACK_OPTIONS) {
-      const renderedOption = screen.getByRole("option", { name: option.label }) as HTMLOptionElement;
-      expect(renderedOption.value).toBe(option.value);
+      expect(screen.getByRole("button", { name: `${option.label} sound` })).toBeTruthy();
     }
-    expect(screen.queryByRole("option", { name: /Recorded 7/i })).toBeNull();
-    expect(screen.queryByRole("option", { name: /Recorded 8/i })).toBeNull();
-    expect(screen.queryByRole("option", { name: "Recorded 9 — iPhone Tap" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Recorded 7 sound/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Recorded 8 sound/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Recorded 9 — iPhone Tap sound" })).toBeNull();
   });
 
   it("renders appearance controls with saved theme values", () => {
@@ -104,19 +104,31 @@ describe("SettingsPage", () => {
         accentColor: "purple",
         typingFont: "ibm-plex-mono",
         typingTextSize: "large",
-        typingWidth: "wide"
+        typingWidth: "wide",
+        caretStyle: "block",
+        caretBlink: "off",
+        typingColorStyle: "soft"
       })
     );
 
     render(<SettingsPage />);
 
-    expect(screen.getByRole("heading", { name: "Appearance" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Theme" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Dracula theme preview/i }).getAttribute("aria-pressed")).toBe("true");
-    expect((screen.getByLabelText("Mode") as HTMLSelectElement).value).toBe("light");
-    expect((screen.getByLabelText("Accent color") as HTMLSelectElement).value).toBe("purple");
-    expect((screen.getByLabelText("Typing font") as HTMLSelectElement).value).toBe("ibm-plex-mono");
-    expect((screen.getByLabelText("Typing text size") as HTMLSelectElement).value).toBe("large");
-    expect((screen.getByLabelText("Typing width") as HTMLSelectElement).value).toBe("wide");
+    expect(screen.getByRole("button", { name: "Light mode" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Purple accent" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "IBM Plex Mono font" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Large text size" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Wide typing width" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("settings-typing-preview-sample").className).toContain(
+      "formaltype-settings-preview-size-large"
+    );
+    expect(screen.getByTestId("settings-typing-preview-frame").className).toContain(
+      "formaltype-settings-preview-width-wide"
+    );
+    expect(screen.getByRole("button", { name: "Block caret style" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Off blink" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Soft typing colors" }).getAttribute("aria-pressed")).toBe("true");
   });
 
   it("persists appearance changes without changing keyboard sound settings", () => {
@@ -124,11 +136,14 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage />);
 
-    fireEvent.change(screen.getByLabelText("Mode"), { target: { value: "system" } });
-    fireEvent.change(screen.getByLabelText("Accent color"), { target: { value: "rose" } });
-    fireEvent.change(screen.getByLabelText("Typing font"), { target: { value: "jetbrains-mono" } });
-    fireEvent.change(screen.getByLabelText("Typing text size"), { target: { value: "small" } });
-    fireEvent.change(screen.getByLabelText("Typing width"), { target: { value: "compact" } });
+    fireEvent.click(screen.getByRole("button", { name: "System mode" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rose accent" }));
+    fireEvent.click(screen.getByRole("button", { name: "JetBrains Mono font" }));
+    fireEvent.click(screen.getByRole("button", { name: "Small text size" }));
+    fireEvent.click(screen.getByRole("button", { name: "Compact typing width" }));
+    fireEvent.click(screen.getByRole("button", { name: "Underline caret style" }));
+    fireEvent.click(screen.getByRole("button", { name: "Off blink" }));
+    fireEvent.click(screen.getByRole("button", { name: "High contrast typing colors" }));
 
     expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe("mechanical");
     expect(JSON.parse(window.localStorage.getItem("formaltype.theme.v1") ?? "{}")).toEqual({
@@ -137,7 +152,10 @@ describe("SettingsPage", () => {
       accentColor: "rose",
       typingFont: "jetbrains-mono",
       typingTextSize: "small",
-      typingWidth: "compact"
+      typingWidth: "compact",
+      caretStyle: "underline",
+      caretBlink: "off",
+      typingColorStyle: "high-contrast"
     });
   });
 
@@ -156,14 +174,45 @@ describe("SettingsPage", () => {
     });
   });
 
-  it("renders compact theme preview cards and real section links", () => {
+  it("renders a sticky live preview and direct setting controls", () => {
     render(<SettingsPage />);
 
-    expect(screen.getByRole("link", { name: "Appearance" }).getAttribute("href")).toBe("#appearance");
-    expect(screen.getByRole("link", { name: "Typing" }).getAttribute("href")).toBe("#typing");
-    expect(screen.getByRole("link", { name: "Sound" }).getAttribute("href")).toBe("#sound");
-    expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("w-[8.75rem]");
-    expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("h-32");
+    expect(screen.getByTestId("settings-live-preview").className).toContain("sticky");
+    expect(screen.queryByRole("link", { name: "Appearance" })).toBeNull();
+    expect(screen.getByRole("group", { name: "Mode" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Caret style" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("w-[8.25rem]");
+    expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("h-9");
+    expect(screen.getByRole("button", { name: /Rose Pine Dawn theme preview/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Solarized Light theme preview/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Tangerine theme preview/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Matcha theme preview/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Milkshake theme preview/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Paper theme preview/i })).toBeTruthy();
+    expect(screen.getAllByTestId("theme-preview-card")).toHaveLength(12);
+    expect(screen.getAllByTestId("theme-preview-accent-dot")).toHaveLength(12);
+  });
+
+  it("updates the live typing preview size and width from button choices", () => {
+    render(<SettingsPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Small text size" }));
+    fireEvent.click(screen.getByRole("button", { name: "Compact typing width" }));
+    expect(screen.getByTestId("settings-typing-preview-sample").className).toContain(
+      "formaltype-settings-preview-size-small"
+    );
+    expect(screen.getByTestId("settings-typing-preview-frame").className).toContain(
+      "formaltype-settings-preview-width-compact"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Large text size" }));
+    fireEvent.click(screen.getByRole("button", { name: "Wide typing width" }));
+    expect(screen.getByTestId("settings-typing-preview-sample").className).toContain(
+      "formaltype-settings-preview-size-large"
+    );
+    expect(screen.getByTestId("settings-typing-preview-frame").className).toContain(
+      "formaltype-settings-preview-width-wide"
+    );
   });
 
   it.each(SOUND_PACK_OPTIONS.filter((option) => option.value !== "off"))(
@@ -173,11 +222,11 @@ describe("SettingsPage", () => {
 
       render(<SettingsPage />);
 
-      const keyboardSound = screen.getByLabelText("Keyboard sound");
-      fireEvent.change(keyboardSound, { target: { value } });
+      const option = SOUND_PACK_OPTIONS.find((soundOption) => soundOption.value === value);
+      fireEvent.click(screen.getByRole("button", { name: `${option?.label} sound` }));
 
       expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe(value);
-      expect((keyboardSound as HTMLSelectElement).value).toBe(value);
+      expect(screen.getByRole("button", { name: `${option?.label} sound` }).getAttribute("aria-pressed")).toBe("true");
       await waitFor(() => {
         expect(audioMock.oscillators).toHaveLength(1);
       });
@@ -190,11 +239,10 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage />);
 
-    const keyboardSound = screen.getByLabelText("Keyboard sound");
-    fireEvent.change(keyboardSound, { target: { value: "off" } });
+    fireEvent.click(screen.getByRole("button", { name: "Off sound" }));
 
     expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe("off");
-    expect((keyboardSound as HTMLSelectElement).value).toBe("off");
+    expect(screen.getByRole("button", { name: "Off sound" }).getAttribute("aria-pressed")).toBe("true");
     expect(audioMock.oscillators).toHaveLength(0);
   });
 

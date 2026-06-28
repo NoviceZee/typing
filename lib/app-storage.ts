@@ -123,7 +123,22 @@ export type AccentColor = "blue" | "purple" | "emerald" | "rose" | "amber";
 export type TypingFont = "system" | "inter" | "jetbrains-mono" | "ibm-plex-mono";
 export type TypingTextSize = "small" | "medium" | "large";
 export type TypingWidth = "compact" | "comfortable" | "wide";
-export type ThemePreset = "default-dark" | "light" | "dracula" | "nord" | "catppuccin-mocha" | "tokyo-night";
+export type ThemePreset =
+  | "default-dark"
+  | "light"
+  | "dracula"
+  | "nord"
+  | "catppuccin-mocha"
+  | "tokyo-night"
+  | "rose-pine-dawn"
+  | "solarized-light"
+  | "tangerine"
+  | "matcha"
+  | "milkshake"
+  | "paper";
+export type CaretStyle = "bar" | "block" | "underline";
+export type CaretBlink = "on" | "off";
+export type TypingColorStyle = "theme-default" | "high-contrast" | "soft";
 
 export type ThemeSettings = {
   themePreset: ThemePreset;
@@ -132,6 +147,9 @@ export type ThemeSettings = {
   typingFont: TypingFont;
   typingTextSize: TypingTextSize;
   typingWidth: TypingWidth;
+  caretStyle: CaretStyle;
+  caretBlink: CaretBlink;
+  typingColorStyle: TypingColorStyle;
 };
 
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
@@ -140,7 +158,10 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   accentColor: "amber",
   typingFont: "system",
   typingTextSize: "medium",
-  typingWidth: "comfortable"
+  typingWidth: "comfortable",
+  caretStyle: "bar",
+  caretBlink: "on",
+  typingColorStyle: "theme-default"
 };
 
 export type ThemePresetOption = {
@@ -148,7 +169,13 @@ export type ThemePresetOption = {
   label: string;
   mode: ThemeMode;
   accentColor: AccentColor;
-  swatches: [string, string, string];
+  preview: {
+    background: string;
+    surface: string;
+    text: string;
+    accent: string;
+    muted: string;
+  };
 };
 
 export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
@@ -157,42 +184,156 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
     label: "Default Dark",
     mode: "dark",
     accentColor: "amber",
-    swatches: ["#070807", "#191d18", "#caa45d"]
+    preview: {
+      background: "#070807",
+      surface: "#191d18",
+      text: "#ece7d7",
+      accent: "#caa45d",
+      muted: "#7f7a6a"
+    }
   },
   {
     value: "light",
     label: "Light",
     mode: "light",
     accentColor: "blue",
-    swatches: ["#f8f6ef", "#e5dfd2", "#5b9dff"]
+    preview: {
+      background: "#f8f6ef",
+      surface: "#fffaf0",
+      text: "#212520",
+      accent: "#5b9dff",
+      muted: "#9b927f"
+    }
   },
   {
     value: "dracula",
     label: "Dracula",
     mode: "dark",
     accentColor: "purple",
-    swatches: ["#191622", "#282436", "#bd93f9"]
+    preview: {
+      background: "#191622",
+      surface: "#282436",
+      text: "#f8f8f2",
+      accent: "#bd93f9",
+      muted: "#8a839d"
+    }
   },
   {
     value: "nord",
     label: "Nord",
     mode: "dark",
     accentColor: "blue",
-    swatches: ["#111827", "#243142", "#88c0d0"]
+    preview: {
+      background: "#111827",
+      surface: "#243142",
+      text: "#eceff4",
+      accent: "#88c0d0",
+      muted: "#8f9bad"
+    }
   },
   {
     value: "catppuccin-mocha",
     label: "Catppuccin Mocha",
     mode: "dark",
     accentColor: "rose",
-    swatches: ["#11111b", "#1e1e2e", "#f5c2e7"]
+    preview: {
+      background: "#11111b",
+      surface: "#1e1e2e",
+      text: "#cdd6f4",
+      accent: "#f5c2e7",
+      muted: "#7f849c"
+    }
   },
   {
     value: "tokyo-night",
     label: "Tokyo Night",
     mode: "dark",
     accentColor: "blue",
-    swatches: ["#0f172a", "#1a1b26", "#7aa2f7"]
+    preview: {
+      background: "#0f172a",
+      surface: "#1a1b26",
+      text: "#c0caf5",
+      accent: "#7aa2f7",
+      muted: "#6f7aa6"
+    }
+  },
+  {
+    value: "rose-pine-dawn",
+    label: "Rose Pine Dawn",
+    mode: "light",
+    accentColor: "rose",
+    preview: {
+      background: "#faf4ed",
+      surface: "#fffaf3",
+      text: "#575279",
+      accent: "#d7827e",
+      muted: "#9893a5"
+    }
+  },
+  {
+    value: "solarized-light",
+    label: "Solarized Light",
+    mode: "light",
+    accentColor: "blue",
+    preview: {
+      background: "#fdf6e3",
+      surface: "#eee8d5",
+      text: "#586e75",
+      accent: "#268bd2",
+      muted: "#93a1a1"
+    }
+  },
+  {
+    value: "tangerine",
+    label: "Tangerine",
+    mode: "light",
+    accentColor: "amber",
+    preview: {
+      background: "#fff3e6",
+      surface: "#ffe3c2",
+      text: "#4a2a11",
+      accent: "#f97316",
+      muted: "#a15c24"
+    }
+  },
+  {
+    value: "matcha",
+    label: "Matcha",
+    mode: "light",
+    accentColor: "emerald",
+    preview: {
+      background: "#f2f7e8",
+      surface: "#dcecc8",
+      text: "#273c26",
+      accent: "#5f9f63",
+      muted: "#71856a"
+    }
+  },
+  {
+    value: "milkshake",
+    label: "Milkshake",
+    mode: "light",
+    accentColor: "rose",
+    preview: {
+      background: "#fff0f7",
+      surface: "#ffe1ee",
+      text: "#4a2840",
+      accent: "#ec4899",
+      muted: "#a46a8a"
+    }
+  },
+  {
+    value: "paper",
+    label: "Paper",
+    mode: "light",
+    accentColor: "amber",
+    preview: {
+      background: "#fbf7ec",
+      surface: "#eee3cc",
+      text: "#2f2a22",
+      accent: "#b7791f",
+      muted: "#8d806d"
+    }
   }
 ];
 
@@ -227,6 +368,23 @@ export const TYPING_WIDTH_OPTIONS: Array<{ value: TypingWidth; label: string }> 
   { value: "compact", label: "Compact" },
   { value: "comfortable", label: "Comfortable" },
   { value: "wide", label: "Wide" }
+];
+
+export const CARET_STYLE_OPTIONS: Array<{ value: CaretStyle; label: string }> = [
+  { value: "bar", label: "Bar" },
+  { value: "block", label: "Block" },
+  { value: "underline", label: "Underline" }
+];
+
+export const CARET_BLINK_OPTIONS: Array<{ value: CaretBlink; label: string }> = [
+  { value: "on", label: "On" },
+  { value: "off", label: "Off" }
+];
+
+export const TYPING_COLOR_STYLE_OPTIONS: Array<{ value: TypingColorStyle; label: string }> = [
+  { value: "theme-default", label: "Theme default" },
+  { value: "high-contrast", label: "High contrast" },
+  { value: "soft", label: "Soft" }
 ];
 
 export function readStoredRules(): TypingRules {
@@ -419,10 +577,10 @@ export function writeActivePassageId(id: string) {
 
 export function readPassageSelectionMode(): PassageSelectionMode {
   if (typeof window === "undefined") {
-    return "specific";
+    return "random";
   }
 
-  return window.localStorage.getItem(PASSAGE_SELECTION_MODE_STORAGE_KEY) === "random" ? "random" : "specific";
+  return window.localStorage.getItem(PASSAGE_SELECTION_MODE_STORAGE_KEY) === "specific" ? "specific" : "random";
 }
 
 export function writePassageSelectionMode(mode: PassageSelectionMode) {
@@ -790,7 +948,12 @@ function normaliseThemeSettings(settings: unknown): ThemeSettings {
     typingTextSize: isTypingTextSize(settings.typingTextSize)
       ? settings.typingTextSize
       : DEFAULT_THEME_SETTINGS.typingTextSize,
-    typingWidth: isTypingWidth(settings.typingWidth) ? settings.typingWidth : DEFAULT_THEME_SETTINGS.typingWidth
+    typingWidth: isTypingWidth(settings.typingWidth) ? settings.typingWidth : DEFAULT_THEME_SETTINGS.typingWidth,
+    caretStyle: isCaretStyle(settings.caretStyle) ? settings.caretStyle : DEFAULT_THEME_SETTINGS.caretStyle,
+    caretBlink: isCaretBlink(settings.caretBlink) ? settings.caretBlink : DEFAULT_THEME_SETTINGS.caretBlink,
+    typingColorStyle: isTypingColorStyle(settings.typingColorStyle)
+      ? settings.typingColorStyle
+      : DEFAULT_THEME_SETTINGS.typingColorStyle
   };
 }
 
@@ -801,7 +964,13 @@ function isThemePreset(value: unknown): value is ThemePreset {
     value === "dracula" ||
     value === "nord" ||
     value === "catppuccin-mocha" ||
-    value === "tokyo-night"
+    value === "tokyo-night" ||
+    value === "rose-pine-dawn" ||
+    value === "solarized-light" ||
+    value === "tangerine" ||
+    value === "matcha" ||
+    value === "milkshake" ||
+    value === "paper"
   );
 }
 
@@ -823,6 +992,18 @@ function isTypingTextSize(value: unknown): value is TypingTextSize {
 
 function isTypingWidth(value: unknown): value is TypingWidth {
   return value === "compact" || value === "comfortable" || value === "wide";
+}
+
+function isCaretStyle(value: unknown): value is CaretStyle {
+  return value === "bar" || value === "block" || value === "underline";
+}
+
+function isCaretBlink(value: unknown): value is CaretBlink {
+  return value === "on" || value === "off";
+}
+
+function isTypingColorStyle(value: unknown): value is TypingColorStyle {
+  return value === "theme-default" || value === "high-contrast" || value === "soft";
 }
 
 function normaliseImportedLibraryPassage(item: unknown): LibraryPassage | null {

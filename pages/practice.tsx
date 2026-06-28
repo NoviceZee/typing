@@ -156,19 +156,11 @@ export default function PracticePage() {
   const previousResultScope: PreviousResultScope = isTimedMode ? durationSeconds : practiceMode.id;
   const passageTextMode: StoredPassageTextMode = isTimedMode ? "timed" : "single";
   const clockSeconds = isTimedMode ? remainingSeconds : elapsedSeconds;
-  const practiceProgressPercent = isTimedMode
-    ? Math.min(100, Math.max(0, ((durationSeconds - remainingSeconds) / durationSeconds) * 100))
-    : Math.min(100, Math.max(0, (elapsedSeconds / 60) * 100));
   const sourceText = passage?.text.trim() ?? "";
   const targetText = useMemo(() => normalizeTargetForRules(sourceText, rules), [sourceText, rules]);
   const comparison = useMemo(
     () => validateTypedText({ targetText: sourceText, typedText, rules }),
     [sourceText, typedText, rules]
-  );
-  const categoryOptions = useMemo(() => getCategoryOptions(availableLibrary), [availableLibrary]);
-  const selectablePassages = useMemo(
-    () => filterLibraryByCategory(availableLibrary, selectedCategory),
-    [availableLibrary, selectedCategory]
   );
   const previousComparisonMatches = Boolean(
     passage?.id &&
@@ -900,41 +892,30 @@ export default function PracticePage() {
           )}
           aria-hidden={isRunning}
         >
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1.5 md:grid-cols-[minmax(8rem,0.75fr)_minmax(14rem,1.3fr)_minmax(16rem,0.95fr)] md:items-center">
-            <label className="min-w-0">
-              <span className="sr-only">Category</span>
-              <select
-                value={selectedCategory}
-                onChange={(event) => handleCategorySelection(event.target.value as CategoryFilter)}
-                disabled={isRunning || isPassageLoading}
-                className="h-9 w-full min-w-0 rounded-full border-0 bg-paper/[0.035] px-4 font-mono text-xs text-paper/70 outline-none transition hover:bg-paper/[0.055] focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/30 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {[ALL_FILTER, ...categoryOptions].map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="min-w-0">
-              <span className="sr-only">Passage</span>
-              <select
-                value={selectedPassageId}
-                onChange={(event) => handlePassageSelection(event.target.value)}
-                disabled={isRunning || isPassageLoading || selectablePassages.length === 0}
-                className="h-9 w-full min-w-0 rounded-full border-0 bg-paper/[0.035] px-4 font-mono text-xs text-paper/70 outline-none transition hover:bg-paper/[0.055] focus:bg-paper/[0.07] focus:ring-1 focus:ring-brass/30 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value={RANDOM_PASSAGE_ID}>
-                  {selectablePassages.length > 0 ? "Random from selected category" : "Default generated passage"}
-                </option>
-                {selectablePassages.map((libraryPassage) => (
-                  <option key={libraryPassage.id} value={libraryPassage.id}>
-                    {libraryPassage.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+            <div className="min-w-0">
+              <p className="truncate font-mono text-xs text-paper/55" data-testid="practice-passage-metadata">
+                {passage
+                  ? `${passage.title} · ${passage.category} · ${passage.style} · ${practiceMode.label}`
+                  : "Resolving passage..."}
+              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={loadRandomPassage}
+                  disabled={isRunning || isPassageLoading}
+                  className="rounded-full border border-paper/10 bg-paper/[0.035] px-3 py-1.5 font-mono text-xs text-paper/70 transition hover:border-brass/40 hover:bg-paper/[0.055] hover:text-paper disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Random passage
+                </button>
+                <Link
+                  href="/passages"
+                  className="rounded-full border border-paper/10 bg-transparent px-3 py-1.5 font-mono text-xs text-paper/50 transition hover:border-brass/35 hover:text-paper/80"
+                >
+                  Choose in Passages
+                </Link>
+              </div>
+            </div>
 
             <div className="grid min-w-0 grid-cols-4 rounded-full bg-paper/[0.035] p-1">
               <span className="sr-only">Practice mode</span>
@@ -993,12 +974,6 @@ export default function PracticePage() {
               : "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
           )}
         >
-          <div className="h-1 overflow-hidden rounded-full bg-paper/[0.06]">
-            <div
-              className="h-full rounded-full bg-brass transition-all duration-300"
-              style={{ width: `${practiceProgressPercent}%` }}
-            />
-          </div>
           {isRunning && (
             <div className="sticky top-0 z-10 flex shrink-0 justify-end bg-ink-950/80 px-4 py-3 font-mono text-[1.45rem] leading-none text-paper/45 backdrop-blur-sm md:text-[2rem]">
               {formatTime(clockSeconds)}
@@ -1011,7 +986,7 @@ export default function PracticePage() {
               "typing-scrollbar min-h-0 transition",
               isRunning
                 ? "h-full flex-1 overflow-y-auto overscroll-contain px-1 py-3 md:px-6 md:py-5"
-                : "formaltype-typing-surface h-[340px] overflow-y-auto overscroll-contain rounded-md px-4 py-6 md:h-[420px] md:px-8 md:py-8"
+                : "h-[340px] overflow-y-auto overscroll-contain rounded-md px-4 py-6 md:h-[420px] md:px-8 md:py-8"
             )}
           >
             <div
@@ -1025,6 +1000,7 @@ export default function PracticePage() {
                   "whitespace-pre-wrap break-words text-paper/45",
                   `formaltype-typing-font-${themeSettings.typingFont}`,
                   `formaltype-typing-size-${themeSettings.typingTextSize}`,
+                  `formaltype-typing-colors-${themeSettings.typingColorStyle}`,
                   isRunning && "text-paper/50"
                 )}
               >
@@ -1045,7 +1021,7 @@ export default function PracticePage() {
                               aria-label={character.status === "wrong" ? "Missed line break" : "Line break"}
                               className={clsx(
                                 "inline-block min-w-[0.7em]",
-                                characterClass(character.status, rules.showMistakesImmediately || isFinished),
+                                characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings),
                                 character.status === "untyped" && "text-paper/20"
                               )}
                             >
@@ -1061,7 +1037,7 @@ export default function PracticePage() {
                           key={`${character.index}-${index}-${character.expected}-${character.actual}`}
                           ref={setCharacterRef(index, isCurrent)}
                           data-index={index}
-                          className={clsx(characterClass(character.status, rules.showMistakesImmediately || isFinished))}
+                          className={clsx(characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings))}
                         >
                           {character.actual || character.expected}
                         </span>
@@ -1639,6 +1615,7 @@ function AttemptWpmGraph({
           role="img"
           aria-label="WPM over time"
           className="h-[260px] w-full overflow-visible text-paper/45"
+          style={{ color: "rgb(var(--color-chart-grid))" }}
           preserveAspectRatio="none"
           onMouseLeave={() => setHoveredPoint(null)}
         >
@@ -1655,7 +1632,7 @@ function AttemptWpmGraph({
                   strokeDasharray="4 6"
                   strokeOpacity="0.16"
                 />
-                <text x={graph.left - 12} y={y + 4} textAnchor="end" className="fill-paper/45 font-mono text-[12px]">
+                <text x={graph.left - 12} y={y + 4} textAnchor="end" className="formaltype-chart-muted-fill font-mono text-[12px]">
                   {tick}
                 </text>
               </g>
@@ -1678,33 +1655,33 @@ function AttemptWpmGraph({
               x={getGraphX(tick, graph)}
               y={graph.bottom + 24}
               textAnchor="middle"
-              className="fill-paper/45 font-mono text-[12px]"
+              className="formaltype-chart-muted-fill font-mono text-[12px]"
             >
               {tick}
             </text>
           ))}
-          <text x={graph.left - 30} y={graph.top - 14} className="fill-paper/55 font-mono text-[12px] uppercase">
+          <text x={graph.left - 30} y={graph.top - 14} className="formaltype-chart-muted-fill font-mono text-[12px] uppercase">
             WPM
           </text>
           <text
             x={(graph.left + graph.right) / 2}
             y={graph.height - 8}
             textAnchor="middle"
-            className="fill-paper/55 font-mono text-[12px] uppercase"
+            className="formaltype-chart-muted-fill font-mono text-[12px] uppercase"
           >
             Time (seconds)
           </text>
           <path
             d={graph.path}
             fill="none"
-            stroke="rgb(85 239 160)"
+            stroke="rgb(var(--color-chart-line))"
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth="3"
           />
           {graph.positionedPoints.map((point) => (
             <g key={`${point.timeSeconds}-${point.x}`}>
-              <circle cx={point.x} cy={point.y} r="3.5" fill="rgb(85 239 160)" />
+              <circle cx={point.x} cy={point.y} r="3.5" fill="rgb(var(--color-chart-line))" />
               <circle
                 data-testid={`attempt-graph-point-${point.timeSeconds}`}
                 cx={point.x}
@@ -1719,11 +1696,11 @@ function AttemptWpmGraph({
           ))}
           {hoveredPoint && (
             <g transform={`translate(${getTooltipX(hoveredPoint.x, graph)} ${Math.max(graph.top + 12, hoveredPoint.y - 84)})`}>
-              <rect width="126" height="70" rx="6" className="fill-ink-900 stroke-paper/15" />
+              <rect width="126" height="70" rx="6" className="formaltype-chart-tooltip" />
               <text x="12" y="20" className="fill-paper font-mono text-[12px]">
                 {hoveredPoint.timeSeconds}s
               </text>
-              <text x="12" y="42" className="fill-mint font-mono text-[12px]">
+              <text x="12" y="42" className="formaltype-chart-line-fill font-mono text-[12px]">
                 WPM {hoveredPoint.wpm.toFixed(1)}
               </text>
               {typeof hoveredPoint.accuracy === "number" && (
@@ -2179,17 +2156,23 @@ function ReviewStat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function characterClass(status: string, revealMistakes: boolean) {
+function characterClass(status: string, revealMistakes: boolean, themeSettings?: ThemeSettings) {
   if (status === "correct") {
-    return "text-mint";
+    return "formaltype-typed-correct";
   }
   if (status === "wrong" || status === "extra") {
-    return revealMistakes ? "rounded-sm bg-ember/25 text-ember underline decoration-ember/60" : "text-paper";
+    return revealMistakes ? "formaltype-typed-wrong" : "formaltype-typed-hidden-mistake";
   }
   if (status === "current") {
-    return "rounded-sm bg-brass px-0.5 text-ink-950";
+    return clsx(
+      "formaltype-typed-current",
+      `formaltype-caret-${themeSettings?.caretStyle ?? DEFAULT_THEME_SETTINGS.caretStyle}`,
+      (themeSettings?.caretBlink ?? DEFAULT_THEME_SETTINGS.caretBlink) === "off"
+        ? "formaltype-caret-static"
+        : "formaltype-caret-animated"
+    );
   }
-  return "text-paper/35";
+  return "formaltype-typed-pending";
 }
 
 function shouldShowLineBreakMarker(status: string, revealMistakes: boolean) {

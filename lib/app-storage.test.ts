@@ -212,32 +212,41 @@ describe("theme settings storage", () => {
     storage.set("formaltype.keyboard_sound.v1", "mechanical");
 
     writeThemeSettings({
-      themePreset: "nord",
+      themePreset: "rose-pine-dawn",
       mode: "light",
       accentColor: "emerald",
       typingFont: "jetbrains-mono",
       typingTextSize: "large",
-      typingWidth: "wide"
+      typingWidth: "wide",
+      caretStyle: "underline",
+      caretBlink: "off",
+      typingColorStyle: "high-contrast"
     });
 
     expect(storage.get(THEME_SETTINGS_STORAGE_KEY)).toBe(
       JSON.stringify({
-        themePreset: "nord",
+        themePreset: "rose-pine-dawn",
         mode: "light",
         accentColor: "emerald",
         typingFont: "jetbrains-mono",
         typingTextSize: "large",
-        typingWidth: "wide"
+        typingWidth: "wide",
+        caretStyle: "underline",
+        caretBlink: "off",
+        typingColorStyle: "high-contrast"
       })
     );
     expect(storage.get("formaltype.keyboard_sound.v1")).toBe("mechanical");
     expect(readThemeSettings()).toEqual({
-      themePreset: "nord",
+      themePreset: "rose-pine-dawn",
       mode: "light",
       accentColor: "emerald",
       typingFont: "jetbrains-mono",
       typingTextSize: "large",
-      typingWidth: "wide"
+      typingWidth: "wide",
+      caretStyle: "underline",
+      caretBlink: "off",
+      typingColorStyle: "high-contrast"
     });
   });
 
@@ -250,7 +259,10 @@ describe("theme settings storage", () => {
         accentColor: "rose",
         typingFont: "papyrus",
         typingTextSize: "tiny",
-        typingWidth: "compact"
+        typingWidth: "compact",
+        caretStyle: "beam",
+        caretBlink: "sometimes",
+        typingColorStyle: "neon"
       })
     );
 

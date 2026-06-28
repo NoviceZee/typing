@@ -6,7 +6,12 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PracticePage from "../pages/practice";
 import type { LibraryPassage } from "@/lib/app-storage";
-import { PASSAGE_LIBRARY_STORAGE_KEY, readPreviousResult } from "@/lib/app-storage";
+import {
+  ACTIVE_PASSAGE_ID_STORAGE_KEY,
+  PASSAGE_LIBRARY_STORAGE_KEY,
+  PASSAGE_SELECTION_MODE_STORAGE_KEY,
+  readPreviousResult
+} from "@/lib/app-storage";
 import { getSupabasePassageLibrary } from "@/lib/passageStorage";
 import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 
@@ -116,6 +121,28 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text.");
     });
     expect(screen.queryByTestId("passage-loading-placeholder")).toBeNull();
+  });
+
+  it("shows compact passage actions and metadata without category or passage dropdowns", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text.");
+    });
+
+    expect(screen.getByTestId("practice-passage-metadata").textContent).toContain("Local active · Business email · Formal · 1m");
+    expect(screen.getByRole("button", { name: "Random passage" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Choose in Passages" }).getAttribute("href")).toBe("/passages");
+    expect(screen.getByRole("button", { name: "1m" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "5m" })).toBeTruthy();
+    expect(screen.queryByLabelText("Category")).toBeNull();
+    expect(screen.queryByLabelText("Passage")).toBeNull();
   });
 
   it("shows the just-finished previous pace after restarting the same passage", async () => {
@@ -319,6 +346,8 @@ describe("PracticePage passage loading", () => {
         makePassage("other", "Other active", "Other passage body text for typing.")
       ])
     );
+    window.localStorage.setItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, "specific");
+    window.localStorage.setItem(ACTIVE_PASSAGE_ID_STORAGE_KEY, "local");
     mockedGetSupabasePassageLibrary.mockResolvedValue([]);
 
     const { container } = render(<PracticePage />);
@@ -350,9 +379,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyUp(window, { key: "Tab" });
     vi.useRealTimers();
 
-    fireEvent.change(screen.getByLabelText("Passage"), {
-      target: { value: "other" }
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Random passage" }));
 
     await waitFor(() => {
       expect(container.textContent).toContain("Other passage body text for typing");
@@ -477,6 +504,8 @@ describe("PracticePage passage loading", () => {
         makePassage("other", "Other active", "Other passage body text for typing.")
       ])
     );
+    window.localStorage.setItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, "specific");
+    window.localStorage.setItem(ACTIVE_PASSAGE_ID_STORAGE_KEY, "local");
     mockedGetSupabasePassageLibrary.mockResolvedValue([]);
 
     const { container } = render(<PracticePage />);
@@ -500,9 +529,7 @@ describe("PracticePage passage loading", () => {
       expect(screen.getByText(`Previous pace: ${localResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText("Passage"), {
-      target: { value: "other" }
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Random passage" }));
 
     await waitFor(() => {
       expect(container.textContent).toContain("Other passage body text for typing");
@@ -540,7 +567,10 @@ describe("PracticePage passage loading", () => {
         accentColor: "amber",
         typingFont: "ibm-plex-mono",
         typingTextSize: "large",
-        typingWidth: "compact"
+        typingWidth: "compact",
+        caretStyle: "underline",
+        caretBlink: "off",
+        typingColorStyle: "high-contrast"
       })
     );
     window.localStorage.setItem(
@@ -559,11 +589,42 @@ describe("PracticePage passage loading", () => {
     const characterLayer = screen.getByTestId("typing-character-layer");
 
     expect(typingTextContainer.className).toContain("formaltype-typing-width-compact");
+    expect(container.querySelector(".formaltype-typing-surface")).toBeNull();
+    expect(container.querySelector('[data-testid="practice-visual-progress"]')).toBeNull();
     expect(characterLayer.className).toContain("formaltype-typing-font-ibm-plex-mono");
     expect(characterLayer.className).toContain("formaltype-typing-size-large");
+    expect(characterLayer.className).toContain("formaltype-typing-colors-high-contrast");
+    const currentCharacter = characterLayer.querySelector('[data-index="0"]');
+    expect(currentCharacter?.className).toContain("formaltype-caret-underline");
+    expect(currentCharacter?.className).toContain("formaltype-caret-static");
+    expect(currentCharacter?.className).not.toContain("px-0.5");
+    expect(currentCharacter?.className).not.toContain("rounded-sm");
     expect(container.querySelector(".formaltype-typing-font-ibm-plex-mono")?.getAttribute("data-testid")).toBe(
       "typing-character-layer"
     );
+  });
+
+  it("keeps wrong-character styling dimension-stable", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "x" } });
+
+    const wrongCharacter = screen.getByTestId("typing-character-layer").querySelector('[data-index="0"]');
+    expect(wrongCharacter?.className).toContain("formaltype-typed-wrong");
+    expect(wrongCharacter?.className).not.toContain("px-");
+    expect(wrongCharacter?.className).not.toContain("underline");
+    expect(wrongCharacter?.className).not.toContain("border");
   });
 
   it("plays keyboard sound only for valid typing changes during a running session", async () => {
