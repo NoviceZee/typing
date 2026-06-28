@@ -939,17 +939,6 @@ export default function PracticePage() {
           </div>
         </section>
 
-        {isRunning ? (
-          null
-        ) : status === "idle" && passage ? (
-          <div className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden px-1 font-mono text-xs text-paper/40 transition">
-            <div className="w-full min-w-0 truncate sm:w-auto">
-              <span className="font-semibold text-paper/70">{passage.title ?? "Untitled passage"}</span> ·{" "}
-              {passage.category} · {passage.style} · {practiceMode.label}
-            </div>
-          </div>
-        ) : null}
-
         {previousResult && status !== "finished" && (
           <div
             data-testid="previous-pace-display"
@@ -1600,11 +1589,11 @@ function AttemptWpmGraph({
         <p className="font-mono text-sm uppercase text-brass">WPM Over Time</p>
         <div className="hidden gap-5 font-mono text-xs uppercase text-paper/45 sm:flex">
           <span className="inline-flex items-center gap-2">
-            <span className="h-px w-8 bg-mint" />
+            <span className="h-px w-8" style={{ backgroundColor: "rgb(var(--chart-line))" }} />
             WPM
           </span>
           <span className="inline-flex items-center gap-2">
-            <span className="h-px w-8 border-t border-dashed border-paper/40" />
+            <span className="h-px w-8 border-t border-dashed" style={{ borderColor: "rgb(var(--chart-line-secondary))" }} />
             Avg {result.wpm.toFixed(1)}
           </span>
         </div>
@@ -1614,8 +1603,7 @@ function AttemptWpmGraph({
           viewBox={`0 0 ${graph.width} ${graph.height}`}
           role="img"
           aria-label="WPM over time"
-          className="h-[260px] w-full overflow-visible text-paper/45"
-          style={{ color: "rgb(var(--color-chart-grid))" }}
+          className="h-[260px] w-full overflow-visible"
           preserveAspectRatio="none"
           onMouseLeave={() => setHoveredPoint(null)}
         >
@@ -1624,13 +1612,13 @@ function AttemptWpmGraph({
             return (
               <g key={tick}>
                 <line
+                  data-testid="attempt-chart-grid"
                   x1={graph.left}
                   x2={graph.right}
                   y1={y}
                   y2={y}
-                  stroke="currentColor"
+                  stroke="rgb(var(--chart-grid))"
                   strokeDasharray="4 6"
-                  strokeOpacity="0.16"
                 />
                 <text x={graph.left - 12} y={y + 4} textAnchor="end" className="formaltype-chart-muted-fill font-mono text-[12px]">
                   {tick}
@@ -1638,16 +1626,30 @@ function AttemptWpmGraph({
               </g>
             );
           })}
-          <line x1={graph.left} x2={graph.left} y1={graph.top} y2={graph.bottom} stroke="currentColor" strokeOpacity="0.55" />
-          <line x1={graph.left} x2={graph.right} y1={graph.bottom} y2={graph.bottom} stroke="currentColor" strokeOpacity="0.55" />
           <line
+            data-testid="attempt-chart-axis-y"
+            x1={graph.left}
+            x2={graph.left}
+            y1={graph.top}
+            y2={graph.bottom}
+            stroke="rgb(var(--chart-axis))"
+          />
+          <line
+            data-testid="attempt-chart-axis-x"
+            x1={graph.left}
+            x2={graph.right}
+            y1={graph.bottom}
+            y2={graph.bottom}
+            stroke="rgb(var(--chart-axis))"
+          />
+          <line
+            data-testid="attempt-chart-average-line"
             x1={graph.left}
             x2={graph.right}
             y1={getGraphY(result.wpm, graph)}
             y2={getGraphY(result.wpm, graph)}
-            stroke="currentColor"
+            stroke="rgb(var(--chart-line-secondary))"
             strokeDasharray="8 8"
-            strokeOpacity="0.45"
           />
           {graph.xTicks.map((tick) => (
             <text
@@ -1672,16 +1674,17 @@ function AttemptWpmGraph({
             Time (seconds)
           </text>
           <path
+            data-testid="attempt-chart-line"
             d={graph.path}
             fill="none"
-            stroke="rgb(var(--color-chart-line))"
+            stroke="rgb(var(--chart-line))"
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth="3"
           />
           {graph.positionedPoints.map((point) => (
             <g key={`${point.timeSeconds}-${point.x}`}>
-              <circle cx={point.x} cy={point.y} r="3.5" fill="rgb(var(--color-chart-line))" />
+              <circle cx={point.x} cy={point.y} r="3.5" fill="rgb(var(--chart-line))" />
               <circle
                 data-testid={`attempt-graph-point-${point.timeSeconds}`}
                 cx={point.x}
@@ -1697,14 +1700,14 @@ function AttemptWpmGraph({
           {hoveredPoint && (
             <g transform={`translate(${getTooltipX(hoveredPoint.x, graph)} ${Math.max(graph.top + 12, hoveredPoint.y - 84)})`}>
               <rect width="126" height="70" rx="6" className="formaltype-chart-tooltip" />
-              <text x="12" y="20" className="fill-paper font-mono text-[12px]">
+              <text x="12" y="20" className="formaltype-chart-tooltip-text-fill font-mono text-[12px]">
                 {hoveredPoint.timeSeconds}s
               </text>
               <text x="12" y="42" className="formaltype-chart-line-fill font-mono text-[12px]">
                 WPM {hoveredPoint.wpm.toFixed(1)}
               </text>
               {typeof hoveredPoint.accuracy === "number" && (
-                <text x="12" y="62" className="fill-paper/65 font-mono text-[12px]">
+                <text x="12" y="62" className="formaltype-chart-muted-fill font-mono text-[12px]">
                   Accuracy {hoveredPoint.accuracy.toFixed(1)}%
                 </text>
               )}

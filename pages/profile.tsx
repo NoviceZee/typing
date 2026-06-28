@@ -807,6 +807,10 @@ function TrendChart({
   const values = results.map(valueForResult);
   const points = buildChartPoints(values);
   const path = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(" ");
+  const fillPath =
+    points.length > 1
+      ? `${path} L ${points[points.length - 1].x.toFixed(2)} 174 L ${points[0].x.toFixed(2)} 174 Z`
+      : "";
   const latest = values[values.length - 1] ?? 0;
   const best = values.length > 0 ? Math.max(...values) : 0;
 
@@ -824,18 +828,22 @@ function TrendChart({
       </div>
       <div className="mt-4 h-56 w-full overflow-hidden rounded-md bg-ink-950/70">
         <svg viewBox="0 0 420 220" role="img" aria-label={title} className="h-full w-full">
-          <line x1="38" y1="174" x2="390" y2="174" stroke="rgb(var(--color-chart-grid))" />
-          <line x1="38" y1="36" x2="38" y2="174" stroke="rgb(var(--color-chart-grid))" />
-          <line x1="38" y1="105" x2="390" y2="105" stroke="rgb(var(--color-chart-grid))" strokeDasharray="5 7" />
+          <line data-testid="profile-trend-axis" x1="38" y1="174" x2="390" y2="174" stroke="rgb(var(--chart-axis))" />
+          <line x1="38" y1="36" x2="38" y2="174" stroke="rgb(var(--chart-axis))" />
+          <line data-testid="profile-trend-grid" x1="38" y1="105" x2="390" y2="105" stroke="rgb(var(--chart-grid))" strokeDasharray="5 7" />
           {points.length > 1 && (
-            <path
-              d={path}
-              fill="none"
-              stroke="rgb(var(--color-accent))"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <>
+              <path data-testid="profile-trend-fill" d={fillPath} fill="rgb(var(--chart-fill))" />
+              <path
+                data-testid="profile-trend-line"
+                d={path}
+                fill="none"
+                stroke="rgb(var(--chart-line))"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </>
           )}
           {points.map((point, index) => (
             <circle
@@ -843,8 +851,8 @@ function TrendChart({
               cx={point.x}
               cy={point.y}
               r={index === points.length - 1 ? 4 : 3}
-              fill={index === points.length - 1 ? "rgb(var(--color-paper))" : "rgb(var(--color-accent))"}
-              stroke="rgb(15, 20, 24)"
+              fill={index === points.length - 1 ? "rgb(var(--chart-text))" : "rgb(var(--chart-line))"}
+              stroke="rgb(var(--chart-tooltip-bg))"
               strokeWidth="2"
             />
           ))}
@@ -893,8 +901,16 @@ function CategoryBreakdown({ analytics }: { analytics: ReturnType<typeof buildPr
           <article
             key={row.category}
             className={`grid gap-2 border-b px-4 py-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_5rem] sm:items-center md:px-5 ${
-              isWeakest ? "border-brass/20 bg-brass/10" : "border-paper/10"
+              isWeakest ? "" : "border-paper/10"
             }`}
+            style={
+              isWeakest
+                ? {
+                    borderColor: "rgb(var(--chart-warning) / 0.24)",
+                    backgroundColor: "rgb(var(--chart-warning) / 0.1)"
+                  }
+                : undefined
+            }
           >
             <h3 className="font-semibold text-paper">{row.category}</h3>
             <BreakdownMetric label="Avg WPM" value={formatNumber(row.averageWpm)} />

@@ -89,6 +89,20 @@ describe("ResultModal", () => {
     expect(screen.queryByText("Highest")).toBeNull();
     expect(screen.queryByText("Lowest")).toBeNull();
     expect(screen.queryByTestId("result-sign-in-cta")).toBeNull();
+
+    const chart = screen.getByRole("img", { name: "WPM over time" });
+    expect(chart.querySelector('[data-testid="attempt-chart-line"]')?.getAttribute("stroke")).toBe(
+      "rgb(var(--chart-line))"
+    );
+    expect(chart.querySelector('[data-testid="attempt-chart-average-line"]')?.getAttribute("stroke")).toBe(
+      "rgb(var(--chart-line-secondary))"
+    );
+    expect(chart.querySelector('[data-testid="attempt-chart-axis-x"]')?.getAttribute("stroke")).toBe(
+      "rgb(var(--chart-axis))"
+    );
+    expect(chart.querySelector('[data-testid="attempt-chart-grid"]')?.getAttribute("stroke")).toBe(
+      "rgb(var(--chart-grid))"
+    );
   });
 
   it("shows the attempt graph tooltip with time, WPM, and accuracy", () => {

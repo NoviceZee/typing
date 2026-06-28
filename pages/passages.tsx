@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { Check, FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -29,8 +29,6 @@ import {
   setSelectedStyle,
   setActivePassageId as setStoredActivePassageId
 } from "@/lib/passageStorage";
-
-type SelectOption = string | [string, string] | { value: string; label: string; disabled?: boolean };
 
 export default function PassagesPage() {
   const router = useRouter();
@@ -144,14 +142,24 @@ export default function PassagesPage() {
           </div>
         )}
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-[20rem_minmax(0,1fr)]">
-          <aside className="space-y-5">
-            <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow">
+        <div className="mt-8 grid gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
+          <aside className="space-y-5 lg:sticky lg:top-5" data-testid="passages-setup-panel">
+            <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow backdrop-blur">
               <h2 className="font-mono text-sm uppercase text-paper/65">Setup</h2>
-              <div className="mt-4 space-y-4">
-                <Select label="Category" value={category} onChange={updateCategory} options={[ALL_FILTER, ...CATEGORIES]} />
-                <Select label="Style" value={style} onChange={updateStyle} options={[ALL_FILTER, ...STYLES]} />
-                <Select
+              <div className="mt-4 space-y-5">
+                <ChoiceGroup
+                  label="Category"
+                  value={category}
+                  onChange={updateCategory}
+                  options={[ALL_FILTER, ...CATEGORIES].map((option) => ({ value: option, label: option }))}
+                />
+                <ChoiceGroup
+                  label="Style"
+                  value={style}
+                  onChange={updateStyle}
+                  options={[ALL_FILTER, ...STYLES].map((option) => ({ value: option, label: option }))}
+                />
+                <PassageChoiceList
                   label="Article / Passage"
                   value={articleSelectorValue}
                   onChange={handleArticleSelection}
@@ -241,7 +249,7 @@ export default function PassagesPage() {
   );
 }
 
-function Select({
+function ChoiceGroup({
   label,
   value,
   onChange,
@@ -250,27 +258,78 @@ function Select({
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: SelectOption[];
+  options: Array<{ value: string; label: string; disabled?: boolean }>;
 }) {
   return (
-    <label className="block">
-      <span className="font-mono text-xs uppercase text-paper/45">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-sm outline-none transition focus:border-brass"
-      >
+    <fieldset>
+      <legend className="font-mono text-xs uppercase text-paper/45">{label}</legend>
+      <div className="mt-2 flex flex-wrap gap-2">
         {options.map((option) => {
-          const optionValue = Array.isArray(option) ? option[0] : typeof option === "string" ? option : option.value;
-          const optionLabel = Array.isArray(option) ? option[1] : typeof option === "string" ? option : option.label;
-          const disabled = typeof option === "object" && !Array.isArray(option) ? option.disabled : false;
+          const isSelected = option.value === value;
+
           return (
-            <option key={optionValue} value={optionValue} disabled={disabled}>
-              {optionLabel}
-            </option>
+            <button
+              key={option.value}
+              type="button"
+              aria-label={`${option.label} ${label.toLowerCase()}`}
+              aria-pressed={isSelected}
+              disabled={option.disabled}
+              onClick={() => onChange(option.value)}
+              className={`rounded-full border px-3 py-1.5 font-mono text-[0.72rem] transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                isSelected
+                  ? "border-brass/70 bg-brass/15 text-brass"
+                  : "border-paper/10 bg-paper/[0.035] text-paper/55 hover:border-brass/35 hover:bg-paper/[0.055] hover:text-paper/80"
+              }`}
+            >
+              {option.label}
+            </button>
           );
         })}
-      </select>
-    </label>
+      </div>
+    </fieldset>
+  );
+}
+
+function PassageChoiceList({
+  label,
+  value,
+  onChange,
+  options
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<[string, string] | { value: string; label: string; disabled?: boolean }>;
+}) {
+  return (
+    <fieldset>
+      <legend className="font-mono text-xs uppercase text-paper/45">{label}</legend>
+      <div className="mt-2 max-h-72 space-y-2 overflow-y-auto pr-1">
+        {options.map((option) => {
+          const optionValue = Array.isArray(option) ? option[0] : option.value;
+          const optionLabel = Array.isArray(option) ? option[1] : option.label;
+          const disabled = !Array.isArray(option) ? option.disabled : false;
+          const isSelected = optionValue === value;
+
+          return (
+            <button
+              key={optionValue}
+              type="button"
+              aria-label={optionValue === "random" ? optionLabel : `Select ${optionLabel}`}
+              aria-pressed={isSelected}
+              disabled={disabled}
+              onClick={() => onChange(optionValue)}
+              className={`block w-full rounded-md border px-3 py-2 text-left font-mono text-xs transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                isSelected
+                  ? "border-brass/70 bg-brass/15 text-brass"
+                  : "border-paper/10 bg-paper/[0.035] text-paper/65 hover:border-brass/35 hover:bg-paper/[0.055] hover:text-paper/85"
+              }`}
+            >
+              {optionLabel}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }

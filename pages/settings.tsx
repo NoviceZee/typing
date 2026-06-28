@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import {
   ACCENT_COLOR_OPTIONS,
+  APP_FONT_OPTIONS,
   CARET_BLINK_OPTIONS,
   CARET_STYLE_OPTIONS,
   DEFAULT_THEME_SETTINGS,
@@ -115,7 +116,7 @@ export default function SettingsPage() {
           <div className="grid gap-5">
             <section id="appearance" className="scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur">
               <SectionHeading
-                eyebrow="Appearance"
+                eyebrow="Personalization"
                 title="Theme"
                 description="Choose the overall room color and accent identity."
               />
@@ -150,6 +151,15 @@ export default function SettingsPage() {
                   renderPrefix={(option) => <AccentDot accent={option.value} />}
                   onChange={(value) => handleThemeSetting("accentColor", value as ThemeSettings["accentColor"])}
                 />
+
+                <ButtonGroup
+                  label="App font"
+                  description="Applies to the overall site UI."
+                  options={APP_FONT_OPTIONS}
+                  value={themeSettings.appFont}
+                  getAriaLabel={(option) => `${option.label} app font`}
+                  onChange={(value) => handleThemeSetting("appFont", value as ThemeSettings["appFont"])}
+                />
               </div>
             </section>
 
@@ -163,7 +173,7 @@ export default function SettingsPage() {
               <div className="mt-5 grid gap-5">
                 <ButtonGroup
                   label="Typing font"
-                  description="Applies only to the typing practice text."
+                  description="Applies only to the typing practice text and this preview."
                   options={TYPING_FONT_OPTIONS}
                   value={themeSettings.typingFont}
                   getAriaLabel={(option) => `${option.label} font`}
@@ -218,21 +228,11 @@ export default function SettingsPage() {
             </section>
 
             <section id="sound" className="scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <SectionHeading
-                  eyebrow="Sound"
-                  title="Sound"
-                  description="Choose the keyboard sound pack used while typing in practice."
-                />
-                <button
-                  type="button"
-                  onClick={() => soundPlayer.current.play(keyboardSoundSetting, "normal", keyboardSoundVolume)}
-                  disabled={keyboardSoundSetting === "off"}
-                  className="formaltype-themed-button px-3 py-2 font-mono text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Test sound
-                </button>
-              </div>
+              <SectionHeading
+                eyebrow="Sound"
+                title="Sound"
+                description="Choose the keyboard sound pack used while typing in practice."
+              />
 
               <div className="mt-5">
                 <ButtonGroup
@@ -336,7 +336,7 @@ function SettingsLivePreview({
       >
         <p
           data-testid="settings-typing-preview-sample"
-          className={`font-mono formaltype-typing-font-${themeSettings.typingFont} formaltype-settings-preview-size-${themeSettings.typingTextSize}`}
+          className={`formaltype-typing-font-${themeSettings.typingFont} formaltype-settings-preview-size-${themeSettings.typingTextSize}`}
           aria-label="Typing preview"
         >
           <span className="formaltype-typed-correct">form</span>
@@ -450,5 +450,9 @@ const ACCENT_SWATCHES: Record<string, string> = {
   purple: "rgb(168 125 255)",
   emerald: "rgb(76 189 138)",
   rose: "rgb(244 101 135)",
-  amber: "rgb(202 164 93)"
+  amber: "rgb(202 164 93)",
+  cyan: "rgb(34 211 238)",
+  lime: "rgb(132 204 22)",
+  red: "rgb(239 68 68)",
+  orange: "rgb(249 115 22)"
 };

@@ -136,6 +136,20 @@ describe("ProfilePage", () => {
     expect(screen.queryByText("Profile Settings")).toBeNull();
     expect(screen.queryByText(/avatar style/i)).toBeNull();
     expect(screen.queryByText("Avatar image")).toBeNull();
+
+    const wpmChart = screen.getByRole("img", { name: "WPM over time" });
+    expect(wpmChart.querySelector('[data-testid="profile-trend-line"]')?.getAttribute("stroke")).toBe(
+      "rgb(var(--chart-line))"
+    );
+    expect(wpmChart.querySelector('[data-testid="profile-trend-fill"]')?.getAttribute("fill")).toBe(
+      "rgb(var(--chart-fill))"
+    );
+    expect(wpmChart.querySelector('[data-testid="profile-trend-grid"]')?.getAttribute("stroke")).toBe(
+      "rgb(var(--chart-grid))"
+    );
+    expect(wpmChart.querySelector('[data-testid="profile-trend-axis"]')?.getAttribute("stroke")).toBe(
+      "rgb(var(--chart-axis))"
+    );
   });
 
   it("renders uploaded avatar images in the Profile Identity card", async () => {

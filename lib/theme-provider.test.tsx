@@ -13,6 +13,7 @@ describe("ThemeProvider", () => {
     document.documentElement.removeAttribute("data-theme-mode");
     document.documentElement.removeAttribute("data-theme-preset");
     document.documentElement.removeAttribute("data-accent");
+    document.documentElement.removeAttribute("data-app-font");
   });
 
   it("applies saved preset, mode, and accent as root attributes", async () => {
@@ -21,8 +22,9 @@ describe("ThemeProvider", () => {
       JSON.stringify({
         themePreset: "catppuccin-mocha",
         mode: "dark",
-        accentColor: "rose",
-        typingFont: "system",
+        accentColor: "cyan",
+        appFont: "rounded",
+        typingFont: "system-mono",
         typingTextSize: "medium",
         typingWidth: "comfortable"
       })
@@ -35,6 +37,7 @@ describe("ThemeProvider", () => {
     });
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(document.documentElement.dataset.themeMode).toBe("dark");
-    expect(document.documentElement.dataset.accent).toBe("rose");
+    expect(document.documentElement.dataset.accent).toBe("cyan");
+    expect(document.documentElement.dataset.appFont).toBe("rounded");
   });
 });

@@ -41,6 +41,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       document.documentElement.dataset.themeMode = currentSettings.mode;
       document.documentElement.dataset.themePreset = currentSettings.themePreset;
       document.documentElement.dataset.accent = currentSettings.accentColor;
+      document.documentElement.dataset.appFont = currentSettings.appFont;
     }
 
     applyResolvedTheme();

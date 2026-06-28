@@ -119,8 +119,9 @@ export type PassageLibraryImportResult = {
 };
 
 export type ThemeMode = "dark" | "light" | "system";
-export type AccentColor = "blue" | "purple" | "emerald" | "rose" | "amber";
-export type TypingFont = "system" | "inter" | "jetbrains-mono" | "ibm-plex-mono";
+export type AccentColor = "blue" | "purple" | "emerald" | "rose" | "amber" | "cyan" | "lime" | "red" | "orange";
+export type AppFont = "system" | "sans" | "serif" | "rounded";
+export type TypingFont = "system-mono" | "serif";
 export type TypingTextSize = "small" | "medium" | "large";
 export type TypingWidth = "compact" | "comfortable" | "wide";
 export type ThemePreset =
@@ -144,6 +145,7 @@ export type ThemeSettings = {
   themePreset: ThemePreset;
   mode: ThemeMode;
   accentColor: AccentColor;
+  appFont: AppFont;
   typingFont: TypingFont;
   typingTextSize: TypingTextSize;
   typingWidth: TypingWidth;
@@ -156,7 +158,8 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   themePreset: "default-dark",
   mode: "dark",
   accentColor: "amber",
-  typingFont: "system",
+  appFont: "system",
+  typingFont: "system-mono",
   typingTextSize: "medium",
   typingWidth: "comfortable",
   caretStyle: "bar",
@@ -348,14 +351,23 @@ export const ACCENT_COLOR_OPTIONS: Array<{ value: AccentColor; label: string }> 
   { value: "purple", label: "Purple" },
   { value: "emerald", label: "Emerald" },
   { value: "rose", label: "Rose" },
-  { value: "amber", label: "Amber" }
+  { value: "amber", label: "Amber" },
+  { value: "cyan", label: "Cyan" },
+  { value: "lime", label: "Lime" },
+  { value: "red", label: "Red" },
+  { value: "orange", label: "Orange" }
+];
+
+export const APP_FONT_OPTIONS: Array<{ value: AppFont; label: string }> = [
+  { value: "system", label: "System" },
+  { value: "sans", label: "Sans" },
+  { value: "serif", label: "Serif" },
+  { value: "rounded", label: "Rounded" }
 ];
 
 export const TYPING_FONT_OPTIONS: Array<{ value: TypingFont; label: string }> = [
-  { value: "system", label: "System" },
-  { value: "inter", label: "Inter" },
-  { value: "jetbrains-mono", label: "JetBrains Mono" },
-  { value: "ibm-plex-mono", label: "IBM Plex Mono" }
+  { value: "system-mono", label: "System Mono" },
+  { value: "serif", label: "Serif" }
 ];
 
 export const TYPING_TEXT_SIZE_OPTIONS: Array<{ value: TypingTextSize; label: string }> = [
@@ -944,6 +956,7 @@ function normaliseThemeSettings(settings: unknown): ThemeSettings {
     themePreset: isThemePreset(settings.themePreset) ? settings.themePreset : DEFAULT_THEME_SETTINGS.themePreset,
     mode: isThemeMode(settings.mode) ? settings.mode : DEFAULT_THEME_SETTINGS.mode,
     accentColor: isAccentColor(settings.accentColor) ? settings.accentColor : DEFAULT_THEME_SETTINGS.accentColor,
+    appFont: isAppFont(settings.appFont) ? settings.appFont : DEFAULT_THEME_SETTINGS.appFont,
     typingFont: isTypingFont(settings.typingFont) ? settings.typingFont : DEFAULT_THEME_SETTINGS.typingFont,
     typingTextSize: isTypingTextSize(settings.typingTextSize)
       ? settings.typingTextSize
@@ -979,11 +992,25 @@ function isThemeMode(value: unknown): value is ThemeMode {
 }
 
 function isAccentColor(value: unknown): value is AccentColor {
-  return value === "blue" || value === "purple" || value === "emerald" || value === "rose" || value === "amber";
+  return (
+    value === "blue" ||
+    value === "purple" ||
+    value === "emerald" ||
+    value === "rose" ||
+    value === "amber" ||
+    value === "cyan" ||
+    value === "lime" ||
+    value === "red" ||
+    value === "orange"
+  );
+}
+
+function isAppFont(value: unknown): value is AppFont {
+  return value === "system" || value === "sans" || value === "serif" || value === "rounded";
 }
 
 function isTypingFont(value: unknown): value is TypingFont {
-  return value === "system" || value === "inter" || value === "jetbrains-mono" || value === "ibm-plex-mono";
+  return value === "system-mono" || value === "serif";
 }
 
 function isTypingTextSize(value: unknown): value is TypingTextSize {

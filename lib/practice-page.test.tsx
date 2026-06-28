@@ -565,7 +565,8 @@ describe("PracticePage passage loading", () => {
       JSON.stringify({
         mode: "dark",
         accentColor: "amber",
-        typingFont: "ibm-plex-mono",
+        appFont: "serif",
+        typingFont: "serif",
         typingTextSize: "large",
         typingWidth: "compact",
         caretStyle: "underline",
@@ -591,7 +592,7 @@ describe("PracticePage passage loading", () => {
     expect(typingTextContainer.className).toContain("formaltype-typing-width-compact");
     expect(container.querySelector(".formaltype-typing-surface")).toBeNull();
     expect(container.querySelector('[data-testid="practice-visual-progress"]')).toBeNull();
-    expect(characterLayer.className).toContain("formaltype-typing-font-ibm-plex-mono");
+    expect(characterLayer.className).toContain("formaltype-typing-font-serif");
     expect(characterLayer.className).toContain("formaltype-typing-size-large");
     expect(characterLayer.className).toContain("formaltype-typing-colors-high-contrast");
     const currentCharacter = characterLayer.querySelector('[data-index="0"]');
@@ -599,9 +600,25 @@ describe("PracticePage passage loading", () => {
     expect(currentCharacter?.className).toContain("formaltype-caret-static");
     expect(currentCharacter?.className).not.toContain("px-0.5");
     expect(currentCharacter?.className).not.toContain("rounded-sm");
-    expect(container.querySelector(".formaltype-typing-font-ibm-plex-mono")?.getAttribute("data-testid")).toBe(
+    expect(container.querySelector(".formaltype-typing-font-serif")?.getAttribute("data-testid")).toBe(
       "typing-character-layer"
     );
+  });
+
+  it("shows passage metadata only once in the idle practice chrome", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    expect(screen.getAllByText("Local active · Business email · Formal · 1m")).toHaveLength(1);
   });
 
   it("keeps wrong-character styling dimension-stable", async () => {

@@ -95,14 +95,15 @@ describe("SettingsPage", () => {
     expect(screen.queryByRole("button", { name: "Recorded 9 — iPhone Tap sound" })).toBeNull();
   });
 
-  it("renders appearance controls with saved theme values", () => {
+  it("renders personalization controls with saved theme values", () => {
     window.localStorage.setItem(
       "formaltype.theme.v1",
       JSON.stringify({
         themePreset: "dracula",
         mode: "light",
         accentColor: "purple",
-        typingFont: "ibm-plex-mono",
+        appFont: "serif",
+        typingFont: "serif",
         typingTextSize: "large",
         typingWidth: "wide",
         caretStyle: "block",
@@ -113,11 +114,17 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage />);
 
+    expect(screen.getByText("Personalization")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Theme" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Dracula theme preview/i }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Light mode" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Purple accent" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "IBM Plex Mono font" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Serif app font" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Serif font" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByRole("button", { name: "Geist app font" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "IBM Plex Mono font" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Roboto Mono font" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Courier Prime font" })).toBeNull();
     expect(screen.getByRole("button", { name: "Large text size" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Wide typing width" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("settings-typing-preview-sample").className).toContain(
@@ -131,14 +138,15 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("button", { name: "Soft typing colors" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("persists appearance changes without changing keyboard sound settings", () => {
+  it("persists personalization changes without changing keyboard sound settings", () => {
     window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
 
     render(<SettingsPage />);
 
     fireEvent.click(screen.getByRole("button", { name: "System mode" }));
-    fireEvent.click(screen.getByRole("button", { name: "Rose accent" }));
-    fireEvent.click(screen.getByRole("button", { name: "JetBrains Mono font" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cyan accent" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rounded app font" }));
+    fireEvent.click(screen.getByRole("button", { name: "Serif font" }));
     fireEvent.click(screen.getByRole("button", { name: "Small text size" }));
     fireEvent.click(screen.getByRole("button", { name: "Compact typing width" }));
     fireEvent.click(screen.getByRole("button", { name: "Underline caret style" }));
@@ -149,8 +157,9 @@ describe("SettingsPage", () => {
     expect(JSON.parse(window.localStorage.getItem("formaltype.theme.v1") ?? "{}")).toEqual({
       themePreset: "default-dark",
       mode: "system",
-      accentColor: "rose",
-      typingFont: "jetbrains-mono",
+      accentColor: "cyan",
+      appFont: "rounded",
+      typingFont: "serif",
       typingTextSize: "small",
       typingWidth: "compact",
       caretStyle: "underline",
@@ -179,7 +188,9 @@ describe("SettingsPage", () => {
 
     expect(screen.getByTestId("settings-live-preview").className).toContain("sticky");
     expect(screen.queryByRole("link", { name: "Appearance" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Personalization" })).toBeNull();
     expect(screen.getByRole("group", { name: "Mode" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "App font" })).toBeTruthy();
     expect(screen.getByRole("group", { name: "Caret style" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("w-[8.25rem]");
     expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("h-9");
@@ -260,14 +271,13 @@ describe("SettingsPage", () => {
     expect(audioMock.oscillators).toHaveLength(1);
   });
 
-  it("plays a preview sound for the selected sound pack", () => {
+  it("does not render a redundant sound section test button", () => {
     window.localStorage.setItem("formaltype.keyboard_sound.v1", "mechanical");
-    const audioMock = installAudioContextMock();
 
     render(<SettingsPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Test sound" }));
 
-    expect(audioMock.oscillators).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Test sound" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Test" })).toBeTruthy();
   });
 
   it("does not play a preview on initial render", () => {
