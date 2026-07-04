@@ -149,6 +149,26 @@ describe("PracticePage passage loading", () => {
     expect(screen.queryByLabelText("Passage")).toBeNull();
   });
 
+  it("keeps the existing practice controls visible", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("practice-passage-metadata").textContent).toContain("Local active");
+    });
+
+    expect(screen.getByRole("button", { name: "Random passage" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Choose in Passages" }).getAttribute("href")).toBe("/passages");
+    expect(screen.getByRole("button", { name: "1m" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "5m" })).toBeTruthy();
+    expect(screen.getByLabelText("Typing input")).toBeTruthy();
+  });
+
   it("shows the just-finished previous pace after restarting the same passage", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,

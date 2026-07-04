@@ -165,6 +165,14 @@ describe("AppShell account dropdown", () => {
     expect(screen.getByRole("navigation").querySelector('a[href="/settings"]')?.textContent).toBe("Settings");
   });
 
+  it("shows Training in the main navbar", () => {
+    mockState.user = null;
+
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    expect(screen.getByRole("navigation").querySelector('a[href="/training"]')?.textContent).toBe("Training");
+  });
+
   it("marks Settings as active on the settings route", () => {
     mockState.user = null;
     mockState.pathname = "/settings";

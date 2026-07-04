@@ -7,6 +7,7 @@ import { SupabaseProfile, getProfileDisplayLabel, getSupabaseProfile } from "@/l
 
 const NAV_ITEMS = [
   { href: "/practice", label: "Practice" },
+  { href: "/training", label: "Training" },
   { href: "/passages", label: "Passages" },
   { href: "/passages/manage", label: "Manage passages", requiresAuth: true },
   { href: "/leaderboard", label: "Leaderboard" },

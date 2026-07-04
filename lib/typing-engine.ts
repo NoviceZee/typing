@@ -6,6 +6,15 @@ export type PracticeCategory =
   | "Casual writing"
   | "Legal / contract style"
   | "Random paragraph"
+  | "numbers"
+  | "symbols"
+  | "training_words"
+  | "training_numbers"
+  | "training_symbols"
+  | "training_words_numbers"
+  | "training_words_symbols"
+  | "training_numbers_symbols"
+  | "training_words_numbers_symbols"
   | "Uncategorised";
 
 export type CharacterStatus = "correct" | "wrong" | "current" | "untyped" | "extra";
@@ -120,6 +129,37 @@ const PASSAGE_BANK: Record<PracticeCategory, string[]> = {
     "Precise typing rewards patience. Every comma, capital letter, date, and clause becomes part of the rhythm, especially when the passage demands formal attention.",
     "A careful typist learns to notice structure as well as speed, because formal prose often hides meaning in small marks and measured transitions.",
     "The best practice passages are long enough to expose habits, varied enough to stay useful, and strict enough to make each rule visible."
+  ],
+  numbers: [
+    "483920 193.40 49,382.20 $4,390.00 18.75%",
+    "720184 806.15 12,804.90 $8,125.50 42.30%",
+    "359001 71.09 904,381.44 $2,018.75 6.25%"
+  ],
+  symbols: [
+    "() [] {} <> \"\" '' `` . , ; : + - * / = == != >= <= += -= *= /= ! @ # $ % ^ & *",
+    "(value) [index] {block} <tag> \"text\" 'key' `code` a += b; x != y; rate >= 10%",
+    "! @ # $ % ^ & * () [] {} <> == != <= >= += -= *= /="
+  ],
+  training_words: [
+    "market invoice client status approved project report update review budget delivery system process office request confirm"
+  ],
+  training_numbers: [
+    "483920 193.40 49,382.20 $4,390.00 18.75% 720184 806.15 12,804.90"
+  ],
+  training_symbols: [
+    "() [] {} <> \"\" '' `` . , ; : + - * / = == != >= <= += -= *= /= ! @ # $ % ^ & *"
+  ],
+  training_words_numbers: [
+    "market 493.20 invoice client $2,430.00 status approved 18.75% budget 49,382.20"
+  ],
+  training_words_symbols: [
+    "market invoice >= client status != approved review () budget [] report += update"
+  ],
+  training_numbers_symbols: [
+    "493.20 >= $2,430.00 != 18.75% () 49,382.20 [] 483920 +="
+  ],
+  training_words_numbers_symbols: [
+    "market 493.20 invoice >= client $2,430.00 status != approved"
   ],
   Uncategorised: [
     "This locally uploaded passage has not been assigned to a formal category. It remains available for practice and can be selected from the passage library.",

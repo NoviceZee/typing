@@ -30,6 +30,15 @@ export const CATEGORIES: PracticeCategory[] = [
   "Casual writing",
   "Legal / contract style",
   "Random paragraph",
+  "numbers",
+  "symbols",
+  "training_words",
+  "training_numbers",
+  "training_symbols",
+  "training_words_numbers",
+  "training_words_symbols",
+  "training_numbers_symbols",
+  "training_words_numbers_symbols",
   "Uncategorised"
 ];
 

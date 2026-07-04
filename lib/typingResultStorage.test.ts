@@ -102,6 +102,110 @@ describe("typingResultStorage", () => {
     expect(insert.duration_seconds).toBe(600);
   });
 
+  it("builds a safe insert payload for generated numbers training results", () => {
+    const passage: StoredPassage = {
+      id: "training-numbers",
+      title: "Numbers training",
+      category: "training_numbers",
+      style: "Numeric drills",
+      text: "483920 193.40 49,382.20 $4,390.00 18.75%",
+      source: "generated",
+      updatedAt: "2026-06-24T00:00:00.000Z"
+    };
+    const result: TypingResult = {
+      characters: [],
+      characterStatuses: [],
+      correctCharacters: 48,
+      incorrectCharacters: 1,
+      missedCharacters: 0,
+      extraCharacters: 0,
+      totalCharacters: 49,
+      comparableTargetLength: 49,
+      comparableTypedLength: 49,
+      accuracy: 98,
+      wpm: 36,
+      rawWpm: 37,
+      timeUsedSeconds: 60,
+      durationSeconds: 60,
+      category: "training_numbers",
+      presetName: "Custom rules",
+      completionReason: "time_up",
+      completedAt: "2026-06-24T00:01:00.000Z",
+      isRankable: true
+    };
+
+    expect(
+      toSupabaseTypingResultInsert({
+        userId: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+        passage,
+        result,
+        typedCharacters: 49,
+        supabasePassageId: passage.id
+      })
+    ).toEqual({
+      user_id: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+      passage_id: null,
+      passage_title: "Numbers training",
+      duration_seconds: 60,
+      wpm: 36,
+      accuracy: 98,
+      correct_chars: 48,
+      typed_chars: 49
+    });
+  });
+
+  it("builds a safe insert payload for generated symbols training results", () => {
+    const passage: StoredPassage = {
+      id: "training-symbols",
+      title: "Symbols training",
+      category: "training_symbols",
+      style: "Symbol drills",
+      text: "() [] {} <> \"\" '' `` . , ; : += != >= <= ! @ # $ % ^ & *",
+      source: "generated",
+      updatedAt: "2026-06-24T00:00:00.000Z"
+    };
+    const result: TypingResult = {
+      characters: [],
+      characterStatuses: [],
+      correctCharacters: 48,
+      incorrectCharacters: 1,
+      missedCharacters: 0,
+      extraCharacters: 0,
+      totalCharacters: 49,
+      comparableTargetLength: 49,
+      comparableTypedLength: 49,
+      accuracy: 98,
+      wpm: 36,
+      rawWpm: 37,
+      timeUsedSeconds: 60,
+      durationSeconds: 60,
+      category: "training_symbols",
+      presetName: "Custom rules",
+      completionReason: "time_up",
+      completedAt: "2026-06-24T00:01:00.000Z",
+      isRankable: true
+    };
+
+    expect(
+      toSupabaseTypingResultInsert({
+        userId: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+        passage,
+        result,
+        typedCharacters: 49,
+        supabasePassageId: passage.id
+      })
+    ).toEqual({
+      user_id: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+      passage_id: null,
+      passage_title: "Symbols training",
+      duration_seconds: 60,
+      wpm: 36,
+      accuracy: 98,
+      correct_chars: 48,
+      typed_chars: 49
+    });
+  });
+
   it("loads analytics results with passage categories for the current user", async () => {
     const limit = vi.fn().mockResolvedValue({
       data: [
