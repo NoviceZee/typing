@@ -64,7 +64,6 @@ export default function ProfilePage() {
     () => aggregateTypingStatistics(typingAttemptDetails),
     [typingAttemptDetails]
   );
-  const latestTypingAttempt = typingAttemptDetails[0] ?? null;
 
   useEffect(() => {
     if (isAuthLoading || user) {
@@ -292,7 +291,6 @@ export default function ProfilePage() {
                 {typingStatistics.keys.length > 0 && (
                   <TypingWeaknessesSection
                     statistics={typingStatistics}
-                    latestAttempt={latestTypingAttempt}
                     heatmapMode={heatmapMode}
                     onHeatmapModeChange={setHeatmapMode}
                   />
@@ -307,7 +305,6 @@ export default function ProfilePage() {
                 <ProgressSummary analytics={analytics} />
                 <TypingWeaknessesSection
                   statistics={typingStatistics}
-                  latestAttempt={latestTypingAttempt}
                   heatmapMode={heatmapMode}
                   onHeatmapModeChange={setHeatmapMode}
                 />
@@ -906,16 +903,18 @@ const HEATMAP_MODES: Array<{ id: HeatmapMode; label: string }> = [
 
 function TypingWeaknessesSection({
   statistics,
-  latestAttempt,
   heatmapMode,
   onHeatmapModeChange
 }: {
   statistics: TypingStatistics;
-  latestAttempt: TypingAttemptDetail | null;
   heatmapMode: HeatmapMode;
   onHeatmapModeChange: (mode: HeatmapMode) => void;
 }) {
-  const keysByCharacter = new Map(statistics.keys.map((keyStatistic) => [keyStatistic.key, keyStatistic]));
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const keysByCharacter = useMemo(
+    () => new Map(statistics.keys.map((keyStatistic) => [keyStatistic.key, keyStatistic])),
+    [statistics.keys]
+  );
   const hasStatistics = statistics.keys.length > 0;
 
   return (
@@ -952,17 +951,29 @@ function TypingWeaknessesSection({
           <div className="mt-5">
             <KeyboardHeatmap keysByCharacter={keysByCharacter} mode={heatmapMode} />
           </div>
-          <div className="mt-4 grid gap-4 xl:grid-cols-[0.74fr_0.74fr_1.4fr]">
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <WeakKeysPanel keys={statistics.weakKeys} />
             <CommonMistakesPanel mistakes={statistics.commonMistakes} />
-            <RecentErrorReplayPanel attempt={latestAttempt} />
           </div>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-            <FingerAnalysisPanel statistics={statistics} />
-            <ReactionTimePanel statistics={statistics} />
-            <BurstSpeedPanel statistics={statistics} />
-            <SpeedDropPanel statistics={statistics} />
-          </div>
+          <section className="mt-4 rounded-md border border-paper/10 bg-ink-900/50">
+            <button
+              type="button"
+              onClick={() => setIsAdvancedOpen((current) => !current)}
+              aria-expanded={isAdvancedOpen}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-mono text-xs uppercase text-paper/60 transition hover:text-paper"
+            >
+              <span>{isAdvancedOpen ? "Hide advanced insights" : "Show advanced insights"}</span>
+              <span aria-hidden="true">{isAdvancedOpen ? "−" : "+"}</span>
+            </button>
+            {isAdvancedOpen && (
+              <div className="grid gap-4 border-t border-paper/10 p-4 lg:grid-cols-2 xl:grid-cols-4">
+                <FingerAnalysisPanel statistics={statistics} />
+                <ReactionTimePanel statistics={statistics} />
+                <BurstSpeedPanel statistics={statistics} />
+                <SpeedDropPanel statistics={statistics} />
+              </div>
+            )}
+          </section>
         </>
       )}
     </section>
@@ -993,17 +1004,17 @@ function KeyboardHeatmap({
           >
             {row.map((key) => {
               const keyStatistic = keysByCharacter.get(key.key);
-              const intensity = getHeatmapIntensity(keyStatistic, mode);
+              const style = getHeatmapKeyStyle(keyStatistic, mode, key);
 
               return (
                 <div
                   key={key.key}
                   data-testid={`keyboard-key-${keyboardTestId(key.key)}`}
                   title={formatKeyStatisticTitle(keyStatistic)}
-                  className="flex h-11 items-center justify-center rounded-md border border-paper/10 px-2 font-mono text-xs text-paper transition"
+                  className="flex h-11 items-center justify-center rounded-md border px-2 font-mono text-xs text-paper opacity-95 transition-[background-color,border-color,opacity,transform] duration-200 ease-out hover:-translate-y-0.5 hover:opacity-100"
                   style={{
                     width: `${(key.width ?? 1) * 2.75}rem`,
-                    backgroundColor: `rgb(var(${getHeatmapColorVariable(mode)}) / ${intensity})`
+                    ...style
                   }}
                 >
                   <span>{key.label}</span>
@@ -1098,8 +1109,6 @@ function WeakKeysPanel({ keys }: { keys: KeyStatistic[] }) {
 }
 
 function CommonMistakesPanel({ mistakes }: { mistakes: TypingStatistics["commonMistakes"] }) {
-  const totalMistakes = mistakes.reduce((total, mistake) => total + mistake.count, 0);
-
   return (
     <section className="overflow-hidden rounded-md border border-paper/10 bg-ink-900/70">
       <div className="border-b border-paper/10 px-4 py-3">
@@ -1112,14 +1121,11 @@ function CommonMistakesPanel({ mistakes }: { mistakes: TypingStatistics["commonM
           {mistakes.slice(0, 5).map((mistake) => (
             <article
               key={mistake.id}
-              className="grid grid-cols-[minmax(0,1fr)_4rem_4rem] items-center gap-3 border-b border-paper/10 px-4 py-3 last:border-b-0"
+              className="grid grid-cols-[minmax(0,1fr)_4rem] items-center gap-3 border-b border-paper/10 px-4 py-3 last:border-b-0"
             >
               <p className="min-w-0 text-sm text-paper/70">{formatMistakeLabel(mistake)}</p>
               <span className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-[0.68rem] uppercase text-paper/45">
                 {mistake.count}x
-              </span>
-              <span className="font-mono text-[0.68rem] uppercase text-paper/45">
-                {totalMistakes === 0 ? "0.0%" : `${formatNumber((mistake.count / totalMistakes) * 100)}%`}
               </span>
             </article>
           ))}
@@ -1486,11 +1492,24 @@ function buildChartPoints(values: number[]) {
   }));
 }
 
-function getHeatmapIntensity(keyStatistic: KeyStatistic | undefined, mode: HeatmapMode) {
+function getHeatmapKeyStyle(keyStatistic: KeyStatistic | undefined, mode: HeatmapMode, key: { key: string }) {
   if (!keyStatistic || keyStatistic.hitCount < 20) {
-    return 0.05;
+    return {
+      backgroundColor: "rgb(var(--color-paper) / 0.035)",
+      borderColor: "rgb(var(--color-paper) / 0.08)",
+      opacity: key.key.length > 1 && key.key !== " " ? 0.78 : 0.68
+    };
   }
 
+  const intensity = getHeatmapIntensity(keyStatistic, mode);
+  return {
+    backgroundColor: `rgb(var(${getHeatmapColorVariable(mode)}) / ${intensity})`,
+    borderColor: `rgb(var(${getHeatmapColorVariable(mode)}) / ${Math.min(0.52, intensity + 0.08)})`,
+    opacity: 1
+  };
+}
+
+function getHeatmapIntensity(keyStatistic: KeyStatistic, mode: HeatmapMode) {
   if (mode === "accuracy") {
     return 0.12 + ((100 - keyStatistic.accuracy) / 100) * 0.72;
   }
@@ -1516,7 +1535,8 @@ function getHeatmapModeLabel(mode: HeatmapMode) {
 
 function formatKeyStatisticTitle(keyStatistic: KeyStatistic | undefined) {
   if (!keyStatistic || keyStatistic.hitCount < 20) {
-    return "Not enough samples yet";
+    const hitCount = keyStatistic?.hitCount ?? 0;
+    return `Not enough data (${hitCount} ${hitCount === 1 ? "hit" : "hits"})`;
   }
 
   const delay = keyStatistic.averageDelayMs === null ? "delay unavailable" : `${keyStatistic.averageDelayMs}ms avg delay`;

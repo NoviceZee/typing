@@ -121,7 +121,10 @@ describe("ProfilePage", () => {
             { expected: "q", actual: "w", index: 20, status: "wrong", delayMs: 260 },
             { expected: "q", actual: "w", index: 21, status: "wrong", delayMs: 240 },
             { expected: " ", actual: "", index: 22, status: "wrong", delayMs: null },
-            { expected: "", actual: "x", index: 23, status: "extra", delayMs: 180 }
+            { expected: "", actual: "a", index: 23, status: "extra", delayMs: 180 },
+            { expected: "", actual: "b", index: 24, status: "extra", delayMs: 180 },
+            { expected: "", actual: "c", index: 25, status: "extra", delayMs: 180 },
+            { expected: "", actual: "d", index: 26, status: "extra", delayMs: 180 }
           ]
         }
       ])
@@ -158,24 +161,26 @@ describe("ProfilePage", () => {
     expect(screen.getByTestId("keyboard-key-backspace").textContent).toContain("Backspace");
     expect(screen.getByTestId("keyboard-key-enter").textContent).toContain("Enter");
     expect(screen.getByText("Legend")).toBeTruthy();
+    expect(screen.getByTestId("keyboard-key-space").getAttribute("title")).toContain("Not enough data");
+    expect(screen.getByTestId("keyboard-key-space").getAttribute("title")).toContain("1 hit");
+    expect(screen.getByTestId("keyboard-key-space").getAttribute("style")).toContain("--color-paper");
     expect(screen.getByText("Weak Keys")).toBeTruthy();
     expect(screen.getByText("Common Mistakes")).toBeTruthy();
-    expect(screen.getByText("Recent Error Replay")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
-    expect(screen.getByLabelText("Replay timeline")).toBeTruthy();
-    expect(screen.getByLabelText("Show only mistakes")).toBeTruthy();
-    expect(screen.getByText("Finger Analysis")).toBeTruthy();
-    expect(screen.getByText("Reaction Time")).toBeTruthy();
-    expect(screen.getByText("Burst Speed")).toBeTruthy();
-    expect(screen.getByText("Speed Drop")).toBeTruthy();
-    expect(screen.getByText("Left Pinky")).toBeTruthy();
-    expect(screen.getByText("Average Keystroke")).toBeTruthy();
-    expect(screen.getByText("Peak 3s")).toBeTruthy();
-    expect(screen.getByText("Start")).toBeTruthy();
+    expect(screen.queryByText("Recent Error Replay")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Play" })).toBeNull();
+    expect(screen.queryByLabelText("Replay timeline")).toBeNull();
+    expect(screen.getByRole("button", { name: "Show advanced insights" })).toBeTruthy();
+    expect(screen.queryByText("Finger Analysis")).toBeNull();
+    expect(screen.queryByText("Reaction Time")).toBeNull();
+    expect(screen.queryByText("Burst Speed")).toBeNull();
+    expect(screen.queryByText("Speed Drop")).toBeNull();
     expect(screen.getByText("expected q, typed w")).toBeTruthy();
-    expect(screen.getByText("50.0%")).toBeTruthy();
     expect(screen.getByText("missed space")).toBeTruthy();
-    expect(screen.getByText("extra x")).toBeTruthy();
+    expect(screen.getByText("extra a")).toBeTruthy();
+    expect(screen.getByText("extra b")).toBeTruthy();
+    expect(screen.getByText("extra c")).toBeTruthy();
+    expect(screen.queryByText("extra d")).toBeNull();
+    expect(screen.queryByText("25.0%")).toBeNull();
     expect(screen.getAllByText("Level").length).toBeGreaterThan(0);
     expect(screen.getByText("Total XP")).toBeTruthy();
     expect(screen.getByText("Daily Challenge")).toBeTruthy();
@@ -214,6 +219,45 @@ describe("ProfilePage", () => {
     expect(wpmChart.querySelector('[data-testid="profile-trend-axis"]')?.getAttribute("stroke")).toBe(
       "rgb(var(--chart-axis))"
     );
+  });
+
+  it("keeps keyboard key elements stable when switching heatmap modes", async () => {
+    window.localStorage.setItem(
+      TYPING_ATTEMPT_DETAILS_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: "detail-1",
+          userId: "user-1",
+          completedAt: "2026-06-21T00:02:00.000Z",
+          durationSeconds: 60,
+          wpm: 72,
+          accuracy: 98.2,
+          characters: [
+            ...Array.from({ length: 20 }, (_, index) => ({
+              expected: "e",
+              actual: "e",
+              index,
+              status: "correct",
+              delayMs: 90
+            })),
+            { expected: "e", actual: "r", index: 20, status: "wrong", delayMs: 210 }
+          ]
+        }
+      ])
+    );
+
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("keyboard-key-e")).toBeTruthy();
+    });
+
+    const eKey = screen.getByTestId("keyboard-key-e");
+    expect(eKey.className).toContain("duration-200");
+    fireEvent.click(screen.getByRole("button", { name: "Speed" }));
+    expect(screen.getByTestId("keyboard-key-e")).toBe(eKey);
+    fireEvent.click(screen.getByRole("button", { name: "Mistakes" }));
+    expect(screen.getByTestId("keyboard-key-e")).toBe(eKey);
   });
 
   it("renders uploaded avatar images in the Profile Identity card", async () => {
