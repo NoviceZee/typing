@@ -35,6 +35,8 @@ export const CATEGORIES: PracticeCategory[] = [
   "training_words",
   "training_numbers",
   "training_symbols",
+  "training_code",
+  "training_chinese",
   "training_words_numbers",
   "training_words_symbols",
   "training_numbers_symbols",
@@ -59,6 +61,9 @@ export type StoredPassage = {
   category: PracticeCategory;
   style: string;
   text: string;
+  comparableText?: string;
+  displayTokens?: string[];
+  metricUnit?: "wpm" | "cpm";
   source?: PassageSource;
   updatedAt: string;
 };

@@ -300,6 +300,47 @@ describe("typingResultStorage", () => {
     expect(limit).toHaveBeenCalledWith(25);
   });
 
+  it("applies server-side leaderboard domain filters when no category is selected", async () => {
+    const englishQuery: any = {};
+    const englishLimit = vi.fn().mockResolvedValue({ data: [], error: null });
+    const englishNot = vi.fn(() => englishQuery);
+    const englishOr = vi.fn(() => englishQuery);
+    const englishOrder = vi.fn(() => englishQuery);
+    Object.assign(englishQuery, { order: englishOrder, limit: englishLimit, not: englishNot, or: englishOr });
+    const englishSelect = vi.fn(() => englishQuery);
+    const englishFrom = vi.fn(() => ({ select: englishSelect }));
+
+    await getSupabaseLeaderboardResults({ domain: "english" }, { from: englishFrom } as any);
+
+    expect(englishOr).toHaveBeenCalledWith("passage_category.is.null,passage_category.not.in.(training_chinese,training_code)");
+    expect(englishNot).toHaveBeenCalledWith("passage_title", "ilike", "%Training Chinese%");
+    expect(englishNot).toHaveBeenCalledWith("passage_title", "ilike", "%Training Code%");
+
+    const chineseQuery: any = {};
+    const chineseLimit = vi.fn().mockResolvedValue({ data: [], error: null });
+    const chineseOr = vi.fn(() => chineseQuery);
+    const chineseOrder = vi.fn(() => chineseQuery);
+    Object.assign(chineseQuery, { order: chineseOrder, limit: chineseLimit, or: chineseOr });
+    const chineseSelect = vi.fn(() => chineseQuery);
+    const chineseFrom = vi.fn(() => ({ select: chineseSelect }));
+
+    await getSupabaseLeaderboardResults({ domain: "chinese" }, { from: chineseFrom } as any);
+
+    expect(chineseOr).toHaveBeenCalledWith("passage_category.eq.training_chinese,passage_title.ilike.%Training Chinese%");
+
+    const codeQuery: any = {};
+    const codeLimit = vi.fn().mockResolvedValue({ data: [], error: null });
+    const codeOr = vi.fn(() => codeQuery);
+    const codeOrder = vi.fn(() => codeQuery);
+    Object.assign(codeQuery, { order: codeOrder, limit: codeLimit, or: codeOr });
+    const codeSelect = vi.fn(() => codeQuery);
+    const codeFrom = vi.fn(() => ({ select: codeSelect }));
+
+    await getSupabaseLeaderboardResults({ domain: "code" }, { from: codeFrom } as any);
+
+    expect(codeOr).toHaveBeenCalledWith("passage_category.eq.training_code,passage_title.ilike.%Training Code%");
+  });
+
   it("loads public typing results by normalized handle without private fields", async () => {
     const limit = vi.fn().mockResolvedValue({
       data: [

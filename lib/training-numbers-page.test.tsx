@@ -8,7 +8,8 @@ import TrainingNumbersPage from "../pages/training/numbers";
 import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 
 vi.mock("@/components/AppShell", () => ({
-  AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>
+  AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  AdPlaceholder: () => <div>Ad space</div>
 }));
 
 const authState: { user: { id: string } | null } = { user: null };
@@ -46,7 +47,7 @@ describe("TrainingNumbersPage", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Numbers Training" })).toBeTruthy();
     expect(screen.getByTestId("practice-passage-metadata").textContent).toContain(
-      "Numbers training · training_numbers · Numeric drills · 60s"
+      "Training · Numbers · Numeric drills · 60s"
     );
     expect(screen.getByLabelText("Typing input")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Choose in Passages" })).toBeNull();

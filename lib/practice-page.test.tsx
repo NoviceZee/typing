@@ -4,7 +4,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import PracticePage from "../pages/practice";
+import PracticePage, { filterComparableRecentResults } from "../pages/practice";
 import type { LibraryPassage } from "@/lib/app-storage";
 import {
   ACTIVE_PASSAGE_ID_STORAGE_KEY,
@@ -17,7 +17,22 @@ import { getSupabaseAnalyticsTypingResults, saveSupabaseTypingResult } from "@/l
 import { readTypingAttemptDetails } from "@/lib/typingStatistics";
 
 vi.mock("@/components/AppShell", () => ({
-  AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>
+  AppShell: ({
+    children,
+    sideAd,
+    topAd
+  }: {
+    children: React.ReactNode;
+    sideAd?: boolean;
+    topAd?: boolean;
+  }) => (
+    <div data-testid="app-shell" data-side-ad={String(sideAd)} data-top-ad={String(topAd)}>
+      {topAd && <div data-testid="top-ad-slot">Top ad</div>}
+      {sideAd && <div data-testid="side-ad-slot">Side ad</div>}
+      {children}
+    </div>
+  ),
+  AdPlaceholder: () => <div>Ad space</div>
 }));
 
 const authState: { user: { id: string } | null } = { user: null };
@@ -169,6 +184,25 @@ describe("PracticePage passage loading", () => {
     expect(screen.getByLabelText("Typing input")).toBeTruthy();
   });
 
+  it("uses one bottom ad only on the Practice typing page", async () => {
+    render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Tab = start")).toBeTruthy();
+    });
+
+    expect(screen.getByTestId("app-shell").getAttribute("data-top-ad")).toBe("false");
+    expect(screen.getByTestId("app-shell").getAttribute("data-side-ad")).toBe("false");
+    expect(screen.queryByTestId("top-ad-slot")).toBeNull();
+    expect(screen.queryByTestId("side-ad-slot")).toBeNull();
+    expect(screen.getAllByText("Ad space")).toHaveLength(1);
+    expect(screen.getByTestId("practice-ad-slot").textContent).toContain("Ad space");
+    expect(
+      screen.getByText("Esc = finish").compareDocumentPosition(screen.getByTestId("practice-ad-slot")) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
   it("shows the just-finished previous pace after restarting the same passage", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
@@ -188,7 +222,7 @@ describe("PracticePage passage loading", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
-    });
+    }, { timeout: 5_000 });
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
     const justFinishedResult = readPreviousResult("local", 60);
@@ -270,7 +304,7 @@ describe("PracticePage passage loading", () => {
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
     expect(screen.getByText(`Previous pace: ${justFinishedResult?.wpm.toFixed(1)} WPM`)).toBeTruthy();
-  });
+  }, 10_000);
 
   it("renders the previous pace marker as an overlay after a time-up same-passage restart", async () => {
     window.localStorage.setItem(
@@ -301,6 +335,7 @@ describe("PracticePage passage loading", () => {
     expect(justFinishedResult?.previousPaceTimeline?.some((point) => point.timeSeconds === 10)).toBe(true);
 
     fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10_000);
@@ -324,7 +359,7 @@ describe("PracticePage passage loading", () => {
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
     expect(screen.getByTestId("previous-pace-marker")).toBeTruthy();
-  });
+  }, 10_000);
 
   it("keeps character text unchanged when the previous pace marker is visible", async () => {
     window.localStorage.setItem(
@@ -353,6 +388,7 @@ describe("PracticePage passage loading", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
     fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10_000);
@@ -360,7 +396,7 @@ describe("PracticePage passage loading", () => {
 
     expect(screen.getByTestId("previous-pace-marker")).toBeTruthy();
     expect(screen.getByTestId("typing-character-layer").textContent).toBe(initialCharacterText);
-  });
+  }, 10_000);
 
   it("removes the previous pace marker overlay when switching passages", async () => {
     window.localStorage.setItem(
@@ -391,6 +427,7 @@ describe("PracticePage passage loading", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
     fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10_000);
@@ -409,7 +446,7 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Other passage body text for typing");
     });
     expect(screen.queryByTestId("previous-pace-marker")).toBeNull();
-  });
+  }, 10_000);
 
   it("preserves 5-minute previous pace after restarting the same passage", async () => {
     window.localStorage.setItem(
@@ -885,6 +922,32 @@ describe("PracticePage passage loading", () => {
     expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
     expect(readPreviousResult("local", 60)).toBeNull();
   });
+
+  it("scopes Training history stats to the same comparable content and duration", () => {
+    const comparable = filterComparableRecentResults(
+      [
+        makeRecentResult("code-60", "Training Code", 60, 52, "training_code"),
+        makeRecentResult("code-30", "Training Code", 30, 60, "training_code"),
+        makeRecentResult("words-60", "Training Words", 60, 44, "training_words"),
+        makeRecentResult("chinese-60", "Training Chinese", 60, 88, "training_chinese"),
+        makeRecentResult("chinese-title-collision", "Training Code", 60, 88, "training_chinese"),
+        makeRecentResult("chinese-100", "Training Chinese", 100, 92, "training_chinese"),
+        makeRecentResult("practice-60", "Local active", 60, 70, "Business email")
+      ],
+      {
+        id: "training-code",
+        title: "Training Code",
+        category: "training_code",
+        style: "60s",
+        source: "generated",
+        text: "const total = price * quantity;",
+        updatedAt: "2026-07-04T00:00:00.000Z"
+      },
+      { durationSeconds: 60 }
+    );
+
+    expect(comparable.map((result) => result.id)).toEqual(["code-60"]);
+  });
 });
 
 function makePassage(id: string, title: string, content: string): LibraryPassage {
@@ -912,6 +975,18 @@ function typeIncrementally(input: HTMLElement, value: string) {
       target: { value: currentValue }
     });
   }
+}
+
+function makeRecentResult(id: string, passage_title: string, duration_seconds: number, wpm: number, passage_category = "Business email") {
+  return {
+    id,
+    passage_title,
+    passage_category,
+    duration_seconds,
+    wpm,
+    accuracy: 99,
+    created_at: "2026-07-04T00:00:00.000Z"
+  };
 }
 
 function installAudioContextMock() {

@@ -4,7 +4,7 @@ import React, { Fragment, KeyboardEvent, ReactNode, useCallback, useEffect, useM
 import { ImageIcon, RefreshCw, RotateCcw, X } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
-import { AppShell } from "@/components/AppShell";
+import { AdPlaceholder, AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import {
   CompletionReason,
@@ -66,6 +66,7 @@ import {
   buildConsistencySeries,
   getConsistencySummary
 } from "@/lib/practiceConsistency";
+import type { ConsistencyPoint } from "@/lib/practiceConsistency";
 import {
   KeyboardSoundKeyType,
   KeyboardSoundSetting,
@@ -77,6 +78,7 @@ import {
 } from "@/lib/keyboardSound";
 import { isRestartShortcut } from "@/lib/practiceShortcuts";
 import { buildProgressAnalytics } from "@/lib/analytics";
+import { getResultAnalyticsDomain } from "@/lib/analyticsDomain";
 import {
   SupabaseAnalyticsTypingResultRow,
   SupabaseOwnTypingResultRow,
@@ -84,6 +86,7 @@ import {
   getSupabaseOwnTypingResults,
   saveSupabaseTypingResult
 } from "@/lib/typingResultStorage";
+import { formatPassageResultMetadata } from "@/lib/trainingDisplay";
 import {
   appendTypingAttemptDetail,
   buildTypingAttemptDetail,
@@ -128,6 +131,7 @@ const RANDOM_PASSAGE_ID = "__random__";
 const SUSPICIOUS_RESULT_NOTE = "This result was not saved because suspicious input was detected.";
 const MAX_CHARACTERS_PER_INPUT_EVENT = 5;
 const SUSPICIOUS_WPM_THRESHOLD = 250;
+const HAN_CHARACTER_PATTERN = /[\u3400-\u9fff\uf900-\ufaff]/;
 const CONSISTENCY_HELP_TEXT =
   "Consistency shows how steady your WPM stayed during the test. It is based on the coefficient of variation of your WPM timeline.";
 const ACHIEVEMENT_POP_DISMISS_MS = 5000;
@@ -160,12 +164,14 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [passageNotice, setPassageNotice] = useState("");
   const [isAttemptSuspicious, setIsAttemptSuspicious] = useState(false);
+  const [isInputActivated, setIsInputActivated] = useState(false);
   const [previousResult, setPreviousResult] = useState<PreviousTypingResult | null>(null);
   const [availableLibrary, setAvailableLibrary] = useState<LibraryPassage[]>([]);
   const [selectedCategory, setSelectedCategoryState] = useState<CategoryFilter>(ALL_FILTER);
   const [selectedPassageId, setSelectedPassageId] = useState(RANDOM_PASSAGE_ID);
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(DEFAULT_THEME_SETTINGS);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const chineseImeInputRef = useRef<HTMLTextAreaElement | null>(null);
   const typingWindowRef = useRef<HTMLDivElement>(null);
   const typingTextRef = useRef<HTMLDivElement>(null);
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
@@ -174,12 +180,25 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const finishedRef = useRef(false);
   const statusRef = useRef<SessionStatus>("idle");
   const startedAtRef = useRef<number | null>(null);
+  const passageRef = useRef<StoredPassage | null>(null);
+  const previousResultScopeRef = useRef<PreviousResultScope>("60s");
+  const durationSecondsRef = useRef(60);
+  const isTimedModeRef = useRef(true);
   const typedTextRef = useRef("");
   const attemptTimelineRef = useRef<AttemptTimelinePoint[]>([]);
   const elapsedSecondsRef = useRef(0);
   const suspiciousAttemptRef = useRef(false);
   const libraryRef = useRef<LibraryPassage[]>([]);
   const isTabPressedRef = useRef(false);
+  const isInputActivatedRef = useRef(false);
+  const isComposingRef = useRef(false);
+  const explicitCompositionActiveRef = useRef(false);
+  const awaitingChineseFinalCommitRef = useRef(false);
+  const imeDebugSequenceRef = useRef(0);
+  const activeTrainingConfigKeyRef = useRef<string | null>(null);
+  const activeSessionGenerationRef = useRef(0);
+  const chineseCompositionSequenceRef = useRef(0);
+  const chineseImeFallbackTimeoutRef = useRef<number | null>(null);
   const scrollFrameRef = useRef<number | null>(null);
   const previousPaceAnimationFrameRef = useRef<number | null>(null);
   const keyboardSoundSettingRef = useRef<KeyboardSoundSetting>("off");
@@ -212,8 +231,22 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     : practiceMode.label;
   const shouldShowPracticeHeader =
     !trainingMode?.hideMetadata || !trainingMode?.hidePassageControls || !trainingMode?.hidePracticeModeControls;
-  const sourceText = passage?.text.trim() ?? "";
+  const shouldUseStableTrainingStage = Boolean(trainingMode);
+  const displayText = passage?.text.trim() ?? "";
+  const sourceText = (passage?.comparableText ?? passage?.text ?? "").trim();
+  const isChineseTraining = passage?.category === "training_chinese";
+  const shouldUseChineseImeSink = isChineseTraining;
+  const shouldTraceIme = Boolean(
+    isChineseTraining &&
+      typeof window !== "undefined" &&
+      process.env.NODE_ENV !== "production" &&
+      new URLSearchParams(window.location.search).get("imeDebug") === "1"
+  );
   const targetText = useMemo(() => normalizeTargetForRules(sourceText, rules), [sourceText, rules]);
+  passageRef.current = passage;
+  previousResultScopeRef.current = previousResultScope;
+  durationSecondsRef.current = durationSeconds;
+  isTimedModeRef.current = isTimedMode;
   const comparison = useMemo(
     () => validateTypedText({ targetText: sourceText, typedText, rules }),
     [sourceText, typedText, rules]
@@ -290,12 +323,84 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     []
   );
 
+  const cancelPendingChineseImeFallback = useCallback(() => {
+    if (chineseImeFallbackTimeoutRef.current !== null) {
+      window.clearTimeout(chineseImeFallbackTimeoutRef.current);
+      chineseImeFallbackTimeoutRef.current = null;
+    }
+  }, []);
+
+  const resetActiveSessionState = useCallback(
+    ({
+      nextPassage,
+      nextPreviousResultScope
+    }: {
+      nextPassage?: StoredPassage | null;
+      nextPreviousResultScope?: PreviousResultScope;
+    } = {}) => {
+      const resetPassage = nextPassage === undefined ? passageRef.current : nextPassage;
+      const resetPreviousResultScope =
+        nextPreviousResultScope === undefined ? previousResultScopeRef.current : nextPreviousResultScope;
+      const resetDurationSeconds = durationSecondsRef.current;
+      const resetIsTimedMode = isTimedModeRef.current;
+
+      activeSessionGenerationRef.current += 1;
+      chineseCompositionSequenceRef.current += 1;
+      cancelPendingChineseImeFallback();
+      isComposingRef.current = false;
+      explicitCompositionActiveRef.current = false;
+      awaitingChineseFinalCommitRef.current = false;
+      isInputActivatedRef.current = false;
+      finishedRef.current = false;
+      statusRef.current = "idle";
+      startedAtRef.current = null;
+      typedTextRef.current = "";
+      attemptTimelineRef.current = [];
+      suspiciousAttemptRef.current = false;
+      typedCharacterDelaysRef.current = [];
+      lastTypedCharacterAtRef.current = null;
+      setTypedText("");
+      setIsInputActivated(false);
+      if (chineseImeInputRef.current) {
+        chineseImeInputRef.current.value = "";
+      }
+      setAttemptTimeline([]);
+      setIsAttemptSuspicious(false);
+      setElapsedSeconds(0);
+      elapsedSecondsRef.current = 0;
+      setRemainingSeconds(resetIsTimedMode ? resetDurationSeconds : 0);
+      setStartedAt(null);
+      setFinishedAt(null);
+      setLastResult(null);
+      setProgressMilestones([]);
+      setIsResultModalOpen(false);
+      setPreviousResult(resetPassage ? readPreviousResult(resetPassage.id, resetPreviousResultScope) : null);
+      setStatus("idle");
+      if (typingWindowRef.current) {
+        typingWindowRef.current.scrollTop = 0;
+      }
+      if (scrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollFrameRef.current);
+        scrollFrameRef.current = null;
+      }
+      if (previousPaceAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(previousPaceAnimationFrameRef.current);
+        previousPaceAnimationFrameRef.current = null;
+      }
+    },
+    [cancelPendingChineseImeFallback]
+  );
+
   useEffect(() => {
     let isMounted = true;
 
     async function loadInitialPracticeState() {
       if (trainingMode) {
         const trainingPassage = buildTrainingModePassage(trainingMode, durationSeconds);
+        const nextConfigKey = trainingMode.configKey ?? trainingMode.passageId;
+        const didTrainingConfigChange =
+          activeTrainingConfigKeyRef.current !== null && activeTrainingConfigKeyRef.current !== nextConfigKey;
+        activeTrainingConfigKeyRef.current = nextConfigKey;
 
         if (!isMounted) {
           return;
@@ -308,6 +413,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         setPassageNotice("");
         setPassage(trainingPassage);
         setPreviousResult(readPreviousResult(trainingPassage.id, previousResultScope));
+        if (didTrainingConfigChange) {
+          resetActiveSessionState({
+            nextPassage: trainingPassage,
+            nextPreviousResultScope: previousResultScope
+          });
+        }
         return;
       }
 
@@ -339,7 +450,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     return () => {
       isMounted = false;
     };
-  }, [choosePracticePassage, durationSeconds, previousResultScope, trainingMode]);
+  }, [choosePracticePassage, durationSeconds, previousResultScope, resetActiveSessionState, trainingMode]);
 
   useEffect(() => {
     typedTextRef.current = typedText;
@@ -367,6 +478,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         elapsedSeconds: elapsed,
         sourceText,
         typedText: typed,
+        category: passage?.category,
         rules
       });
       const existingIndex = attemptTimelineRef.current.findIndex(
@@ -382,35 +494,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
       attemptTimelineRef.current = addAttemptTimelinePoint(attemptTimelineRef.current, point);
     },
-    [rules, sourceText]
+    [passage?.category, rules, sourceText]
   );
 
   const resetSession = useCallback(() => {
-    finishedRef.current = false;
-    statusRef.current = "idle";
-    startedAtRef.current = null;
-    typedTextRef.current = "";
-    attemptTimelineRef.current = [];
-    suspiciousAttemptRef.current = false;
-    typedCharacterDelaysRef.current = [];
-    lastTypedCharacterAtRef.current = null;
-    setTypedText("");
-    setAttemptTimeline([]);
-    setIsAttemptSuspicious(false);
-    setElapsedSeconds(0);
-    elapsedSecondsRef.current = 0;
-    setRemainingSeconds(isTimedMode ? durationSeconds : 0);
-    setStartedAt(null);
-    setFinishedAt(null);
-    setLastResult(null);
-    setProgressMilestones([]);
-    setIsResultModalOpen(false);
-    setPreviousResult(passage ? readPreviousResult(passage.id, previousResultScope) : null);
-    setStatus("idle");
-    if (typingWindowRef.current) {
-      typingWindowRef.current.scrollTop = 0;
-    }
-  }, [durationSeconds, isTimedMode, passage, previousResultScope]);
+    resetActiveSessionState();
+  }, [resetActiveSessionState]);
 
   const finishTest = useCallback(
     (completionReason: CompletionReason) => {
@@ -480,8 +569,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setIsAttemptSuspicious(isSuspicious);
 
       if (user) {
-        void getSupabaseOwnTypingResults(user.id, 10)
-          .then((typingResults) => setRecentResults(typingResults))
+        void getSupabaseOwnTypingResults(user.id, 50)
+          .then((typingResults) => setRecentResults(filterComparableRecentResults(typingResults, passage, finalResult)))
           .catch((error) => {
             console.warn("Supabase recent typing results load failed", error);
           });
@@ -543,6 +632,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     setLastResult(null);
     setProgressMilestones([]);
     setPreviousResult(readPreviousResult(passage.id, previousResultScope));
+    isInputActivatedRef.current = true;
+    setIsInputActivated(true);
     setStatus("running");
   }, [durationSeconds, isFinished, isTimedMode, passage, previousResultScope, sourceText]);
 
@@ -579,7 +670,14 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         }
 
         if (rules.requireTabToStart && status === "idle") {
-          startSession();
+          isInputActivatedRef.current = true;
+          setIsInputActivated(true);
+          if (shouldUseChineseImeSink) {
+            chineseImeInputRef.current?.focus({ preventScroll: true });
+            return;
+          }
+          inputRef.current?.focus({ preventScroll: true });
+          return;
         }
 
         return;
@@ -615,7 +713,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", resetTabState);
     };
-  }, [finishTest, isRunning, resetSession, rules.requireTabToStart, startSession, status]);
+  }, [finishTest, isRunning, resetSession, rules.requireTabToStart, shouldUseChineseImeSink, status]);
 
   useEffect(() => {
     if (isRunning) {
@@ -769,11 +867,16 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }, [isRunning, typedText.length]);
 
   function handleTyping(value: string) {
-    if (!passage || isFinished || finishedRef.current || (!isRunning && rules.requireTabToStart)) {
+    if (
+      !passage ||
+      isFinished ||
+      finishedRef.current ||
+      (!isRunning && rules.requireTabToStart && !isInputActivatedRef.current)
+    ) {
       return;
     }
 
-    if (!isRunning && !rules.requireTabToStart) {
+    if (!isRunning) {
       const now = Date.now();
       finishedRef.current = false;
       statusRef.current = "running";
@@ -790,6 +893,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setRemainingSeconds(isTimedMode ? durationSeconds : 0);
       setLastResult(null);
       setIsResultModalOpen(false);
+      isInputActivatedRef.current = true;
+      setIsInputActivated(true);
       setStatus("running");
     }
 
@@ -810,6 +915,164 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       }
       return nextValue;
     });
+  }
+
+  function syncChineseTextareaValue(source: "input" | "compositionend-fallback") {
+    const textareaValue = chineseImeInputRef.current?.value ?? "";
+    const nextValue = getChineseComparableInput(textareaValue);
+
+    if (
+      !passage ||
+      isFinished ||
+      finishedRef.current ||
+      (rules.requireTabToStart && !isInputActivatedRef.current)
+    ) {
+      return;
+    }
+
+    if (!isRunning && nextValue.length === 0) {
+      logImeAction("sync-skip-no-accepted-text", {
+        source,
+        processed: false,
+        textareaValue
+      });
+      return;
+    }
+
+    logImeAction("sync-textarea-value", {
+      source,
+      processed: true,
+      textareaLength: textareaValue.length,
+      comparableLength: nextValue.length
+    });
+
+    handleTyping(nextValue);
+  }
+
+  function logImeAction(action: string, details: Record<string, unknown> = {}) {
+    if (!shouldTraceIme) {
+      return;
+    }
+
+    imeDebugSequenceRef.current += 1;
+    console.info("[FormalType IME]", {
+      sequence: imeDebugSequenceRef.current,
+      eventType: action,
+      timestamp: Date.now(),
+      transactionId: chineseCompositionSequenceRef.current,
+      sessionGenerationId: activeSessionGenerationRef.current,
+      isComposingRef: isComposingRef.current,
+      explicitCompositionActive: explicitCompositionActiveRef.current,
+      awaitingFinalCommit: awaitingChineseFinalCommitRef.current,
+      refValue: chineseImeInputRef.current?.value ?? "",
+      fallbackPending: chineseImeFallbackTimeoutRef.current !== null,
+      ...details
+    });
+  }
+
+  function logImeEvent(eventType: string, event: React.SyntheticEvent<HTMLTextAreaElement>) {
+    if (!shouldTraceIme) {
+      return;
+    }
+
+    const nativeEvent = event.nativeEvent as InputEvent & CompositionEvent & { isComposing?: boolean };
+    const syntheticEvent = event as React.SyntheticEvent<HTMLTextAreaElement> & {
+      data?: string;
+      inputType?: string;
+      isComposing?: boolean;
+    };
+
+    imeDebugSequenceRef.current += 1;
+    console.info("[FormalType IME]", {
+      sequence: imeDebugSequenceRef.current,
+      eventType,
+      timestamp: Date.now(),
+      transactionId: chineseCompositionSequenceRef.current,
+      sessionGenerationId: activeSessionGenerationRef.current,
+      data: syntheticEvent.data,
+      nativeData: nativeEvent.data,
+      inputType: syntheticEvent.inputType ?? nativeEvent.inputType,
+      isComposingRef: isComposingRef.current,
+      explicitCompositionActive: explicitCompositionActiveRef.current,
+      awaitingFinalCommit: awaitingChineseFinalCommitRef.current,
+      isComposing: syntheticEvent.isComposing,
+      nativeIsComposing: nativeEvent.isComposing,
+      currentTargetValue: event.currentTarget.value,
+      refValue: chineseImeInputRef.current?.value ?? inputRef.current?.value ?? "",
+      fallbackPending: chineseImeFallbackTimeoutRef.current !== null
+    });
+  }
+
+  function handleChineseImeKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    logImeEvent("keydown", event);
+    if (isPassageLoading || isFinished || (!isRunning && rules.requireTabToStart && !isInputActivatedRef.current)) {
+      pendingSoundKeyTypeRef.current = null;
+      event.preventDefault();
+      return;
+    }
+
+    if (!rules.allowBackspace && event.key === "Backspace") {
+      event.preventDefault();
+    }
+  }
+
+  function handleChineseCompositionStart(event: React.CompositionEvent<HTMLTextAreaElement>) {
+    logImeEvent("compositionstart", event);
+    cancelPendingChineseImeFallback();
+    chineseCompositionSequenceRef.current += 1;
+    awaitingChineseFinalCommitRef.current = false;
+    explicitCompositionActiveRef.current = true;
+    isComposingRef.current = true;
+  }
+
+  function handleChineseCompositionUpdate(event: React.CompositionEvent<HTMLTextAreaElement>) {
+    logImeEvent("compositionupdate", event);
+    explicitCompositionActiveRef.current = true;
+    isComposingRef.current = true;
+  }
+
+  function handleChineseBeforeInput(event: React.FormEvent<HTMLTextAreaElement>) {
+    logImeEvent("beforeinput", event);
+  }
+
+  function handleChineseInput(event: React.FormEvent<HTMLTextAreaElement>) {
+    logImeEvent("input", event);
+    if (explicitCompositionActiveRef.current || isComposingRef.current) {
+      return;
+    }
+
+    cancelPendingChineseImeFallback();
+    awaitingChineseFinalCommitRef.current = false;
+    syncChineseTextareaValue("input");
+  }
+
+  function handleChineseChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    logImeEvent("change", event);
+  }
+
+  function handleChineseCompositionEnd(event: React.CompositionEvent<HTMLTextAreaElement>) {
+    logImeEvent("compositionend", event);
+    explicitCompositionActiveRef.current = false;
+    isComposingRef.current = false;
+    awaitingChineseFinalCommitRef.current = true;
+    const sessionGenerationId = activeSessionGenerationRef.current;
+    cancelPendingChineseImeFallback();
+    chineseImeFallbackTimeoutRef.current = window.setTimeout(() => {
+      chineseImeFallbackTimeoutRef.current = null;
+      if (sessionGenerationId !== activeSessionGenerationRef.current) {
+        logImeAction("fallback-skip-stale-session", {
+          sessionGenerationId,
+          processed: false
+        });
+        return;
+      }
+
+      syncChineseTextareaValue("compositionend-fallback");
+      if (sessionGenerationId === activeSessionGenerationRef.current) {
+        awaitingChineseFinalCommitRef.current = false;
+      }
+    }, 0);
+    logImeAction("fallback-scheduled", { sessionGenerationId });
   }
 
   function recordTypedCharacterDelays(previousValue: string, nextValue: string) {
@@ -1026,7 +1289,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }
 
   return (
-    <AppShell>
+    <AppShell topAd={false} sideAd={false}>
       <section className="mx-auto min-w-0 max-w-6xl w-[calc(100vw-2.5rem)] overflow-x-hidden sm:w-full">
         <h1 className="sr-only">{trainingMode?.pageTitle ?? "Practice"}</h1>
 
@@ -1052,9 +1315,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
               <div className="min-w-0">
                 {!trainingMode?.hideMetadata && (
                   <p className="truncate font-mono text-xs text-paper/55" data-testid="practice-passage-metadata">
-                    {passage
-                      ? `${passage.title} · ${passage.category} · ${passage.style} · ${modeLabel}`
-                      : "Resolving passage..."}
+                    {passage ? `${formatPassageResultMetadata(passage)} · ${modeLabel}` : "Resolving passage..."}
                   </p>
                 )}
                 <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -1109,7 +1370,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             data-testid="previous-pace-display"
             className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden px-1 font-mono text-xs text-paper/45"
           >
-            <span>Previous pace: {previousResult.wpm.toFixed(1)} WPM</span>
+            <span>Previous pace: {previousResult.wpm.toFixed(1)} {getMetricLabel(passage)}</span>
           </div>
         )}
 
@@ -1118,34 +1379,59 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
             if (event.key === "Tab" && rules.requireTabToStart && status === "idle") {
               event.preventDefault();
-              startSession();
+              isInputActivatedRef.current = true;
+              setIsInputActivated(true);
+              if (shouldUseChineseImeSink) {
+                chineseImeInputRef.current?.focus({ preventScroll: true });
+                return;
+              }
+              inputRef.current?.focus({ preventScroll: true });
             }
           }}
           className={clsx(
-            "formaltype-practice-shell relative max-w-full outline-none transition",
-            isRunning
+            "formaltype-practice-shell relative mx-auto w-full max-w-5xl outline-none transition",
+            shouldUseStableTrainingStage
+              ? "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
+              : shouldUseChineseImeSink
+              ? "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-4"
+              : isRunning
               ? "flex h-[60vh] max-h-[60vh] flex-col overflow-hidden rounded-none bg-transparent p-0 md:h-[68vh] md:max-h-[72vh]"
               : "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
           )}
         >
-          {isRunning && (
-            <div className="sticky top-0 z-10 flex shrink-0 justify-end bg-ink-950/80 px-4 py-3 font-mono text-[1.45rem] leading-none text-paper/45 backdrop-blur-sm md:text-[2rem]">
-              {formatTime(clockSeconds)}
-            </div>
-          )}
+          <div
+            data-testid="typing-timer-overlay"
+            className={clsx(
+              "pointer-events-none absolute right-3 top-3 z-10 rounded-md bg-ink-950/80 px-2 py-1 text-right font-mono text-[1.45rem] leading-none text-paper/45 backdrop-blur-sm transition-opacity md:right-4 md:top-4 md:text-[2rem]",
+              isRunning ? "opacity-100" : "opacity-0"
+            )}
+            aria-hidden={!isRunning}
+          >
+            {formatTime(clockSeconds)}
+          </div>
 
           <div
             ref={typingWindowRef}
+            data-testid={shouldUseChineseImeSink ? "chinese-target-viewport" : "typing-viewport"}
             className={clsx(
-              "typing-scrollbar min-h-0 transition",
-              isRunning
+              "typing-scrollbar mx-auto min-h-0 w-full max-w-5xl transition",
+              shouldUseStableTrainingStage && shouldUseChineseImeSink
+                ? "h-[300px] overflow-y-auto overscroll-contain rounded-md px-3 py-3 md:h-[360px] md:px-6 md:py-4"
+                : shouldUseStableTrainingStage
+                ? "h-[340px] overflow-y-auto overscroll-contain rounded-md px-4 py-6 md:h-[420px] md:px-8 md:py-8"
+                : shouldUseChineseImeSink
+                ? "h-[300px] overflow-y-auto overscroll-contain rounded-md px-3 py-3 md:h-[360px] md:px-6 md:py-4"
+                : isRunning
                 ? "h-full flex-1 overflow-y-auto overscroll-contain px-1 py-3 md:px-6 md:py-5"
                 : "h-[340px] overflow-y-auto overscroll-contain rounded-md px-4 py-6 md:h-[420px] md:px-8 md:py-8"
             )}
           >
             <div
               ref={typingTextRef}
-              className={clsx("relative mx-auto", `formaltype-typing-width-${themeSettings.typingWidth}`)}
+              className={clsx(
+                "relative mx-auto",
+                passage?.displayTokens?.length ? "w-fit max-w-full" : `formaltype-typing-width-${themeSettings.typingWidth}`
+              )}
               data-testid="typing-text-container"
             >
               <p
@@ -1162,7 +1448,15 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                   <PassageLoadingPlaceholder />
                 ) : (
                   <>
-                    {comparison.characters.map((character, index) => {
+                    {passage?.displayTokens?.length ? (
+                      <TrainingTokenCharacterLayer
+                        characters={comparison.characters}
+                        tokens={passage.displayTokens}
+                        setCharacterRef={setCharacterRef}
+                        showMistakes={rules.showMistakesImmediately || isFinished}
+                        themeSettings={themeSettings}
+                      />
+                    ) : comparison.characters.map((character, index) => {
                       const isCurrent = character.status === "current";
                       const isLineBreak = character.expected === "\n" || character.actual === "\n";
 
@@ -1204,33 +1498,65 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             </div>
           </div>
 
-          <textarea
-            ref={inputRef}
-            value={typedText}
-            disabled={isPassageLoading || isFinished || (!isRunning && rules.requireTabToStart)}
-            onKeyDown={(event) => {
-              if (isPassageLoading || isFinished || (!isRunning && rules.requireTabToStart)) {
-                pendingSoundKeyTypeRef.current = null;
-                event.preventDefault();
-                return;
-              }
-              if (!rules.allowBackspace && event.key === "Backspace") {
-                pendingSoundKeyTypeRef.current = null;
-                event.preventDefault();
-                return;
-              }
-              pendingSoundKeyTypeRef.current =
-                isRunning && isTypingSoundKey(event.nativeEvent) ? getKeyboardSoundKeyType(event.key) : null;
-              if (event.key === "Backspace" && typedTextRef.current.length === 0) {
-                pendingSoundKeyTypeRef.current = null;
-              }
-            }}
-            onPaste={handlePaste}
-            onChange={(event) => handleTyping(event.target.value)}
-            className="absolute inset-0 h-full w-full resize-none opacity-0"
-            aria-label="Typing input"
-            spellCheck={false}
-          />
+          {shouldUseChineseImeSink ? (
+            <div data-testid="chinese-input-area" className="mx-auto max-w-3xl pt-2">
+            <textarea
+              ref={(node) => {
+                chineseImeInputRef.current = node;
+                inputRef.current = node;
+              }}
+              disabled={isPassageLoading || isFinished}
+              onKeyDown={handleChineseImeKeyDown}
+              onPaste={handlePaste}
+              onCompositionStart={handleChineseCompositionStart}
+              onCompositionUpdate={handleChineseCompositionUpdate}
+              onBeforeInput={handleChineseBeforeInput}
+              onInput={handleChineseInput}
+              onChange={handleChineseChange}
+              onCompositionEnd={handleChineseCompositionEnd}
+              className={clsx(
+                "block min-h-14 w-full resize-none rounded-md border border-paper/10 bg-paper/[0.035] px-3 py-2 font-mono text-lg leading-relaxed text-paper/85 caret-brass outline-none transition placeholder:text-paper/25 focus:border-brass/45 focus:bg-paper/[0.055]"
+              )}
+              aria-label="Typing input"
+              placeholder="請在此按 Tab 後開始輸入"
+              spellCheck={false}
+            />
+            </div>
+          ) : (
+            <textarea
+              ref={inputRef}
+              value={typedText}
+              disabled={isPassageLoading || isFinished}
+              onKeyDown={(event) => {
+                if (
+                  isPassageLoading ||
+                  isFinished ||
+                  (!isRunning && rules.requireTabToStart && !isInputActivated)
+                ) {
+                  pendingSoundKeyTypeRef.current = null;
+                  event.preventDefault();
+                  return;
+                }
+                if (!rules.allowBackspace && event.key === "Backspace") {
+                  pendingSoundKeyTypeRef.current = null;
+                  event.preventDefault();
+                  return;
+                }
+                pendingSoundKeyTypeRef.current =
+                  (isRunning || isInputActivatedRef.current) && isTypingSoundKey(event.nativeEvent)
+                    ? getKeyboardSoundKeyType(event.key)
+                    : null;
+                if (event.key === "Backspace" && typedTextRef.current.length === 0) {
+                  pendingSoundKeyTypeRef.current = null;
+                }
+              }}
+              onPaste={handlePaste}
+              onChange={(event) => handleTyping(event.target.value)}
+              className="absolute inset-0 h-full w-full resize-none opacity-0"
+              aria-label="Typing input"
+              spellCheck={false}
+            />
+          )}
         </div>
 
         {status === "idle" && (
@@ -1241,7 +1567,18 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           </div>
         )}
 
-        {lastResult && passage && <ResultsPanel result={lastResult} onRestart={resetSession} onNextPassage={loadNextPassage} />}
+        <div data-testid={trainingMode ? "training-ad-slot" : "practice-ad-slot"} className="mt-6">
+          <AdPlaceholder variant="banner" />
+        </div>
+
+        {lastResult && passage && (
+          <ResultsPanel
+            result={lastResult}
+            metricLabel={getMetricLabel(passage)}
+            onRestart={resetSession}
+            onNextPassage={loadNextPassage}
+          />
+        )}
         {lastResult && passage && isResultModalOpen && (
           <ResultModal
             result={lastResult}
@@ -1277,6 +1614,70 @@ function PassageLoadingPlaceholder() {
         />
       ))}
     </span>
+  );
+}
+
+function TrainingTokenCharacterLayer({
+  characters,
+  tokens,
+  setCharacterRef,
+  showMistakes,
+  themeSettings
+}: {
+  characters: CharacterComparison[];
+  tokens: string[];
+  setCharacterRef: (index: number, isCurrent: boolean) => (node: HTMLSpanElement | null) => void;
+  showMistakes: boolean;
+  themeSettings: ThemeSettings;
+}) {
+  let characterIndex = 0;
+
+  return (
+    <>
+      {tokens.map((token, tokenIndex) => {
+        const tokenCharacters = Array.from(token).map((_, offset) => {
+          const comparisonIndex = characterIndex + offset;
+          const character = characters[comparisonIndex];
+          const isCurrent = character?.status === "current";
+
+          if (!character) {
+            return null;
+          }
+
+          return (
+            <span
+              key={`${character.index}-${comparisonIndex}-${character.expected}-${character.actual}`}
+              ref={setCharacterRef(comparisonIndex, isCurrent)}
+              data-index={comparisonIndex}
+              className={clsx(characterClass(character.status, showMistakes, themeSettings))}
+            >
+              {character.actual || character.expected}
+            </span>
+          );
+        });
+        characterIndex += token.length;
+
+        return (
+          <span key={`${token}-${tokenIndex}`} data-testid="training-token" className="mr-[0.9em] inline-block">
+            {tokenCharacters}
+          </span>
+        );
+      })}
+      {characters.slice(characterIndex).map((character, offset) => {
+        const comparisonIndex = characterIndex + offset;
+
+        return (
+          <span
+            key={`${character.index}-${comparisonIndex}-${character.expected}-${character.actual}`}
+            ref={setCharacterRef(comparisonIndex, character.status === "current")}
+            data-index={comparisonIndex}
+            className={clsx(characterClass(character.status, showMistakes, themeSettings))}
+          >
+            {character.actual || character.expected}
+          </span>
+        );
+      })}
+    </>
   );
 }
 
@@ -1353,10 +1754,12 @@ type MistakeBreakdown = Record<MistakeType, number>;
 
 function ResultsPanel({
   result,
+  metricLabel,
   onRestart,
   onNextPassage
 }: {
   result: TypingResult;
+  metricLabel: string;
   onRestart: () => void;
   onNextPassage: () => void;
 }) {
@@ -1387,7 +1790,7 @@ function ResultsPanel({
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Metric label="WPM" value={result.wpm.toFixed(1)} />
+        <Metric label={metricLabel} value={result.wpm.toFixed(1)} />
         <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
         <Metric label="Time" value={formatTime(result.timeUsedSeconds)} />
         <Metric label="Mistakes" value={result.incorrectCharacters} />
@@ -1395,6 +1798,14 @@ function ResultsPanel({
       <SessionReview result={result} />
     </section>
   );
+}
+
+function getMetricLabel(passage: StoredPassage | null | undefined) {
+  return "WPM";
+}
+
+function getChineseComparableInput(value: string) {
+  return Array.from(value).filter((character) => HAN_CHARACTER_PATTERN.test(character)).join("");
 }
 
 export function ResultModal({
@@ -1429,12 +1840,12 @@ export function ResultModal({
   const [imageCardError, setImageCardError] = useState("");
   const [isGeneratingImageCard, setIsGeneratingImageCard] = useState(false);
   const historySeries = hasSavedHistory
-    ? isSuspicious
-      ? buildSavedHistorySeries(recentResults)
-      : buildConsistencySeries(recentResults, {
-          wpm: result.wpm,
-          completedAt: result.completedAt
-        })
+    ? buildResultHistorySeries({
+        recentResults,
+        result,
+        previousResult,
+        includeCurrent: !isSuspicious
+      })
     : [];
   const milestones = useMemo(
     () => buildCelebrationMilestones(result, previousResult, progressMilestones),
@@ -1451,7 +1862,7 @@ export function ResultModal({
               <p className="font-mono text-xs uppercase text-brass">Result</p>
               <h2 className="mt-0.5 text-2xl font-semibold leading-tight text-paper">{completionLabel}</h2>
               <div className="mt-1.5 truncate font-mono text-xs text-paper/45 md:text-sm">
-                {passage.title ?? "Untitled passage"} · {passage.category} · {passage.style}
+                {formatPassageResultMetadata(passage)}
               </div>
             </div>
             <button
@@ -1470,6 +1881,7 @@ export function ResultModal({
             <ThisResultColumn
               result={result}
               timeline={attemptTimeline}
+              metricLabel={getMetricLabel(passage)}
               imageAction={
                 <ResultImageCardAction
                   disabled={isGeneratingImageCard}
@@ -1490,11 +1902,11 @@ export function ResultModal({
             />
 
             <section className="min-w-0 md:border-l md:border-paper/10 md:pl-6">
-              <AttemptWpmGraph result={result} timeline={attemptTimeline} />
+              <AttemptWpmGraph result={result} timeline={attemptTimeline} metricLabel={getMetricLabel(passage)} />
 
               <div className="mt-4 grid gap-4 border-t border-paper/10 pt-4 md:grid-cols-[0.7fr_1.3fr]">
                 {hasSavedHistory && <HistoryStats points={historySeries} />}
-                {previousResult && <PreviousAttemptComparison result={result} previousResult={previousResult} />}
+                {previousResult && <PreviousAttemptComparison result={result} previousResult={previousResult} metricLabel={getMetricLabel(passage)} />}
               </div>
             </section>
           </div>
@@ -1571,8 +1983,11 @@ function buildProgressCelebrationMilestones(
   passage: StoredPassage,
   result: TypingResult
 ): CelebrationMilestone[] {
-  const previousAnalytics = buildProgressAnalytics(savedResults);
-  const nextAnalytics = buildProgressAnalytics([toCurrentAnalyticsResult(passage, result), ...savedResults]);
+  const analyticsDomain = getResultAnalyticsDomain({ passage_category: passage.category, passage_title: passage.title });
+  const previousAnalytics = buildProgressAnalytics(savedResults, { domain: analyticsDomain });
+  const nextAnalytics = buildProgressAnalytics([toCurrentAnalyticsResult(passage, result), ...savedResults], {
+    domain: analyticsDomain
+  });
   const milestones: CelebrationMilestone[] = [];
 
   if (nextAnalytics.progression.currentLevel > previousAnalytics.progression.currentLevel) {
@@ -1693,6 +2108,94 @@ function buildSavedHistorySeries(savedResults: SupabaseOwnTypingResultRow[]) {
     .slice(-10);
 }
 
+export function buildResultHistorySeries({
+  recentResults,
+  result,
+  previousResult,
+  includeCurrent
+}: {
+  recentResults: SupabaseOwnTypingResultRow[];
+  result: TypingResult;
+  previousResult: PreviousTypingResult | null;
+  includeCurrent: boolean;
+}): ConsistencyPoint[] {
+  const comparableResults = addPreviousComparableResult(recentResults, result, previousResult);
+
+  if (!includeCurrent) {
+    return buildSavedHistorySeries(comparableResults);
+  }
+
+  return buildConsistencySeries(comparableResults, {
+    wpm: result.wpm,
+    completedAt: result.completedAt
+  });
+}
+
+function addPreviousComparableResult(
+  recentResults: SupabaseOwnTypingResultRow[],
+  result: TypingResult,
+  previousResult: PreviousTypingResult | null
+): SupabaseOwnTypingResultRow[] {
+  if (!previousResult || !isPreviousResultComparable(previousResult, result)) {
+    return recentResults;
+  }
+
+  if (recentResults.some((recentResult) => isSameHistoryAttempt(recentResult, previousResult))) {
+    return recentResults;
+  }
+
+  return [
+    ...recentResults,
+    {
+      id: `previous-${previousResult.completedAt}`,
+      passage_title: previousResult.passageTitle,
+      duration_seconds: previousResult.durationSeconds ?? result.durationSeconds,
+      wpm: previousResult.wpm,
+      accuracy: previousResult.accuracy,
+      created_at: previousResult.completedAt
+    }
+  ];
+}
+
+function isPreviousResultComparable(previousResult: PreviousTypingResult, result: TypingResult) {
+  return !previousResult.durationSeconds || previousResult.durationSeconds === result.durationSeconds;
+}
+
+function isSameHistoryAttempt(recentResult: SupabaseOwnTypingResultRow, previousResult: PreviousTypingResult) {
+  if (recentResult.created_at === previousResult.completedAt) {
+    return true;
+  }
+
+  const recentCompletedAt = Date.parse(recentResult.created_at);
+  const previousCompletedAt = Date.parse(previousResult.completedAt);
+
+  return (
+    recentResult.wpm === previousResult.wpm &&
+    Number.isFinite(recentCompletedAt) &&
+    Number.isFinite(previousCompletedAt) &&
+    Math.abs(recentCompletedAt - previousCompletedAt) <= 10_000
+  );
+}
+
+export function filterComparableRecentResults(
+  savedResults: SupabaseOwnTypingResultRow[],
+  passage: StoredPassage,
+  result: Pick<TypingResult, "durationSeconds">
+) {
+  const comparableTitle = passage.title?.trim() || "Untitled passage";
+  const comparableDomain = getResultAnalyticsDomain({ passage_category: passage.category, passage_title: passage.title });
+
+  return savedResults
+    .filter((savedResult) => savedResult.duration_seconds === result.durationSeconds)
+    .filter((savedResult) => savedResult.passage_title === comparableTitle)
+    .filter(
+      (savedResult) =>
+        (savedResult.passage_category ?? null) === (passage.category ?? null) ||
+        getResultAnalyticsDomain(savedResult) === comparableDomain
+    )
+    .slice(0, 10);
+}
+
 function isSuspiciousInputChange(previousValue: string, nextValue: string, elapsedSeconds: number) {
   const addedCharacters = nextValue.length - previousValue.length;
 
@@ -1711,10 +2214,12 @@ function isSuspiciousInputChange(previousValue: string, nextValue: string, elaps
 function ThisResultColumn({
   result,
   timeline,
+  metricLabel,
   imageAction
 }: {
   result: TypingResult;
   timeline: AttemptTimelinePoint[];
+  metricLabel: string;
   imageAction: React.ReactNode;
 }) {
   const consistency = getResultConsistency(timeline);
@@ -1723,13 +2228,13 @@ function ThisResultColumn({
     <section>
       <p className="font-mono text-sm uppercase text-brass">This Result</p>
       <div className="mt-3">
-        <p className="font-mono text-xs uppercase text-paper/45">WPM</p>
+        <p className="font-mono text-xs uppercase text-paper/45">{metricLabel}</p>
         <div className="mt-0.5 font-mono text-5xl font-semibold leading-none text-paper md:text-6xl">
           {result.rawWpm.toFixed(1)}
         </div>
       </div>
       <div className="mt-3 space-y-0">
-        <ResultMetricRow label="Net WPM" value={result.wpm.toFixed(1)} tone="text-mint" />
+        <ResultMetricRow label={`Net ${metricLabel}`} value={result.wpm.toFixed(1)} tone="text-mint" />
         <ResultMetricRow label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
         <ResultMetricRow label="Mistakes" value={result.incorrectCharacters} />
         <ResultMetricRow label="Time" value={formatTime(result.timeUsedSeconds)} />
@@ -1796,10 +2301,12 @@ function HistoryRow({ label, value }: { label: string; value: string | number })
 
 function PreviousAttemptComparison({
   result,
-  previousResult
+  previousResult,
+  metricLabel
 }: {
   result: TypingResult;
   previousResult: PreviousTypingResult;
+  metricLabel: string;
 }) {
   const rawWpmDifference = result.rawWpm - previousResult.rawWpm;
   const netWpmDifference = result.wpm - previousResult.wpm;
@@ -1810,12 +2317,12 @@ function PreviousAttemptComparison({
       <p className="font-mono text-sm uppercase text-brass">Previous Attempt</p>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 font-mono md:grid-cols-4">
         <PreviousComparisonStat
-          label="WPM"
+          label={metricLabel}
           delta={rawWpmDifference}
           previousValue={previousResult.rawWpm.toFixed(1)}
         />
         <PreviousComparisonStat
-          label="Net WPM"
+          label={`Net ${metricLabel}`}
           delta={netWpmDifference}
           previousValue={previousResult.wpm.toFixed(1)}
         />
@@ -1903,10 +2410,12 @@ function ResultImageCardAction({
 
 function AttemptWpmGraph({
   result,
-  timeline
+  timeline,
+  metricLabel
 }: {
   result: TypingResult;
   timeline: AttemptTimelinePoint[];
+  metricLabel: string;
 }) {
   const [hoveredPoint, setHoveredPoint] = useState<PositionedAttemptPoint | null>(null);
   const points = getAttemptGraphPoints(timeline, result);
@@ -1915,11 +2424,11 @@ function AttemptWpmGraph({
   return (
     <section>
       <div className="flex items-start justify-between gap-4">
-        <p className="font-mono text-sm uppercase text-brass">WPM Over Time</p>
+        <p className="font-mono text-sm uppercase text-brass">{metricLabel} Over Time</p>
         <div className="hidden gap-5 font-mono text-xs uppercase text-paper/45 sm:flex">
           <span className="inline-flex items-center gap-2">
             <span className="h-px w-8" style={{ backgroundColor: "rgb(var(--chart-line))" }} />
-            WPM
+            {metricLabel}
           </span>
           <span className="inline-flex items-center gap-2">
             <span className="h-px w-8 border-t border-dashed" style={{ borderColor: "rgb(var(--chart-line-secondary))" }} />
@@ -1931,7 +2440,7 @@ function AttemptWpmGraph({
         <svg
           viewBox={`0 0 ${graph.width} ${graph.height}`}
           role="img"
-          aria-label="WPM over time"
+          aria-label={`${metricLabel} over time`}
           className="h-[260px] w-full overflow-visible"
           preserveAspectRatio="none"
           onMouseLeave={() => setHoveredPoint(null)}
@@ -1992,7 +2501,7 @@ function AttemptWpmGraph({
             </text>
           ))}
           <text x={graph.left - 30} y={graph.top - 14} className="formaltype-chart-muted-fill font-mono text-[12px] uppercase">
-            WPM
+            {metricLabel}
           </text>
           <text
             x={(graph.left + graph.right) / 2}
@@ -2033,7 +2542,7 @@ function AttemptWpmGraph({
                 {hoveredPoint.timeSeconds}s
               </text>
               <text x="12" y="42" className="formaltype-chart-line-fill font-mono text-[12px]">
-                WPM {hoveredPoint.wpm.toFixed(1)}
+                {metricLabel} {hoveredPoint.wpm.toFixed(1)}
               </text>
               {typeof hoveredPoint.accuracy === "number" && (
                 <text x="12" y="62" className="formaltype-chart-muted-fill font-mono text-[12px]">
@@ -2072,20 +2581,23 @@ function buildAttemptTimelinePoint({
   elapsedSeconds,
   sourceText,
   typedText,
+  category,
   rules
 }: {
   elapsedSeconds: number;
   sourceText: string;
   typedText: string;
+  category?: PracticeCategory;
   rules: TypingRules;
 }): AttemptTimelinePoint {
   const comparison = validateTypedText({ targetText: sourceText, typedText, rules });
   const minutes = Math.max(elapsedSeconds, 1) / 60;
+  const pace = category === "training_chinese" ? comparison.correctCharacters / minutes : comparison.correctCharacters / 5 / minutes;
 
   return {
     timeSeconds: Math.round(elapsedSeconds),
     characterIndex: typedText.length,
-    wpm: roundOne(comparison.correctCharacters / 5 / minutes),
+    wpm: roundOne(pace),
     accuracy: comparison.accuracy
   };
 }
@@ -2354,9 +2866,12 @@ function drawResultImageCard(
   context.lineWidth = 2;
   context.strokeRect(36, 36, width - 72, height - 72);
 
+  const metadata = formatPassageResultMetadata(passage);
+  const cardMetadata = metadata.endsWith(` · ${modeLabel}`) ? metadata : `${metadata} · ${modeLabel}`;
+
   drawCardText(context, "FormalType", 82, 112, 34, "#c79c4a", "600");
-  drawCardText(context, passage.title ?? "Untitled passage", 82, 176, 34, "rgba(238, 231, 216, 0.9)", "600", 850);
-  drawCardText(context, `${passage.category} · ${passage.style} · ${modeLabel}`, 82, 226, 22, "rgba(238, 231, 216, 0.48)", "400", 850);
+  drawCardText(context, metadata.split(" · ")[0] ?? "Untitled passage", 82, 176, 34, "rgba(238, 231, 216, 0.9)", "600", 850);
+  drawCardText(context, cardMetadata, 82, 226, 22, "rgba(238, 231, 216, 0.48)", "400", 850);
 
   drawCardText(context, result.rawWpm.toFixed(1), 82, 540, 160, "#eee7d8", "700");
   drawCardText(context, "WPM", 92, 590, 26, "rgba(238, 231, 216, 0.46)");

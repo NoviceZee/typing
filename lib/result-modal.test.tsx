@@ -105,6 +105,140 @@ describe("ResultModal", () => {
     );
   });
 
+  it("displays readable Training labels instead of internal category slugs", () => {
+    render(
+      <ResultModal
+        result={{ ...makeResult(), category: "training_code" }}
+        passage={{
+          ...makePassage(),
+          id: "training-code",
+          title: "Training Code",
+          category: "training_code",
+          style: "60s"
+        }}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="60s"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Training · Code · 60s")).toBeTruthy();
+    expect(screen.queryByText(/training_code/)).toBeNull();
+  });
+
+  it("displays Chinese Training word-count labels without internal slugs", () => {
+    render(
+      <ResultModal
+        result={{ ...makeResult(), category: "training_chinese" }}
+        passage={{
+          ...makePassage(),
+          id: "training-chinese",
+          title: "Training Chinese",
+          category: "training_chinese",
+          style: "10 words"
+        }}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="10 words"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Training · Chinese · 10 words")).toBeTruthy();
+    expect(screen.queryByText(/training_chinese|characters/)).toBeNull();
+  });
+
+  it("labels Chinese Training speed as WPM while keeping character-based values", () => {
+    render(
+      <ResultModal
+        result={{ ...makeResult(), category: "training_chinese", wpm: 50, rawWpm: 50 }}
+        passage={{
+          ...makePassage(),
+          id: "training-chinese",
+          title: "Training Chinese",
+          category: "training_chinese",
+          style: "60s"
+        }}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="60s"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("WPM Over Time")).toBeTruthy();
+    expect(screen.getAllByText("WPM").length).toBeGreaterThan(0);
+    expect(screen.queryByText("CPM")).toBeNull();
+  });
+
+  it("counts the current result as the first comparable history attempt", () => {
+    render(
+      <ResultModal
+        result={{ ...makeResult(), wpm: 28.2 }}
+        passage={{ ...makePassage(), id: "training-code", title: "Training Code", category: "training_code", style: "60s" }}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="60s"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Avg (last 10)")).toBeTruthy();
+    expect(screen.getByText("Best (last 10)")).toBeTruthy();
+    expect(screen.getByText("Attempts")).toBeTruthy();
+    expect(screen.getAllByText("28.2").length).toBeGreaterThan(0);
+    expect(screen.getByText("1")).toBeTruthy();
+    expect(screen.queryByText("Previous Attempt")).toBeNull();
+  });
+
+  it("includes the immediately previous comparable attempt in history when recent rows omit it", () => {
+    render(
+      <ResultModal
+        result={{ ...makeResult(), wpm: 28.2, rawWpm: 30, category: "training_code" }}
+        passage={{ ...makePassage(), id: "training-code", title: "Training Code", category: "training_code", style: "60s" }}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={{
+          passageId: "training-code",
+          passageTitle: "Training Code",
+          wpm: 20.2,
+          rawWpm: 22,
+          accuracy: 96,
+          errors: 2,
+          correctCharacters: 101,
+          typedCharacters: 106,
+          elapsedSeconds: 60,
+          durationSeconds: 60,
+          completedAt: "2026-06-19T00:01:00.000Z",
+          completionReason: "time_up"
+        }}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="60s"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("24.2")).toBeTruthy();
+    expect(screen.getAllByText("28.2").length).toBeGreaterThan(0);
+    expect(screen.getByText("2")).toBeTruthy();
+    expect(screen.getByText("Previous Attempt")).toBeTruthy();
+    expect(screen.getByText("previous 20.2")).toBeTruthy();
+  });
+
   it("shows a personal-best celebration when net WPM improves over the previous result", () => {
     render(
       <ResultModal

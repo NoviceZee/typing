@@ -81,6 +81,49 @@ describe("typingStatistics", () => {
     ]);
   });
 
+  it("excludes Chinese attempts from default English weak-key statistics", () => {
+    const chineseDetail = buildTypingAttemptDetail({
+      userId: "user-1",
+      result: makeResult(
+        [
+          { expected: "答", actual: "竹", status: "wrong", index: 0 },
+          { expected: "案", actual: "心", status: "wrong", index: 1 }
+        ],
+        "training_chinese"
+      ),
+      typedCharacterDelaysMs: [100, 120]
+    });
+
+    const stats = aggregateTypingStatistics([chineseDetail], { minWeakKeyHits: 1 });
+
+    expect(stats.keys).toHaveLength(0);
+    expect(stats.weakKeys).toHaveLength(0);
+    expect(stats.commonMistakes).toHaveLength(0);
+  });
+
+  it("keeps Chinese common mistakes in the Chinese-only statistics domain without weak keys", () => {
+    const chineseDetail = buildTypingAttemptDetail({
+      userId: "user-1",
+      result: makeResult(
+        [
+          { expected: "答", actual: "竹", status: "wrong", index: 0 },
+          { expected: "案", actual: "心", status: "wrong", index: 1 }
+        ],
+        "training_chinese"
+      ),
+      typedCharacterDelaysMs: [100, 120]
+    });
+
+    const stats = aggregateTypingStatistics([chineseDetail], { minWeakKeyHits: 1, domain: "chinese" });
+
+    expect(stats.keys).toHaveLength(0);
+    expect(stats.weakKeys).toHaveLength(0);
+    expect(stats.commonMistakes).toEqual([
+      { id: "substitution:案:心", type: "substitution", expected: "案", actual: "心", count: 1 },
+      { id: "substitution:答:竹", type: "substitution", expected: "答", actual: "竹", count: 1 }
+    ]);
+  });
+
   it("filters low-sample keys out of weak-key ranking", () => {
     const weakKeys = rankWeakKeys([makeKey("x", 2, 0, 2), makeKey("j", 5, 3, 2)], { minHits: 5 });
 
@@ -278,7 +321,7 @@ function makeKey(key: string, hitCount: number, correctCount: number, mistakeCou
   };
 }
 
-function makeResult(characters: TypingResult["characters"]): TypingResult {
+function makeResult(characters: TypingResult["characters"], category: TypingResult["category"] = "Business email"): TypingResult {
   return {
     characters,
     characterStatuses: characters,
@@ -294,7 +337,7 @@ function makeResult(characters: TypingResult["characters"]): TypingResult {
     rawWpm: 52,
     timeUsedSeconds: 60,
     durationSeconds: 60,
-    category: "Business email",
+    category,
     presetName: "Custom rules",
     completionReason: "manual",
     completedAt: "2026-06-21T00:00:00.000Z",

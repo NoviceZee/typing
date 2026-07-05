@@ -133,7 +133,10 @@ describe("Profile friends page", () => {
     expect(screen.getByText("Friends since Jun 19, 2026")).toBeTruthy();
     expect(screen.getByText("Level")).toBeTruthy();
     expect(screen.getByText("Tests")).toBeTruthy();
-    expect(screen.getByText("Best WPM")).toBeTruthy();
+    expect(screen.getByText("English")).toBeTruthy();
+    expect(screen.getByText("Chinese")).toBeTruthy();
+    expect(screen.getByText("Code")).toBeTruthy();
+    expect(screen.queryByText("Best WPM")).toBeNull();
     expect(screen.getByText("Acc")).toBeTruthy();
     expect(screen.getByText("Streak")).toBeTruthy();
     expect(screen.getByText("Latest")).toBeTruthy();
@@ -141,6 +144,38 @@ describe("Profile friends page", () => {
     expect(screen.getByText("72.0")).toBeTruthy();
     expect(screen.getByText("98.2%")).toBeTruthy();
     expect(screen.getByText("Passage latest")).toBeTruthy();
+  });
+
+  it("renders friend best WPM values by analytics domain with dashes for missing domains", async () => {
+    mockedListFriends.mockResolvedValueOnce([makeFriend({ handle: "ada_type" })]);
+    mockedGetPublicProfile.mockResolvedValueOnce(makePublicProfile({ handle: "ada_type" }) as any);
+    mockedGetPublicResults.mockResolvedValueOnce([
+      makeResult("english", 72, 98.2, "Business email"),
+      makeResult("chinese", 58, 99, "training_chinese"),
+      makeResult("code", 31, 96, "training_code")
+    ] as any);
+
+    render(<FriendsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("table", { name: "Friends stats" })).toBeTruthy();
+    });
+
+    expect(screen.getByText("72.0")).toBeTruthy();
+    expect(screen.getByText("58.0")).toBeTruthy();
+    expect(screen.getByText("31.0")).toBeTruthy();
+    expect(screen.queryByText("—")).toBeNull();
+
+    mockedListFriends.mockResolvedValueOnce([makeFriend({ id: "friend-2", handle: "solo_type" })]);
+    mockedGetPublicProfile.mockResolvedValueOnce(makePublicProfile({ handle: "solo_type" }) as any);
+    mockedGetPublicResults.mockResolvedValueOnce([makeResult("english-only", 64, 97.5, "Business email")] as any);
+
+    render(<FriendsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "@solo_type" })).toBeTruthy();
+    });
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
   });
 
   it("renders incoming and outgoing requests compactly", async () => {
@@ -246,7 +281,7 @@ describe("Profile friends page", () => {
     const link = await screen.findByRole("link", { name: "@private_keys" });
     expect(link.getAttribute("href")).toBe("/u/private_keys");
     expect(screen.getByText("Private")).toBeTruthy();
-    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(5);
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(5);
   });
 
   it("cancels outgoing requests and removes accepted friends", async () => {
@@ -306,11 +341,11 @@ function makePublicProfile(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function makeResult(id: string, wpm: number, accuracy: number) {
+function makeResult(id: string, wpm: number, accuracy: number, category = "Letters") {
   return {
     id,
     passage_title: `Passage ${id}`,
-    passage_category: "Letters",
+    passage_category: category,
     duration_seconds: 60,
     wpm,
     accuracy,

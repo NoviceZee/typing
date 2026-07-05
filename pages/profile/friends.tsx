@@ -8,6 +8,7 @@ import { Plus, UserCircle, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
+import { ANALYTICS_DOMAIN_OPTIONS, AnalyticsDomain } from "@/lib/analyticsDomain";
 import {
   FriendListItem,
   acceptFriendRequest,
@@ -29,6 +30,7 @@ import type { SupabaseAnalyticsTypingResultRow } from "@/lib/typingResultStorage
 type FriendStats = {
   profile: SupabasePublicProfile | null;
   analytics: ReturnType<typeof buildProgressAnalytics> | null;
+  domainAnalytics: Record<AnalyticsDomain, ReturnType<typeof buildProgressAnalytics>> | null;
   latestResult: SupabaseAnalyticsTypingResultRow | null;
   isPrivate: boolean;
 };
@@ -279,7 +281,7 @@ async function toFriendRow(friend: FriendListItem): Promise<FriendRow> {
     const profile = await getSupabasePublicProfileByHandle(friend.handle);
 
     if (!profile || profile.public_profile_enabled === false) {
-      return { friend, stats: { profile, analytics: null, latestResult: null, isPrivate: true } };
+      return { friend, stats: { profile, analytics: null, domainAnalytics: null, latestResult: null, isPrivate: true } };
     }
 
     const results = await getSupabasePublicTypingResultsByHandle(friend.handle);
@@ -290,12 +292,13 @@ async function toFriendRow(friend: FriendListItem): Promise<FriendRow> {
       stats: {
         profile,
         analytics: buildProgressAnalytics(results),
+        domainAnalytics: buildFriendDomainAnalytics(results),
         latestResult: newestFirst[0] ?? null,
         isPrivate: false
       }
     };
   } catch {
-    return { friend, stats: { profile: null, analytics: null, latestResult: null, isPrivate: true } };
+    return { friend, stats: { profile: null, analytics: null, domainAnalytics: null, latestResult: null, isPrivate: true } };
   }
 }
 
@@ -319,13 +322,15 @@ function FriendsTable({
 
   return (
     <section className="overflow-x-auto rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
-      <table aria-label="Friends stats" className="min-w-[58rem] w-full border-collapse text-left">
+      <table aria-label="Friends stats" className="min-w-[64rem] w-full border-collapse text-left">
         <thead className="border-b border-paper/10 font-mono text-[0.68rem] uppercase text-paper/35">
           <tr>
             <th className="px-4 py-3 font-normal">Friend</th>
             <th className="px-3 py-3 font-normal">Level</th>
             <th className="px-3 py-3 font-normal">Tests</th>
-            <th className="px-3 py-3 font-normal">Best WPM</th>
+            <th className="px-3 py-3 font-normal">English</th>
+            <th className="px-3 py-3 font-normal">Chinese</th>
+            <th className="px-3 py-3 font-normal">Code</th>
             <th className="px-3 py-3 font-normal">Acc</th>
             <th className="px-3 py-3 font-normal">Streak</th>
             <th className="px-3 py-3 font-normal">Latest</th>
@@ -361,6 +366,7 @@ function FriendTableRow({
   const { friend, stats } = row;
   const avatarUrl = getSupabaseAvatarPublicUrl(stats.profile?.avatar_path);
   const analytics = stats.analytics;
+  const domainAnalytics = stats.domainAnalytics;
   const latestResult = stats.latestResult;
   const hasPublicStats = Boolean(analytics && !stats.isPrivate);
 
@@ -385,7 +391,9 @@ function FriendTableRow({
       </td>
       <FriendStatCell value={hasPublicStats ? analytics?.progression.currentLevel : null} />
       <FriendStatCell value={hasPublicStats ? analytics?.summary.totalTests : null} />
-      <FriendStatCell value={hasPublicStats && analytics?.summary.bestWpm ? formatNumber(analytics.summary.bestWpm) : null} />
+      <FriendStatCell value={getDomainBestWpm(domainAnalytics, "english")} />
+      <FriendStatCell value={getDomainBestWpm(domainAnalytics, "chinese")} />
+      <FriendStatCell value={getDomainBestWpm(domainAnalytics, "code")} />
       <FriendStatCell
         value={hasPublicStats && analytics?.summary.bestAccuracy ? `${formatNumber(analytics.summary.bestAccuracy)}%` : null}
       />
@@ -565,7 +573,30 @@ function FriendAvatar({
 }
 
 function FriendStatCell({ value }: { value: string | number | null | undefined }) {
-  return <td className="px-3 py-3 font-mono text-sm text-paper/70">{value ?? "-"}</td>;
+  return <td className="px-3 py-3 font-mono text-sm text-paper/70">{value ?? "—"}</td>;
+}
+
+function buildFriendDomainAnalytics(results: SupabaseAnalyticsTypingResultRow[]) {
+  return ANALYTICS_DOMAIN_OPTIONS.reduce(
+    (domains, option) => {
+      domains[option.id] = buildProgressAnalytics(results, { domain: option.id });
+      return domains;
+    },
+    {} as Record<AnalyticsDomain, ReturnType<typeof buildProgressAnalytics>>
+  );
+}
+
+function getDomainBestWpm(
+  domainAnalytics: Record<AnalyticsDomain, ReturnType<typeof buildProgressAnalytics>> | null,
+  domain: AnalyticsDomain
+) {
+  const analytics = domainAnalytics?.[domain];
+
+  if (!analytics || analytics.summary.totalTests === 0) {
+    return null;
+  }
+
+  return formatNumber(analytics.summary.bestWpm);
 }
 
 function getAvatarStyleClass(style: string) {

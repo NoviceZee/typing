@@ -1,4 +1,5 @@
 import type { SupabaseAnalyticsTypingResultRow } from "./typingResultStorage";
+import { AnalyticsDomain, getResultAnalyticsDomain } from "./analyticsDomain";
 
 export type ProgressAnalytics = {
   summary: {
@@ -80,6 +81,7 @@ export type ChallengeItem = {
 
 type BuildProgressAnalyticsOptions = {
   now?: Date;
+  domain?: AnalyticsDomain;
 };
 
 const RECENT_TREND_LIMIT = 30;
@@ -91,10 +93,13 @@ export function buildProgressAnalytics(
   results: SupabaseAnalyticsTypingResultRow[],
   options: BuildProgressAnalyticsOptions = {}
 ): ProgressAnalytics {
-  const normalizedResults = results.map((result) => ({
-    ...result,
-    passage_category: normalizeCategory(result.passage_category)
-  }));
+  const domain = options.domain ?? "english";
+  const normalizedResults = results
+    .filter((result) => getResultAnalyticsDomain(result) === domain)
+    .map((result) => ({
+      ...result,
+      passage_category: normalizeCategory(result.passage_category)
+    }));
   const newestFirst = [...normalizedResults].sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
   const recentTrend = [...normalizedResults]
     .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
@@ -109,7 +114,10 @@ export function buildProgressAnalytics(
     bestAccuracy: roundOne(maxOrZero(normalizedResults.map((result) => result.accuracy))),
     totalTests: normalizedResults.length,
     totalPracticeSeconds: normalizedResults.reduce((total, result) => total + result.duration_seconds, 0),
-    totalWordsTyped: Math.floor(normalizedResults.reduce((total, result) => total + Math.max(0, result.correct_chars), 0) / 5)
+    totalWordsTyped:
+      domain === "chinese"
+        ? normalizedResults.reduce((total, result) => total + Math.max(0, result.correct_chars), 0)
+        : Math.floor(normalizedResults.reduce((total, result) => total + Math.max(0, result.correct_chars), 0) / 5)
   };
   const activity = getActivitySummary(normalizedResults);
   const progression = getProgression(normalizedResults, activity);

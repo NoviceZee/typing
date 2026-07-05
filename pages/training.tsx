@@ -10,7 +10,9 @@ import {
 const CONTENT_OPTIONS: Array<{ value: TrainingContentType; label: string }> = [
   { value: "words", label: "Words" },
   { value: "numbers", label: "Numbers" },
-  { value: "symbols", label: "Symbols" }
+  { value: "symbols", label: "Symbols" },
+  { value: "code", label: "Code" },
+  { value: "chinese", label: "Chinese" }
 ];
 
 const TIME_OPTIONS = [15, 30, 60, 120];
@@ -28,9 +30,21 @@ export default function TrainingPage() {
   const [durationSeconds, setDurationSeconds] = useState(60);
   const [wordCount, setWordCount] = useState(25);
   const [wordDifficulty, setWordDifficulty] = useState<TrainingWordDifficulty>("intermediate");
+  const isCodeActive = contentTypes.includes("code");
+  const activeMode: TrainingMode = isCodeActive ? "time" : mode;
 
   const toggleContentType = useCallback((contentType: TrainingContentType) => {
+    if (contentType === "code" || contentType === "chinese") {
+      setMode("time");
+      setContentTypes([contentType]);
+      return;
+    }
+
     setContentTypes((current) => {
+      if (current.includes("code") || current.includes("chinese")) {
+        return [contentType];
+      }
+
       if (current.includes(contentType)) {
         return current.length === 1 ? current : current.filter((selected) => selected !== contentType);
       }
@@ -43,7 +57,7 @@ export default function TrainingPage() {
     () => (
       <section
         data-testid="training-controls"
-        className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 font-mono text-xs lg:flex-nowrap"
+        className="mx-auto mb-2 flex max-w-fit flex-wrap items-center justify-center gap-x-2 gap-y-1 px-1 font-mono text-xs lg:flex-nowrap"
       >
         <div role="group" aria-label="Content" className="flex items-center gap-2">
           {CONTENT_OPTIONS.map((option) => (
@@ -59,14 +73,14 @@ export default function TrainingPage() {
         <Separator />
 
         <div role="group" aria-label="Mode" className="flex items-center gap-2">
-          <ToggleButton label="Time" isSelected={mode === "time"} onClick={() => setMode("time")} />
-          <ToggleButton label="Words" isSelected={mode === "words"} onClick={() => setMode("words")} />
+          <ToggleButton label="Time" isSelected={activeMode === "time"} onClick={() => setMode("time")} />
+          {!isCodeActive && <ToggleButton label="Words" isSelected={activeMode === "words"} onClick={() => setMode("words")} />}
         </div>
 
         <Separator />
 
         <div role="group" aria-label="Length" className="flex items-center gap-2">
-          {mode === "time"
+          {activeMode === "time"
             ? TIME_OPTIONS.map((seconds) => (
                 <ToggleButton
                   key={seconds}
@@ -99,16 +113,19 @@ export default function TrainingPage() {
         </div>
       </section>
     ),
-    [contentTypes, durationSeconds, mode, toggleContentType, wordCount, wordDifficulty]
+    [activeMode, contentTypes, durationSeconds, isCodeActive, toggleContentType, wordCount, wordDifficulty]
   );
 
   const trainingMode = useMemo<PracticeTrainingMode>(
     () => ({
       pageTitle: "Training",
       passageId: `training-${contentTypes.join("-")}`,
-      configKey: `${contentTypes.join("-")}-${mode}-${durationSeconds}-${wordCount}-${wordDifficulty}`,
+      configKey: `${contentTypes.join("-")}-${activeMode}-${durationSeconds}-${wordCount}-${wordDifficulty}`,
       controls,
-      session: mode === "time" ? { kind: "time", seconds: durationSeconds } : { kind: "words", wordCount },
+      session:
+        activeMode === "time"
+          ? { kind: "time", seconds: durationSeconds }
+          : { kind: "words", wordCount },
       buildPassage: ({ durationSeconds: currentDurationSeconds, wordCount: currentWordCount, mode: currentMode }) =>
         buildTrainingPassage({
           contentTypes,
@@ -121,7 +138,7 @@ export default function TrainingPage() {
       hidePracticeModeControls: true,
       hideMetadata: true
     }),
-    [contentTypes, controls, durationSeconds, mode, wordCount, wordDifficulty]
+    [activeMode, contentTypes, controls, durationSeconds, wordCount, wordDifficulty]
   );
 
   return <PracticePage trainingMode={trainingMode} />;

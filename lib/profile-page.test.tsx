@@ -360,6 +360,41 @@ describe("ProfilePage", () => {
     expect(screen.getAllByText("Locked").length).toBeGreaterThan(0);
     expect(screen.queryByText("Summary Stats")).toBeNull();
   });
+
+  it("scopes Profile stats and result lists by selected analytics domain", async () => {
+    mockedGetSupabaseAnalyticsTypingResults.mockResolvedValueOnce([
+      makeResult("english", 60, 50, 98, "Business email", "2026-06-21T00:01:00.000Z"),
+      makeResult("chinese", 60, 120, 99, "training_chinese", "2026-06-21T00:02:00.000Z"),
+      makeResult("legacy-chinese", 60, 80, 97, null, "2026-06-21T00:04:00.000Z", "Training Chinese"),
+      makeResult("code", 60, 90, 97, "training_code", "2026-06-21T00:03:00.000Z")
+    ]);
+
+    render(<ProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
+    });
+    expect(screen.getByText("Passage english")).toBeTruthy();
+    expect(screen.queryByText("Passage chinese")).toBeNull();
+    expect(screen.queryByText("Passage code")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
+
+    expect(screen.getByText("Passage chinese")).toBeTruthy();
+    expect(screen.getByText("Training Chinese")).toBeTruthy();
+    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("120.0").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("100.0").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Passage english")).toBeNull();
+    expect(screen.queryByText("Passage code")).toBeNull();
+    expect(screen.queryByText("Weak Keys")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Code" }));
+
+    expect(screen.getByText("Passage code")).toBeTruthy();
+    expect(screen.queryByText("Passage english")).toBeNull();
+    expect(screen.queryByText("Passage chinese")).toBeNull();
+  });
 });
 
 function makeProfile(overrides: Partial<Record<string, unknown>> = {}) {
@@ -383,11 +418,12 @@ function makeResult(
   wpm: number,
   accuracy: number,
   category: string | null,
-  createdAt: string
+  createdAt: string,
+  title = `Passage ${id}`
 ) {
   return {
     id,
-    passage_title: `Passage ${id}`,
+    passage_title: title,
     passage_category: category,
     duration_seconds: durationSeconds,
     wpm,

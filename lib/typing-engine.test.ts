@@ -91,6 +91,53 @@ describe("typing rule comparison", () => {
     expect(comparison.missedCharacters).toBe(1);
   });
 
+  it("keeps code training WPM normalized by characters per five", () => {
+    const result = calculateResult({
+      target: "const total = price * quantity;",
+      typed: "const total = price * quantity;",
+      elapsedSeconds: 60,
+      durationSeconds: 60,
+      category: "training_code",
+      rules: DEFAULT_RULES,
+      completionReason: "time_up"
+    });
+
+    expect(result.wpm).toBeCloseTo(result.correctCharacters / 5, 5);
+    expect(result.category).toBe("training_code");
+  });
+
+  it("calculates Chinese training pace as characters per minute", () => {
+    const result = calculateResult({
+      target: "今天工作時間朋友香港",
+      typed: "今天工作時間朋友香港",
+      elapsedSeconds: 60,
+      durationSeconds: 60,
+      category: "training_chinese",
+      rules: DEFAULT_RULES,
+      completionReason: "time_up"
+    });
+
+    expect(result.wpm).toBe(result.correctCharacters);
+    expect(result.rawWpm).toBe(result.correctCharacters);
+    expect(result.category).toBe("training_chinese");
+  });
+
+  it("calculates Chinese WPM as one correct Chinese character per WPM unit", () => {
+    const result = calculateResult({
+      target: "今天工作時間朋友香港",
+      typed: "今天工作時間",
+      elapsedSeconds: 30,
+      durationSeconds: 60,
+      category: "training_chinese",
+      rules: DEFAULT_RULES,
+      completionReason: "manual"
+    });
+
+    expect(result.correctCharacters).toBe(6);
+    expect(result.wpm).toBe(12);
+    expect(result.rawWpm).toBe(12);
+  });
+
   it("does not count extra spaces when that rule is disabled", () => {
     const comparison = validateTypedText({
       targetText: "Kind regards",

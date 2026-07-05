@@ -3,11 +3,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Award, Copy, Target, Trophy, UserCircle } from "lucide-react";
+import { Award, Copy, Trophy, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/router";
 import { buildProgressAnalytics } from "@/lib/analytics";
+import { ANALYTICS_DOMAIN_OPTIONS, AnalyticsDomain } from "@/lib/analyticsDomain";
 import {
   getSupabaseAvatarPublicUrl,
   getSupabaseProfile,
@@ -39,7 +40,8 @@ export default function PublicUserProfilePage() {
   const [results, setResults] = useState<SupabaseAnalyticsTypingResultRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [copyMessage, setCopyMessage] = useState("");
-  const analytics = useMemo(() => buildProgressAnalytics(results), [results]);
+  const analytics = useMemo(() => buildProgressAnalytics(results, { domain: "english" }), [results]);
+  const domainAnalytics = useMemo(() => buildDomainAnalytics(results), [results]);
 
   useEffect(() => {
     let isMounted = true;
@@ -190,7 +192,7 @@ export default function PublicUserProfilePage() {
               friendActionMessage={friendActionMessage}
             />
 
-            <PublicStatsPanel analytics={analytics} hasResults={results.length > 0} />
+            <PublicStatsPanel domainAnalytics={domainAnalytics} />
             <AchievementsSummary analytics={analytics} />
           </div>
         )}
@@ -449,22 +451,31 @@ function SummaryStat({ label, value }: { label: string; value: string | number }
 }
 
 function PublicStatsPanel({
-  analytics,
-  hasResults
+  domainAnalytics
 }: {
-  analytics: ReturnType<typeof buildProgressAnalytics>;
-  hasResults: boolean;
+  domainAnalytics: DomainAnalyticsSummary[];
 }) {
+  const visibleDomains = domainAnalytics.filter((domain) => domain.analytics.summary.totalTests > 0);
+  const hasResults = visibleDomains.length > 0;
+
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-mono text-sm uppercase text-brass">Public Stats</h2>
         <Trophy className="h-4 w-4 text-brass" />
       </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <FeaturedStat label="Best WPM" value={formatNumber(analytics.summary.bestWpm)} icon={<Trophy className="h-4 w-4" />} />
-        <FeaturedStat label="Best accuracy" value={`${formatNumber(analytics.summary.bestAccuracy)}%`} icon={<Target className="h-4 w-4" />} />
-      </div>
+      {hasResults && (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleDomains.map((domain) => (
+            <FeaturedStat
+              key={domain.id}
+              label={`${domain.label} WPM`}
+              value={formatNumber(domain.analytics.summary.bestWpm)}
+              icon={<Trophy className="h-4 w-4" />}
+            />
+          ))}
+        </div>
+      )}
       {!hasResults && (
         <div className="mt-5 rounded-md border border-paper/10 bg-ink-900/60 px-4 py-5">
           <p className="font-mono text-sm text-paper">No best result yet.</p>
@@ -513,6 +524,19 @@ function FeaturedStat({ label, value, icon }: { label: string; value: string; ic
       <p className="mt-3 font-mono text-3xl font-semibold text-paper">{value}</p>
     </article>
   );
+}
+
+type DomainAnalyticsSummary = {
+  id: AnalyticsDomain;
+  label: string;
+  analytics: ReturnType<typeof buildProgressAnalytics>;
+};
+
+function buildDomainAnalytics(results: SupabaseAnalyticsTypingResultRow[]): DomainAnalyticsSummary[] {
+  return ANALYTICS_DOMAIN_OPTIONS.map((option) => ({
+    ...option,
+    analytics: buildProgressAnalytics(results, { domain: option.id })
+  }));
 }
 
 function formatNumber(value: number) {

@@ -9,6 +9,8 @@ const PRACTICE_CATEGORIES = [
   "Casual writing",
   "Legal / contract style",
   "Random paragraph",
+  "training_code",
+  "training_chinese",
   "Uncategorised"
 ];
 

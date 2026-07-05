@@ -9,6 +9,12 @@ import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import {
+  ANALYTICS_DOMAIN_OPTIONS,
+  AnalyticsDomain,
+  getDomainEmptyState,
+  getResultAnalyticsDomain
+} from "@/lib/analyticsDomain";
+import {
   SupabaseProfile,
   getSupabaseAvatarPublicUrl,
   getSupabaseProfile,
@@ -57,13 +63,19 @@ export default function ProfilePage() {
   const [copyMessage, setCopyMessage] = useState("");
   const [trendRange, setTrendRange] = useState<TrendRange>("30");
   const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>("accuracy");
-  const analytics = useMemo(() => buildProgressAnalytics(results), [results]);
-  const trendResults = useMemo(() => getTrendResults(results, trendRange), [results, trendRange]);
+  const [analyticsDomain, setAnalyticsDomain] = useState<AnalyticsDomain>("english");
+  const domainResults = useMemo(
+    () => results.filter((result) => getResultAnalyticsDomain(result) === analyticsDomain),
+    [analyticsDomain, results]
+  );
+  const analytics = useMemo(() => buildProgressAnalytics(results, { domain: analyticsDomain }), [analyticsDomain, results]);
+  const trendResults = useMemo(() => getTrendResults(domainResults, trendRange), [domainResults, trendRange]);
   const typingAttemptDetails = useMemo(() => (user ? readTypingAttemptDetails(user.id) : []), [user]);
   const typingStatistics = useMemo(
-    () => aggregateTypingStatistics(typingAttemptDetails),
-    [typingAttemptDetails]
+    () => aggregateTypingStatistics(typingAttemptDetails, { domain: analyticsDomain }),
+    [analyticsDomain, typingAttemptDetails]
   );
+  const emptyState = getDomainEmptyState(analyticsDomain);
 
   useEffect(() => {
     if (isAuthLoading || user) {
@@ -271,24 +283,26 @@ export default function ProfilePage() {
               </div>
             )}
 
+            <AnalyticsDomainSelector value={analyticsDomain} onChange={setAnalyticsDomain} />
+
             {isLoadingResults && (
               <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-sm text-paper/45">
                 Loading profile...
               </div>
             )}
 
-            {!isLoadingResults && results.length === 0 && !resultsMessage && (
+            {!isLoadingResults && domainResults.length === 0 && !resultsMessage && (
               <>
                 <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
                   <p className="font-mono text-sm text-paper/55">
-                    No saved results yet.{" "}
-                    <Link href="/practice" className="text-brass hover:text-brass/80">
-                      Start a practice session
+                    {emptyState.title}{" "}
+                    <Link href={analyticsDomain === "english" ? "/practice" : "/training"} className="text-brass hover:text-brass/80">
+                      {analyticsDomain === "english" ? "Start a practice session" : "Open Training"}
                     </Link>{" "}
-                    to build your progress profile.
+                    {emptyState.action}
                   </p>
                 </section>
-                {typingStatistics.keys.length > 0 && (
+                {analyticsDomain === "english" && typingStatistics.keys.length > 0 && (
                   <TypingWeaknessesSection
                     statistics={typingStatistics}
                     heatmapMode={heatmapMode}
@@ -300,14 +314,17 @@ export default function ProfilePage() {
               </>
             )}
 
-            {results.length > 0 && (
+            {domainResults.length > 0 && (
               <>
                 <ProgressSummary analytics={analytics} />
-                <TypingWeaknessesSection
-                  statistics={typingStatistics}
-                  heatmapMode={heatmapMode}
-                  onHeatmapModeChange={setHeatmapMode}
-                />
+                {analyticsDomain === "english" && (
+                  <TypingWeaknessesSection
+                    statistics={typingStatistics}
+                    heatmapMode={heatmapMode}
+                    onHeatmapModeChange={setHeatmapMode}
+                  />
+                )}
+                {analyticsDomain === "chinese" && <ChineseMistakesSection statistics={typingStatistics} />}
                 <Trends
                   range={trendRange}
                   results={trendResults}
@@ -320,13 +337,45 @@ export default function ProfilePage() {
                 <ActivitySection analytics={analytics} />
                 <ChallengesSection analytics={analytics} />
                 <AchievementsSection analytics={analytics} />
-                <MyResults results={results} />
+                <MyResults results={domainResults} domain={analyticsDomain} />
               </>
             )}
           </div>
         )}
       </section>
     </AppShell>
+  );
+}
+
+function AnalyticsDomainSelector({
+  value,
+  onChange
+}: {
+  value: AnalyticsDomain;
+  onChange: (domain: AnalyticsDomain) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2" aria-label="Profile stats domain">
+      {ANALYTICS_DOMAIN_OPTIONS.map((option) => {
+        const isSelected = option.id === value;
+
+        return (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={isSelected}
+            onClick={() => onChange(option.id)}
+            className={`rounded-md border px-3 py-2 font-mono text-xs transition ${
+              isSelected
+                ? "border-brass/60 bg-brass/15 text-brass"
+                : "border-paper/10 bg-ink-950 text-paper/55 hover:border-paper/25 hover:text-paper"
+            }`}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -692,15 +741,16 @@ function formatChallengeProgress(value: number, unit: string) {
   return unit === "%" ? `${formatNumber(value)}%` : `${value}`;
 }
 
-function MyResults({ results }: { results: SupabaseAnalyticsTypingResultRow[] }) {
+function MyResults({ results, domain }: { results: SupabaseAnalyticsTypingResultRow[]; domain: AnalyticsDomain }) {
   const recentResults = [...results]
     .sort((first, second) => Date.parse(second.created_at) - Date.parse(first.created_at))
     .slice(0, 10);
+  const title = domain === "chinese" ? "My Chinese Results" : domain === "code" ? "My Code Results" : "My Results";
 
   return (
     <section className="overflow-hidden rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
       <div className="border-b border-paper/10 px-4 py-4 md:px-5">
-        <h2 className="font-mono text-sm uppercase text-brass">My Results</h2>
+        <h2 className="font-mono text-sm uppercase text-brass">{title}</h2>
         <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">Recent attempts</p>
       </div>
       <div className="grid grid-cols-[9rem_minmax(0,1fr)_7rem_6rem_7rem] border-b border-paper/10 px-4 py-3 font-mono text-xs uppercase text-paper/40 max-md:hidden md:px-5">
@@ -728,6 +778,22 @@ function MyResults({ results }: { results: SupabaseAnalyticsTypingResultRow[] })
           <ResultMetric label="Accuracy" value={`${formatNumber(result.accuracy)}%`} />
         </article>
       ))}
+    </section>
+  );
+}
+
+function ChineseMistakesSection({ statistics }: { statistics: TypingStatistics }) {
+  return (
+    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+      <div>
+        <h2 className="font-mono text-sm uppercase text-brass">Chinese Mistakes</h2>
+        <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">
+          Chinese-only repeated mistake patterns
+        </p>
+      </div>
+      <div className="mt-4">
+        <CommonMistakesPanel mistakes={statistics.commonMistakes} />
+      </div>
     </section>
   );
 }

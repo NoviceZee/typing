@@ -1,4 +1,5 @@
 import type { StoredPassage } from "./app-storage";
+import { AnalyticsDomain } from "./analyticsDomain";
 import { LeaderboardTimeRange, getLeaderboardDateRange } from "./leaderboardFilters";
 import { normalizeHandle } from "./profileStorage";
 import { supabase } from "./supabaseClient";
@@ -34,6 +35,7 @@ export type SupabaseLeaderboardResultRow = {
 export type SupabaseOwnTypingResultRow = {
   id: string;
   passage_title: string;
+  passage_category?: string | null;
   duration_seconds: number;
   wpm: number;
   accuracy: number;
@@ -49,6 +51,7 @@ export type SupabaseLeaderboardFilters = {
   limit?: number;
   durationSeconds?: number | null;
   category?: string | null;
+  domain?: AnalyticsDomain;
   timeRange?: LeaderboardTimeRange;
   dateRange?: { start: Date; end: Date } | null;
 };
@@ -101,6 +104,7 @@ export async function getSupabaseLeaderboardResults({
   limit = 25,
   durationSeconds,
   category,
+  domain = "english",
   timeRange,
   dateRange
 }: SupabaseLeaderboardFilters = {}, client = supabase): Promise<SupabaseLeaderboardResultRow[]> {
@@ -121,6 +125,8 @@ export async function getSupabaseLeaderboardResults({
 
   if (category?.trim()) {
     query = query.eq("passage_category", category.trim());
+  } else {
+    query = applyLeaderboardDomainFilter(query, domain);
   }
 
   const resolvedDateRange = dateRange === undefined && timeRange ? getLeaderboardDateRange(timeRange) : dateRange;
@@ -139,17 +145,20 @@ export async function getSupabaseLeaderboardResults({
   return data ?? [];
 }
 
-export async function getSupabaseLeaderboardCategories(limit = 200): Promise<string[]> {
+export async function getSupabaseLeaderboardCategories(limit = 200, domain: AnalyticsDomain = "english"): Promise<string[]> {
   if (!supabase) {
     return [];
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("typing_results_leaderboard")
     .select("passage_category")
     .not("passage_category", "is", null)
-    .order("passage_category", { ascending: true })
-    .limit(limit);
+    .order("passage_category", { ascending: true });
+
+  query = applyLeaderboardDomainFilter(query, domain);
+
+  const { data, error } = await query.limit(limit);
 
   if (error) {
     throw error;
@@ -184,7 +193,7 @@ export async function getSupabaseOwnTypingResults(
 
   const { data, error } = await supabase
     .from("typing_results")
-    .select("id,passage_title,duration_seconds,wpm,accuracy,created_at")
+    .select("id,passage_title,duration_seconds,wpm,accuracy,created_at,passages(category)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -193,7 +202,7 @@ export async function getSupabaseOwnTypingResults(
     throw error;
   }
 
-  return data ?? [];
+  return (data ?? []).map(toSupabaseOwnTypingResultRow);
 }
 
 export async function getSupabaseAnalyticsTypingResults(
@@ -263,6 +272,20 @@ function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingRe
   };
 }
 
+function toSupabaseOwnTypingResultRow(row: any): SupabaseOwnTypingResultRow {
+  const passage = Array.isArray(row.passages) ? row.passages[0] : row.passages;
+
+  return {
+    id: row.id,
+    passage_title: row.passage_title,
+    passage_category: passage?.category ?? row.passage_category ?? null,
+    duration_seconds: Number(row.duration_seconds),
+    wpm: Number(row.wpm),
+    accuracy: Number(row.accuracy),
+    created_at: row.created_at
+  };
+}
+
 function toSupabasePublicTypingResultRow(row: any): SupabaseAnalyticsTypingResultRow {
   return {
     id: row.id,
@@ -274,6 +297,37 @@ function toSupabasePublicTypingResultRow(row: any): SupabaseAnalyticsTypingResul
     correct_chars: Number(row.correct_chars ?? 0),
     created_at: row.created_at
   };
+}
+
+function applyLeaderboardDomainFilter(query: any, domain: AnalyticsDomain) {
+  if (domain === "chinese") {
+    if (typeof query.or === "function") {
+      return query.or("passage_category.eq.training_chinese,passage_title.ilike.%Training Chinese%");
+    }
+
+    return query.eq("passage_category", "training_chinese");
+  }
+
+  if (domain === "code") {
+    if (typeof query.or === "function") {
+      return query.or("passage_category.eq.training_code,passage_title.ilike.%Training Code%");
+    }
+
+    return query.eq("passage_category", "training_code");
+  }
+
+  if (typeof query.or === "function") {
+    query = query.or("passage_category.is.null,passage_category.not.in.(training_chinese,training_code)");
+  } else {
+    query = query.not("passage_category", "in", "(training_chinese,training_code)");
+  }
+
+  if (typeof query.not === "function") {
+    query = query.not("passage_title", "ilike", "%Training Chinese%");
+    query = query.not("passage_title", "ilike", "%Training Code%");
+  }
+
+  return query;
 }
 
 function isUuid(value?: string | null): value is string {

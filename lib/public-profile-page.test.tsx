@@ -101,8 +101,9 @@ describe("PublicUserProfilePage", () => {
     expect(screen.getByText("XP progress")).toBeTruthy();
     expect(screen.getByText("Total XP")).toBeTruthy();
     expect(screen.getByText("Tests completed")).toBeTruthy();
-    expect(screen.getAllByText("Best WPM").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Best accuracy").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("English WPM").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Best WPM")).toBeNull();
+    expect(screen.queryByText("Best accuracy")).toBeNull();
     expect(screen.getByText("Current streak")).toBeTruthy();
     expect(screen.getByText("Achievements")).toBeTruthy();
     expect(screen.queryByText("Recent Results")).toBeNull();
@@ -124,8 +125,32 @@ describe("PublicUserProfilePage", () => {
     expect(screen.queryByText("No public typing results yet.")).toBeNull();
     expect(screen.queryByText("This profile is ready; saved public results will appear here.")).toBeNull();
     expect(screen.queryByText("Recent Results")).toBeNull();
-    expect(screen.getAllByText("0.0").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("0.0%").length).toBeGreaterThan(0);
+    expect(screen.getByText("No best result yet.")).toBeTruthy();
+    expect(screen.queryByText("0.0")).toBeNull();
+    expect(screen.queryByText("0.0%")).toBeNull();
+  });
+
+  it("shows public WPM bests by domain instead of one mixed headline", async () => {
+    mockedGetResults.mockResolvedValueOnce([
+      makeResult("english", 60, 50, 98, "Business email", "2026-06-21T00:01:00.000Z", 250),
+      makeResult("chinese", 60, 120, 99, "training_chinese", "2026-06-21T00:02:00.000Z", 120),
+      makeResult("code", 60, 90, 97, "training_code", "2026-06-21T00:03:00.000Z", 450)
+    ]);
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@formal_typist")).toBeTruthy();
+    });
+
+    expect(screen.getByText("English WPM")).toBeTruthy();
+    expect(screen.getByText("Chinese WPM")).toBeTruthy();
+    expect(screen.getByText("Code WPM")).toBeTruthy();
+    expect(screen.getAllByText("50.0").length).toBeGreaterThan(0);
+    expect(screen.getByText("120.0")).toBeTruthy();
+    expect(screen.getByText("90.0")).toBeTruthy();
+    expect(screen.queryByText("Best WPM")).toBeNull();
+    expect(screen.queryByText("Recent Results")).toBeNull();
   });
 
   it("renders bio and avatar fallbacks when identity fields are null", async () => {

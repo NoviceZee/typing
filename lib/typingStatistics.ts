@@ -1,4 +1,5 @@
 import type { CharacterComparison, TypingResult } from "./typing-engine";
+import { AnalyticsDomain, getCategoryAnalyticsDomain } from "./analyticsDomain";
 
 export const TYPING_ATTEMPT_DETAILS_STORAGE_KEY = "formaltype.typing_attempt_details.v1";
 const MAX_STORED_ATTEMPT_DETAILS = 200;
@@ -18,6 +19,7 @@ export type TypingAttemptDetail = {
   userId: string | null;
   completedAt: string;
   durationSeconds: number;
+  category?: string | null;
   wpm: number;
   accuracy: number;
   characters: TypingAttemptCharacterDetail[];
@@ -123,6 +125,7 @@ export type TypingStatistics = {
 
 export type TypingStatisticsOptions = {
   minWeakKeyHits?: number;
+  domain?: AnalyticsDomain;
 };
 
 type MutableKeyStatistic = Omit<KeyStatistic, "accuracy" | "averageDelayMs"> & {
@@ -155,6 +158,7 @@ export function buildTypingAttemptDetail({
     userId: userId ?? null,
     completedAt: result.completedAt,
     durationSeconds: result.durationSeconds,
+    category: result.category,
     wpm: result.wpm,
     accuracy: result.accuracy,
     timeline: timeline.map((point) => ({
@@ -179,9 +183,23 @@ export function aggregateTypingStatistics(
   attempts: TypingAttemptDetail[],
   options: TypingStatisticsOptions = {}
 ): TypingStatistics {
+  const domain = options.domain ?? "english";
+  const scopedAttempts = attempts.filter((attempt) => getCategoryAnalyticsDomain(attempt.category) === domain);
   const keysByCharacter = new Map<string, MutableKeyStatistic>();
 
-  attempts.forEach((attempt) => {
+  if (domain === "chinese") {
+    return {
+      keys: [],
+      weakKeys: [],
+      commonMistakes: rankCommonMistakes(scopedAttempts),
+      fingers: [],
+      reactionTime: calculateReactionTime(scopedAttempts),
+      burstSpeed: calculateBurstSpeed(scopedAttempts),
+      speedDrop: calculateSpeedDrop(scopedAttempts)
+    };
+  }
+
+  scopedAttempts.forEach((attempt) => {
     attempt.characters.forEach((character) => {
       if (!character.expected || !isAttemptedExpectedCharacter(character)) {
         return;
@@ -229,11 +247,11 @@ export function aggregateTypingStatistics(
   return {
     keys,
     weakKeys: rankWeakKeys(keys, { minHits: options.minWeakKeyHits }),
-    commonMistakes: rankCommonMistakes(attempts),
-    fingers: aggregateFingerStatistics(attempts),
-    reactionTime: calculateReactionTime(attempts),
-    burstSpeed: calculateBurstSpeed(attempts),
-    speedDrop: calculateSpeedDrop(attempts)
+    commonMistakes: rankCommonMistakes(scopedAttempts),
+    fingers: aggregateFingerStatistics(scopedAttempts),
+    reactionTime: calculateReactionTime(scopedAttempts),
+    burstSpeed: calculateBurstSpeed(scopedAttempts),
+    speedDrop: calculateSpeedDrop(scopedAttempts)
   };
 }
 

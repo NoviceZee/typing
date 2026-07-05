@@ -8,7 +8,8 @@ import TrainingSymbolsPage from "../pages/training/symbols";
 import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 
 vi.mock("@/components/AppShell", () => ({
-  AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>
+  AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  AdPlaceholder: () => <div>Ad space</div>
 }));
 
 const authState: { user: { id: string } | null } = { user: null };
@@ -46,7 +47,7 @@ describe("TrainingSymbolsPage", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Symbols Training" })).toBeTruthy();
     expect(screen.getByTestId("practice-passage-metadata").textContent).toContain(
-      "Symbols training · training_symbols · Symbol drills · 60s"
+      "Training · Symbols · Symbol drills · 60s"
     );
     expect(screen.getByLabelText("Typing input")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Choose in Passages" })).toBeNull();

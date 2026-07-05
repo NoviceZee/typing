@@ -11,6 +11,8 @@ export type PracticeCategory =
   | "training_words"
   | "training_numbers"
   | "training_symbols"
+  | "training_code"
+  | "training_chinese"
   | "training_words_numbers"
   | "training_words_symbols"
   | "training_numbers_symbols"
@@ -148,6 +150,12 @@ const PASSAGE_BANK: Record<PracticeCategory, string[]> = {
   ],
   training_symbols: [
     "() [] {} <> \"\" '' `` . , ; : + - * / = == != >= <= += -= *= /= ! @ # $ % ^ & *"
+  ],
+  training_code: [
+    "const result = await fetch(url);\n\nif (result.ok) {\n  return data;\n}"
+  ],
+  training_chinese: [
+    "今天工作時間朋友香港開始完成需要知道可以生活事情地方回家吃飯休息早上晚上"
   ],
   training_words_numbers: [
     "market 493.20 invoice client $2,430.00 status approved 18.75% budget 49,382.20"
@@ -358,8 +366,9 @@ export function calculateResult(input: ResultInput): TypingResult {
     rules: input.rules
   });
   const minutes = Math.max(input.elapsedSeconds, 1) / 60;
-  const grossWpm = comparison.correctCharacters / 5 / minutes;
-  const rawWpm = input.typed.length / 5 / minutes;
+  const usesCharacterPace = input.category === "training_chinese";
+  const grossWpm = usesCharacterPace ? comparison.correctCharacters / minutes : comparison.correctCharacters / 5 / minutes;
+  const rawWpm = usesCharacterPace ? input.typed.length / minutes : input.typed.length / 5 / minutes;
 
   return {
     ...comparison,

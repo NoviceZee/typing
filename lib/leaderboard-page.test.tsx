@@ -160,4 +160,39 @@ describe("LeaderboardPage", () => {
       );
     });
   });
+
+  it("queries separate leaderboard domains from the domain selector", async () => {
+    render(<LeaderboardPage />);
+
+    await waitFor(() => {
+      expect(mockedGetSupabaseLeaderboardResults).toHaveBeenCalledWith(
+        expect.objectContaining({ domain: "english" })
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
+
+    await waitFor(() => {
+      expect(mockedGetSupabaseLeaderboardResults).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          domain: "chinese",
+          durationSeconds: 60,
+          category: null
+        })
+      );
+    });
+    expect(screen.queryByLabelText("Category")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Code" }));
+
+    await waitFor(() => {
+      expect(mockedGetSupabaseLeaderboardResults).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          domain: "code",
+          durationSeconds: 60,
+          category: null
+        })
+      );
+    });
+  });
 });

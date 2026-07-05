@@ -14,7 +14,15 @@ const NAV_ITEMS = [
   { href: "/settings", label: "Settings" }
 ];
 
-export function AppShell({ children, sideAd = true }: { children: ReactNode; sideAd?: boolean }) {
+export function AppShell({
+  children,
+  sideAd = true,
+  topAd = true
+}: {
+  children: ReactNode;
+  sideAd?: boolean;
+  topAd?: boolean;
+}) {
   const { user } = useAuth();
   const navItems = user ? NAV_ITEMS : NAV_ITEMS.filter((item) => !item.requiresAuth);
 
@@ -35,9 +43,11 @@ export function AppShell({ children, sideAd = true }: { children: ReactNode; sid
           </div>
         </header>
 
-        <div className="mt-5">
-          <AdPlaceholder variant="banner" />
-        </div>
+        {topAd && (
+          <div className="mt-5">
+            <AdPlaceholder variant="banner" />
+          </div>
+        )}
 
         <div className={sideAd ? "mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]" : "mt-6"}>
           <div>{children}</div>
@@ -48,9 +58,11 @@ export function AppShell({ children, sideAd = true }: { children: ReactNode; sid
           )}
         </div>
 
-        <div className="mt-6 xl:hidden">
-          <AdPlaceholder variant="mobile" />
-        </div>
+        {sideAd && (
+          <div className="mt-6 xl:hidden">
+            <AdPlaceholder variant="mobile" />
+          </div>
+        )}
       </div>
     </main>
   );

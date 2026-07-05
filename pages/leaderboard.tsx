@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
+import { ANALYTICS_DOMAIN_OPTIONS, AnalyticsDomain } from "@/lib/analyticsDomain";
 import {
   SupabaseLeaderboardResultRow,
   getSupabaseLeaderboardCategories,
@@ -19,22 +20,31 @@ import {
 
 const ALL_FILTER = "All";
 const DURATION_OPTIONS = getDurationFilterOptions(ALL_FILTER);
+const TRAINING_DURATION_OPTIONS = [
+  { label: "15s", value: "15" },
+  { label: "30s", value: "30" },
+  { label: "60s", value: "60" },
+  { label: "120s", value: "120" }
+];
 
 export default function LeaderboardPage() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const [results, setResults] = useState<SupabaseLeaderboardResultRow[]>([]);
   const [ownResultIds, setOwnResultIds] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<string[]>([]);
+  const [leaderboardDomain, setLeaderboardDomain] = useState<AnalyticsDomain>("english");
   const [timeRange, setTimeRange] = useState<LeaderboardTimeRange>(DEFAULT_LEADERBOARD_TIME_RANGE);
   const [durationFilter, setDurationFilter] = useState(ALL_FILTER);
   const [categoryFilter, setCategoryFilter] = useState(ALL_FILTER);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const isEnglishLeaderboard = leaderboardDomain === "english";
+  const activeDurationOptions = isEnglishLeaderboard ? DURATION_OPTIONS : TRAINING_DURATION_OPTIONS;
 
   useEffect(() => {
     let isMounted = true;
 
-    getSupabaseLeaderboardCategories()
+    getSupabaseLeaderboardCategories(200, leaderboardDomain)
       .then((leaderboardCategories) => {
         if (!isMounted) return;
         setCategories(leaderboardCategories);
@@ -47,16 +57,29 @@ export default function LeaderboardPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [leaderboardDomain]);
+
+  useEffect(() => {
+    setCategoryFilter(ALL_FILTER);
+
+    if (leaderboardDomain === "english") {
+      setDurationFilter(ALL_FILTER);
+      return;
+    }
+
+    setDurationFilter((currentDuration) =>
+      TRAINING_DURATION_OPTIONS.some((option) => option.value === currentDuration) ? currentDuration : "60"
+    );
+  }, [leaderboardDomain]);
 
   useEffect(() => {
     let isMounted = true;
     const durationSeconds = durationFilter === ALL_FILTER ? null : Number(durationFilter);
-    const category = categoryFilter === ALL_FILTER ? null : categoryFilter;
+    const category = isEnglishLeaderboard && categoryFilter !== ALL_FILTER ? categoryFilter : null;
 
     setIsLoading(true);
     setOwnResultIds(new Set());
-    getSupabaseLeaderboardResults({ durationSeconds, category, timeRange })
+    getSupabaseLeaderboardResults({ durationSeconds, category, timeRange, domain: leaderboardDomain })
       .then((leaderboardResults) => {
         if (!isMounted) return;
         setResults(leaderboardResults);
@@ -74,7 +97,7 @@ export default function LeaderboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [categoryFilter, durationFilter, timeRange]);
+  }, [categoryFilter, durationFilter, isEnglishLeaderboard, leaderboardDomain, timeRange]);
 
   useEffect(() => {
     let isMounted = true;
@@ -130,6 +153,28 @@ export default function LeaderboardPage() {
           Ranked by WPM, then accuracy. Only public handles are shown.
         </p>
 
+        <div className="mt-6 flex flex-wrap gap-2" aria-label="Leaderboard domain">
+          {ANALYTICS_DOMAIN_OPTIONS.map((option) => {
+            const isSelected = leaderboardDomain === option.id;
+
+            return (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => setLeaderboardDomain(option.id)}
+                className={`rounded-md border px-3 py-2 font-mono text-xs transition ${
+                  isSelected
+                    ? "border-brass/60 bg-brass/15 text-brass"
+                    : "border-paper/10 bg-ink-950 text-paper/55 hover:border-paper/25 hover:text-paper"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="mt-6 flex flex-wrap gap-2" aria-label="Leaderboard time range">
           {LEADERBOARD_TIME_RANGE_OPTIONS.map((option) => {
             const isSelected = timeRange === option.value;
@@ -157,14 +202,16 @@ export default function LeaderboardPage() {
             label="Duration"
             value={durationFilter}
             onChange={setDurationFilter}
-            options={DURATION_OPTIONS}
+            options={activeDurationOptions}
           />
-          <FilterSelect
-            label="Category"
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-            options={[ALL_FILTER, ...categories].map((category) => ({ label: category, value: category }))}
-          />
+          {isEnglishLeaderboard && (
+            <FilterSelect
+              label="Category"
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              options={[ALL_FILTER, ...categories].map((category) => ({ label: category, value: category }))}
+            />
+          )}
         </div>
 
         {message && (
@@ -190,7 +237,9 @@ export default function LeaderboardPage() {
 
           {!isLoading && results.length === 0 && !message && (
             <div className="px-4 py-8 text-center font-mono text-sm text-paper/45">
-              No saved typing results match this time range.
+              {leaderboardDomain === "english"
+                ? "No saved typing results match this time range."
+                : `No saved ${leaderboardDomain} typing results match this time range.`}
             </div>
           )}
 

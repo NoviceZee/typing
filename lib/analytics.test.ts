@@ -47,6 +47,73 @@ describe("buildProgressAnalytics", () => {
     expect(analytics.weakestCategory?.category).toBe("Uncategorised");
   });
 
+  it("keeps Chinese and Code results out of the default English analytics domain", () => {
+    const analytics = buildProgressAnalytics([
+      makeResult("english", 60, 50, 98, "Business email", "2026-06-19T00:01:00.000Z", 250),
+      makeResult("chinese", 60, 120, 99, "training_chinese", "2026-06-19T00:02:00.000Z", 120),
+      makeResult("code", 60, 90, 96, "training_code", "2026-06-19T00:03:00.000Z", 450)
+    ]);
+
+    expect(analytics.summary.totalTests).toBe(1);
+    expect(analytics.summary.bestWpm).toBe(50);
+    expect(analytics.records.fastestOneMinute?.id).toBe("english");
+    expect(analytics.categoryBreakdown.map((category) => category.category)).not.toContain("training_chinese");
+  });
+
+  it("can build Chinese-only analytics without mixing English results", () => {
+    const analytics = buildProgressAnalytics(
+      [
+        makeResult("english", 60, 50, 98, "Business email", "2026-06-19T00:01:00.000Z", 250),
+        makeResult("chinese-60", 60, 70, 99, "training_chinese", "2026-06-19T00:02:00.000Z", 70),
+        makeResult("chinese-30", 30, 60, 97, "training_chinese", "2026-06-19T00:03:00.000Z", 30),
+        makeResult("legacy-chinese", 60, 80, 98, null, "2026-06-19T00:04:00.000Z", 80, "Training Chinese")
+      ],
+      { domain: "chinese" }
+    );
+
+    expect(analytics.summary.totalTests).toBe(3);
+    expect(analytics.summary.averageWpm).toBe(70);
+    expect(analytics.records.fastestOneMinute?.id).toBe("legacy-chinese");
+    expect(analytics.categoryBreakdown).toEqual([
+      {
+        category: "training_chinese",
+        averageWpm: 65,
+        averageAccuracy: 98,
+        tests: 2
+      },
+      {
+        category: "Uncategorised",
+        averageWpm: 80,
+        averageAccuracy: 98,
+        tests: 1
+      }
+    ]);
+  });
+
+  it("can build Code-only analytics without mixing English or Chinese results", () => {
+    const analytics = buildProgressAnalytics(
+      [
+        makeResult("english", 60, 50, 98, "Business email", "2026-06-19T00:01:00.000Z", 250),
+        makeResult("chinese", 60, 70, 99, "training_chinese", "2026-06-19T00:02:00.000Z", 70),
+        makeResult("code-60", 60, 90, 96, "training_code", "2026-06-19T00:03:00.000Z", 450),
+        makeResult("code-30", 30, 80, 97, "training_code", "2026-06-19T00:04:00.000Z", 200)
+      ],
+      { domain: "code" }
+    );
+
+    expect(analytics.summary.totalTests).toBe(2);
+    expect(analytics.summary.averageWpm).toBe(85);
+    expect(analytics.records.fastestOneMinute?.id).toBe("code-60");
+    expect(analytics.categoryBreakdown).toEqual([
+      {
+        category: "training_code",
+        averageWpm: 85,
+        averageAccuracy: 96.5,
+        tests: 2
+      }
+    ]);
+  });
+
   it("keeps only the most recent 30 results for trend charts in chronological order", () => {
     const newestFirst = Array.from({ length: 35 }, (_, index) =>
       makeResult(`result-${index}`, 60, 50 + index, 95, "Business email", new Date(Date.UTC(2026, 5, 19, 0, 35 - index)).toISOString())
@@ -241,11 +308,12 @@ function makeResult(
   accuracy: number,
   category: string | null,
   createdAt: string,
-  correctCharacters = Math.round(wpm * 5 * Math.max(durationSeconds, 60) / 60)
+  correctCharacters = Math.round(wpm * 5 * Math.max(durationSeconds, 60) / 60),
+  title = `Passage ${id}`
 ): SupabaseAnalyticsTypingResultRow {
   return {
     id,
-    passage_title: `Passage ${id}`,
+    passage_title: title,
     passage_category: category,
     duration_seconds: durationSeconds,
     wpm,
