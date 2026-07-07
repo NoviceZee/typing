@@ -7,6 +7,12 @@ import {
   buildPracticePassage,
   getRequiredWordCount
 } from "./typing-engine";
+import {
+  installFormalTypeStorageDebugHelper,
+  runFormalTypeStorageMigration,
+  safeSetJsonStorageItem,
+  safeSetStorageItem
+} from "./storageSafety";
 
 export const RULES_STORAGE_KEY = "formaltype.rules.v1";
 export const PASSAGE_STORAGE_KEY = "formaltype.passage.v1";
@@ -16,11 +22,17 @@ export const CURRENT_PASSAGE_STORAGE_KEY = "formaltype_current_passage";
 export const PASSAGE_SELECTION_MODE_STORAGE_KEY = "formaltype_passage_selection_mode";
 export const SELECTED_CATEGORY_STORAGE_KEY = "formaltype_selected_category";
 export const SELECTED_STYLE_STORAGE_KEY = "formaltype_selected_style";
+export const SELECTED_LANGUAGE_STORAGE_KEY = "formaltype_selected_language";
 export const PREVIOUS_RESULTS_STORAGE_KEY = "formaltype_previous_results";
 export const THEME_SETTINGS_STORAGE_KEY = "formaltype.theme.v1";
 export const ALL_FILTER = "All";
 
 export const THEME_SETTING_CHANGE_EVENT = "formaltype-theme-settings-change";
+
+const MAX_STORED_PASSAGES = 150;
+const MAX_STORED_PASSAGE_CONTENT_CHARACTERS = 20_000;
+const MAX_PREVIOUS_RESULTS = 120;
+const MAX_PREVIOUS_PACE_POINTS = 90;
 
 export const CATEGORIES: PracticeCategory[] = [
   "Business email",
@@ -30,6 +42,15 @@ export const CATEGORIES: PracticeCategory[] = [
   "Casual writing",
   "Legal / contract style",
   "Random paragraph",
+  "生活",
+  "工作",
+  "教育",
+  "科技",
+  "文化",
+  "社會",
+  "環境",
+  "健康",
+  "香港",
   "numbers",
   "symbols",
   "training_words",
@@ -55,11 +76,39 @@ export const STYLES = [
   "Mixed case practice"
 ];
 
+export const CHINESE_STARTER_PASSAGES: LibraryPassage[] = [
+  makeStarterChinesePassage("zh-life-rest", "忙碌生活中的休息", "生活", "現代城市生活節奏急速，許多人每天需要在工作、家庭與個人安排之間來回奔波。長時間保持忙碌容易令人忽略休息的重要性。適當停下來，不但可以恢復精神，亦有助重新整理思緒，提高之後處理事情的效率。"),
+  makeStarterChinesePassage("zh-work-brief", "清晰的工作交代", "工作", "一項工作能否順利完成，往往取決於最初的交代是否清晰。負責人需要說明目標、期限、分工及需要留意的風險。當每個人都明白自己的角色，團隊便能減少重複溝通，把時間放在真正重要的事情上。"),
+  makeStarterChinesePassage("zh-education-reading", "閱讀與學習", "教育", "閱讀不只是吸收資料，也是一種訓練思考的方法。學生在閱讀不同題材時，會接觸新的詞語、觀點和表達方式。持續閱讀能夠累積語感，亦能幫助人在寫作和討論時更準確地組織內容。"),
+  makeStarterChinesePassage("zh-tech-change", "科技與日常", "科技", "科技逐漸融入日常生活，從交通查詢、網上付款到遙距會議，都改變了人們安排時間的方式。方便之餘，我們亦需要留意私隱、資料安全和使用習慣，避免讓工具反過來支配生活節奏。"),
+  makeStarterChinesePassage("zh-culture-memory", "城市中的文化記憶", "文化", "一座城市的文化不只存在於博物館，也藏在街角店舖、節日習俗、家庭飯桌和日常用語之中。當人們願意記錄和分享這些細節，城市記憶便能在新舊之間延續下去。"),
+  makeStarterChinesePassage("zh-society-trust", "社會信任", "社會", "社會運作需要一定程度的信任。人們相信規則會被公平執行，相信公共服務能夠回應需要，也相信陌生人在共同空間內會互相尊重。這種信任不是自然出現，而是靠長期透明和負責任的行動建立。"),
+  makeStarterChinesePassage("zh-environment-habit", "環保從習慣開始", "環境", "環保不一定是遙遠的大工程，也可以從每天的小習慣開始。減少即棄用品、節約用水、選擇公共交通和妥善分類回收，都能慢慢改變資源使用方式。小改變累積起來，便會形成更大的影響。"),
+  makeStarterChinesePassage("zh-health-sleep", "睡眠的重要", "健康", "充足睡眠對身體和情緒都十分重要。睡眠不足會影響專注力、記憶力和判斷力，也會令人較容易感到焦躁。保持固定作息、減少睡前使用電子產品，有助提升睡眠質素。"),
+  makeStarterChinesePassage("zh-hk-transport", "香港的交通節奏", "香港", "香港交通網絡密集，市民可以透過港鐵、巴士、小巴、電車和渡輪前往不同地區。高效率帶來方便，也塑造了城市急速的節奏。學會預留時間，反而能在繁忙之中保持從容。"),
+  makeStarterChinesePassage("zh-life-market", "街市的早晨", "生活", "清晨的街市充滿聲音和氣味。檔主整理蔬菜，顧客比較價錢，熟客之間簡短問候。這些日常片段看似普通，卻反映了社區的連繫和生活的溫度。"),
+  makeStarterChinesePassage("zh-work-meeting", "有效會議", "工作", "有效會議應該有明確目的和簡潔議程。會前列出需要討論的事項，會中集中處理決定和責任分配，會後記錄跟進時間。這樣做可以減少空泛討論，讓會議真正支援工作。"),
+  makeStarterChinesePassage("zh-education-practice", "練習的價值", "教育", "學習任何技能都需要反覆練習。第一次可能緩慢而生硬，但每次嘗試都會讓大腦更熟悉步驟。只要方法正確，短時間而持續的練習，往往比偶然一次長時間操練更有效。"),
+  makeStarterChinesePassage("zh-tech-ai", "人工智能工具", "科技", "人工智能工具可以協助整理資料、草擬文字和檢查錯漏，但使用者仍然需要判斷內容是否準確。工具提供的是輔助，不是最終答案。懂得提問和驗證，才是有效使用科技的關鍵。"),
+  makeStarterChinesePassage("zh-culture-food", "飲食文化", "文化", "飲食文化連接家庭、地方和記憶。一碗湯、一份點心或一道節慶菜式，背後可能包含長輩的習慣、地方材料和共同經驗。食物因此不只是味道，也是一種故事。"),
+  makeStarterChinesePassage("zh-society-space", "公共空間", "社會", "公園、圖書館和海濱長廊等公共空間，讓不同年齡和背景的人可以共享城市。良好的公共空間需要安全、整潔和易於到達，也需要使用者共同維持秩序。"),
+  makeStarterChinesePassage("zh-environment-weather", "極端天氣", "環境", "近年極端天氣更受關注，暴雨、酷熱和強風都可能影響城市運作。除了完善基建，市民也需要理解預警訊息，準備基本物資，並在惡劣天氣下減少不必要外出。"),
+  makeStarterChinesePassage("zh-health-walk", "步行與健康", "健康", "步行是一種容易開始的運動。每天抽出一段時間步行，可以活動筋骨、放鬆心情，也能讓人重新觀察熟悉的街道。只要持之以恆，簡單習慣也能帶來長遠好處。"),
+  makeStarterChinesePassage("zh-hk-harbour", "維港兩岸", "香港", "維多利亞港連接香港島和九龍，也承載了城市的歷史想像。白天船隻往來，晚上燈光倒映水面。無論是旅客還是本地居民，都能在海旁感受到香港獨特的節奏。"),
+  makeStarterChinesePassage("zh-life-family", "家庭溝通", "生活", "家庭成員之間的溝通不必總是正式安排。一起吃飯、散步或整理家務時，也可以自然分享近況。願意聆聽和回應，比急於給出答案更能令人感到被理解。"),
+  makeStarterChinesePassage("zh-work-risk", "風險管理", "工作", "風險管理不是等問題出現後才補救，而是在計劃開始時預先思考可能的阻礙。列出風險、評估影響、準備替代方案，可以讓團隊在變化出現時更快作出反應。"),
+  makeStarterChinesePassage("zh-education-question", "提出好問題", "教育", "好問題能推動學習。當學生不只問答案是甚麼，而是追問原因、證據和例外情況，他們便開始建立自己的理解。提問需要勇氣，也需要對知識保持好奇。"),
+  makeStarterChinesePassage("zh-tech-balance", "數碼平衡", "科技", "手機和網絡服務提供大量資訊，但過度依賴也會分散注意力。設定通知界線、安排離線時間和有意識地選擇內容，可以幫助人們在便利與專注之間取得平衡。"),
+  makeStarterChinesePassage("zh-culture-festival", "節日的意義", "文化", "節日讓人暫時停下平日的節奏，與家人朋友重新連結。不同習俗可能形式各異，但核心往往相似：感謝、團聚、祝願，以及把共同記憶傳給下一代。"),
+  makeStarterChinesePassage("zh-hk-neighbourhood", "社區小店", "香港", "社區小店保存了城市的細緻面貌。店主記得熟客需要，街坊在門口交換消息，簡單交易之外還有人情往來。這些小店令高樓之間仍然保留親切感。")
+];
+
 export type StoredPassage = {
   id?: string;
   title?: string;
   category: PracticeCategory;
   style: string;
+  language?: PassageLanguage;
   text: string;
   comparableText?: string;
   displayTokens?: string[];
@@ -69,6 +118,7 @@ export type StoredPassage = {
 };
 
 export type PassageSource = "generated" | "pasted" | "uploaded";
+export type PassageLanguage = "english" | "chinese";
 export type PassageSelectionMode = "specific" | "random";
 export type CategoryFilter = typeof ALL_FILTER | PracticeCategory;
 export type StyleFilter = typeof ALL_FILTER | string;
@@ -79,6 +129,7 @@ export type LibraryPassage = {
   content: string;
   category: PracticeCategory;
   style: string;
+  language?: PassageLanguage;
   source: PassageSource;
   createdAt: string;
   updatedAt: string;
@@ -117,6 +168,7 @@ export type PassageLibraryExport = {
     activePassageId: string | null;
     selectedCategory: string | null;
     selectedStyle: string | null;
+    selectedLanguage: PassageLanguage | null;
     passageSelectionMode: PassageSelectionMode | null;
   };
 };
@@ -418,6 +470,8 @@ export function readStoredRules(): TypingRules {
     return DEFAULT_RULES;
   }
 
+  installFormalTypeStorageDebugHelper();
+
   try {
     const stored = window.localStorage.getItem(RULES_STORAGE_KEY);
     return stored ? { ...DEFAULT_RULES, ...JSON.parse(stored) } : DEFAULT_RULES;
@@ -427,7 +481,7 @@ export function readStoredRules(): TypingRules {
 }
 
 export function writeStoredRules(rules: TypingRules) {
-  window.localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(rules));
+  safeSetJsonStorageItem(RULES_STORAGE_KEY, rules, { context: "writeStoredRules" });
 }
 
 export function readThemeSettings(): ThemeSettings {
@@ -446,7 +500,7 @@ export function readThemeSettings(): ThemeSettings {
 }
 
 export function writeThemeSettings(settings: ThemeSettings) {
-  window.localStorage.setItem(THEME_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  safeSetJsonStorageItem(THEME_SETTINGS_STORAGE_KEY, settings, { context: "writeThemeSettings" });
   if (typeof window.dispatchEvent === "function" && typeof CustomEvent !== "undefined") {
     window.dispatchEvent(new CustomEvent(THEME_SETTING_CHANGE_EVENT, { detail: settings }));
   }
@@ -481,8 +535,7 @@ export function readStoredPassage(durationSeconds = 60): StoredPassage {
 }
 
 export function writeStoredPassage(passage: StoredPassage) {
-  window.localStorage.setItem(CURRENT_PASSAGE_STORAGE_KEY, JSON.stringify(passage));
-  window.localStorage.setItem(PASSAGE_STORAGE_KEY, JSON.stringify(passage));
+  safeSetJsonStorageItem(CURRENT_PASSAGE_STORAGE_KEY, passage, { context: "writeStoredPassage" });
 }
 
 export function readPassageLibrary(): LibraryPassage[] {
@@ -500,7 +553,9 @@ export function readPassageLibrary(): LibraryPassage[] {
 }
 
 export function writePassageLibrary(passages: LibraryPassage[]) {
-  window.localStorage.setItem(PASSAGE_LIBRARY_STORAGE_KEY, JSON.stringify(passages));
+  safeSetJsonStorageItem(PASSAGE_LIBRARY_STORAGE_KEY, preparePassageLibraryForStorage(passages), {
+    context: "writePassageLibrary"
+  });
 }
 
 export function createPassageLibraryExport(): PassageLibraryExport {
@@ -512,6 +567,7 @@ export function createPassageLibraryExport(): PassageLibraryExport {
       activePassageId: readLocalStorageValue(ACTIVE_PASSAGE_ID_STORAGE_KEY),
       selectedCategory: readLocalStorageValue(SELECTED_CATEGORY_STORAGE_KEY),
       selectedStyle: readLocalStorageValue(SELECTED_STYLE_STORAGE_KEY),
+      selectedLanguage: readSelectedLanguage(),
       passageSelectionMode: readPassageSelectionMode()
     }
   };
@@ -598,7 +654,7 @@ export function readActivePassageId(): string | null {
 }
 
 export function writeActivePassageId(id: string) {
-  window.localStorage.setItem(ACTIVE_PASSAGE_ID_STORAGE_KEY, id);
+  safeSetStorageItem(ACTIVE_PASSAGE_ID_STORAGE_KEY, id, { context: "writeActivePassageId" });
 }
 
 export function readPassageSelectionMode(): PassageSelectionMode {
@@ -610,7 +666,7 @@ export function readPassageSelectionMode(): PassageSelectionMode {
 }
 
 export function writePassageSelectionMode(mode: PassageSelectionMode) {
-  window.localStorage.setItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, mode);
+  safeSetStorageItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, mode, { context: "writePassageSelectionMode" });
 }
 
 export function readSelectedCategory(): CategoryFilter {
@@ -622,7 +678,7 @@ export function readSelectedCategory(): CategoryFilter {
 }
 
 export function writeSelectedCategory(category: CategoryFilter) {
-  window.localStorage.setItem(SELECTED_CATEGORY_STORAGE_KEY, category);
+  safeSetStorageItem(SELECTED_CATEGORY_STORAGE_KEY, category, { context: "writeSelectedCategory" });
 }
 
 export function readSelectedStyle(): StyleFilter {
@@ -634,7 +690,19 @@ export function readSelectedStyle(): StyleFilter {
 }
 
 export function writeSelectedStyle(style: StyleFilter) {
-  window.localStorage.setItem(SELECTED_STYLE_STORAGE_KEY, style);
+  safeSetStorageItem(SELECTED_STYLE_STORAGE_KEY, style, { context: "writeSelectedStyle" });
+}
+
+export function readSelectedLanguage(): PassageLanguage {
+  if (typeof window === "undefined") {
+    return "english";
+  }
+
+  return toPassageLanguage(window.localStorage.getItem(SELECTED_LANGUAGE_STORAGE_KEY));
+}
+
+export function writeSelectedLanguage(language: PassageLanguage) {
+  safeSetStorageItem(SELECTED_LANGUAGE_STORAGE_KEY, language, { context: "writeSelectedLanguage" });
 }
 
 export function createLibraryPassage({
@@ -642,13 +710,15 @@ export function createLibraryPassage({
   content,
   category,
   style,
-  source
+  source,
+  language = "english"
 }: {
   title: string;
   content: string;
   category: PracticeCategory;
   style: string;
   source: PassageSource;
+  language?: PassageLanguage;
 }): LibraryPassage {
   const cleanContent = content.trim();
   const now = new Date().toISOString();
@@ -659,6 +729,7 @@ export function createLibraryPassage({
     content: cleanContent,
     category,
     style,
+    language,
     source,
     createdAt: now,
     updatedAt: now,
@@ -681,6 +752,7 @@ export function toStoredPassage(
     title: passage.title,
     category: passage.category,
     style: passage.style,
+    language: passage.language ?? "english",
     source: passage.source,
     text: textMode === "single" ? passage.content : buildTimedPassageText(passage, library, durationSeconds),
     updatedAt: new Date().toISOString()
@@ -689,7 +761,11 @@ export function toStoredPassage(
 
 export function readPracticePassageFromLibrary(durationSeconds = 60): StoredPassage | null {
   const library = readActivePassageLibrary();
-  const filteredLibrary = filterLibraryPassages(library, readSelectedCategory(), readSelectedStyle());
+  const filteredLibrary = filterLibraryPassages(
+    filterLibraryPassagesByLanguage(library, readSelectedLanguage()),
+    readSelectedCategory(),
+    readSelectedStyle()
+  );
   const selectableLibrary = filteredLibrary;
 
   if (selectableLibrary.length === 0) {
@@ -753,8 +829,21 @@ export function filterLibraryPassages(
   });
 }
 
+export function filterLibraryPassagesByLanguage(
+  library: LibraryPassage[],
+  language: PassageLanguage = "english"
+): LibraryPassage[] {
+  return library.filter((passage) => (passage.language ?? "english") === language);
+}
+
+export function withBuiltInSamplePassages(library: LibraryPassage[]): LibraryPassage[] {
+  const passageIds = new Set(library.map((passage) => passage.id));
+  return [...library, ...CHINESE_STARTER_PASSAGES.filter((passage) => !passageIds.has(passage.id))];
+}
+
 export function readActivePassageLibrary(): LibraryPassage[] {
-  return readPassageLibrary().filter((passage) => passage.isActive);
+  const storedPassages = readPassageLibrary().filter((passage) => passage.isActive);
+  return withBuiltInSamplePassages(storedPassages);
 }
 
 export function readPreviousResults(): Record<string, PreviousTypingResult> {
@@ -806,7 +895,7 @@ export function writePreviousResult(
     return;
   }
 
-  const previousResults = readPreviousResults();
+  const previousResults = prunePreviousResults(readPreviousResults());
   previousResults[getPreviousResultStorageKey(passage.id, scope ?? result.durationSeconds)] = {
     passageId: passage.id,
     passageTitle: passage.title ?? "Untitled passage",
@@ -818,11 +907,13 @@ export function writePreviousResult(
     typedCharacters,
     elapsedSeconds: result.timeUsedSeconds,
     durationSeconds: result.durationSeconds,
-    previousPaceTimeline,
+    previousPaceTimeline: downsamplePreviousPaceTimeline(previousPaceTimeline),
     completedAt: result.completedAt,
     completionReason: result.completionReason
   };
-  window.localStorage.setItem(PREVIOUS_RESULTS_STORAGE_KEY, JSON.stringify(previousResults));
+  safeSetJsonStorageItem(PREVIOUS_RESULTS_STORAGE_KEY, prunePreviousResults(previousResults), {
+    context: "writePreviousResult"
+  });
 }
 
 export function updateLibraryPassage(updatedPassage: LibraryPassage) {
@@ -887,7 +978,90 @@ export function extractPassageTitle(content: string, fallbackTitle: string): { t
 }
 
 export function countWords(text: string): number {
-  return text.split(/\s+/).filter(Boolean).length;
+  const words = text.split(/\s+/).filter(Boolean);
+  const hanCharacters = text.match(/[\u3400-\u9fff\uf900-\ufaff]/g)?.length ?? 0;
+
+  if (hanCharacters > 0 && words.length <= 1) {
+    return hanCharacters;
+  }
+
+  return words.length;
+}
+
+function preparePassageLibraryForStorage(passages: LibraryPassage[]): LibraryPassage[] {
+  return passages
+    .map((passage) => normaliseLibraryPassage(passage))
+    .slice(0, MAX_STORED_PASSAGES)
+    .map((passage) => {
+      const content = passage.content.slice(0, MAX_STORED_PASSAGE_CONTENT_CHARACTERS);
+      return {
+        ...passage,
+        content,
+        wordCount: countWords(content),
+        characterCount: content.length
+      };
+    });
+}
+
+function prunePreviousResults(previousResults: Record<string, PreviousTypingResult>): Record<string, PreviousTypingResult> {
+  return Object.fromEntries(
+    Object.entries(previousResults)
+      .map(([key, value]) => [
+        key,
+        {
+          ...value,
+          previousPaceTimeline: downsamplePreviousPaceTimeline(value.previousPaceTimeline)
+        }
+      ] as const)
+      .sort(([, first], [, second]) => Date.parse(second.completedAt) - Date.parse(first.completedAt))
+      .slice(0, MAX_PREVIOUS_RESULTS)
+  );
+}
+
+function downsamplePreviousPaceTimeline(
+  timeline: PreviousPaceTimelinePoint[] | null | undefined
+): PreviousPaceTimelinePoint[] | undefined {
+  if (!timeline?.length) {
+    return undefined;
+  }
+
+  if (timeline.length <= MAX_PREVIOUS_PACE_POINTS) {
+    return timeline;
+  }
+
+  const step = Math.ceil(timeline.length / MAX_PREVIOUS_PACE_POINTS);
+  const sampled = timeline.filter((_, index) => index % step === 0);
+  const lastPoint = timeline[timeline.length - 1];
+
+  if (lastPoint && sampled[sampled.length - 1] !== lastPoint) {
+    sampled.push(lastPoint);
+  }
+
+  return sampled.slice(0, MAX_PREVIOUS_PACE_POINTS);
+}
+
+function makeStarterChinesePassage(
+  id: string,
+  title: string,
+  category: PracticeCategory,
+  content: string
+): LibraryPassage {
+  const createdAt = "2026-07-05T00:00:00.000Z";
+
+  return {
+    id,
+    title,
+    content,
+    category,
+    style: "一般",
+    language: "chinese",
+    source: "uploaded",
+    createdAt,
+    updatedAt: createdAt,
+    wordCount: countWords(content),
+    characterCount: content.length,
+    isActive: true
+  };
 }
 
 function buildTimedPassageText(basePassage: LibraryPassage, library: LibraryPassage[], durationSeconds: number): string {
@@ -938,21 +1112,31 @@ function restoreImportedSettings(settings: unknown, library: LibraryPassage[]) {
     return;
   }
 
+  runFormalTypeStorageMigration();
+
   if (typeof settings.selectedCategory === "string") {
-    window.localStorage.setItem(SELECTED_CATEGORY_STORAGE_KEY, settings.selectedCategory);
+    safeSetStorageItem(SELECTED_CATEGORY_STORAGE_KEY, settings.selectedCategory, { context: "restoreImportedSettings" });
   }
 
   if (typeof settings.selectedStyle === "string") {
-    window.localStorage.setItem(SELECTED_STYLE_STORAGE_KEY, settings.selectedStyle);
+    safeSetStorageItem(SELECTED_STYLE_STORAGE_KEY, settings.selectedStyle, { context: "restoreImportedSettings" });
+  }
+
+  if (settings.selectedLanguage === "english" || settings.selectedLanguage === "chinese") {
+    safeSetStorageItem(SELECTED_LANGUAGE_STORAGE_KEY, settings.selectedLanguage, { context: "restoreImportedSettings" });
   }
 
   if (settings.passageSelectionMode === "specific" || settings.passageSelectionMode === "random") {
-    window.localStorage.setItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, settings.passageSelectionMode);
+    safeSetStorageItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, settings.passageSelectionMode, {
+      context: "restoreImportedSettings"
+    });
   }
 
   if (typeof settings.activePassageId === "string") {
     if (library.some((passage) => passage.id === settings.activePassageId)) {
-      window.localStorage.setItem(ACTIVE_PASSAGE_ID_STORAGE_KEY, settings.activePassageId);
+      safeSetStorageItem(ACTIVE_PASSAGE_ID_STORAGE_KEY, settings.activePassageId, {
+        context: "restoreImportedSettings"
+      });
     } else {
       window.localStorage.removeItem(ACTIVE_PASSAGE_ID_STORAGE_KEY);
     }
@@ -1062,6 +1246,7 @@ function normaliseImportedLibraryPassage(item: unknown): LibraryPassage | null {
     content,
     category: typeof item.category === "string" && item.category.trim() ? (item.category as PracticeCategory) : "Uncategorised",
     style: typeof item.style === "string" && item.style.trim() ? item.style : "General",
+    language: toPassageLanguage(typeof item.language === "string" ? item.language : null),
     source,
     createdAt,
     updatedAt: typeof item.updatedAt === "string" && item.updatedAt.trim() ? item.updatedAt : createdAt,
@@ -1085,10 +1270,15 @@ function normaliseLibraryPassage(passage: LibraryPassage): LibraryPassage {
     title: passage.title?.trim() || "Untitled passage",
     category: passage.category ?? "Uncategorised",
     style: passage.style || "General",
+    language: toPassageLanguage(passage.language),
     createdAt,
     updatedAt: passage.updatedAt ?? createdAt,
     wordCount: typeof passage.wordCount === "number" ? passage.wordCount : countWords(content),
     characterCount: typeof passage.characterCount === "number" ? passage.characterCount : content.length,
     isActive: passage.isActive ?? true
   };
+}
+
+function toPassageLanguage(value: string | null | undefined): PassageLanguage {
+  return value === "chinese" ? "chinese" : "english";
 }

@@ -124,12 +124,20 @@ describe("LeaderboardPage", () => {
     expect(screen.queryByText("typist@example.com")).toBeNull();
   });
 
-  it("keeps duration and category filters with the selected time range", async () => {
-    render(<LeaderboardPage />);
+  it("uses direct text choices for duration and category filters", async () => {
+    const { container } = render(<LeaderboardPage />);
+
+    expect(container.querySelector("select")).toBeNull();
+    expect(screen.getByRole("group", { name: "Leaderboard duration" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Leaderboard category" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "1m" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "5m" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "10m" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Infinite" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Month" }));
-    fireEvent.change(screen.getByLabelText("Duration"), { target: { value: "300" } });
-    fireEvent.change(screen.getByLabelText("Category"), { target: { value: "All" } });
+    fireEvent.click(screen.getByRole("button", { name: "5m" }));
+    fireEvent.click(screen.getByRole("button", { name: "All category" }));
 
     await waitFor(() => {
       expect(mockedGetSupabaseLeaderboardResults).toHaveBeenLastCalledWith(
@@ -147,9 +155,9 @@ describe("LeaderboardPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Year" }));
     await waitFor(() => {
-      expect(screen.getByLabelText("Category")).toBeTruthy();
+      expect(screen.getByRole("group", { name: "Leaderboard category" })).toBeTruthy();
     });
-    fireEvent.change(screen.getByLabelText("Category"), { target: { value: "Business email" } });
+    fireEvent.click(screen.getByRole("button", { name: "Business email category" }));
 
     await waitFor(() => {
       expect(mockedGetSupabaseLeaderboardResults).toHaveBeenLastCalledWith(
@@ -182,6 +190,10 @@ describe("LeaderboardPage", () => {
       );
     });
     expect(screen.queryByLabelText("Category")).toBeNull();
+    expect(screen.getByRole("button", { name: "15" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "30" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "60" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "120" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Code" }));
 

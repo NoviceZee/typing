@@ -9,6 +9,15 @@ const PRACTICE_CATEGORIES = [
   "Casual writing",
   "Legal / contract style",
   "Random paragraph",
+  "生活",
+  "工作",
+  "教育",
+  "科技",
+  "文化",
+  "社會",
+  "環境",
+  "健康",
+  "香港",
   "training_code",
   "training_chinese",
   "Uncategorised"
@@ -20,6 +29,7 @@ export type SupabasePassageRow = {
   category: string | null;
   style: string | null;
   content: string;
+  language?: string | null;
   is_active: boolean;
   is_public: boolean;
   created_at: string;
@@ -33,6 +43,7 @@ export type SupabasePassageInsert = {
   category?: string | null;
   style?: string | null;
   content: string;
+  language?: string | null;
   is_active?: boolean;
   is_public?: boolean;
   created_by?: string | null;
@@ -48,6 +59,7 @@ export function supabasePassageRowToLibraryPassage(row: SupabasePassageRow): Lib
     title: row.title.trim() || "Untitled passage",
     category: toPracticeCategory(row.category),
     style: row.style?.trim() || "General",
+    language: row.language === "chinese" ? "chinese" : "english",
     content,
     source: "uploaded",
     createdAt: row.created_at,
@@ -66,6 +78,7 @@ export function libraryPassageToSupabaseInsert(
     title: passage.title,
     category: passage.category,
     style: passage.style,
+    language: passage.language ?? "english",
     content: passage.content,
     is_active: passage.isActive,
     is_public: true,
@@ -78,6 +91,7 @@ export function libraryPassageToSupabaseUpdate(passage: LibraryPassage): Supabas
     title: passage.title,
     category: passage.category,
     style: passage.style,
+    language: passage.language ?? "english",
     content: passage.content,
     is_active: passage.isActive,
     is_public: true

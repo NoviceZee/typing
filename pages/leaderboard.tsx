@@ -19,12 +19,15 @@ import {
 } from "@/lib/leaderboardFilters";
 
 const ALL_FILTER = "All";
-const DURATION_OPTIONS = getDurationFilterOptions(ALL_FILTER);
+const DURATION_OPTIONS = getDurationFilterOptions(ALL_FILTER).map((option) => ({
+  ...option,
+  label: option.value === ALL_FILTER ? "Infinite" : option.value === "60" ? "1m" : option.value === "300" ? "5m" : option.value === "600" ? "10m" : option.label
+}));
 const TRAINING_DURATION_OPTIONS = [
-  { label: "15s", value: "15" },
-  { label: "30s", value: "30" },
-  { label: "60s", value: "60" },
-  { label: "120s", value: "120" }
+  { label: "15", value: "15" },
+  { label: "30", value: "30" },
+  { label: "60", value: "60" },
+  { label: "120", value: "120" }
 ];
 
 export default function LeaderboardPage() {
@@ -153,7 +156,8 @@ export default function LeaderboardPage() {
           Ranked by WPM, then accuracy. Only public handles are shown.
         </p>
 
-        <div className="mt-6 flex flex-wrap gap-2" aria-label="Leaderboard domain">
+        <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-xs" data-testid="leaderboard-filters">
+        <div className="flex flex-wrap gap-x-2 gap-y-1" role="group" aria-label="Leaderboard domain">
           {ANALYTICS_DOMAIN_OPTIONS.map((option) => {
             const isSelected = leaderboardDomain === option.id;
 
@@ -163,10 +167,8 @@ export default function LeaderboardPage() {
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => setLeaderboardDomain(option.id)}
-                className={`rounded-md border px-3 py-2 font-mono text-xs transition ${
-                  isSelected
-                    ? "border-brass/60 bg-brass/15 text-brass"
-                    : "border-paper/10 bg-ink-950 text-paper/55 hover:border-paper/25 hover:text-paper"
+                className={`px-1.5 py-1 transition focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60 ${
+                  isSelected ? "text-brass" : "text-paper/45 hover:text-paper/75"
                 }`}
               >
                 {option.label}
@@ -175,7 +177,9 @@ export default function LeaderboardPage() {
           })}
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2" aria-label="Leaderboard time range">
+        <FilterSeparator />
+
+        <div className="flex flex-wrap gap-x-2 gap-y-1" role="group" aria-label="Leaderboard time range">
           {LEADERBOARD_TIME_RANGE_OPTIONS.map((option) => {
             const isSelected = timeRange === option.value;
 
@@ -185,10 +189,8 @@ export default function LeaderboardPage() {
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => setTimeRange(option.value)}
-                className={`rounded-md border px-3 py-2 font-mono text-xs transition ${
-                  isSelected
-                    ? "border-brass/60 bg-brass/15 text-brass"
-                    : "border-paper/10 bg-ink-950 text-paper/55 hover:border-paper/25 hover:text-paper"
+                className={`px-1.5 py-1 transition focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60 ${
+                  isSelected ? "text-brass" : "text-paper/45 hover:text-paper/75"
                 }`}
               >
                 {option.label}
@@ -197,20 +199,24 @@ export default function LeaderboardPage() {
           })}
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <FilterSelect
-            label="Duration"
+        <FilterSeparator />
+
+          <FilterChoiceGroup
+            label="Leaderboard duration"
             value={durationFilter}
             onChange={setDurationFilter}
             options={activeDurationOptions}
           />
           {isEnglishLeaderboard && (
-            <FilterSelect
-              label="Category"
+            <>
+              <FilterSeparator />
+              <FilterChoiceGroup
+              label="Leaderboard category"
               value={categoryFilter}
               onChange={setCategoryFilter}
               options={[ALL_FILTER, ...categories].map((category) => ({ label: category, value: category }))}
             />
+            </>
           )}
         </div>
 
@@ -307,7 +313,7 @@ function getHandleFromDisplayName(displayName: string) {
   return displayName.slice(1);
 }
 
-function FilterSelect({
+function FilterChoiceGroup({
   label,
   value,
   onChange,
@@ -319,21 +325,31 @@ function FilterSelect({
   options: Array<{ label: string; value: string }>;
 }) {
   return (
-    <label className="block">
-      <span className="font-mono text-xs uppercase text-paper/45">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-md border border-paper/10 bg-ink-950 px-3 py-2 font-mono text-sm text-paper outline-none transition focus:border-brass"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
+    <div role="group" aria-label={label} className="flex flex-wrap gap-x-2 gap-y-1">
+      {options.map((option) => {
+        const isSelected = value === option.value;
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-label={label === "Leaderboard category" ? `${option.label} category` : option.label}
+            aria-pressed={isSelected}
+            onClick={() => onChange(option.value)}
+            className={`px-1.5 py-1 transition focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60 ${
+              isSelected ? "text-brass" : "text-paper/45 hover:text-paper/75"
+            }`}
+          >
             {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+          </button>
+        );
+      })}
+    </div>
   );
+}
+
+function FilterSeparator() {
+  return <span className="text-paper/18" aria-hidden="true">|</span>;
 }
 
 function Metric({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {

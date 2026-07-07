@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ACTIVE_PASSAGE_ID_STORAGE_KEY,
   LibraryPassage,
+  PASSAGE_STORAGE_KEY,
   PASSAGE_LIBRARY_STORAGE_KEY,
   PREVIOUS_RESULTS_STORAGE_KEY,
   THEME_SETTINGS_STORAGE_KEY,
@@ -14,6 +15,8 @@ import {
   readPracticePassageFromLibrary,
   splitTextIntoPassages,
   toStoredPassage,
+  writePassageLibrary,
+  writeStoredPassage,
   writeThemeSettings,
   writePreviousResult
 } from "./app-storage";
@@ -200,6 +203,54 @@ describe("previous result storage", () => {
 
     expect(readPreviousResult("passage-1", 60)?.wpm).toBe(44);
     expect(readPreviousResult("passage-1", 600)?.wpm).toBe(61);
+  });
+
+  it("bounds previous result history and down-samples stored pace timelines", () => {
+    const longTimeline = Array.from({ length: 200 }, (_, index) => ({
+      timeSeconds: index,
+      characterIndex: index * 3
+    }));
+
+    for (let index = 0; index < 150; index += 1) {
+      writePreviousResult(
+        makeStoredPassage(`passage-${index}`),
+        {
+          ...makeResult({ durationSeconds: 60, wpm: 40 + index }),
+          completedAt: new Date(Date.UTC(2026, 0, index + 1)).toISOString()
+        },
+        200,
+        60,
+        longTimeline
+      );
+    }
+
+    const stored = JSON.parse(storage.get(PREVIOUS_RESULTS_STORAGE_KEY) ?? "{}");
+    const values = Object.values(stored) as Array<{ previousPaceTimeline?: unknown[] }>;
+
+    expect(values).toHaveLength(120);
+    expect(values.every((value) => (value.previousPaceTimeline?.length ?? 0) <= 90)).toBe(true);
+  });
+});
+
+describe("passage storage bounds", () => {
+  it("stores only the current passage key and no longer duplicates the legacy current-passage key", () => {
+    writeStoredPassage(makeStoredPassage("stored"));
+
+    expect(storage.get("formaltype_current_passage")).toContain("Stored passage body text");
+    expect(storage.get(PASSAGE_STORAGE_KEY)).toBeUndefined();
+  });
+
+  it("bounds local fallback passage library size and passage body length", () => {
+    const passages = Array.from({ length: 180 }, (_, index) => ({
+      ...makePassage(`passage-${index}`, `Passage ${index}`, "Business email", "Formal"),
+      content: "x".repeat(25_000)
+    }));
+
+    writePassageLibrary(passages);
+
+    const stored = JSON.parse(storage.get(PASSAGE_LIBRARY_STORAGE_KEY) ?? "[]") as LibraryPassage[];
+    expect(stored).toHaveLength(150);
+    expect(stored.every((passage) => passage.content.length <= 20_000)).toBe(true);
   });
 });
 

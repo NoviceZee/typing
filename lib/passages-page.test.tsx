@@ -8,7 +8,8 @@ import PassagesPage from "../pages/passages";
 import type { LibraryPassage } from "@/lib/app-storage";
 
 const mockRouter = vi.hoisted(() => ({
-  push: vi.fn()
+  push: vi.fn(),
+  query: {} as Record<string, string>
 }));
 
 const mockPassageStorage = vi.hoisted(() => ({
@@ -16,6 +17,7 @@ const mockPassageStorage = vi.hoisted(() => ({
   selectionMode: "random" as "random" | "specific",
   selectedCategory: "All",
   selectedStyle: "All",
+  selectedLanguage: "english" as "english" | "chinese",
   setPassageSelectionMode: vi.fn((mode: "random" | "specific") => {
     mockPassageStorage.selectionMode = mode;
   }),
@@ -24,6 +26,9 @@ const mockPassageStorage = vi.hoisted(() => ({
   }),
   setSelectedStyle: vi.fn((style: string) => {
     mockPassageStorage.selectedStyle = style;
+  }),
+  setSelectedLanguage: vi.fn((language: "english" | "chinese") => {
+    mockPassageStorage.selectedLanguage = language;
   }),
   setActivePassageId: vi.fn((id: string) => {
     mockPassageStorage.activePassageId = id;
@@ -49,9 +54,11 @@ vi.mock("@/lib/passageStorage", async () => {
     getPassageSelectionMode: () => mockPassageStorage.selectionMode,
     getSelectedCategory: () => mockPassageStorage.selectedCategory,
     getSelectedStyle: () => mockPassageStorage.selectedStyle,
+    getSelectedLanguage: () => mockPassageStorage.selectedLanguage,
     setPassageSelectionMode: mockPassageStorage.setPassageSelectionMode,
     setSelectedCategory: mockPassageStorage.setSelectedCategory,
     setSelectedStyle: mockPassageStorage.setSelectedStyle,
+    setSelectedLanguage: mockPassageStorage.setSelectedLanguage,
     setActivePassageId: mockPassageStorage.setActivePassageId
   };
 });
@@ -60,17 +67,21 @@ describe("PassagesPage", () => {
   beforeEach(() => {
     window.localStorage.clear();
     mockRouter.push.mockReset();
+    mockRouter.query = {};
     mockPassageStorage.activePassageId = null;
     mockPassageStorage.selectionMode = "random";
     mockPassageStorage.selectedCategory = "All";
     mockPassageStorage.selectedStyle = "All";
+    mockPassageStorage.selectedLanguage = "english";
     mockPassageStorage.setPassageSelectionMode.mockClear();
     mockPassageStorage.setSelectedCategory.mockClear();
     mockPassageStorage.setSelectedStyle.mockClear();
+    mockPassageStorage.setSelectedLanguage.mockClear();
     mockPassageStorage.setActivePassageId.mockClear();
     mockPassageStorage.getSupabasePassageLibrary.mockResolvedValue([
-      makePassage("email", "Email brief", "Business email", "Formal"),
-      makePassage("news", "News clip", "News article", "Simple")
+      makePassage("email", "Email brief", "Business email", "Formal", "english"),
+      makePassage("news", "News clip", "News article", "Simple", "english"),
+      makePassage("chinese", "忙碌生活中的休息", "生活", "一般", "chinese", "現代城市生活節奏急速，休息能夠整理思緒。")
     ]);
   });
 
@@ -106,15 +117,39 @@ describe("PassagesPage", () => {
     expect(mockPassageStorage.setPassageSelectionMode).toHaveBeenCalledWith("specific");
     expect(mockPassageStorage.setActivePassageId).toHaveBeenCalledWith("email");
   });
+
+  it("filters the Passage Library by explicit language and honors Practice query language", async () => {
+    render(<PassagesPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Email brief").length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getByRole("group", { name: "Language" })).toBeTruthy();
+    expect(screen.queryByText("忙碌生活中的休息")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Chinese language" }));
+
+    expect(screen.getAllByText("忙碌生活中的休息").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Email brief")).toBeNull();
+  });
 });
 
-function makePassage(id: string, title: string, category: LibraryPassage["category"], style: string): LibraryPassage {
+function makePassage(
+  id: string,
+  title: string,
+  category: LibraryPassage["category"],
+  style: string,
+  language: LibraryPassage["language"],
+  content = `${title} body text for typing.`
+): LibraryPassage {
   return {
     id,
     title,
     category,
     style,
-    content: `${title} body text for typing.`,
+    language,
+    content,
     source: "uploaded",
     createdAt: "2026-05-31T00:00:00.000Z",
     updatedAt: "2026-05-31T00:00:00.000Z",

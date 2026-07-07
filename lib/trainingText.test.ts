@@ -106,6 +106,7 @@ describe("trainingText", () => {
   });
 
   it("counts advanced Chinese phrases and idioms as single generated terms", () => {
+    const advancedPool = getChineseTrainingPool("advanced");
     const passage = buildTrainingPassage({
       contentTypes: ["chinese"],
       mode: "words",
@@ -115,8 +116,9 @@ describe("trainingText", () => {
     const tokens = passage.displayTokens ?? [];
 
     expect(tokens).toHaveLength(100);
-    expect(tokens.some((token) => token === "循序漸進" || token === "精益求精")).toBe(true);
-    expect(tokens.some((token) => token === "行政管理" || token === "資源分配")).toBe(true);
+    expect(tokens.every((token) => advancedPool.includes(token))).toBe(true);
+    expect(tokens.every((token) => token.length >= 4)).toBe(true);
+    expect(advancedPool).toEqual(expect.arrayContaining(["循序漸進", "精益求精", "行政管理", "資源分配"]));
     expect(tokens.join("")).toBe(passage.text);
   });
 

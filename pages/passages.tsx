@@ -1,18 +1,19 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { Check, FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   ALL_FILTER,
-  CATEGORIES,
   CategoryFilter,
   LibraryPassage,
+  PassageLanguage,
   PassageSelectionMode,
   STYLES,
   StyleFilter,
   filterLibraryPassages,
+  filterLibraryPassagesByLanguage,
   selectRandomLibraryPassage,
   toStoredPassage,
   writeStoredPassage
@@ -22,10 +23,12 @@ import {
   getPassageLibrary,
   getPassageSelectionMode,
   getSelectedCategory,
+  getSelectedLanguage,
   getSelectedStyle,
   getSupabasePassageLibrary,
   setPassageSelectionMode,
   setSelectedCategory,
+  setSelectedLanguage,
   setSelectedStyle,
   setActivePassageId as setStoredActivePassageId
 } from "@/lib/passageStorage";
@@ -34,6 +37,7 @@ export default function PassagesPage() {
   const router = useRouter();
   const [library, setLibrary] = useState<LibraryPassage[]>([]);
   const [activePassageId, setActivePassageId] = useState<string | null>(null);
+  const [language, setLanguage] = useState<PassageLanguage>("english");
   const [category, setCategory] = useState<CategoryFilter>(ALL_FILTER);
   const [style, setStyle] = useState<StyleFilter>(ALL_FILTER);
   const [message, setMessage] = useState("");
@@ -45,17 +49,14 @@ export default function PassagesPage() {
     () => activeLibrary.find((passage) => passage.id === activePassageId) ?? null,
     [activeLibrary, activePassageId]
   );
-  const filteredLibrary = useMemo(() => filterLibraryPassages(activeLibrary, category, style), [activeLibrary, category, style]);
+  const languageLibrary = useMemo(() => filterLibraryPassagesByLanguage(activeLibrary, language), [activeLibrary, language]);
+  const filteredLibrary = useMemo(() => filterLibraryPassages(languageLibrary, category, style), [languageLibrary, category, style]);
   const articleSelectorValue =
     selectionMode === "random" || !filteredLibrary.some((passage) => passage.id === activePassageId)
       ? "random"
       : activePassageId ?? "random";
 
-  useEffect(() => {
-    refreshLibrary();
-  }, []);
-
-  async function refreshLibrary() {
+  const refreshLibrary = useCallback(async () => {
     try {
       setLibrary(await getSupabasePassageLibrary());
     } catch {
@@ -64,13 +65,22 @@ export default function PassagesPage() {
 
     setActivePassageId(getActivePassageId());
     setSelectionMode(getPassageSelectionMode());
+    const queryLanguage = router.query.language === "chinese" ? "chinese" : router.query.language === "english" ? "english" : null;
+    const nextLanguage = queryLanguage ?? getSelectedLanguage();
+    setLanguage(nextLanguage);
+    setSelectedLanguage(nextLanguage);
     setCategory(getSelectedCategory());
     setStyle(getSelectedStyle());
     setHasLoadedLibrary(true);
-  }
+  }, [router.query.language]);
+
+  useEffect(() => {
+    refreshLibrary();
+  }, [refreshLibrary]);
 
   function selectPracticePassage(passage: LibraryPassage, sourceLibrary = filteredLibrary.length > 0 ? filteredLibrary : activeLibrary) {
     setPassageSelectionMode("specific");
+    setSelectedLanguage(passage.language ?? "english");
     setStoredActivePassageId(passage.id);
     writeStoredPassage(toStoredPassage(passage, 60, sourceLibrary));
     setActivePassageId(passage.id);
@@ -80,6 +90,7 @@ export default function PassagesPage() {
 
   function setRandomPassageMode() {
     setPassageSelectionMode("random");
+    setSelectedLanguage(language);
     setSelectionMode("random");
 
     if (filteredLibrary.length === 0) {
@@ -125,6 +136,13 @@ export default function PassagesPage() {
     setSelectedCategory(nextCategory);
   }
 
+  function updateLanguage(value: PassageLanguage) {
+    setLanguage(value);
+    setSelectedLanguage(value);
+    setCategory(ALL_FILTER);
+    setSelectedCategory(ALL_FILTER);
+  }
+
   function updateStyle(value: string) {
     setStyle(value);
     setSelectedStyle(value);
@@ -148,10 +166,19 @@ export default function PassagesPage() {
               <h2 className="font-mono text-sm uppercase text-paper/65">Setup</h2>
               <div className="mt-4 space-y-5">
                 <ChoiceGroup
+                  label="Language"
+                  value={language}
+                  onChange={(value) => updateLanguage(value as PassageLanguage)}
+                  options={[
+                    { value: "english", label: "English" },
+                    { value: "chinese", label: "Chinese" }
+                  ]}
+                />
+                <ChoiceGroup
                   label="Category"
                   value={category}
                   onChange={updateCategory}
-                  options={[ALL_FILTER, ...CATEGORIES].map((option) => ({ value: option, label: option }))}
+                  options={[ALL_FILTER, ...getAvailableCategories(languageLibrary)].map((option) => ({ value: option, label: option }))}
                 />
                 <ChoiceGroup
                   label="Style"
@@ -221,7 +248,7 @@ export default function PassagesPage() {
                           )}
                         </div>
                         <p className="mt-2 font-mono text-xs text-paper/45">
-                          {passage.category} · {passage.style} · {passage.source} · {passage.wordCount} words ·{" "}
+                          {passage.language === "chinese" ? "Chinese" : "English"} · {passage.category} · {passage.style} · {passage.source} · {passage.wordCount} words ·{" "}
                           {passage.characterCount} chars
                         </p>
                       </div>
@@ -247,6 +274,10 @@ export default function PassagesPage() {
       </section>
     </AppShell>
   );
+}
+
+function getAvailableCategories(library: LibraryPassage[]) {
+  return Array.from(new Set(library.map((passage) => passage.category))).sort();
 }
 
 function ChoiceGroup({

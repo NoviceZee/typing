@@ -1,3 +1,5 @@
+import { safeSetStorageItem } from "./storageSafety";
+
 export type KeyboardSoundSetting =
   | "off"
   | "mechanical"
@@ -194,7 +196,7 @@ export function readKeyboardSoundSetting(): KeyboardSoundSetting {
 }
 
 export function writeKeyboardSoundSetting(setting: KeyboardSoundSetting) {
-  window.localStorage.setItem(KEYBOARD_SOUND_STORAGE_KEY, setting);
+  safeSetStorageItem(KEYBOARD_SOUND_STORAGE_KEY, setting, { context: "writeKeyboardSoundSetting" });
 }
 
 export function readKeyboardSoundVolume(): number {
@@ -206,7 +208,9 @@ export function readKeyboardSoundVolume(): number {
 }
 
 export function writeKeyboardSoundVolume(volume: number) {
-  window.localStorage.setItem(KEYBOARD_SOUND_VOLUME_STORAGE_KEY, String(normalizeKeyboardSoundVolume(volume)));
+  safeSetStorageItem(KEYBOARD_SOUND_VOLUME_STORAGE_KEY, String(normalizeKeyboardSoundVolume(volume)), {
+    context: "writeKeyboardSoundVolume"
+  });
 }
 
 export function normalizeKeyboardSoundVolume(value: unknown): number {

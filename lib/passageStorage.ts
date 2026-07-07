@@ -7,6 +7,7 @@ import {
   addPassagesToLibrary,
   createPassageLibraryExport,
   deleteLibraryPassage,
+  filterLibraryPassagesByLanguage,
   importPassageLibraryExport,
   readActivePassageId,
   readActivePassageLibrary,
@@ -14,12 +15,14 @@ import {
   readPassageSelectionMode,
   readSelectedCategory,
   readSelectedStyle,
+  readSelectedLanguage,
   updateLibraryPassage,
   writeActivePassageId,
   writePassageLibrary,
   writePassageSelectionMode,
   writeSelectedCategory,
-  writeSelectedStyle
+  writeSelectedStyle,
+  writeSelectedLanguage
 } from "./app-storage";
 import { supabase } from "./supabaseClient";
 import {
@@ -77,6 +80,16 @@ export function getSelectedStyle(): StyleFilter {
 export function setSelectedStyle(style: StyleFilter) {
   writeSelectedStyle(style);
 }
+
+export function getSelectedLanguage() {
+  return readSelectedLanguage();
+}
+
+export function setSelectedLanguage(language: "english" | "chinese") {
+  writeSelectedLanguage(language);
+}
+
+export { filterLibraryPassagesByLanguage };
 
 export function exportPassageLibrary() {
   return createPassageLibraryExport();
@@ -187,6 +200,7 @@ export async function updateSupabasePassage(id: string, updates: PassageUpdates)
     title: updates.title,
     category: updates.category,
     style: updates.style,
+    language: updates.language,
     content: updates.content,
     is_active: updates.isActive,
     is_public: true

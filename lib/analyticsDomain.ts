@@ -28,7 +28,7 @@ export function getCategoryAnalyticsDomain(category: string | null | undefined):
     return "code";
   }
 
-  if (normalizedCategory === "training_chinese" || normalizedCategory === "chinese") {
+  if (normalizedCategory === "training_chinese" || normalizedCategory === "chinese" || isChinesePracticeCategory(category)) {
     return "chinese";
   }
 
@@ -79,3 +79,4 @@ export function getDomainEmptyState(domain: AnalyticsDomain): { title: string; a
     action: "Start a practice or English training session to build your stats."
   };
 }
+import { isChinesePracticeCategory } from "./typing-engine";

@@ -13,6 +13,9 @@ describe("analytics domain classification", () => {
     expect(getCategoryAnalyticsDomain("training_words_numbers_symbols")).toBe("english");
     expect(getCategoryAnalyticsDomain("training_chinese")).toBe("chinese");
     expect(getCategoryAnalyticsDomain("Chinese")).toBe("chinese");
+    expect(getCategoryAnalyticsDomain("生活")).toBe("chinese");
+    expect(getCategoryAnalyticsDomain("工作")).toBe("chinese");
+    expect(getCategoryAnalyticsDomain("香港")).toBe("chinese");
     expect(getCategoryAnalyticsDomain("training_code")).toBe("code");
   });
 

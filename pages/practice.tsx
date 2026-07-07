@@ -23,6 +23,7 @@ import {
 import {
   ALL_FILTER,
   CategoryFilter,
+  PassageLanguage,
   PreviousTypingResult,
   PreviousResultScope,
   PreviousPaceTimelinePoint,
@@ -32,6 +33,7 @@ import {
   ThemeSettings,
   DEFAULT_THEME_SETTINGS,
   filterLibraryPassages,
+  filterLibraryPassagesByLanguage,
   getDefaultPassage,
   readPreviousResult,
   readStoredPassage,
@@ -40,18 +42,20 @@ import {
   selectDifferentLibraryPassage,
   selectRandomLibraryPassage,
   toStoredPassage,
+  withBuiltInSamplePassages,
   writePreviousResult,
-  writePassageLibrary,
   writeStoredPassage
 } from "@/lib/app-storage";
 import {
   getActivePassageId,
   getActivePassageLibrary,
   getPassageSelectionMode,
+  getSelectedLanguage,
   getSelectedCategory,
   getSupabasePassageLibrary,
   setActivePassageId,
   setPassageSelectionMode,
+  setSelectedLanguage,
   setSelectedCategory
 } from "@/lib/passageStorage";
 import {
@@ -167,6 +171,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const [isInputActivated, setIsInputActivated] = useState(false);
   const [previousResult, setPreviousResult] = useState<PreviousTypingResult | null>(null);
   const [availableLibrary, setAvailableLibrary] = useState<LibraryPassage[]>([]);
+  const [practiceLanguage, setPracticeLanguage] = useState<PassageLanguage>("english");
   const [selectedCategory, setSelectedCategoryState] = useState<CategoryFilter>(ALL_FILTER);
   const [selectedPassageId, setSelectedPassageId] = useState(RANDOM_PASSAGE_ID);
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(DEFAULT_THEME_SETTINGS);
@@ -231,11 +236,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     : practiceMode.label;
   const shouldShowPracticeHeader =
     !trainingMode?.hideMetadata || !trainingMode?.hidePassageControls || !trainingMode?.hidePracticeModeControls;
-  const shouldUseStableTrainingStage = Boolean(trainingMode);
+  const shouldShowTypingHeader = Boolean(trainingMode?.controls) || shouldShowPracticeHeader;
   const displayText = passage?.text.trim() ?? "";
   const sourceText = (passage?.comparableText ?? passage?.text ?? "").trim();
+  const isChinesePassage = passage?.language === "chinese" || passage?.category === "training_chinese";
   const isChineseTraining = passage?.category === "training_chinese";
-  const shouldUseChineseImeSink = isChineseTraining;
+  const shouldUseChineseImeSink = isChinesePassage;
   const shouldTraceIme = Boolean(
     isChineseTraining &&
       typeof window !== "undefined" &&
@@ -275,19 +281,28 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       category,
       duration,
       textMode,
+      language,
       preferredPassageId
     }: {
       library: LibraryPassage[];
       category: CategoryFilter;
       duration: number;
       textMode: StoredPassageTextMode;
+      language: PassageLanguage;
       preferredPassageId?: string | null;
     }) => {
-      const categoryLibrary = filterLibraryByCategory(library, category);
+      const languageLibrary = filterLibraryPassagesByLanguage(library, language);
+      const categoryLibrary = filterLibraryByCategory(languageLibrary, category);
 
       if (categoryLibrary.length > 0) {
         if (preferredPassageId === RANDOM_PASSAGE_ID) {
-          const randomPassage = selectRandomLibraryPassage(getActivePassageId() ?? undefined, categoryLibrary) ?? categoryLibrary[0];
+          const activePassageId = getActivePassageId();
+          const activePassageIsInScopedLibrary = Boolean(
+            activePassageId && categoryLibrary.some((libraryPassage) => libraryPassage.id === activePassageId)
+          );
+          const randomPassage = activePassageIsInScopedLibrary
+            ? selectRandomLibraryPassage(activePassageId ?? undefined, categoryLibrary) ?? categoryLibrary[0]
+            : categoryLibrary[0];
           setPassageSelectionMode("random");
           setActivePassageId(randomPassage.id);
           setSelectedPassageId(RANDOM_PASSAGE_ID);
@@ -429,13 +444,16 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       }
 
       setAvailableLibrary(activeLibrary);
-      const initialCategory = getInitialCategory(activeLibrary);
+      const initialLanguage = getSelectedLanguage();
+      const initialCategory = getInitialCategory(activeLibrary, initialLanguage);
+      setPracticeLanguage(initialLanguage);
       setSelectedCategoryState(initialCategory);
       choosePracticePassage({
         library: activeLibrary,
         category: initialCategory,
         duration: 60,
         textMode: "timed",
+        language: initialLanguage,
         preferredPassageId: getPassageSelectionMode() === "random" ? RANDOM_PASSAGE_ID : getActivePassageId()
       });
     }
@@ -479,6 +497,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         sourceText,
         typedText: typed,
         category: passage?.category,
+        language: passage?.language,
         rules
       });
       const existingIndex = attemptTimelineRef.current.findIndex(
@@ -494,7 +513,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
       attemptTimelineRef.current = addAttemptTimelinePoint(attemptTimelineRef.current, point);
     },
-    [passage?.category, rules, sourceText]
+    [passage?.category, passage?.language, rules, sourceText]
   );
 
   const resetSession = useCallback(() => {
@@ -505,7 +524,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     (completionReason: CompletionReason) => {
       const sessionStartedAt = startedAtRef.current;
 
-      if (finishedRef.current || statusRef.current !== "running" || !sessionStartedAt || !passage) {
+      if (finishedRef.current || statusRef.current !== "running" || sessionStartedAt === null || !passage) {
         return;
       }
 
@@ -530,6 +549,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         elapsedSeconds: Math.max(finalElapsed, 1),
         durationSeconds: resultDurationSeconds,
         category: passage.category,
+        language: passage.language,
         rules,
         completionReason
       });
@@ -919,7 +939,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
   function syncChineseTextareaValue(source: "input" | "compositionend-fallback") {
     const textareaValue = chineseImeInputRef.current?.value ?? "";
-    const nextValue = getChineseComparableInput(textareaValue);
+    const nextValue = getChineseComparableInput(textareaValue, passage);
 
     if (
       !passage ||
@@ -937,6 +957,18 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         textareaValue
       });
       return;
+    }
+
+    if (!isRunning && isChinesePassage) {
+      const nextComparison = validateTypedText({ targetText: sourceText, typedText: nextValue, rules });
+      if (nextComparison.correctCharacters === 0) {
+        logImeAction("sync-skip-no-target-progress", {
+          source,
+          processed: false,
+          textareaValue
+        });
+        return;
+      }
     }
 
     logImeAction("sync-textarea-value", {
@@ -1140,7 +1172,33 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       category: selectedCategory,
       duration: nextDurationSeconds,
       textMode: nextTextMode,
+      language: practiceLanguage,
       preferredPassageId: selectedPassageId
+    });
+  }
+
+  async function handlePracticeLanguage(language: PassageLanguage) {
+    if (language === practiceLanguage || trainingMode) {
+      return;
+    }
+
+    resetSession();
+    setPracticeLanguage(language);
+    setSelectedLanguage(language);
+    setSelectedCategoryState(ALL_FILTER);
+    setSelectedCategory(ALL_FILTER);
+    setSelectedPassageId(RANDOM_PASSAGE_ID);
+    setPassageSelectionMode("random");
+
+    const activeLibrary = await loadActivePassageLibrary();
+    setAvailableLibrary(activeLibrary);
+    choosePracticePassage({
+      library: activeLibrary,
+      category: ALL_FILTER,
+      duration: durationSeconds,
+      textMode: passageTextMode,
+      language,
+      preferredPassageId: RANDOM_PASSAGE_ID
     });
   }
 
@@ -1153,6 +1211,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       category,
       duration: durationSeconds,
       textMode: passageTextMode,
+      language: practiceLanguage,
       preferredPassageId: selectedPassageId === RANDOM_PASSAGE_ID ? RANDOM_PASSAGE_ID : null
     });
   }
@@ -1164,6 +1223,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       category: selectedCategory,
       duration: durationSeconds,
       textMode: passageTextMode,
+      language: practiceLanguage,
       preferredPassageId: passageId
     });
   }
@@ -1213,6 +1273,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       title: `${passage.category} generated practice`,
       category: passage.category,
       style: passage.style,
+      language: passage.language ?? practiceLanguage,
       source: "generated",
       text: buildPracticePassage(passage.category, durationSeconds),
       updatedAt: new Date().toISOString()
@@ -1240,7 +1301,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     setSelectedPassageId(RANDOM_PASSAGE_ID);
 
     if (library.length === 0) {
-      const defaultPassage = getDefaultPassage(durationSeconds);
+      const defaultPassage = practiceLanguage === "english" ? getDefaultPassage(durationSeconds) : readStoredPassage(durationSeconds);
       setPassageNotice("No active saved passages found. Using a sample passage.");
       setPassage(defaultPassage);
       setPreviousResult(readPreviousResult(defaultPassage.id, previousResultScope));
@@ -1270,9 +1331,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     try {
       const supabaseLibrary = await getSupabasePassageLibrary();
       if (supabaseLibrary.length > 0) {
-        libraryRef.current = supabaseLibrary;
-        writePassageLibrary(supabaseLibrary);
-        return supabaseLibrary;
+        const activeLibrary = withBuiltInSamplePassages(supabaseLibrary);
+        libraryRef.current = activeLibrary;
+        return activeLibrary;
       }
     } catch {
       // Fall through to local active passages.
@@ -1285,7 +1346,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
   function getFilteredLibrary() {
     const activeLibrary = libraryRef.current.length > 0 ? libraryRef.current : getActivePassageLibrary();
-    return filterLibraryByCategory(activeLibrary, selectedCategory);
+    return filterLibraryByCategory(filterLibraryPassagesByLanguage(activeLibrary, practiceLanguage), selectedCategory);
   }
 
   return (
@@ -1299,79 +1360,86 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           </div>
         )}
 
-        {trainingMode?.controls}
-
-        {shouldShowPracticeHeader && (
+        {shouldShowTypingHeader && (
           <section
-            className={clsx(
-              "max-w-full overflow-hidden transition-all duration-200",
-              isRunning
-                ? "mb-1 max-h-0 opacity-0"
-                : "mb-3 max-h-40 rounded-md bg-paper/[0.018] p-1.5"
-            )}
-            aria-hidden={isRunning}
+            data-testid="practice-header"
+            className="mx-auto mb-3 grid max-w-5xl grid-cols-1 items-start gap-x-4 gap-y-1.5 text-center sm:grid-cols-[minmax(0,1fr)_auto]"
           >
-            <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-              <div className="min-w-0">
-                {!trainingMode?.hideMetadata && (
-                  <p className="truncate font-mono text-xs text-paper/55" data-testid="practice-passage-metadata">
-                    {passage ? `${formatPassageResultMetadata(passage)} · ${modeLabel}` : "Resolving passage..."}
-                  </p>
-                )}
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  {!trainingMode?.hidePassageControls && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={loadRandomPassage}
-                        disabled={isRunning || isPassageLoading}
-                        className="rounded-full border border-paper/10 bg-paper/[0.035] px-3 py-1.5 font-mono text-xs text-paper/70 transition hover:border-brass/40 hover:bg-paper/[0.055] hover:text-paper disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Random passage
-                      </button>
-                      <Link
-                        href="/passages"
-                        className="rounded-full border border-paper/10 bg-transparent px-3 py-1.5 font-mono text-xs text-paper/50 transition hover:border-brass/35 hover:text-paper/80"
-                      >
-                        Choose in Passages
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </div>
+            <div className="min-w-0">
+              {trainingMode?.controls}
 
-              {!trainingMode?.hidePracticeModeControls && (
-                <div className="grid min-w-0 grid-cols-4 rounded-full bg-paper/[0.035] p-1">
-                  <span className="sr-only">Practice mode</span>
-                  {PRACTICE_MODE_OPTIONS.map((mode) => (
-                    <button
-                      key={mode.id}
-                      type="button"
-                      onClick={() => handlePracticeMode(mode.id)}
-                      disabled={isRunning || isPassageLoading}
-                      className={clsx(
-                        "h-7 rounded-full px-2 font-mono text-[0.68rem] transition disabled:cursor-not-allowed disabled:opacity-60 sm:text-xs",
-                        practiceModeId === mode.id
-                          ? "bg-brass/85 text-ink-950"
-                          : "text-paper/50 hover:bg-paper/5 hover:text-paper/80"
-                      )}
-                    >
-                      {mode.label}
-                    </button>
-                  ))}
-                </div>
+              {shouldShowPracticeHeader && (
+                <>
+                  <div
+                    data-testid="practice-controls"
+                    className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-3 gap-y-1.5 font-mono text-xs"
+                  >
+                    {!trainingMode && (
+                      <TextChoiceGroup label="Practice language">
+                        {(["english", "chinese"] as const).map((language) => (
+                          <TextChoiceButton
+                            key={language}
+                            selected={practiceLanguage === language}
+                            disabled={isPassageLoading}
+                            onClick={() => handlePracticeLanguage(language)}
+                          >
+                            {language === "english" ? "English" : "Chinese"}
+                          </TextChoiceButton>
+                        ))}
+                      </TextChoiceGroup>
+                    )}
+
+                    {!trainingMode?.hidePassageControls && (
+                      <>
+                        <PracticeControlSeparator />
+                        <TextChoiceGroup label="Practice passage source">
+                          <TextChoiceButton
+                            selected={selectedPassageId === RANDOM_PASSAGE_ID}
+                            disabled={isRunning || isPassageLoading}
+                            onClick={loadRandomPassage}
+                          >
+                            Random
+                          </TextChoiceButton>
+                          <Link
+                            href={`/passages?language=${practiceLanguage}`}
+                            className="px-1.5 py-1 text-paper/50 outline-none transition hover:text-paper/80 focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60"
+                          >
+                            Library
+                          </Link>
+                        </TextChoiceGroup>
+                      </>
+                    )}
+
+                    {!trainingMode?.hidePracticeModeControls && (
+                      <>
+                        <PracticeControlSeparator />
+                        <TextChoiceGroup label="Practice duration">
+                          {PRACTICE_MODE_OPTIONS.map((mode) => (
+                            <TextChoiceButton
+                              key={mode.id}
+                              selected={practiceModeId === mode.id}
+                              disabled={isRunning || isPassageLoading}
+                              onClick={() => handlePracticeMode(mode.id)}
+                            >
+                              {mode.label}
+                            </TextChoiceButton>
+                          ))}
+                        </TextChoiceGroup>
+                      </>
+                    )}
+                  </div>
+
+                  {!trainingMode?.hideMetadata && (
+                    <p className="mx-auto mt-1.5 max-w-4xl truncate px-1 font-mono text-xs text-paper/55" data-testid="practice-passage-metadata">
+                      {passage ? `${formatPassageResultMetadata(passage)} · ${modeLabel}` : "Resolving passage..."}
+                    </p>
+                  )}
+                </>
               )}
             </div>
-          </section>
-        )}
 
-        {previousResult && status !== "finished" && (
-          <div
-            data-testid="previous-pace-display"
-            className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden px-1 font-mono text-xs text-paper/45"
-          >
-            <span>Previous pace: {previousResult.wpm.toFixed(1)} {getMetricLabel(passage)}</span>
-          </div>
+            <TypingTimer value={formatTime(clockSeconds)} />
+          </section>
         )}
 
         <div
@@ -1388,43 +1456,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
               inputRef.current?.focus({ preventScroll: true });
             }
           }}
-          className={clsx(
-            "formaltype-practice-shell relative mx-auto w-full max-w-5xl outline-none transition",
-            shouldUseStableTrainingStage
-              ? "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
-              : shouldUseChineseImeSink
-              ? "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-4"
-              : isRunning
-              ? "flex h-[60vh] max-h-[60vh] flex-col overflow-hidden rounded-none bg-transparent p-0 md:h-[68vh] md:max-h-[72vh]"
-              : "overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 focus:ring-brass/30 md:p-5"
-          )}
+          className="formaltype-practice-shell relative mx-auto flex h-[60vh] max-h-[60vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 outline-none transition focus:ring-brass/30 md:h-[68vh] md:max-h-[72vh] md:p-5"
         >
-          <div
-            data-testid="typing-timer-overlay"
-            className={clsx(
-              "pointer-events-none absolute right-3 top-3 z-10 rounded-md bg-ink-950/80 px-2 py-1 text-right font-mono text-[1.45rem] leading-none text-paper/45 backdrop-blur-sm transition-opacity md:right-4 md:top-4 md:text-[2rem]",
-              isRunning ? "opacity-100" : "opacity-0"
-            )}
-            aria-hidden={!isRunning}
-          >
-            {formatTime(clockSeconds)}
-          </div>
-
           <div
             ref={typingWindowRef}
             data-testid={shouldUseChineseImeSink ? "chinese-target-viewport" : "typing-viewport"}
-            className={clsx(
-              "typing-scrollbar mx-auto min-h-0 w-full max-w-5xl transition",
-              shouldUseStableTrainingStage && shouldUseChineseImeSink
-                ? "h-[300px] overflow-y-auto overscroll-contain rounded-md px-3 py-3 md:h-[360px] md:px-6 md:py-4"
-                : shouldUseStableTrainingStage
-                ? "h-[340px] overflow-y-auto overscroll-contain rounded-md px-4 py-6 md:h-[420px] md:px-8 md:py-8"
-                : shouldUseChineseImeSink
-                ? "h-[300px] overflow-y-auto overscroll-contain rounded-md px-3 py-3 md:h-[360px] md:px-6 md:py-4"
-                : isRunning
-                ? "h-full flex-1 overflow-y-auto overscroll-contain px-1 py-3 md:px-6 md:py-5"
-                : "h-[340px] overflow-y-auto overscroll-contain rounded-md px-4 py-6 md:h-[420px] md:px-8 md:py-8"
-            )}
+            className="typing-scrollbar mx-auto h-full min-h-0 w-full max-w-5xl flex-1 overflow-y-auto overscroll-contain rounded-md px-3 py-3 transition md:px-6 md:py-5"
           >
             <div
               ref={typingTextRef}
@@ -1499,28 +1536,28 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           </div>
 
           {shouldUseChineseImeSink ? (
-            <div data-testid="chinese-input-area" className="mx-auto max-w-3xl pt-2">
-            <textarea
-              ref={(node) => {
-                chineseImeInputRef.current = node;
-                inputRef.current = node;
-              }}
-              disabled={isPassageLoading || isFinished}
-              onKeyDown={handleChineseImeKeyDown}
-              onPaste={handlePaste}
-              onCompositionStart={handleChineseCompositionStart}
-              onCompositionUpdate={handleChineseCompositionUpdate}
-              onBeforeInput={handleChineseBeforeInput}
-              onInput={handleChineseInput}
-              onChange={handleChineseChange}
-              onCompositionEnd={handleChineseCompositionEnd}
-              className={clsx(
-                "block min-h-14 w-full resize-none rounded-md border border-paper/10 bg-paper/[0.035] px-3 py-2 font-mono text-lg leading-relaxed text-paper/85 caret-brass outline-none transition placeholder:text-paper/25 focus:border-brass/45 focus:bg-paper/[0.055]"
-              )}
-              aria-label="Typing input"
-              placeholder="請在此按 Tab 後開始輸入"
-              spellCheck={false}
-            />
+            <div data-testid="chinese-input-area" className="mx-auto w-full max-w-5xl flex-none pt-3">
+              <textarea
+                ref={(node) => {
+                  chineseImeInputRef.current = node;
+                  inputRef.current = node;
+                }}
+                disabled={isPassageLoading || isFinished}
+                onKeyDown={handleChineseImeKeyDown}
+                onPaste={handlePaste}
+                onCompositionStart={handleChineseCompositionStart}
+                onCompositionUpdate={handleChineseCompositionUpdate}
+                onBeforeInput={handleChineseBeforeInput}
+                onInput={handleChineseInput}
+                onChange={handleChineseChange}
+                onCompositionEnd={handleChineseCompositionEnd}
+                className={clsx(
+                  "block min-h-[104px] w-full resize-none rounded-md border border-paper/10 bg-paper/[0.035] px-3 py-2 font-mono text-lg leading-relaxed text-paper/85 caret-brass outline-none transition placeholder:text-paper/25 focus:border-brass/45 focus:bg-paper/[0.055]"
+                )}
+                aria-label="Typing input"
+                placeholder="請在此按 Tab 後開始輸入"
+                spellCheck={false}
+              />
             </div>
           ) : (
             <textarea
@@ -1615,6 +1652,45 @@ function PassageLoadingPlaceholder() {
       ))}
     </span>
   );
+}
+
+function TextChoiceGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div role="group" aria-label={label} className="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+      {children}
+    </div>
+  );
+}
+
+function TextChoiceButton({
+  selected,
+  disabled,
+  onClick,
+  children
+}: {
+  selected: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      disabled={disabled}
+      onClick={onClick}
+      className={clsx(
+        "px-1.5 py-1 text-xs outline-none transition disabled:cursor-not-allowed disabled:opacity-45 focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60",
+        selected ? "text-brass" : "text-paper/45 hover:text-paper/75"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PracticeControlSeparator() {
+  return <span className="text-paper/18" aria-hidden="true">|</span>;
 }
 
 function TrainingTokenCharacterLayer({
@@ -1715,13 +1791,14 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function getCategoryOptions(library: LibraryPassage[]): PracticeCategory[] {
-  return Array.from(new Set(library.map((libraryPassage) => libraryPassage.category))).sort();
+function getCategoryOptions(library: LibraryPassage[], language: PassageLanguage): PracticeCategory[] {
+  const languageLibrary = filterLibraryPassagesByLanguage(library, language);
+  return Array.from(new Set(languageLibrary.map((libraryPassage) => libraryPassage.category))).sort();
 }
 
-function getInitialCategory(library: LibraryPassage[]): CategoryFilter {
+function getInitialCategory(library: LibraryPassage[], language: PassageLanguage): CategoryFilter {
   const storedCategory = getSelectedCategory();
-  const categories = getCategoryOptions(library);
+  const categories = getCategoryOptions(library, language);
 
   if (storedCategory === ALL_FILTER || categories.includes(storedCategory as PracticeCategory)) {
     return storedCategory;
@@ -1804,8 +1881,12 @@ function getMetricLabel(passage: StoredPassage | null | undefined) {
   return "WPM";
 }
 
-function getChineseComparableInput(value: string) {
-  return Array.from(value).filter((character) => HAN_CHARACTER_PATTERN.test(character)).join("");
+function getChineseComparableInput(value: string, passage: StoredPassage | null) {
+  if (passage?.category === "training_chinese") {
+    return Array.from(value).filter((character) => HAN_CHARACTER_PATTERN.test(character)).join("");
+  }
+
+  return value.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
 export function ResultModal({
@@ -2582,17 +2663,19 @@ function buildAttemptTimelinePoint({
   sourceText,
   typedText,
   category,
+  language,
   rules
 }: {
   elapsedSeconds: number;
   sourceText: string;
   typedText: string;
   category?: PracticeCategory;
+  language?: PassageLanguage;
   rules: TypingRules;
 }): AttemptTimelinePoint {
   const comparison = validateTypedText({ targetText: sourceText, typedText, rules });
   const minutes = Math.max(elapsedSeconds, 1) / 60;
-  const pace = category === "training_chinese" ? comparison.correctCharacters / minutes : comparison.correctCharacters / 5 / minutes;
+  const pace = language === "chinese" || category === "training_chinese" ? comparison.correctCharacters / minutes : comparison.correctCharacters / 5 / minutes;
 
   return {
     timeSeconds: Math.round(elapsedSeconds),
@@ -3124,6 +3207,18 @@ function isPunctuationCharacter(character: string) {
 
 function isLetterCharacter(character: string) {
   return /^[a-z]$/i.test(character);
+}
+
+function TypingTimer({ value }: { value: string }) {
+  return (
+    <div
+      data-testid="typing-timer-slot"
+      className="min-h-8 min-w-[5.5rem] justify-self-center text-center font-mono tabular-nums text-2xl leading-none text-paper/45 sm:justify-self-end sm:text-right md:text-[2rem]"
+      aria-label={`Timer ${value}`}
+    >
+      <span data-testid="typing-timer">{value}</span>
+    </div>
+  );
 }
 
 function formatTime(totalSeconds: number) {

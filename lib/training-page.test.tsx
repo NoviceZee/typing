@@ -901,7 +901,7 @@ describe("TrainingPage", () => {
     );
   });
 
-  it("hides training metadata while preserving previous pace", async () => {
+  it("hides training metadata and the pre-test previous pace row while preserving comparison data", async () => {
     window.localStorage.setItem(
       PREVIOUS_RESULTS_STORAGE_KEY,
       JSON.stringify({
@@ -912,8 +912,10 @@ describe("TrainingPage", () => {
     render(<TrainingPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("previous-pace-display").textContent).toContain("Previous pace: 42.5 WPM");
+      expect(screen.getByTestId("typing-character-layer")).toBeTruthy();
     });
+    expect(screen.queryByTestId("previous-pace-display")).toBeNull();
+    expect(screen.queryByText(/Previous pace:/)).toBeNull();
     expect(screen.queryByTestId("practice-passage-metadata")).toBeNull();
     expect(screen.queryByText(/Training · training_words/)).toBeNull();
   });
@@ -932,25 +934,38 @@ describe("TrainingPage", () => {
     expect(input.placeholder).toBe("請在此按 Tab 後開始輸入");
     expect(screen.getByTestId("chinese-input-area").contains(input)).toBe(true);
     expect(screen.getByTestId("chinese-input-area").className).toContain("mx-auto");
-    expect(screen.getByTestId("chinese-input-area").className).toContain("max-w-");
+    expect(screen.getByTestId("chinese-input-area").className).toContain("w-full");
+    expect(screen.getByTestId("chinese-input-area").className).toContain("max-w-5xl");
+    expect(screen.getByTestId("chinese-input-area").className).not.toMatch(/fit|max-content|max-w-3xl/);
+    expect(input.className).toContain("w-full");
+    expect(input.className).toContain("min-h-[104px]");
     expect(screen.getByTestId("chinese-target-viewport").className).toContain("mx-auto");
+    expect(screen.getByTestId("chinese-target-viewport").className).toContain("flex-1");
     expect(screen.getByTestId("typing-text-container").className).toContain("w-fit");
     expect(screen.getByTestId("chinese-target-viewport").contains(input)).toBe(false);
   });
 
-  it("keeps the Training typing stage centered with an overlay timer slot", async () => {
+  it("keeps the Training typing stage centered with one header timer slot", async () => {
     render(<TrainingPage />);
 
     const stage = document.querySelector(".formaltype-practice-shell");
     const viewport = screen.getByTestId("typing-viewport");
-    const timer = screen.getByTestId("typing-timer-overlay");
+    const timer = screen.getByTestId("typing-timer");
+    const timerSlot = screen.getByTestId("typing-timer-slot");
 
     expect(stage?.className).toContain("mx-auto");
+    expect(stage?.className).toContain("flex");
     expect(stage?.className).toContain("max-w-");
+    expect(stage?.className).not.toContain("side");
     expect(viewport.className).toContain("mx-auto");
-    expect(timer.className).toContain("absolute");
-    expect(timer.className).toContain("right-");
-    expect(timer.className).not.toContain("sticky");
+    expect(viewport.className).toContain("h-full");
+    expect(viewport.className).toContain("flex-1");
+    expect(viewport.className).not.toContain("h-[340px]");
+    expect(screen.getAllByTestId("typing-timer")).toHaveLength(1);
+    expect(screen.queryByTestId("typing-timer-overlay")).toBeNull();
+    expect(stage?.contains(timer)).toBe(false);
+    expect(viewport.contains(timer)).toBe(false);
+    expect(screen.getByTestId("practice-header").contains(timerSlot)).toBe(true);
     expect(timer.textContent).toBe("1:00");
 
     fireEvent.keyDown(stage as Element, { key: "Tab" });
@@ -958,7 +973,7 @@ describe("TrainingPage", () => {
     fireEvent.change(input, { target: { value: "a" } });
 
     await waitFor(() => {
-      expect(screen.getByTestId("typing-timer-overlay").className).toContain("absolute");
+      expect(screen.getByTestId("typing-timer").textContent).toBe("1:00");
     });
     expect(screen.getByTestId("typing-viewport").className).toBe(viewport.className);
   });

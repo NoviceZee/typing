@@ -6,6 +6,15 @@ export type PracticeCategory =
   | "Casual writing"
   | "Legal / contract style"
   | "Random paragraph"
+  | "生活"
+  | "工作"
+  | "教育"
+  | "科技"
+  | "文化"
+  | "社會"
+  | "環境"
+  | "健康"
+  | "香港"
   | "numbers"
   | "symbols"
   | "training_words"
@@ -61,6 +70,7 @@ export type ResultInput = {
   elapsedSeconds: number;
   durationSeconds: number;
   category: PracticeCategory;
+  language?: "english" | "chinese";
   rules: TypingRules;
   presetName?: string;
   completionReason?: CompletionReason;
@@ -96,7 +106,7 @@ export const DEFAULT_RULES: TypingRules = {
 
 const PUNCTUATION_PATTERN = /[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/;
 
-const PASSAGE_BANK: Record<PracticeCategory, string[]> = {
+const PASSAGE_BANK: Partial<Record<PracticeCategory, string[]>> = {
   "Business email": [
     "The coordination note has been updated to reflect the confirmed responsibilities, outstanding dependencies, and expected response dates for each workstream. Kindly advise if any item should be reclassified before circulation.",
     "The attached summary records the agreed position as of this afternoon, including the revised delivery assumptions and the remaining approvals required before implementation can proceed.",
@@ -366,7 +376,7 @@ export function calculateResult(input: ResultInput): TypingResult {
     rules: input.rules
   });
   const minutes = Math.max(input.elapsedSeconds, 1) / 60;
-  const usesCharacterPace = input.category === "training_chinese";
+  const usesCharacterPace = input.language === "chinese" || input.category === "training_chinese" || isChinesePracticeCategory(input.category);
   const grossWpm = usesCharacterPace ? comparison.correctCharacters / minutes : comparison.correctCharacters / 5 / minutes;
   const rawWpm = usesCharacterPace ? input.typed.length / minutes : input.typed.length / 5 / minutes;
 
@@ -382,6 +392,10 @@ export function calculateResult(input: ResultInput): TypingResult {
     completedAt: new Date().toISOString(),
     isRankable: comparison.accuracy >= 70 && input.elapsedSeconds >= 15
   };
+}
+
+export function isChinesePracticeCategory(category: string | null | undefined) {
+  return category === "生活" || category === "工作" || category === "教育" || category === "科技" || category === "文化" || category === "社會" || category === "環境" || category === "健康" || category === "香港";
 }
 
 export function getRequiredWordCount(durationSeconds: number): number {
@@ -402,7 +416,7 @@ export function getRequiredWordCount(durationSeconds: number): number {
 
 export function buildPracticePassage(category: PracticeCategory, durationSeconds: number): string {
   const targetWordCount = getRequiredWordCount(durationSeconds);
-  const paragraphs = PASSAGE_BANK[category];
+  const paragraphs = PASSAGE_BANK[category] ?? PASSAGE_BANK["Business email"] ?? [];
   const output: string[] = [];
   let wordCount = 0;
   let index = 0;

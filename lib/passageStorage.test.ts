@@ -3,6 +3,7 @@ import { LibraryPassage, PASSAGE_LIBRARY_STORAGE_KEY, ACTIVE_PASSAGE_ID_STORAGE_
 import {
   addPassage,
   deletePassage,
+  filterLibraryPassagesByLanguage,
   exportPassageLibrary,
   getActivePassageId,
   getPassageLibrary,
@@ -64,6 +65,29 @@ describe("passageStorage", () => {
     expect(summary.imported).toBe(1);
     expect(exported.passages).toHaveLength(1);
     expect(exported.passages[0]).toMatchObject({ id: "one", title: "Imported passage" });
+  });
+
+  it("backfills existing passages to English and preserves explicit Chinese language", () => {
+    storage.set(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("legacy", "Legacy English"),
+        { ...makePassage("chinese", "中文短文"), language: "chinese", category: "生活", content: "今天的天氣很好。" }
+      ])
+    );
+
+    expect(getPassageLibrary().map((passage) => [passage.id, passage.language])).toEqual([
+      ["legacy", "english"],
+      ["chinese", "chinese"]
+    ]);
+  });
+
+  it("filters random passage pools by explicit language", () => {
+    const english = makePassage("english", "English passage");
+    const chinese = { ...makePassage("chinese", "中文短文"), language: "chinese" as const, content: "今天的天氣很好。" };
+
+    expect(filterLibraryPassagesByLanguage([english, chinese], "english").map((passage) => passage.id)).toEqual(["english"]);
+    expect(filterLibraryPassagesByLanguage([english, chinese], "chinese").map((passage) => passage.id)).toEqual(["chinese"]);
   });
 });
 

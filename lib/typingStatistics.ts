@@ -1,8 +1,11 @@
 import type { CharacterComparison, TypingResult } from "./typing-engine";
 import { AnalyticsDomain, getCategoryAnalyticsDomain } from "./analyticsDomain";
+import { safeSetJsonStorageItem } from "./storageSafety";
 
 export const TYPING_ATTEMPT_DETAILS_STORAGE_KEY = "formaltype.typing_attempt_details.v1";
-const MAX_STORED_ATTEMPT_DETAILS = 200;
+const MAX_STORED_ATTEMPT_DETAILS = 50;
+const MAX_STORED_ATTEMPT_CHARACTERS = 1_500;
+const MAX_STORED_ATTEMPT_TIMELINE_POINTS = 120;
 const DEFAULT_MIN_WEAK_KEY_HITS = 20;
 
 export type TypingAttemptCharacterDetail = Pick<CharacterComparison, "expected" | "actual" | "index" | "status"> & {
@@ -161,7 +164,7 @@ export function buildTypingAttemptDetail({
     category: result.category,
     wpm: result.wpm,
     accuracy: result.accuracy,
-    timeline: timeline.map((point) => ({
+    timeline: downsampleTimeline(timeline).map((point) => ({
       timeSeconds: point.timeSeconds,
       wpm: point.wpm
     })),
@@ -175,7 +178,7 @@ export function buildTypingAttemptDetail({
         status: character.status,
         delayMs: typeof delayMs === "number" && Number.isFinite(delayMs) ? Math.max(0, Math.round(delayMs)) : null
       };
-    })
+    }).slice(0, MAX_STORED_ATTEMPT_CHARACTERS)
   };
 }
 
@@ -406,7 +409,9 @@ export function appendTypingAttemptDetail(detail: TypingAttemptDetail) {
   const nextDetails = [detail, ...readTypingAttemptDetails()]
     .sort((first, second) => Date.parse(second.completedAt) - Date.parse(first.completedAt))
     .slice(0, MAX_STORED_ATTEMPT_DETAILS);
-  window.localStorage.setItem(TYPING_ATTEMPT_DETAILS_STORAGE_KEY, JSON.stringify(nextDetails));
+  safeSetJsonStorageItem(TYPING_ATTEMPT_DETAILS_STORAGE_KEY, nextDetails.map(compactTypingAttemptDetail), {
+    context: "appendTypingAttemptDetail"
+  });
 }
 
 export function readTypingAttemptDetails(userId?: string | null): TypingAttemptDetail[] {
@@ -473,6 +478,34 @@ function toCommonMistake(character: TypingAttemptCharacterDetail): CommonMistake
   }
 
   return null;
+}
+
+function compactTypingAttemptDetail(detail: TypingAttemptDetail): TypingAttemptDetail {
+  return {
+    ...detail,
+    characters: detail.characters.slice(0, MAX_STORED_ATTEMPT_CHARACTERS),
+    timeline: downsampleTimeline(detail.timeline ?? [])
+  };
+}
+
+function downsampleTimeline<T extends { timeSeconds: number }>(timeline: T[]): T[] {
+  if (timeline.length <= MAX_STORED_ATTEMPT_TIMELINE_POINTS) {
+    return timeline;
+  }
+
+  const step = Math.ceil(timeline.length / MAX_STORED_ATTEMPT_TIMELINE_POINTS);
+  const sampled = timeline.filter((_, index) => index % step === 0);
+  const lastPoint = timeline[timeline.length - 1];
+
+  if (lastPoint && sampled[sampled.length - 1] !== lastPoint) {
+    sampled.push(lastPoint);
+  }
+
+  if (sampled.length <= MAX_STORED_ATTEMPT_TIMELINE_POINTS) {
+    return sampled;
+  }
+
+  return [...sampled.slice(0, MAX_STORED_ATTEMPT_TIMELINE_POINTS - 1), sampled[sampled.length - 1]];
 }
 
 function aggregateFingerStatistics(attempts: TypingAttemptDetail[]): FingerStatistic[] {

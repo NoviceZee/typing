@@ -1,17 +1,37 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  TYPING_ATTEMPT_DETAILS_STORAGE_KEY,
   aggregateTypingStatistics,
+  appendTypingAttemptDetail,
   buildTypingReplayEvents,
   classifyDetailedMistake,
   buildTypingAttemptDetail,
   getFingerForKey,
   getFullKeyboardLayout,
+  readTypingAttemptDetails,
   rankWeakKeys,
   rankCommonMistakes
 } from "./typingStatistics";
 import type { TypingResult } from "./typing-engine";
 
 describe("typingStatistics", () => {
+  let storage: Map<string, string>;
+
+  beforeEach(() => {
+    storage = new Map();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+        removeItem: (key: string) => storage.delete(key)
+      }
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("aggregates per-key hit counts, accuracy, mistakes, and average delay", () => {
     const detail = buildTypingAttemptDetail({
       userId: "user-1",
@@ -299,6 +319,39 @@ describe("typingStatistics", () => {
       expect.objectContaining({ key: " ", expected: " ", actual: "", timeMs: 750, isMistake: true })
     ]);
     expect(buildTypingReplayEvents(detail, { onlyMistakes: true }).map((event) => event.key)).toEqual(["d", "x", " "]);
+  });
+
+  it("bounds stored fallback attempt details, characters, and timelines", () => {
+    const detail = buildTypingAttemptDetail({
+      userId: "user-1",
+      result: {
+        ...makeResult(
+          Array.from({ length: 2_000 }, (_, index) => ({
+            expected: "a",
+            actual: "a",
+            status: "correct" as const,
+            index
+          }))
+        ),
+        completedAt: "2026-06-21T00:00:00.000Z"
+      },
+      typedCharacterDelaysMs: Array.from({ length: 2_000 }, () => 20),
+      timeline: Array.from({ length: 300 }, (_, index) => ({ timeSeconds: index, wpm: 50 }))
+    });
+
+    for (let index = 0; index < 75; index += 1) {
+      appendTypingAttemptDetail({
+        ...detail,
+        id: `attempt-${index}`,
+        completedAt: new Date(Date.UTC(2026, 0, index + 1)).toISOString()
+      });
+    }
+
+    const stored = JSON.parse(storage.get(TYPING_ATTEMPT_DETAILS_STORAGE_KEY) ?? "[]");
+    expect(stored).toHaveLength(50);
+    expect(stored.every((attempt: { characters: unknown[] }) => attempt.characters.length <= 1_500)).toBe(true);
+    expect(stored.every((attempt: { timeline: unknown[] }) => attempt.timeline.length <= 120)).toBe(true);
+    expect(readTypingAttemptDetails("user-1")).toHaveLength(50);
   });
 });
 
