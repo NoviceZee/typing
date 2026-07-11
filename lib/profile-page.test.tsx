@@ -54,6 +54,11 @@ vi.mock("@/lib/typingResultStorage", async () => {
   };
 });
 
+vi.mock("@/lib/typingAttemptStorage", () => ({
+  getSupabaseTypingAttemptDetails: vi.fn().mockResolvedValue([]),
+  syncLocalTypingAttemptDetails: vi.fn().mockResolvedValue(undefined)
+}));
+
 vi.mock("@/lib/profileStorage", async () => {
   const actual = await vi.importActual<typeof import("@/lib/profileStorage")>("@/lib/profileStorage");
 

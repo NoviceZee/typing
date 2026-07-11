@@ -67,6 +67,10 @@ vi.mock("@/lib/typingResultStorage", async () => {
   };
 });
 
+vi.mock("@/lib/typingAttemptStorage", () => ({
+  saveSupabaseTypingAttemptDetail: vi.fn().mockResolvedValue(undefined)
+}));
+
 const mockedGetSupabaseAnalyticsTypingResults = vi.mocked(getSupabaseAnalyticsTypingResults);
 const mockedSaveSupabaseTypingResult = vi.mocked(saveSupabaseTypingResult);
 const SOUND_PACKS = [

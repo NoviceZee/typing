@@ -97,6 +97,8 @@ import {
   classifyDetailedMistake,
   getFingerForKey
 } from "@/lib/typingStatistics";
+import type { TypingAttemptDetail } from "@/lib/typingStatistics";
+import { saveSupabaseTypingAttemptDetail } from "@/lib/typingAttemptStorage";
 
 export type PracticeTrainingMode = {
   pageTitle: string;
@@ -564,6 +566,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       const isSuspicious = suspiciousAttemptRef.current;
 
       const comparisonPreviousResult = readPreviousResult(passage.id, previousResultScope);
+      let attemptDetail: TypingAttemptDetail | null = null;
       if (!isSuspicious) {
         writePreviousResult(
           passage,
@@ -573,14 +576,13 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           completedTimeline.map(toPreviousPaceTimelinePoint)
         );
         if (user) {
-          appendTypingAttemptDetail(
-            buildTypingAttemptDetail({
-              userId: user.id,
-              result: finalResult,
-              typedCharacterDelaysMs: typedCharacterDelaysRef.current,
-              timeline: completedTimeline
-            })
-          );
+          attemptDetail = buildTypingAttemptDetail({
+            userId: user.id,
+            result: finalResult,
+            typedCharacterDelaysMs: typedCharacterDelaysRef.current,
+            timeline: completedTimeline
+          });
+          appendTypingAttemptDetail(attemptDetail);
         }
       }
       setPreviousResult(comparisonPreviousResult);
@@ -604,6 +606,11 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             supabasePassageId: passage.id ?? null
           })
             .then((savedResult) => {
+              if (attemptDetail) {
+                void saveSupabaseTypingAttemptDetail(attemptDetail, savedResult.id).catch((error) => {
+                  console.warn("Supabase typing attempt detail save failed", error);
+                });
+              }
               void getSupabaseAnalyticsTypingResults(user.id)
                 .then((typingResults) => {
                   setProgressMilestones(

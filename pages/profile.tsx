@@ -32,10 +32,17 @@ import {
   getFullKeyboardLayout,
   readTypingAttemptDetails
 } from "@/lib/typingStatistics";
+import { getSupabaseTypingAttemptDetails, syncLocalTypingAttemptDetails } from "@/lib/typingAttemptStorage";
 import type { KeyStatistic, TypingAttemptDetail, TypingReplayEvent, TypingStatistics } from "@/lib/typingStatistics";
 
 type TrendRange = "30" | "90" | "all";
 type HeatmapMode = "accuracy" | "speed" | "mistakes";
+
+function mergeTypingAttemptDetails(...groups: TypingAttemptDetail[][]): TypingAttemptDetail[] {
+  return Array.from(new Map(groups.flat().map((detail) => [detail.id, detail])).values())
+    .sort((left, right) => Date.parse(right.completedAt) - Date.parse(left.completedAt))
+    .slice(0, 50);
+}
 
 const TREND_RANGES: Array<{ id: TrendRange; label: string }> = [
   { id: "30", label: "Last 30" },
@@ -70,7 +77,7 @@ export default function ProfilePage() {
   );
   const analytics = useMemo(() => buildProgressAnalytics(results, { domain: analyticsDomain }), [analyticsDomain, results]);
   const trendResults = useMemo(() => getTrendResults(domainResults, trendRange), [domainResults, trendRange]);
-  const typingAttemptDetails = useMemo(() => (user ? readTypingAttemptDetails(user.id) : []), [user]);
+  const [typingAttemptDetails, setTypingAttemptDetails] = useState<TypingAttemptDetail[]>([]);
   const typingStatistics = useMemo(
     () => aggregateTypingStatistics(typingAttemptDetails, { domain: analyticsDomain }),
     [analyticsDomain, typingAttemptDetails]
@@ -93,19 +100,29 @@ export default function ProfilePage() {
       setResults([]);
       setResultsMessage("");
       setIsLoadingResults(false);
+      setTypingAttemptDetails([]);
       return;
     }
 
     setIsLoadingResults(true);
     setResultsMessage("");
-    Promise.all([getSupabaseAnalyticsTypingResults(user.id), getSupabaseProfile(user.id)])
-      .then(([typingResults, nextProfile]) => {
+    const localAttemptDetails = readTypingAttemptDetails(user.id);
+    Promise.all([
+      getSupabaseAnalyticsTypingResults(user.id),
+      getSupabaseProfile(user.id),
+      getSupabaseTypingAttemptDetails(user.id).catch(() => localAttemptDetails)
+    ])
+      .then(([typingResults, nextProfile, cloudAttemptDetails]) => {
         if (!isMounted) return;
         setResults(typingResults);
         setProfile(nextProfile);
         setBio(nextProfile?.bio ?? "");
         setAvatarStyle(nextProfile?.avatar_style ?? "amber");
         setIsPublicProfileEnabled(nextProfile?.public_profile_enabled ?? true);
+        setTypingAttemptDetails(mergeTypingAttemptDetails(cloudAttemptDetails, localAttemptDetails));
+        if (localAttemptDetails.length > 0) {
+          void syncLocalTypingAttemptDetails(localAttemptDetails).catch(() => undefined);
+        }
       })
       .catch((error) => {
         if (!isMounted) return;

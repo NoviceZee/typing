@@ -18,6 +18,10 @@ vi.mock("@/components/AuthProvider", () => ({
   useAuth: () => ({ user: authState.user })
 }));
 
+vi.mock("@/lib/typingAttemptStorage", () => ({
+  saveSupabaseTypingAttemptDetail: vi.fn().mockResolvedValue(undefined)
+}));
+
 vi.mock("@/lib/typingResultStorage", async () => {
   const actual = await vi.importActual<typeof import("@/lib/typingResultStorage")>("@/lib/typingResultStorage");
 
