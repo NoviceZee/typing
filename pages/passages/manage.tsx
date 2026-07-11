@@ -134,7 +134,9 @@ function ManagePassages() {
       await refreshLibrary();
       setMessage("Passage saved.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Passage save failed.");
+      const errorMessage = error instanceof Error ? error.message : "Passage save failed.";
+      setMessage(errorMessage);
+      throw new Error(errorMessage);
     }
   }
 
@@ -611,9 +613,28 @@ function EditPassageModal({
 }: {
   passage: LibraryPassage;
   onCancel: () => void;
-  onSave: (passage: LibraryPassage) => void;
+  onSave: (passage: LibraryPassage) => Promise<void>;
 }) {
   const [draft, setDraft] = useState<LibraryPassage>(passage);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  async function handleSave() {
+    if (!draft.title.trim() || !draft.content.trim()) {
+      setSaveError("Title and content are required.");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError("");
+
+    try {
+      await onSave({ ...draft, title: draft.title.trim(), content: draft.content.trim() });
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Passage save failed. Please try again.");
+      setIsSaving(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4 backdrop-blur">
@@ -655,19 +676,26 @@ function EditPassageModal({
         </label>
 
         <div className="mt-6 flex flex-wrap justify-end gap-2">
+          {saveError && (
+            <p role="alert" className="mr-auto self-center font-mono text-sm text-ember">
+              {saveError}
+            </p>
+          )}
           <button
             type="button"
             onClick={onCancel}
+            disabled={isSaving}
             className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/70 transition hover:border-brass/50"
           >
             Cancel
           </button>
           <button
             type="button"
-            onClick={() => onSave(draft)}
-            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-sm text-brass transition hover:bg-brass/15"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-sm text-brass transition hover:bg-brass/15 disabled:cursor-wait disabled:opacity-60"
           >
-            Save changes
+            {isSaving ? "Saving..." : "Save changes"}
           </button>
         </div>
       </section>

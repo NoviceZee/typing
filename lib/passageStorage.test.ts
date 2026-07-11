@@ -9,7 +9,8 @@ import {
   getPassageLibrary,
   importPassageLibrary,
   setActivePassageId,
-  updatePassage
+  updatePassage,
+  updateSupabasePassage
 } from "./passageStorage";
 
 describe("passageStorage", () => {
@@ -88,6 +89,39 @@ describe("passageStorage", () => {
 
     expect(filterLibraryPassagesByLanguage([english, chinese], "english").map((passage) => passage.id)).toEqual(["english"]);
     expect(filterLibraryPassagesByLanguage([english, chinese], "chinese").map((passage) => passage.id)).toEqual(["chinese"]);
+  });
+
+  it("updates a Supabase passage and returns the refreshed row", async () => {
+    const row = {
+      id: "11111111-1111-4111-8111-111111111111",
+      title: "Updated title",
+      category: "News article",
+      style: "General",
+      language: "english",
+      content: "Updated passage body text.",
+      is_active: true,
+      is_public: true,
+      created_at: "2026-07-11T00:00:00.000Z",
+      updated_at: "2026-07-11T00:01:00.000Z",
+      created_by: "user-1"
+    };
+    const single = vi.fn().mockResolvedValue({ data: row, error: null });
+    const select = vi.fn(() => ({ single }));
+    const eq = vi.fn(() => ({ select }));
+    const update = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ update }));
+
+    await expect(
+      updateSupabasePassage(row.id, { title: row.title, content: row.content, isActive: true }, { from })
+    ).resolves.toMatchObject({ id: row.id, title: row.title, content: row.content });
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      title: row.title,
+      content: row.content,
+      is_active: true,
+      is_public: true
+    }));
+    expect(eq).toHaveBeenCalledWith("id", row.id);
   });
 });
 

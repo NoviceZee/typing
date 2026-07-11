@@ -68,6 +68,7 @@ import {
 } from "@/lib/practiceModes";
 import {
   buildConsistencySeries,
+  calculateTimelineConsistency,
   getConsistencySummary
 } from "@/lib/practiceConsistency";
 import type { ConsistencyPoint } from "@/lib/practiceConsistency";
@@ -2872,25 +2873,7 @@ function getStableTimelinePoints(points: AttemptTimelinePoint[]) {
 }
 
 export function getResultConsistency(timeline: AttemptTimelinePoint[]) {
-  const stablePoints = getStableTimelinePoints(timeline).filter((point) => point.wpm > 0);
-
-  if (stablePoints.length < 3) {
-    return null;
-  }
-
-  const values = stablePoints.map((point) => point.wpm);
-  const average = values.reduce((total, value) => total + value, 0) / values.length;
-
-  if (average <= 0) {
-    return null;
-  }
-
-  const variance = values.reduce((total, value) => total + (value - average) ** 2, 0) / values.length;
-  const standardDeviation = Math.sqrt(variance);
-  const coefficientOfVariation = standardDeviation / average;
-  const consistency = 100 * Math.exp(-2.3 * coefficientOfVariation);
-
-  return roundOne(Math.max(0, Math.min(100, consistency)));
+  return calculateTimelineConsistency(timeline);
 }
 
 function getCompletionLabel(completionReason: CompletionReason) {

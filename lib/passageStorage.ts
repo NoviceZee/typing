@@ -195,7 +195,11 @@ export async function addSupabasePassage(passage: LibraryPassage, createdBy: str
   return supabasePassageRowToLibraryPassage(data);
 }
 
-export async function updateSupabasePassage(id: string, updates: PassageUpdates): Promise<LibraryPassage> {
+export async function updateSupabasePassage(
+  id: string,
+  updates: PassageUpdates,
+  client: any = supabase
+): Promise<LibraryPassage> {
   const updatePayload: SupabasePassageUpdate = {
     title: updates.title,
     category: updates.category,
@@ -206,11 +210,11 @@ export async function updateSupabasePassage(id: string, updates: PassageUpdates)
     is_public: true
   };
 
-  if (!supabase) {
+  if (!client) {
     throw new Error("Supabase is not configured yet.");
   }
 
-  const { data, error } = await supabase.from("passages").update(updatePayload).eq("id", id).select("*").single();
+  const { data, error } = await client.from("passages").update(updatePayload).eq("id", id).select("*").single();
 
   if (error) {
     throw error;

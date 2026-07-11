@@ -11,6 +11,7 @@ import { buildProgressAnalytics } from "@/lib/analytics";
 import {
   ANALYTICS_DOMAIN_OPTIONS,
   AnalyticsDomain,
+  getCategoryAnalyticsDomain,
   getDomainEmptyState,
   getResultAnalyticsDomain
 } from "@/lib/analyticsDomain";
@@ -34,6 +35,7 @@ import {
 } from "@/lib/typingStatistics";
 import { getSupabaseTypingAttemptDetails, syncLocalTypingAttemptDetails } from "@/lib/typingAttemptStorage";
 import type { KeyStatistic, TypingAttemptDetail, TypingReplayEvent, TypingStatistics } from "@/lib/typingStatistics";
+import { buildAttemptConsistencySummary, getConsistencyScorePath } from "@/lib/practiceConsistency";
 
 type TrendRange = "30" | "90" | "all";
 type HeatmapMode = "accuracy" | "speed" | "mistakes";
@@ -80,6 +82,10 @@ export default function ProfilePage() {
   const [typingAttemptDetails, setTypingAttemptDetails] = useState<TypingAttemptDetail[]>([]);
   const typingStatistics = useMemo(
     () => aggregateTypingStatistics(typingAttemptDetails, { domain: analyticsDomain }),
+    [analyticsDomain, typingAttemptDetails]
+  );
+  const consistency = useMemo(
+    () => buildAttemptConsistencySummary(typingAttemptDetails, (category) => getCategoryAnalyticsDomain(category) === analyticsDomain),
     [analyticsDomain, typingAttemptDetails]
   );
   const emptyState = getDomainEmptyState(analyticsDomain);
@@ -348,7 +354,7 @@ export default function ProfilePage() {
                   onRangeChange={setTrendRange}
                 />
                 <section className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
-                  <ConsistencySection />
+                  <ConsistencySection summary={consistency} />
                   <CategoryBreakdown analytics={analytics} />
                 </section>
                 <ActivitySection analytics={analytics} />
@@ -1456,14 +1462,40 @@ function CompactInsightMetric({ label, value }: { label: string; value: string }
   );
 }
 
-function ConsistencySection() {
+function ConsistencySection({ summary }: { summary: ReturnType<typeof buildAttemptConsistencySummary> }) {
+  const path = getConsistencyScorePath(summary.points, 320, 96);
+
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
       <h2 className="font-mono text-sm uppercase text-brass">Consistency</h2>
-      <p className="mt-4 font-mono text-lg text-paper">Not enough data yet</p>
-      <p className="mt-2 text-sm leading-6 text-paper/50">
-        Attempt-level consistency is not stored yet, so this section will appear once future results include that data.
-      </p>
+      {summary.latest === null ? (
+        <>
+          <p className="mt-4 font-mono text-lg text-paper">Not enough data yet</p>
+          <p className="mt-2 text-sm leading-6 text-paper/50">Complete a test with at least three speed samples to measure typing stability.</p>
+        </>
+      ) : (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <CompactInsightMetric label="Latest" value={`${formatNumber(summary.latest)}%`} />
+            <CompactInsightMetric label="Average" value={`${formatNumber(summary.average ?? 0)}%`} />
+            <CompactInsightMetric label="Best" value={`${formatNumber(summary.best ?? 0)}%`} />
+            <CompactInsightMetric
+              label="Recent change"
+              value={summary.recentChange === null ? "New" : `${summary.recentChange >= 0 ? "+" : ""}${formatNumber(summary.recentChange)}%`}
+            />
+          </div>
+          <div className="mt-4 rounded-md bg-paper/[0.025] p-3">
+            {path ? (
+              <svg viewBox="0 0 320 96" role="img" aria-label="Consistency trend" className="h-24 w-full">
+                <path d={path} fill="none" stroke="currentColor" strokeWidth="2" className="text-brass" />
+              </svg>
+            ) : (
+              <p className="py-8 text-center font-mono text-xs text-paper/35">One measured attempt</p>
+            )}
+          </div>
+          <p className="mt-3 text-xs leading-5 text-paper/40">Based on variation in WPM throughout each attempt. Higher is steadier.</p>
+        </>
+      )}
     </section>
   );
 }

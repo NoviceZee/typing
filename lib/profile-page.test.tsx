@@ -156,7 +156,10 @@ describe("ProfilePage", () => {
     expect(screen.getByText("Trends")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Last 90" })).toBeTruthy();
     expect(screen.getByText("Consistency")).toBeTruthy();
-    expect(screen.getByText("Not enough data yet")).toBeTruthy();
+    expect(screen.getAllByText("Latest").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Average").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Best").length).toBeGreaterThan(0);
+    expect(screen.getByText("Recent change")).toBeTruthy();
     expect(screen.getByText("Typing Insights")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Accuracy" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Speed" })).toBeTruthy();

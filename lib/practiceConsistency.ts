@@ -21,6 +21,27 @@ export type ConsistencySummary = {
   bestWpm: number;
 };
 
+export type AttemptConsistencyInput = {
+  id: string;
+  completedAt: string;
+  category?: string | null;
+  timeline?: Array<{ timeSeconds: number; wpm: number }>;
+};
+
+export type AttemptConsistencyPoint = {
+  id: string;
+  completedAt: string;
+  score: number;
+};
+
+export type AttemptConsistencySummary = {
+  points: AttemptConsistencyPoint[];
+  latest: number | null;
+  average: number | null;
+  best: number | null;
+  recentChange: number | null;
+};
+
 const MAX_CONSISTENCY_POINTS = 10;
 const CURRENT_RESULT_DEDUPE_WINDOW_MS = 10_000;
 
@@ -81,6 +102,52 @@ export function getSparklinePath(points: Array<{ wpm: number }>, width: number, 
       return `${index === 0 ? "M" : "L"} ${x} ${y}`;
     })
     .join(" ");
+}
+
+export function calculateTimelineConsistency(timeline: Array<{ timeSeconds: number; wpm: number }>): number | null {
+  const afterWarmup = timeline.filter((point) => point.timeSeconds >= 5);
+  const stablePoints = (afterWarmup.length >= 3 ? afterWarmup : timeline).filter((point) => point.wpm > 0);
+
+  if (stablePoints.length < 3) return null;
+
+  const values = stablePoints.map((point) => point.wpm);
+  const average = values.reduce((total, value) => total + value, 0) / values.length;
+  if (average <= 0) return null;
+
+  const variance = values.reduce((total, value) => total + (value - average) ** 2, 0) / values.length;
+  const coefficientOfVariation = Math.sqrt(variance) / average;
+  return roundOne(Math.max(0, Math.min(100, 100 * Math.exp(-2.3 * coefficientOfVariation))));
+}
+
+export function buildAttemptConsistencySummary(
+  attempts: AttemptConsistencyInput[],
+  isInDomain: (category?: string | null) => boolean
+): AttemptConsistencySummary {
+  const points = attempts
+    .filter((attempt) => isInDomain(attempt.category))
+    .map((attempt) => ({ ...attempt, score: calculateTimelineConsistency(attempt.timeline ?? []) }))
+    .filter((attempt): attempt is AttemptConsistencyInput & { score: number } => attempt.score !== null)
+    .sort((left, right) => Date.parse(left.completedAt) - Date.parse(right.completedAt))
+    .slice(-30)
+    .map(({ id, completedAt, score }) => ({ id, completedAt, score }));
+  const scores = points.map((point) => point.score);
+  const latest = scores[scores.length - 1] ?? null;
+  const previousScores = scores.slice(Math.max(0, scores.length - 6), -1);
+  const previousAverage = previousScores.length
+    ? previousScores.reduce((total, score) => total + score, 0) / previousScores.length
+    : null;
+
+  return {
+    points,
+    latest,
+    average: scores.length ? roundOne(scores.reduce((total, score) => total + score, 0) / scores.length) : null,
+    best: scores.length ? Math.max(...scores) : null,
+    recentChange: latest !== null && previousAverage !== null ? roundOne(latest - previousAverage) : null
+  };
+}
+
+export function getConsistencyScorePath(points: AttemptConsistencyPoint[], width: number, height: number): string {
+  return getSparklinePath(points.map((point) => ({ wpm: point.score })), width, height);
 }
 
 function isLikelyCurrentResult(result: SavedConsistencyResult, currentWpm: number, currentCompletedAt: number) {
