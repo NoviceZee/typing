@@ -125,7 +125,11 @@ export type AttemptTimelinePoint = {
   characterIndex?: number;
   wpm: number;
   accuracy?: number;
+  burstWpm?: number;
+  errorCount?: number;
 };
+
+export type AttemptErrorEvent = { timeSeconds: number; characterIndex: number };
 
 export type ResultImageCardInput = {
   result: TypingResult;
@@ -165,6 +169,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [lastResult, setLastResult] = useState<TypingResult | null>(null);
   const [attemptTimeline, setAttemptTimeline] = useState<AttemptTimelinePoint[]>([]);
+  const [attemptErrorEvents, setAttemptErrorEvents] = useState<AttemptErrorEvent[]>([]);
   const [recentResults, setRecentResults] = useState<SupabaseOwnTypingResultRow[]>([]);
   const [progressMilestones, setProgressMilestones] = useState<CelebrationMilestone[]>([]);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
@@ -193,6 +198,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const isTimedModeRef = useRef(true);
   const typedTextRef = useRef("");
   const attemptTimelineRef = useRef<AttemptTimelinePoint[]>([]);
+  const attemptErrorEventsRef = useRef<AttemptErrorEvent[]>([]);
+  const historicalErrorIndexesRef = useRef<Set<number>>(new Set());
   const elapsedSecondsRef = useRef(0);
   const suspiciousAttemptRef = useRef(false);
   const libraryRef = useRef<LibraryPassage[]>([]);
@@ -217,6 +224,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
+  const isFocusMode = isInputActivated && !isFinished;
   const isPassageLoading = passage === null;
   const practiceMode = useMemo(() => getPracticeMode(practiceModeId), [practiceModeId]);
   const trainingSession = trainingMode?.session;
@@ -373,6 +381,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       startedAtRef.current = null;
       typedTextRef.current = "";
       attemptTimelineRef.current = [];
+      attemptErrorEventsRef.current = [];
+      historicalErrorIndexesRef.current = new Set();
       suspiciousAttemptRef.current = false;
       typedCharacterDelaysRef.current = [];
       lastTypedCharacterAtRef.current = null;
@@ -382,6 +392,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         chineseImeInputRef.current.value = "";
       }
       setAttemptTimeline([]);
+      setAttemptErrorEvents([]);
       setIsAttemptSuspicious(false);
       setElapsedSeconds(0);
       elapsedSecondsRef.current = 0;
@@ -502,6 +513,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         language: passage?.language,
         rules
       });
+      point.burstWpm = getBurstWpm(typedCharacterDelaysRef.current, passage?.language === "chinese" || passage?.category === "training_chinese");
+      point.errorCount = historicalErrorIndexesRef.current.size;
       const existingIndex = attemptTimelineRef.current.findIndex(
         (timelinePoint) => timelinePoint.timeSeconds === point.timeSeconds
       );
@@ -559,7 +572,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         timeSeconds: finalResult.timeUsedSeconds,
         characterIndex: typedTextRef.current.length,
         wpm: finalResult.wpm,
-        accuracy: finalResult.accuracy
+        accuracy: finalResult.accuracy,
+        burstWpm: getBurstWpm(typedCharacterDelaysRef.current, passage.language === "chinese" || passage.category === "training_chinese"),
+        errorCount: historicalErrorIndexesRef.current.size
       };
       const completedTimeline = upsertAttemptTimelinePoint(attemptTimelineRef.current, finalTimelinePoint);
       attemptTimelineRef.current = completedTimeline;
@@ -588,6 +603,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setPreviousResult(comparisonPreviousResult);
       setLastResult(finalResult);
       setAttemptTimeline(completedTimeline);
+      setAttemptErrorEvents([...attemptErrorEventsRef.current]);
       setIsAttemptSuspicious(isSuspicious);
 
       if (user) {
@@ -645,11 +661,14 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     startedAtRef.current = now;
     typedTextRef.current = "";
     attemptTimelineRef.current = [];
+    attemptErrorEventsRef.current = [];
+    historicalErrorIndexesRef.current = new Set();
     suspiciousAttemptRef.current = false;
     typedCharacterDelaysRef.current = [];
     lastTypedCharacterAtRef.current = null;
     setTypedText("");
     setAttemptTimeline([]);
+    setAttemptErrorEvents([]);
     setIsAttemptSuspicious(false);
     setElapsedSeconds(0);
     elapsedSecondsRef.current = 0;
@@ -909,11 +928,14 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       statusRef.current = "running";
       startedAtRef.current = now;
       attemptTimelineRef.current = [];
+      attemptErrorEventsRef.current = [];
+      historicalErrorIndexesRef.current = new Set();
       typedCharacterDelaysRef.current = [];
       lastTypedCharacterAtRef.current = null;
       elapsedSecondsRef.current = 0;
       setElapsedSeconds(0);
       setAttemptTimeline([]);
+      setAttemptErrorEvents([]);
       setProgressMilestones([]);
       setStartedAt(now);
       setFinishedAt(null);
@@ -933,6 +955,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         markAttemptSuspicious();
       }
       typedTextRef.current = nextValue;
+      recordHistoricalErrors(nextValue);
       recordAttemptTimelinePoint(elapsedSecondsRef.current, nextValue);
       if (didTypingChange) {
         playPendingKeyboardSound();
@@ -942,6 +965,25 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       }
       return nextValue;
     });
+  }
+
+  function recordHistoricalErrors(nextValue: string) {
+    const nextComparison = validateTypedText({ targetText: sourceText, typedText: nextValue, rules });
+    let didAddError = false;
+
+    nextComparison.characters.forEach((character) => {
+      if ((character.status !== "wrong" && character.status !== "extra") || !character.actual) return;
+      if (historicalErrorIndexesRef.current.has(character.index)) return;
+
+      historicalErrorIndexesRef.current.add(character.index);
+      attemptErrorEventsRef.current.push({
+        timeSeconds: Math.max(0, elapsedSecondsRef.current),
+        characterIndex: character.index
+      });
+      didAddError = true;
+    });
+
+    if (didAddError) setAttemptErrorEvents([...attemptErrorEventsRef.current]);
   }
 
   function syncChineseTextareaValue(source: "input" | "compositionend-fallback") {
@@ -1357,17 +1399,17 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }
 
   return (
-    <AppShell topAd={false} sideAd={false}>
-      <section className="mx-auto min-w-0 max-w-6xl w-[calc(100vw-2.5rem)] overflow-x-hidden sm:w-full">
+    <AppShell topAd={false} sideAd={false} focusMode={isFocusMode}>
+      <section className={clsx("mx-auto min-w-0 w-[calc(100vw-2.5rem)] overflow-x-hidden sm:w-full", isFocusMode ? "max-w-7xl" : "max-w-6xl")}>
         <h1 className="sr-only">{trainingMode?.pageTitle ?? "Practice"}</h1>
 
-        {passageNotice && (
+        {!isFocusMode && passageNotice && (
           <div className="mb-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
             {passageNotice}
           </div>
         )}
 
-        {shouldShowTypingHeader && (
+        {!isFocusMode && shouldShowTypingHeader && (
           <section
             data-testid="practice-header"
             className="mx-auto mb-3 grid max-w-5xl grid-cols-1 items-start gap-x-4 gap-y-1.5 text-center sm:grid-cols-[minmax(0,1fr)_auto]"
@@ -1463,8 +1505,15 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
               inputRef.current?.focus({ preventScroll: true });
             }
           }}
-          className="formaltype-practice-shell relative mx-auto flex h-[60vh] max-h-[60vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-paper/[0.025] p-3 ring-1 ring-paper/5 outline-none transition focus:ring-brass/30 md:h-[68vh] md:max-h-[72vh] md:p-5"
+          className={clsx(
+            "formaltype-practice-shell relative mx-auto flex w-full flex-col overflow-hidden rounded-lg outline-none transition-all duration-300 focus:ring-brass/30",
+            isFocusMode
+              ? "h-[82vh] max-h-[82vh] max-w-7xl bg-transparent p-2 md:h-[88vh] md:max-h-[88vh] md:p-6"
+              : "h-[60vh] max-h-[60vh] max-w-5xl bg-paper/[0.025] p-3 ring-1 ring-paper/5 md:h-[68vh] md:max-h-[72vh] md:p-5"
+          )}
+          data-focus-mode={isFocusMode ? "true" : "false"}
         >
+          {isFocusMode && <div className="pointer-events-none absolute left-4 top-3 z-10"><TypingTimer value={formatTime(clockSeconds)} /></div>}
           <div
             ref={typingWindowRef}
             data-testid={shouldUseChineseImeSink ? "chinese-target-viewport" : "typing-viewport"}
@@ -1603,17 +1652,17 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           )}
         </div>
 
-        {status === "idle" && (
-          <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-xs text-paper/30">
+        {(status === "idle" || isFocusMode) && (
+          <div className={clsx("flex flex-wrap items-center gap-3 font-mono text-xs", isFocusMode ? "mt-2 justify-center text-paper/25" : "mt-3 text-paper/30")}>
             <span>Tab = start</span>
             <span>Tab + Enter = restart</span>
             <span>Esc = finish</span>
           </div>
         )}
 
-        <div data-testid={trainingMode ? "training-ad-slot" : "practice-ad-slot"} className="mt-6">
+        {!isFocusMode && <div data-testid={trainingMode ? "training-ad-slot" : "practice-ad-slot"} className="mt-6">
           <AdPlaceholder variant="banner" />
-        </div>
+        </div>}
 
         {lastResult && passage && (
           <ResultsPanel
@@ -1633,6 +1682,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             recentResults={user ? recentResults : null}
             progressMilestones={progressMilestones}
             attemptTimeline={attemptTimeline}
+            errorEvents={attemptErrorEvents}
+            historicalErrorIndexes={Array.from(historicalErrorIndexesRef.current).sort((a, b) => a - b)}
             modeLabel={modeLabel}
             isSuspicious={isAttemptSuspicious}
             onClose={() => setIsResultModalOpen(false)}
@@ -1875,7 +1926,6 @@ function ResultsPanel({
         <Metric label="Time" value={formatTime(result.timeUsedSeconds)} />
         <Metric label="Mistakes" value={result.incorrectCharacters} />
       </div>
-      <SessionReview result={result} />
     </section>
   );
 }
@@ -1901,6 +1951,8 @@ export function ResultModal({
   recentResults,
   progressMilestones = EMPTY_CELEBRATION_MILESTONES,
   attemptTimeline,
+  errorEvents = [],
+  historicalErrorIndexes = [],
   modeLabel,
   isSuspicious = false,
   onGenerateImageCard = generateResultImageCard,
@@ -1914,6 +1966,8 @@ export function ResultModal({
   recentResults: SupabaseOwnTypingResultRow[] | null;
   progressMilestones?: CelebrationMilestone[];
   attemptTimeline: AttemptTimelinePoint[];
+  errorEvents?: AttemptErrorEvent[];
+  historicalErrorIndexes?: number[];
   modeLabel: string;
   isSuspicious?: boolean;
   onGenerateImageCard?: (input: ResultImageCardInput) => Promise<void> | void;
@@ -1966,6 +2020,7 @@ export function ResultModal({
               result={result}
               timeline={attemptTimeline}
               metricLabel={getMetricLabel(passage)}
+              historicalErrorCount={historicalErrorIndexes.length}
               imageAction={
                 <ResultImageCardAction
                   disabled={isGeneratingImageCard}
@@ -1986,7 +2041,7 @@ export function ResultModal({
             />
 
             <section className="min-w-0 md:border-l md:border-paper/10 md:pl-6">
-              <AttemptWpmGraph result={result} timeline={attemptTimeline} metricLabel={getMetricLabel(passage)} />
+              <AttemptWpmGraph result={result} timeline={attemptTimeline} errorEvents={errorEvents} metricLabel={getMetricLabel(passage)} />
 
               <div className="mt-4 grid gap-4 border-t border-paper/10 pt-4 md:grid-cols-[0.7fr_1.3fr]">
                 {hasSavedHistory && <HistoryStats points={historySeries} />}
@@ -2002,6 +2057,7 @@ export function ResultModal({
           )}
 
           {!recentResults && <SignInResultCta />}
+          <SessionReview result={result} historicalErrorIndexes={historicalErrorIndexes} />
         </div>
 
         <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-paper/10 bg-ink-900 px-4 py-3 md:px-5">
@@ -2299,11 +2355,13 @@ function ThisResultColumn({
   result,
   timeline,
   metricLabel,
+  historicalErrorCount,
   imageAction
 }: {
   result: TypingResult;
   timeline: AttemptTimelinePoint[];
   metricLabel: string;
+  historicalErrorCount: number;
   imageAction: React.ReactNode;
 }) {
   const consistency = getResultConsistency(timeline);
@@ -2320,7 +2378,8 @@ function ThisResultColumn({
       <div className="mt-3 space-y-0">
         <ResultMetricRow label={`Net ${metricLabel}`} value={result.wpm.toFixed(1)} tone="text-mint" />
         <ResultMetricRow label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-        <ResultMetricRow label="Mistakes" value={result.incorrectCharacters} />
+        <ResultMetricRow label="Final mistakes" value={result.incorrectCharacters} />
+        <ResultMetricRow label="Errors encountered" value={historicalErrorCount} tone={historicalErrorCount > 0 ? "text-ember" : "text-paper"} />
         <ResultMetricRow label="Time" value={formatTime(result.timeUsedSeconds)} />
         <ResultMetricRow
           label="Consistency"
@@ -2495,10 +2554,12 @@ function ResultImageCardAction({
 function AttemptWpmGraph({
   result,
   timeline,
+  errorEvents,
   metricLabel
 }: {
   result: TypingResult;
   timeline: AttemptTimelinePoint[];
+  errorEvents: AttemptErrorEvent[];
   metricLabel: string;
 }) {
   const [hoveredPoint, setHoveredPoint] = useState<PositionedAttemptPoint | null>(null);
@@ -2510,6 +2571,10 @@ function AttemptWpmGraph({
       <div className="flex items-start justify-between gap-4">
         <p className="font-mono text-sm uppercase text-brass">{metricLabel} Over Time</p>
         <div className="hidden gap-5 font-mono text-xs uppercase text-paper/45 sm:flex">
+          <span className="inline-flex items-center gap-2">
+            <span className="h-px w-8 opacity-60" style={{ backgroundColor: "rgb(var(--chart-line-secondary))" }} />
+            Burst
+          </span>
           <span className="inline-flex items-center gap-2">
             <span className="h-px w-8" style={{ backgroundColor: "rgb(var(--chart-line))" }} />
             {metricLabel}
@@ -2596,6 +2661,16 @@ function AttemptWpmGraph({
             Time (seconds)
           </text>
           <path
+            data-testid="attempt-chart-burst-line"
+            d={graph.burstPath}
+            fill="none"
+            stroke="rgb(var(--chart-line-secondary))"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            opacity="0.52"
+          />
+          <path
             data-testid="attempt-chart-line"
             d={graph.path}
             fill="none"
@@ -2604,6 +2679,15 @@ function AttemptWpmGraph({
             strokeLinejoin="round"
             strokeWidth="3"
           />
+          {errorEvents.map((error, index) => {
+            const x = getGraphX(error.timeSeconds, graph);
+            return (
+              <g key={`${error.timeSeconds}-${error.characterIndex}-${index}`} data-testid="attempt-error-marker">
+                <line x1={x - 4} x2={x + 4} y1={graph.top + 4} y2={graph.top + 12} stroke="rgb(var(--color-ember))" strokeWidth="2" />
+                <line x1={x + 4} x2={x - 4} y1={graph.top + 4} y2={graph.top + 12} stroke="rgb(var(--color-ember))" strokeWidth="2" />
+              </g>
+            );
+          })}
           {graph.positionedPoints.map((point) => (
             <g key={`${point.timeSeconds}-${point.x}`}>
               <circle cx={point.x} cy={point.y} r="3.5" fill="rgb(var(--chart-line))" />
@@ -2659,6 +2743,7 @@ type AttemptGraphLayout = {
   xTicks: number[];
   positionedPoints: PositionedAttemptPoint[];
   path: string;
+  burstPath: string;
 };
 
 function buildAttemptTimelinePoint({
@@ -2817,10 +2902,35 @@ export function getAttemptGraphLayout(points: AttemptTimelinePoint[], result: Ty
   return {
     ...graphBase,
     positionedPoints,
-    path: positionedPoints
-      .map((point, index) => `${index === 0 ? "M" : "L"} ${roundOne(point.x)} ${roundOne(point.y)}`)
-      .join(" ")
+    path: buildSmoothPath(positionedPoints),
+    burstPath: buildSmoothPath(
+      normalizedPoints
+        .filter((point) => typeof point.burstWpm === "number")
+        .map((point) => ({
+          x: getGraphX(point.timeSeconds, graphBase),
+          y: getGraphY(point.burstWpm ?? 0, graphBase)
+        }))
+    )
   };
+}
+
+export function buildSmoothPath(points: Array<{ x: number; y: number }>) {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${roundOne(points[0].x)} ${roundOne(points[0].y)}`;
+
+  return points.slice(1).reduce((path, point, index) => {
+    const previous = points[index];
+    const midX = (previous.x + point.x) / 2;
+    return `${path} C ${roundOne(midX)} ${roundOne(previous.y)}, ${roundOne(midX)} ${roundOne(point.y)}, ${roundOne(point.x)} ${roundOne(point.y)}`;
+  }, `M ${roundOne(points[0].x)} ${roundOne(points[0].y)}`);
+}
+
+function getBurstWpm(delays: number[], isChinese: boolean) {
+  const recent = delays.filter((delay) => Number.isFinite(delay) && delay > 0).slice(-12);
+  if (recent.length < 2) return undefined;
+  const averageDelay = recent.reduce((total, delay) => total + delay, 0) / recent.length;
+  const burst = (isChinese ? 60_000 : 12_000) / averageDelay;
+  return roundOne(Math.max(0, Math.min(300, burst)));
 }
 
 function getGraphX(timeSeconds: number, graph: Pick<AttemptGraphLayout, "left" | "right" | "maxTime">) {
@@ -2855,8 +2965,8 @@ function getTimeTicks(maxTime: number) {
 
 function getStableGraphMax(points: AttemptTimelinePoint[], result: TypingResult) {
   const stablePoints = getStableTimelinePoints(points);
-  const stableMax = Math.max(result.wpm, ...stablePoints.map((point) => point.wpm), 1);
-  const allMax = Math.max(stableMax, ...points.map((point) => point.wpm), 1);
+  const stableMax = Math.max(result.wpm, ...stablePoints.flatMap((point) => [point.wpm, point.burstWpm ?? 0]), 1);
+  const allMax = Math.max(stableMax, ...points.flatMap((point) => [point.wpm, point.burstWpm ?? 0]), 1);
   const sensibleMax = Math.min(allMax, stableMax * 1.35);
 
   return getNiceGraphMax(sensibleMax);

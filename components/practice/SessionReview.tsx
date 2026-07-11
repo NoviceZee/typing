@@ -5,7 +5,7 @@ import { classifyDetailedMistake, getFingerForKey } from "@/lib/typingStatistics
 type MistakeType = "capitalization" | "punctuation" | "spacing" | "wrongCharacter";
 type MistakeBreakdown = Record<MistakeType, number>;
 
-export function SessionReview({ result }: { result: TypingResult }) {
+export function SessionReview({ result, historicalErrorIndexes = [] }: { result: TypingResult; historicalErrorIndexes?: number[] }) {
   const breakdown = getMistakeBreakdown(result.characterStatuses);
   const mismatches = getMismatches(result.characterStatuses, 10);
 
@@ -43,6 +43,18 @@ export function SessionReview({ result }: { result: TypingResult }) {
               <span>{formatMistakeType(classifyMistake(mismatch))}</span>
             </div>
           ))}
+        </div>
+      )}
+      {historicalErrorIndexes.length > 0 && (
+        <div className="mt-4 rounded-md border border-ember/20 bg-ember/[0.06] px-3 py-3">
+          <p className="font-mono text-[0.68rem] uppercase text-ember/80">Corrected errors</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {historicalErrorIndexes.slice(0, 24).map((index) => (
+              <span key={index} className="rounded bg-ember/10 px-2 py-1 font-mono text-xs text-ember" title={`Previously incorrect position ${index + 1}`}>
+                {index + 1}
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </section>

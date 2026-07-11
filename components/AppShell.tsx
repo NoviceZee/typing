@@ -17,19 +17,21 @@ const NAV_ITEMS = [
 export function AppShell({
   children,
   sideAd = true,
-  topAd = true
+  topAd = true,
+  focusMode = false
 }: {
   children: ReactNode;
   sideAd?: boolean;
   topAd?: boolean;
+  focusMode?: boolean;
 }) {
   const { isAdmin, isLoading } = useAuth();
   const navItems = NAV_ITEMS.filter((item) => !item.requiresAdmin || (isAdmin && !isLoading));
 
   return (
-    <main className="min-h-screen px-5 py-5 text-paper md:px-8">
-      <div className="mx-auto max-w-7xl">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-paper/10 pb-4">
+    <main className={focusMode ? "min-h-screen px-4 py-4 text-paper md:px-8" : "min-h-screen px-5 py-5 text-paper md:px-8"}>
+      <div className={focusMode ? "mx-auto max-w-[96rem]" : "mx-auto max-w-7xl"}>
+        {!focusMode && <header className="flex flex-wrap items-center justify-between gap-4 border-b border-paper/10 pb-4">
           <Link href="/practice" className="font-mono text-lg font-semibold tracking-[0.18em] text-paper">
             FormalType
           </Link>
@@ -41,7 +43,7 @@ export function AppShell({
             </nav>
             <HeaderAuthAction />
           </div>
-        </header>
+        </header>}
 
         {topAd && (
           <div className="mt-5">
@@ -49,7 +51,7 @@ export function AppShell({
           </div>
         )}
 
-        <div className={sideAd ? "mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]" : "mt-6"}>
+        <div className={focusMode ? "" : sideAd ? "mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]" : "mt-6"}>
           <div>{children}</div>
           {sideAd && (
             <aside className="hidden xl:block">

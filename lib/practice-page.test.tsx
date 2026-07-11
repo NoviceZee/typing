@@ -238,7 +238,8 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
-    expect(shell.className).toBe(idleShellClassName);
+    expect(shell.className).not.toBe(idleShellClassName);
+    expect(shell.getAttribute("data-focus-mode")).toBe("true");
     expect(screen.getByTestId("typing-viewport").className).toBe(idleViewportClassName);
     expect(screen.getByTestId("typing-text-container").className).toBe(idleTextContainerClassName);
   });
@@ -286,7 +287,8 @@ describe("PracticePage passage loading", () => {
       nativeEvent: { isComposing: false, data: "客" }
     });
 
-    expect(shell.className).toBe(idleShellClassName);
+    expect(shell.className).not.toBe(idleShellClassName);
+    expect(shell.getAttribute("data-focus-mode")).toBe("true");
     expect(screen.getByTestId("chinese-target-viewport").className).toBe(idleViewportClassName);
     expect(screen.getByTestId("chinese-input-area").className).toBe(idleInputAreaClassName);
     expect(screen.getByTestId("typing-text-container").className).toBe(idleTextContainerClassName);
@@ -599,8 +601,9 @@ describe("PracticePage passage loading", () => {
 
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "English");
-    expect(screen.queryByText("Tab = start")).toBeNull();
+    expect(screen.getByText("Tab = start")).toBeTruthy();
 
+    fireEvent.keyDown(window, { key: "Enter" });
     fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
 
     await waitFor(() => {
@@ -641,7 +644,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.input(input, { target: { value: "今天，" }, nativeEvent: { isComposing: false, data: "今天，" } });
 
     await waitFor(() => {
-      expect(screen.queryByText("Tab = start")).toBeNull();
+      expect(screen.getByText("Tab = start")).toBeTruthy();
     });
     expect(input.value).toBe("今天，");
 
@@ -670,7 +673,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(window, { key: "Tab" });
     fireEvent.input(input, { target: { value: "客戶測試" }, nativeEvent: { isComposing: false, data: "客戶測試" } });
     await waitFor(() => {
-      expect(screen.queryByText("Tab = start")).toBeNull();
+      expect(screen.getByText("Tab = start")).toBeTruthy();
     });
     fireEvent.keyDown(window, { key: "Escape" });
 

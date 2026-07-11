@@ -115,7 +115,8 @@ describe("TrainingPage", () => {
 
     fireEvent.click(within(contentGroup).getByRole("button", { name: "Numbers" }));
     fireEvent.click(within(contentGroup).getByRole("button", { name: "Symbols" }));
-    fireEvent.click(within(contentGroup).getByRole("button", { name: "Code" }));
+    const restartedContentGroup = screen.getByRole("group", { name: "Content" });
+    fireEvent.click(within(restartedContentGroup).getByRole("button", { name: "Code" }));
 
     expect(within(contentGroup).getByRole("button", { name: "Words" }).getAttribute("aria-pressed")).toBe("false");
     expect(within(contentGroup).getByRole("button", { name: "Numbers" }).getAttribute("aria-pressed")).toBe("false");
@@ -273,7 +274,7 @@ describe("TrainingPage", () => {
     fireEvent.change(input, { target: { value: typedPrefix } });
 
     await waitFor(() => {
-      expect(screen.queryByText("Tab = start")).toBeNull();
+      expect(screen.getByText("Tab = start")).toBeTruthy();
     });
     expect(getCurrentCharacterIndex()).toBe(3);
   });
@@ -297,7 +298,7 @@ describe("TrainingPage", () => {
     fireEvent.change(input, { target: { value: "c" } });
 
     await waitFor(() => {
-      expect(screen.queryByText("Tab = start")).toBeNull();
+      expect(screen.getByText("Tab = start")).toBeTruthy();
     });
   });
 
@@ -312,9 +313,12 @@ describe("TrainingPage", () => {
     fireEvent.change(input, { target: { value: typedPrefix } });
 
     expect(getCurrentCharacterIndex()).toBeGreaterThan(0);
-    expect(screen.queryByText("Tab = start")).toBeNull();
+    expect(screen.getByText("Tab = start")).toBeTruthy();
 
-    fireEvent.click(within(contentGroup).getByRole("button", { name: "Code" }));
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyDown(window, { key: "Enter" });
+    const restartedContentGroup = screen.getByRole("group", { name: "Content" });
+    fireEvent.click(within(restartedContentGroup).getByRole("button", { name: "Code" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("typing-character-layer").textContent ?? "").toMatch(/[{}()[\];=]/);
@@ -338,9 +342,12 @@ describe("TrainingPage", () => {
 
     fireEvent.keyDown(window, { key: "Tab" });
     fireEvent.change(input, { target: { value: "c" } });
-    expect(screen.queryByText("Tab = start")).toBeNull();
+    expect(screen.getByText("Tab = start")).toBeTruthy();
 
-    fireEvent.click(within(lengthGroup).getByRole("button", { name: "30" }));
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyDown(window, { key: "Enter" });
+    const restartedLengthGroup = screen.getByRole("group", { name: "Length" });
+    fireEvent.click(within(restartedLengthGroup).getByRole("button", { name: "30" }));
 
     await waitFor(() => {
       expect(screen.getByText("Tab = start")).toBeTruthy();
@@ -372,10 +379,13 @@ describe("TrainingPage", () => {
     fireEvent.change(input, { target: { value: typedPrefix } });
     expect(getCurrentCharacterIndex()).toBeGreaterThan(0);
 
-    fireEvent.click(within(difficultyGroup).getByRole("button", { name: "Advanced" }));
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyDown(window, { key: "Enter" });
+    const restartedDifficultyGroup = screen.getByRole("group", { name: "Difficulty" });
+    fireEvent.click(within(restartedDifficultyGroup).getByRole("button", { name: "Advanced" }));
 
     await waitFor(() => {
-      expect(within(difficultyGroup).getByRole("button", { name: "Advanced" }).getAttribute("aria-pressed")).toBe("true");
+      expect(within(restartedDifficultyGroup).getByRole("button", { name: "Advanced" }).getAttribute("aria-pressed")).toBe("true");
     });
     expect(getCurrentCharacterIndex()).toBe(0);
     expect((screen.getByLabelText("Typing input") as HTMLTextAreaElement).value).toBe("");
@@ -397,7 +407,7 @@ describe("TrainingPage", () => {
 
     expect(getCurrentCharacterIndex()).toBe(3);
     expect((screen.getByLabelText("Typing input") as HTMLTextAreaElement).value).toBe(typedPrefix);
-    expect(screen.queryByText("Tab = start")).toBeNull();
+    expect(screen.getByText("Tab = start")).toBeTruthy();
   });
 
   it("finishes Code mode when the selected timer expires", async () => {
@@ -405,7 +415,8 @@ describe("TrainingPage", () => {
     const contentGroup = screen.getByRole("group", { name: "Content" });
     const lengthGroup = screen.getByRole("group", { name: "Length" });
 
-    fireEvent.click(within(contentGroup).getByRole("button", { name: "Code" }));
+    const restartedContentGroup = screen.getByRole("group", { name: "Content" });
+    fireEvent.click(within(restartedContentGroup).getByRole("button", { name: "Code" }));
     fireEvent.click(within(lengthGroup).getByRole("button", { name: "15" }));
 
     await waitFor(() => {
@@ -635,7 +646,10 @@ describe("TrainingPage", () => {
     fireEvent.keyDown(window, { key: "Tab" });
     fireEvent.compositionStart(input);
     fireEvent.compositionEnd(input, { data: "", target: { value: staleCommit } });
-    fireEvent.click(within(contentGroup).getByRole("button", { name: "Code" }));
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyDown(window, { key: "Enter" });
+    const restartedContentGroup = screen.getByRole("group", { name: "Content" });
+    fireEvent.click(within(restartedContentGroup).getByRole("button", { name: "Code" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("typing-character-layer").textContent ?? "").toMatch(/[{}()[\];=]/);
@@ -727,7 +741,7 @@ describe("TrainingPage", () => {
     fireEvent.input(input, { target: { value: commit }, data: commit, inputType: "insertText" });
 
     await waitFor(() => {
-      expect(screen.queryByText("Tab = start")).toBeNull();
+      expect(screen.getByText("Tab = start")).toBeTruthy();
     });
     expect(input.value).toBe(commit);
     expect(getCurrentCharacterIndex()).toBe(1);

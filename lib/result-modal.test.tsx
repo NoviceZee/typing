@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ResultModal,
   addAttemptTimelinePoint,
+  buildSmoothPath,
   getAttemptGraphLayout,
   getInterpolatedPreviousPaceIndex,
   getPreviousPaceIndex,
@@ -20,6 +21,39 @@ vi.mock("@/components/AppShell", () => ({
 }));
 
 describe("ResultModal", () => {
+  it("shows burst pace, encountered errors, and corrected error positions", () => {
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline().map((point, index) => ({
+          ...point,
+          burstWpm: point.wpm + 14,
+          errorCount: index > 0 ? 1 : 0
+        }))}
+        errorEvents={[{ timeSeconds: 5, characterIndex: 3 }]}
+        historicalErrorIndexes={[3]}
+        modeLabel="1m"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Errors encountered")).toBeTruthy();
+    expect(screen.getByText("Corrected errors")).toBeTruthy();
+    expect(screen.getByTitle("Previously incorrect position 4")).toBeTruthy();
+    const chart = screen.getByRole("img", { name: "WPM over time" });
+    expect(chart.querySelector('[data-testid="attempt-chart-burst-line"]')).toBeTruthy();
+    expect(chart.querySelector('[data-testid="attempt-error-marker"]')).toBeTruthy();
+  });
+
+  it("builds a smooth cubic path between timeline points", () => {
+    expect(buildSmoothPath([{ x: 0, y: 10 }, { x: 20, y: 30 }, { x: 40, y: 20 }])).toContain(" C ");
+  });
+
   it("hides saved-result history for logged-out users and shows the sign-in CTA at the bottom", () => {
     render(
       <ResultModal
@@ -85,7 +119,7 @@ describe("ResultModal", () => {
     expect(screen.getByText("previous 36.2")).toBeTruthy();
     expect(screen.queryByText("36.2 → 48.0")).toBeNull();
     expect(screen.queryByText("36.2 → 50.0")).toBeNull();
-    expect(screen.queryByText("Session review")).toBeNull();
+    expect(screen.getByText("Session review")).toBeTruthy();
     expect(screen.queryByText("Highest")).toBeNull();
     expect(screen.queryByText("Lowest")).toBeNull();
     expect(screen.queryByTestId("result-sign-in-cta")).toBeNull();
