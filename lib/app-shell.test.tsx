@@ -10,6 +10,7 @@ import { getSupabaseProfile } from "@/lib/profileStorage";
 const mockState = vi.hoisted(() => ({
   user: { id: "user-1", email: "typist@example.com" } as { id: string; email: string } | null,
   isLoading: false,
+  isAdmin: false,
   signOut: vi.fn(),
   routerPush: vi.fn(),
   routerReplace: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("@/components/AuthProvider", () => ({
   useAuth: () => ({
     user: mockState.user,
     isLoading: mockState.isLoading,
+    isAdmin: mockState.isAdmin,
     signOut: mockState.signOut
   })
 }));
@@ -46,6 +48,7 @@ describe("AppShell account dropdown", () => {
   beforeEach(() => {
     mockState.user = { id: "user-1", email: "typist@example.com" };
     mockState.isLoading = false;
+    mockState.isAdmin = false;
     mockState.signOut.mockReset();
     mockState.routerPush.mockReset();
     mockState.routerReplace.mockReset();
@@ -83,6 +86,28 @@ describe("AppShell account dropdown", () => {
       expect(screen.getByRole("button", { name: /account menu/i }).textContent).toContain("@formal_typist");
     });
     expect(screen.getByRole("navigation").querySelector('a[href="/settings"]')?.textContent).toBe("Settings");
+    expect(screen.getByRole("navigation").querySelector('a[href="/passages/manage"]')).toBeNull();
+  });
+
+  it("shows Manage passages only to admins", async () => {
+    mockState.isAdmin = true;
+
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    await waitFor(() => {
+      expect(screen.getByRole("navigation").querySelector('a[href="/passages/manage"]')?.textContent).toBe(
+        "Manage passages"
+      );
+    });
+  });
+
+  it("hides Manage passages while a switched account role is loading", () => {
+    mockState.isAdmin = true;
+    mockState.isLoading = true;
+
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    expect(screen.getByRole("navigation").querySelector('a[href="/passages/manage"]')).toBeNull();
   });
 
   it("does not use display name as an account label fallback and closes on Escape", async () => {

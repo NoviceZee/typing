@@ -1,0 +1,66 @@
+{
+  "ok": false,
+  "strip": "/Users/kristinli/Codex/Typing/tippy-orange-cat-run/decoded/look-cardinals.png",
+  "directions": [
+    "000",
+    "090",
+    "180",
+    "270"
+  ],
+  "errors": [
+    "000 has 206 non-transparent pixels near its source slot edge",
+    "090 has 206 non-transparent pixels near its source slot edge",
+    "180 has 95 non-transparent pixels near its source slot edge",
+    "270 has 110 non-transparent pixels near its source slot edge"
+  ],
+  "anchors": [
+    {
+      "direction": "000",
+      "source_box": [
+        0,
+        0,
+        472,
+        834
+      ],
+      "used_pixels": 126555,
+      "edge_pixels": 206,
+      "output": "/Users/kristinli/Codex/Typing/tippy-orange-cat-run/decoded/look-anchors/000.png"
+    },
+    {
+      "direction": "090",
+      "source_box": [
+        472,
+        0,
+        943,
+        834
+      ],
+      "used_pixels": 111514,
+      "edge_pixels": 206,
+      "output": "/Users/kristinli/Codex/Typing/tippy-orange-cat-run/decoded/look-anchors/090.png"
+    },
+    {
+      "direction": "180",
+      "source_box": [
+        943,
+        0,
+        1414,
+        834
+      ],
+      "used_pixels": 121080,
+      "edge_pixels": 95,
+      "output": "/Users/kristinli/Codex/Typing/tippy-orange-cat-run/decoded/look-anchors/180.png"
+    },
+    {
+      "direction": "270",
+      "source_box": [
+        1414,
+        0,
+        1886,
+        834
+      ],
+      "used_pixels": 110740,
+      "edge_pixels": 110,
+      "output": "/Users/kristinli/Codex/Typing/tippy-orange-cat-run/decoded/look-anchors/270.png"
+    }
+  ]
+}

@@ -82,7 +82,7 @@ export default function LoginPage() {
               {authMode === "login" ? "Log in" : "Create account"}
             </h1>
             <p className="mt-3 text-sm leading-6 text-paper/60">
-              Practice stays public. Login is only required for Manage passages, and passage data still remains in
+              Practice stays public. Admin access is required for Manage passages, and passage data still remains in
               localStorage for now.
             </p>
           </div>

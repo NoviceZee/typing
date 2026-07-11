@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+import { AppRole, getSupabaseUserRole } from "@/lib/roleStorage";
 
 type AuthResult = {
   errorMessage?: string;
@@ -12,6 +13,7 @@ type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
   isConfigured: boolean;
+  role: AppRole;
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<AuthResult>;
   signUp: (email: string, password: string) => Promise<AuthResult>;
@@ -22,27 +24,52 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isRoleLoading, setIsRoleLoading] = useState(false);
+  const [role, setRole] = useState<AppRole>("user");
 
   useEffect(() => {
     if (!supabase) {
-      setIsLoading(false);
+      setIsAuthLoading(false);
       return;
     }
 
     let mounted = true;
+    let roleRequestId = 0;
+
+    async function applySession(nextSession: Session | null) {
+      if (!mounted) return;
+      const requestId = ++roleRequestId;
+
+      setSession(nextSession);
+      setIsAuthLoading(false);
+
+      if (!nextSession?.user) {
+        setRole("user");
+        setIsRoleLoading(false);
+        return;
+      }
+
+      setIsRoleLoading(true);
+
+      try {
+        const nextRole = await getSupabaseUserRole(nextSession.user.id);
+        if (mounted && requestId === roleRequestId) setRole(nextRole);
+      } catch {
+        if (mounted && requestId === roleRequestId) setRole("user");
+      } finally {
+        if (mounted && requestId === roleRequestId) setIsRoleLoading(false);
+      }
+    }
 
     supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      setIsLoading(false);
+      void applySession(data.session);
     });
 
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setIsLoading(false);
+      void applySession(nextSession);
     });
 
     return () => {
@@ -52,32 +79,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({
-      session,
-      user: session?.user ?? null,
-      isLoading,
-      isConfigured: isSupabaseConfigured,
-      // Future admin role checks can replace this with app_metadata or a profiles lookup.
-      isAdmin: Boolean(session?.user),
-      async signIn(email, password) {
-        if (!supabase) return { errorMessage: "Supabase is not configured yet." };
+    () => {
+      const isLoading = isAuthLoading || isRoleLoading;
 
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        return error ? { errorMessage: error.message } : {};
-      },
-      async signUp(email, password) {
-        if (!supabase) return { errorMessage: "Supabase is not configured yet." };
+      return {
+        session,
+        user: session?.user ?? null,
+        isLoading,
+        isConfigured: isSupabaseConfigured,
+        role,
+        // Never carry an already-resolved admin role across an account switch
+        // while the next account's trusted role is still being loaded.
+        isAdmin: !isLoading && role === "admin",
+        async signIn(email, password) {
+          if (!supabase) return { errorMessage: "Supabase is not configured yet." };
 
-        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
-        return error ? { errorMessage: error.message } : { needsConfirmation: !data.session };
-      },
-      async signOut() {
-        if (!supabase) return;
-        await supabase.auth.signOut();
-        setSession(null);
-      }
-    }),
-    [isLoading, session]
+          const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+          return error ? { errorMessage: error.message } : {};
+        },
+        async signUp(email, password) {
+          if (!supabase) return { errorMessage: "Supabase is not configured yet." };
+
+          const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+          return error ? { errorMessage: error.message } : { needsConfirmation: !data.session };
+        },
+        async signOut() {
+          if (!supabase) return;
+          await supabase.auth.signOut();
+          setSession(null);
+          setRole("user");
+        }
+      };
+    },
+    [isAuthLoading, isRoleLoading, role, session]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

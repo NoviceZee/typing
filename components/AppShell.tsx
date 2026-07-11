@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { href: "/practice", label: "Practice" },
   { href: "/training", label: "Training" },
   { href: "/passages", label: "Passages" },
-  { href: "/passages/manage", label: "Manage passages", requiresAuth: true },
+  { href: "/passages/manage", label: "Manage passages", requiresAdmin: true },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/settings", label: "Settings" }
 ];
@@ -23,8 +23,8 @@ export function AppShell({
   sideAd?: boolean;
   topAd?: boolean;
 }) {
-  const { user } = useAuth();
-  const navItems = user ? NAV_ITEMS : NAV_ITEMS.filter((item) => !item.requiresAuth);
+  const { isAdmin, isLoading } = useAuth();
+  const navItems = NAV_ITEMS.filter((item) => !item.requiresAdmin || (isAdmin && !isLoading));
 
   return (
     <main className="min-h-screen px-5 py-5 text-paper md:px-8">

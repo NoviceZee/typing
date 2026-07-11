@@ -6,12 +6,12 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 export default function AdminPassagesPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { isAdmin, isLoading } = useAuth();
 
   useEffect(() => {
-    if (!user) return;
+    if (isLoading || !isAdmin) return;
     router.replace("/passages/manage");
-  }, [router, user]);
+  }, [isAdmin, isLoading, router]);
 
   return (
     <AppShell>

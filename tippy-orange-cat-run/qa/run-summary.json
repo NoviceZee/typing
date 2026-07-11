@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "spriteVersionNumber": 2,
+  "run_dir": "/Users/kristinli/Codex/Typing/tippy-orange-cat-run",
+  "spritesheet": "/Users/kristinli/Codex/Typing/tippy-orange-cat-run/final/spritesheet-extended.webp",
+  "validation": "/Users/kristinli/Codex/Typing/tippy-orange-cat-run/final/validation-extended.json",
+  "chroma_despill": "/Users/kristinli/Codex/Typing/tippy-orange-cat-run/qa/chroma-despill-extended.json",
+  "contact_sheet": "/Users/kristinli/Codex/Typing/tippy-orange-cat-run/qa/contact-sheet-extended.png",
+  "package": "/Users/kristinli/.codex/pets/tippy"
+}
