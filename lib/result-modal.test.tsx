@@ -21,7 +21,30 @@ vi.mock("@/components/AppShell", () => ({
 }));
 
 describe("ResultModal", () => {
-  it("shows burst pace, encountered errors, and corrected error positions", () => {
+  it("exposes dialog semantics, focuses Close, and supports Escape", () => {
+    const onClose = vi.fn();
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        onClose={onClose}
+      />
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Time up" });
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close result" }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows distinct burst pace and error markers directly on the graph", () => {
     render(
       <ResultModal
         result={makeResult()}
@@ -36,18 +59,19 @@ describe("ResultModal", () => {
           errorCount: index > 0 ? 1 : 0
         }))}
         errorEvents={[{ timeSeconds: 5, characterIndex: 3 }]}
-        historicalErrorIndexes={[3]}
         modeLabel="1m"
         onClose={vi.fn()}
       />
     );
 
     expect(screen.getByText("Errors encountered")).toBeTruthy();
-    expect(screen.getByText("Corrected errors")).toBeTruthy();
-    expect(screen.getByTitle("Previously incorrect position 4")).toBeTruthy();
+    expect(screen.queryByText("Corrected errors")).toBeNull();
     const chart = screen.getByRole("img", { name: "WPM over time" });
-    expect(chart.querySelector('[data-testid="attempt-chart-burst-line"]')).toBeTruthy();
-    expect(chart.querySelector('[data-testid="attempt-error-marker"]')).toBeTruthy();
+    expect(chart.querySelector('[data-testid="attempt-chart-burst-line"]')?.getAttribute("stroke-dasharray")).toBe("2 6");
+    const errorMarker = chart.querySelector('[data-testid="attempt-error-marker"]');
+    expect(errorMarker).toBeTruthy();
+    expect(errorMarker?.querySelector("line")?.getAttribute("stroke")).toBe("rgb(var(--chart-danger))");
+    expect(Number(errorMarker?.querySelector("line")?.getAttribute("y1"))).toBeGreaterThan(20);
   });
 
   it("builds a smooth cubic path between timeline points", () => {
@@ -234,7 +258,7 @@ describe("ResultModal", () => {
     expect(screen.getByText("Best (last 10)")).toBeTruthy();
     expect(screen.getByText("Attempts")).toBeTruthy();
     expect(screen.getAllByText("28.2").length).toBeGreaterThan(0);
-    expect(screen.getByText("1")).toBeTruthy();
+    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
     expect(screen.queryByText("Previous Attempt")).toBeNull();
   });
 
@@ -539,7 +563,7 @@ describe("ResultModal", () => {
     expect(screen.queryByText("New Personal Best")).toBeNull();
   });
 
-  it("shows the attempt graph tooltip with time, WPM, and accuracy", () => {
+  it("shows WPM, burst, and per-second errors in the graph tooltip", () => {
     render(
       <ResultModal
         result={makeResult()}
@@ -548,7 +572,15 @@ describe("ResultModal", () => {
         onNextPassage={vi.fn()}
         previousResult={null}
         recentResults={[]}
-        attemptTimeline={makeTimeline()}
+        attemptTimeline={[
+          { timeSeconds: 1, wpm: 30, burstWpm: 40, accuracy: 96 },
+          { timeSeconds: 5, wpm: 42, burstWpm: 51, accuracy: 98 },
+          { timeSeconds: 10, wpm: 48, burstWpm: 56, accuracy: 100 }
+        ]}
+        errorEvents={[
+          { timeSeconds: 9.2, characterIndex: 3 },
+          { timeSeconds: 9.8, characterIndex: 7 }
+        ]}
         modeLabel="1m"
         onClose={vi.fn()}
       />
@@ -557,8 +589,15 @@ describe("ResultModal", () => {
     fireEvent.mouseEnter(screen.getByTestId("attempt-graph-point-10"));
 
     expect(screen.getByText("10s")).toBeTruthy();
+    expect(screen.queryByText("Raw WPM 50.0")).toBeNull();
     expect(screen.getByText("WPM 48.0")).toBeTruthy();
-    expect(screen.getByText("Accuracy 100.0%")).toBeTruthy();
+    expect(screen.getByText("Burst 56.0")).toBeTruthy();
+    expect(screen.getByText("Errors 2")).toBeTruthy();
+    expect(screen.queryByText("Accuracy 100.0%")).toBeNull();
+    const markers = screen.getAllByTestId("attempt-error-marker");
+    expect(markers).toHaveLength(1);
+    expect(markers[0].getAttribute("data-error-count")).toBe("2");
+    expect(screen.getByTestId("attempt-chart-axis-errors")).toBeTruthy();
   });
 
   it("keeps early WPM spikes from dominating graph scaling", () => {
@@ -587,9 +626,39 @@ describe("ResultModal", () => {
     expect(layout.maxTime).toBe(300);
     expect(layout.xTicks).toContain(0);
     expect(layout.xTicks).toContain(300);
+    expect(layout.xTicks).toHaveLength(21);
+    expect(layout.yTicks.every((tick) => tick % 15 === 0)).toBe(true);
     expect(layout.positionedPoints[0].timeSeconds).toBe(0);
     expect(layout.positionedPoints[layout.positionedPoints.length - 1].timeSeconds).toBe(300);
     expect(layout.positionedPoints[0].x).toBeLessThan(layout.positionedPoints[layout.positionedPoints.length - 1].x);
+  });
+
+  it("uses 15 time divisions for seconds and 20 for minute-based attempts", () => {
+    const layoutFor = (seconds: number) =>
+      getAttemptGraphLayout([], { ...makeResult(), timeUsedSeconds: seconds, durationSeconds: seconds });
+
+    expect(layoutFor(15).xTicks).toHaveLength(16);
+    expect(layoutFor(15).xTicks[1]).toBe(1);
+    expect(layoutFor(30).xTicks).toHaveLength(16);
+    expect(layoutFor(30).xTicks[1]).toBe(2);
+    expect(layoutFor(60).xTicks).toHaveLength(21);
+    expect(layoutFor(60).xTicks[1]).toBe(3);
+    expect(layoutFor(300).xTicks).toHaveLength(21);
+    expect(layoutFor(300).xTicks[1]).toBe(15);
+  });
+
+  it("uses actual Training time instead of the normalized comparison duration", () => {
+    const layout = getAttemptGraphLayout([], {
+      ...makeResult(),
+      timeUsedSeconds: 15,
+      durationSeconds: 60,
+      category: "training_words"
+    });
+
+    expect(layout.maxTime).toBe(15);
+    expect(layout.xTicks).toHaveLength(16);
+    expect(layout.xTicks[1]).toBe(1);
+    expect(layout.xTicks.at(-1)).toBe(15);
   });
 
   it("interpolates the previous pace marker index from saved timeline progress", () => {

@@ -1,15 +1,14 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { ReactNode, useEffect, useRef, useState } from "react";
-import { ChevronDown, LogIn, LogOut, UserCircle } from "lucide-react";
+import { ChevronDown, LogIn, LogOut, Menu, UserCircle, X } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { SupabaseProfile, getProfileDisplayLabel, getSupabaseProfile } from "@/lib/profileStorage";
 
 const NAV_ITEMS = [
   { href: "/practice", label: "Practice" },
   { href: "/training", label: "Training" },
-  { href: "/passages", label: "Passages" },
-  { href: "/passages/manage", label: "Manage passages", requiresAdmin: true },
+  { href: "/passages", label: "Library" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/settings", label: "Settings" }
 ];
@@ -25,25 +24,73 @@ export function AppShell({
   topAd?: boolean;
   focusMode?: boolean;
 }) {
-  const { isAdmin, isLoading } = useAuth();
-  const navItems = NAV_ITEMS.filter((item) => !item.requiresAdmin || (isAdmin && !isLoading));
+  const router = useRouter();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const mobileNavButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [router.asPath]);
+
+  useEffect(() => {
+    if (!isMobileNavOpen) return;
+
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setIsMobileNavOpen(false);
+      mobileNavButtonRef.current?.focus();
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isMobileNavOpen]);
 
   return (
-    <main className={focusMode ? "min-h-screen px-4 py-4 text-paper md:px-8" : "min-h-screen px-5 py-5 text-paper md:px-8"}>
-      <div className={focusMode ? "mx-auto max-w-[96rem]" : "mx-auto max-w-7xl"}>
-        {!focusMode && <header className="flex flex-wrap items-center justify-between gap-4 border-b border-paper/10 pb-4">
-          <Link href="/practice" className="font-mono text-lg font-semibold tracking-[0.18em] text-paper">
-            FormalType
-          </Link>
-          <div className="flex flex-wrap items-center gap-3">
-            <nav className="flex flex-wrap gap-2 font-mono text-sm text-paper/60">
-              {navItems.map((item) => (
-                <NavLink key={item.href} href={item.href} label={item.label} />
+    <main className="min-h-screen px-5 py-5 text-paper md:px-8">
+      <a
+        href="#main-content"
+        className="sr-only z-[100] rounded-md bg-paper px-3 py-2 font-mono text-sm text-ink-950 focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Skip to main content
+      </a>
+      <div className="mx-auto max-w-7xl">
+        <header className={focusMode ? "invisible border-b border-paper/10 pb-4" : "border-b border-paper/10 pb-4"}>
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/practice" className="shrink-0 font-mono text-lg font-semibold tracking-[0.18em] text-paper">
+              FormalType
+            </Link>
+            <div className="flex min-w-0 items-center gap-2 md:gap-3">
+              <nav aria-label="Primary navigation" className="hidden gap-1 font-mono text-sm text-paper/60 md:flex lg:gap-2">
+                {NAV_ITEMS.map((item) => (
+                  <NavLink key={item.href} href={item.href} label={item.label} />
+                ))}
+              </nav>
+              <HeaderAuthAction />
+              <button
+                ref={mobileNavButtonRef}
+                type="button"
+                aria-label={isMobileNavOpen ? "Close navigation" : "Open navigation"}
+                aria-expanded={isMobileNavOpen}
+                aria-controls="mobile-navigation"
+                onClick={() => setIsMobileNavOpen((current) => !current)}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-900 text-paper/70 transition hover:border-brass/40 hover:text-paper md:hidden"
+              >
+                {isMobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          {isMobileNavOpen && (
+            <nav
+              id="mobile-navigation"
+              aria-label="Mobile navigation"
+              className="mt-3 grid grid-cols-2 gap-2 border-t border-paper/10 pt-3 font-mono text-sm sm:grid-cols-3 md:hidden"
+            >
+              {NAV_ITEMS.map((item) => (
+                <NavLink key={item.href} href={item.href} label={item.label} onClick={() => setIsMobileNavOpen(false)} />
               ))}
             </nav>
-            <HeaderAuthAction />
-          </div>
-        </header>}
+          )}
+        </header>
 
         {topAd && (
           <div className="mt-5">
@@ -51,8 +98,8 @@ export function AppShell({
           </div>
         )}
 
-        <div className={focusMode ? "" : sideAd ? "mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]" : "mt-6"}>
-          <div>{children}</div>
+        <div className={sideAd ? "mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]" : "mt-6"}>
+          <div id="main-content" tabIndex={-1} className="min-w-0 outline-none">{children}</div>
           {sideAd && (
             <aside className="hidden xl:block">
               <AdPlaceholder variant="sidebar" />
@@ -72,11 +119,13 @@ export function AppShell({
 
 function HeaderAuthAction() {
   const router = useRouter();
-  const { user, isLoading, signOut } = useAuth();
+  const { user, isLoading, isAdmin, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [profile, setProfile] = useState<SupabaseProfile | null>(null);
   const [isProfileLabelResolved, setIsProfileLabelResolved] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -133,6 +182,7 @@ function HeaderAuthAction() {
     function handleKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
         setIsOpen(false);
+        menuButtonRef.current?.focus();
       }
     }
 
@@ -146,7 +196,7 @@ function HeaderAuthAction() {
   }, [isOpen]);
 
   if (isLoading) {
-    return <span className="font-mono text-xs text-paper/35">Checking login...</span>;
+    return <span role="status" aria-live="polite" className="font-mono text-xs text-paper/35">Checking login...</span>;
   }
 
   if (!user) {
@@ -164,8 +214,29 @@ function HeaderAuthAction() {
 
   async function handleLogout() {
     setIsOpen(false);
-    await signOut();
-    router.push("/practice");
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      await router.push("/practice");
+    } finally {
+      setIsSigningOut(false);
+    }
+  }
+
+  function handleMenuKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    if (items.length === 0) return;
+    event.preventDefault();
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? items.length - 1
+        : event.key === "ArrowDown"
+          ? (currentIndex + 1 + items.length) % items.length
+          : (currentIndex - 1 + items.length) % items.length;
+    items[nextIndex]?.focus();
   }
 
   const accountLabel = isProfileLabelResolved ? getProfileDisplayLabel(profile) : "Account";
@@ -173,24 +244,26 @@ function HeaderAuthAction() {
   return (
     <div ref={menuRef} className="relative">
       <button
+        ref={menuButtonRef}
         type="button"
         aria-label="Account menu"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((current) => !current)}
-        className="inline-flex max-w-[15rem] items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/75 transition hover:border-brass/40 hover:text-paper"
+        className="inline-flex max-w-[15rem] items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-2 py-2 font-mono text-xs text-paper/75 transition hover:border-brass/40 hover:text-paper sm:px-3"
       >
         <UserCircle className="h-4 w-4 text-brass" />
-        <span className="truncate">{accountLabel}</span>
+        <span className="hidden truncate sm:inline">{accountLabel}</span>
         <ChevronDown className={`h-3.5 w-3.5 transition ${isOpen ? "rotate-180" : ""}`} />
       </button>
       {isOpen && (
         <div
           role="menu"
           aria-label="Account"
+          onKeyDown={handleMenuKeyDown}
           className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-md border border-paper/10 bg-ink-950 shadow-glow"
         >
-          <AccountMenuLink href="/profile" label="User stats" onClick={() => setIsOpen(false)} />
+          <AccountMenuLink href="/profile" label="Profile & stats" onClick={() => setIsOpen(false)} />
           <AccountMenuLink href="/profile/friends" label="Friends" onClick={() => setIsOpen(false)} />
           <AccountMenuLink
             href={profile?.handle ? `/u/${profile.handle}` : "/profile"}
@@ -198,14 +271,16 @@ function HeaderAuthAction() {
             onClick={() => setIsOpen(false)}
           />
           <AccountMenuLink href="/profile/account" label="Account settings" onClick={() => setIsOpen(false)} />
+          {isAdmin && <AccountMenuLink href="/passages/manage" label="Manage library" onClick={() => setIsOpen(false)} />}
           <button
             type="button"
             role="menuitem"
             onClick={handleLogout}
+            disabled={isSigningOut}
             className="flex w-full items-center gap-2 border-t border-paper/10 px-3 py-2.5 text-left font-mono text-xs text-paper/65 transition hover:bg-paper/10 hover:text-paper"
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            {isSigningOut ? "Signing out..." : "Sign out"}
           </button>
         </div>
       )}
@@ -243,7 +318,7 @@ export function AdPlaceholder({ variant }: { variant: "banner" | "sidebar" | "mo
   );
 }
 
-function NavLink({ href, label }: { href: string; label: string }) {
+function NavLink({ href, label, onClick }: { href: string; label: string; onClick?: () => void }) {
   const router = useRouter();
   const active =
     router.pathname === href ||
@@ -254,7 +329,9 @@ function NavLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className={`rounded-md px-3 py-2 transition ${
+      aria-current={active ? "page" : undefined}
+      onClick={onClick}
+      className={`flex min-h-10 items-center rounded-md px-3 py-2 outline-none transition focus-visible:ring-2 focus-visible:ring-brass/60 ${
         active ? "bg-paper text-ink-950" : "text-paper/60 hover:bg-paper/10 hover:text-paper"
       }`}
     >

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/router";
 import { Activity, Award, Camera, Clock, Copy, ExternalLink, Flame, Lock, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { ProfileSectionNav } from "@/components/ProfileSectionNav";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import {
@@ -262,6 +263,7 @@ export default function ProfilePage() {
             <p className="font-mono text-xs uppercase text-paper/45">saved tests</p>
           </div>
         </div>
+        <ProfileSectionNav />
 
         {!user && !isAuthLoading && (
           <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
@@ -301,7 +303,7 @@ export default function ProfilePage() {
             />
 
             {resultsMessage && (
-              <div className="rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
+              <div role="alert" className="rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
                 {resultsMessage}
               </div>
             )}
@@ -309,7 +311,7 @@ export default function ProfilePage() {
             <AnalyticsDomainSelector value={analyticsDomain} onChange={setAnalyticsDomain} />
 
             {isLoadingResults && (
-              <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-sm text-paper/45">
+              <div role="status" aria-live="polite" className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-sm text-paper/45">
                 Loading profile...
               </div>
             )}
@@ -491,7 +493,7 @@ function ProfileIdentityCard({
                 className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/40 hover:text-paper disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Copy className="h-4 w-4" />
-                {copyMessage || "Copy URL"}
+                <span aria-live="polite">{copyMessage || "Copy URL"}</span>
               </button>
               {handle && (
                 <Link
@@ -577,18 +579,18 @@ function ProfileIdentityCard({
         </div>
       </form>
       {(avatarMessage || avatarError || isAvatarUploading) && (
-        <p className={`mt-4 font-mono text-sm ${avatarError ? "text-ember" : "text-brass"}`}>
+        <p role={avatarError ? "alert" : "status"} aria-live={avatarError ? "assertive" : "polite"} className={`mt-4 font-mono text-sm ${avatarError ? "text-ember" : "text-brass"}`}>
           {avatarError || (isAvatarUploading ? "Updating avatar..." : avatarMessage)}
         </p>
       )}
 
       {identityMessage && (
-        <div className="mt-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+        <div role="status" aria-live="polite" className="mt-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
           {identityMessage}
         </div>
       )}
       {identityError && (
-        <div className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
+        <div role="alert" className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
           {identityError}
         </div>
       )}

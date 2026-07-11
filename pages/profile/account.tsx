@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { AppShell } from "@/components/AppShell";
+import { ProfileSectionNav } from "@/components/ProfileSectionNav";
 import { useAuth } from "@/components/AuthProvider";
 import { SupabaseProfile, getSupabaseProfile } from "@/lib/profileStorage";
 
@@ -48,6 +49,7 @@ export default function AccountPage() {
       <section className="mx-auto max-w-4xl">
         <p className="font-mono text-xs uppercase text-brass">Account</p>
         <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Account settings</h1>
+        <ProfileSectionNav />
 
         {user && (
           <div className="mt-6 space-y-6">
@@ -56,7 +58,7 @@ export default function AccountPage() {
               <p className="mt-2 text-sm leading-6 text-paper/55">Your handle is your public identity.</p>
 
               {profileMessage && (
-                <div className="mt-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+                <div role="alert" className="mt-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
                   {profileMessage}
                 </div>
               )}

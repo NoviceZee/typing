@@ -959,30 +959,30 @@ describe("TrainingPage", () => {
     expect(screen.getByTestId("chinese-target-viewport").contains(input)).toBe(false);
   });
 
-  it("keeps the Training typing stage centered with one header timer slot", async () => {
+  it("keeps the Training stage centered and reveals the timer only after Tab", async () => {
     render(<TrainingPage />);
 
     const stage = document.querySelector(".formaltype-practice-shell");
     const viewport = screen.getByTestId("typing-viewport");
-    const timer = screen.getByTestId("typing-timer");
-    const timerSlot = screen.getByTestId("typing-timer-slot");
 
     expect(stage?.className).toContain("mx-auto");
     expect(stage?.className).toContain("flex");
     expect(stage?.className).toContain("max-w-");
+    expect(stage?.className).not.toContain("ring-1");
+    expect(stage?.className).not.toContain("ring-paper/5");
     expect(stage?.className).not.toContain("side");
     expect(viewport.className).toContain("mx-auto");
     expect(viewport.className).toContain("h-full");
     expect(viewport.className).toContain("flex-1");
     expect(viewport.className).not.toContain("h-[340px]");
-    expect(screen.getAllByTestId("typing-timer")).toHaveLength(1);
+    expect(screen.queryByTestId("typing-timer")).toBeNull();
     expect(screen.queryByTestId("typing-timer-overlay")).toBeNull();
-    expect(stage?.contains(timer)).toBe(false);
-    expect(viewport.contains(timer)).toBe(false);
-    expect(screen.getByTestId("practice-header").contains(timerSlot)).toBe(true);
-    expect(timer.textContent).toBe("1:00");
 
     fireEvent.keyDown(stage as Element, { key: "Tab" });
+    const timer = screen.getByTestId("typing-timer");
+    expect(stage?.contains(timer)).toBe(true);
+    expect(viewport.contains(timer)).toBe(false);
+    expect(timer.textContent).toBe("1:00");
     const input = screen.getByLabelText("Typing input");
     fireEvent.change(input, { target: { value: "a" } });
 

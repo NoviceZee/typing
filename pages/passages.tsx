@@ -151,11 +151,11 @@ export default function PassagesPage() {
   return (
     <AppShell>
       <section className="mx-auto max-w-6xl">
-        <p className="font-mono text-xs uppercase text-brass">Passages</p>
+        <p className="font-mono text-xs uppercase text-brass">Library</p>
         <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Passage library</h1>
 
         {message && (
-          <div className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+          <div role="status" aria-live="polite" className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
             {message}
           </div>
         )}

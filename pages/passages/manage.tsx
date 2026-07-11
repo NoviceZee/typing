@@ -292,10 +292,10 @@ function ManagePassages() {
   return (
     <>
       <section className="mx-auto max-w-6xl">
-        <p className="font-mono text-xs uppercase text-brass">Admin</p>
+        <p className="font-mono text-xs uppercase text-brass">Library admin</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold text-paper md:text-4xl">Admin Passage Console</h1>
+            <h1 className="text-3xl font-semibold text-paper md:text-4xl">Manage library</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/55">
               Add, edit, import, export, and remove passages from {storageMode === "supabase" ? "Supabase" : "this browser's localStorage fallback"}.
             </p>
@@ -313,12 +313,12 @@ function ManagePassages() {
         </div>
 
         {message && (
-          <div className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+          <div role="status" aria-live="polite" className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
             {message}
           </div>
         )}
 
-        <div className="mt-5 rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 font-mono text-sm text-paper/55">
+        <div role="status" aria-live="polite" className="mt-5 rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 font-mono text-sm text-paper/55">
           Storage: {storageMode === "supabase" ? "Supabase" : "localStorage fallback"}
           {isLoadingLibrary ? " · Loading..." : ""}
         </div>
@@ -618,6 +618,16 @@ function EditPassageModal({
   const [draft, setDraft] = useState<LibraryPassage>(passage);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    cancelButtonRef.current?.focus();
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape" && !isSaving) onCancel();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isSaving, onCancel]);
 
   async function handleSave() {
     if (!draft.title.trim() || !draft.content.trim()) {
@@ -638,11 +648,11 @@ function EditPassageModal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4 backdrop-blur">
-      <section className="w-full max-w-3xl rounded-lg border border-brass/30 bg-ink-900 p-5 shadow-glow md:p-6">
+      <section role="dialog" aria-modal="true" aria-labelledby="edit-passage-title" className="w-full max-w-3xl rounded-lg border border-brass/30 bg-ink-900 p-5 shadow-glow md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-paper/10 pb-4">
           <div>
             <p className="font-mono text-xs uppercase text-brass">Edit</p>
-            <h2 className="mt-1 text-2xl font-semibold text-paper">Passage details</h2>
+            <h2 id="edit-passage-title" className="mt-1 text-2xl font-semibold text-paper">Passage details</h2>
           </div>
           <label className="flex items-center gap-2 font-mono text-sm text-paper/70">
             <input
@@ -682,6 +692,7 @@ function EditPassageModal({
             </p>
           )}
           <button
+            ref={cancelButtonRef}
             type="button"
             onClick={onCancel}
             disabled={isSaving}
@@ -704,11 +715,22 @@ function EditPassageModal({
 }
 
 function PreviewModal({ passage, onClose }: { passage: LibraryPassage; onClose: () => void }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4 backdrop-blur">
-      <section className="w-full max-w-3xl rounded-lg border border-paper/10 bg-ink-900 p-5 shadow-glow md:p-6">
+      <section role="dialog" aria-modal="true" aria-labelledby="preview-passage-title" className="w-full max-w-3xl rounded-lg border border-paper/10 bg-ink-900 p-5 shadow-glow md:p-6">
         <p className="font-mono text-xs uppercase text-brass">Preview</p>
-        <h2 className="mt-1 text-2xl font-semibold text-paper">{passage.title}</h2>
+        <h2 id="preview-passage-title" className="mt-1 text-2xl font-semibold text-paper">{passage.title}</h2>
         <p className="mt-2 font-mono text-xs text-paper/45">
           {passage.category} · {passage.style} · {passage.isActive ? "Active" : "Hidden"}
         </p>
@@ -717,6 +739,7 @@ function PreviewModal({ passage, onClose }: { passage: LibraryPassage; onClose: 
         </div>
         <div className="mt-6 flex justify-end">
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/70 transition hover:border-brass/50"

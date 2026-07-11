@@ -68,12 +68,12 @@ describe("AppShell account dropdown", () => {
     expect(screen.queryByRole("link", { name: "Profile" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
 
-    expect(screen.getByRole("menuitem", { name: "User stats" }).getAttribute("href")).toBe("/profile");
+    expect(screen.getByRole("menuitem", { name: "Profile & stats" }).getAttribute("href")).toBe("/profile");
     expect(screen.getByRole("menuitem", { name: "Friends" }).getAttribute("href")).toBe("/profile/friends");
     expect(screen.getByRole("menuitem", { name: "Public profile" }).getAttribute("href")).toBe("/u/formal_typist");
     expect(screen.getByRole("menuitem", { name: "Account settings" }).getAttribute("href")).toBe("/profile/account");
 
-    const userStatsLink = screen.getByRole("menuitem", { name: "User stats" });
+    const userStatsLink = screen.getByRole("menuitem", { name: "Profile & stats" });
     userStatsLink.addEventListener("click", (event) => event.preventDefault());
     fireEvent.click(userStatsLink);
     expect(screen.queryByRole("menu")).toBeNull();
@@ -89,16 +89,15 @@ describe("AppShell account dropdown", () => {
     expect(screen.getByRole("navigation").querySelector('a[href="/passages/manage"]')).toBeNull();
   });
 
-  it("shows Manage passages only to admins", async () => {
+  it("keeps library management in the admin account menu", async () => {
     mockState.isAdmin = true;
 
     render(<AppShell sideAd={false}>Content</AppShell>);
 
-    await waitFor(() => {
-      expect(screen.getByRole("navigation").querySelector('a[href="/passages/manage"]')?.textContent).toBe(
-        "Manage passages"
-      );
-    });
+    await waitFor(() => expect(screen.getByRole("button", { name: /account menu/i })).toBeTruthy());
+    expect(screen.getByRole("navigation", { name: "Primary navigation" }).querySelector('a[href="/passages/manage"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
+    expect(screen.getByRole("menuitem", { name: "Manage library" }).getAttribute("href")).toBe("/passages/manage");
   });
 
   it("hides Manage passages while a switched account role is loading", () => {
@@ -107,7 +106,7 @@ describe("AppShell account dropdown", () => {
 
     render(<AppShell sideAd={false}>Content</AppShell>);
 
-    expect(screen.getByRole("navigation").querySelector('a[href="/passages/manage"]')).toBeNull();
+    expect(screen.getByRole("navigation", { name: "Primary navigation" }).querySelector('a[href="/passages/manage"]')).toBeNull();
   });
 
   it("does not use display name as an account label fallback and closes on Escape", async () => {
@@ -198,6 +197,26 @@ describe("AppShell account dropdown", () => {
     expect(screen.getByRole("navigation").querySelector('a[href="/training"]')?.textContent).toBe("Training");
   });
 
+  it("uses Library as the passage information architecture label", () => {
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    expect(screen.getByRole("link", { name: "Library" }).getAttribute("href")).toBe("/passages");
+    expect(screen.queryByRole("link", { name: "Passages" })).toBeNull();
+  });
+
+  it("provides a skip link and an accessible mobile navigation", () => {
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    expect(screen.getByRole("link", { name: "Skip to main content" }).getAttribute("href")).toBe("#main-content");
+    const menuButton = screen.getByRole("button", { name: "Open navigation" });
+    expect(menuButton.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(menuButton);
+    expect(screen.getByRole("navigation", { name: "Mobile navigation" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Close navigation" }).getAttribute("aria-expanded")).toBe("true");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("navigation", { name: "Mobile navigation" })).toBeNull();
+  });
+
   it("marks Settings as active on the settings route", () => {
     mockState.user = null;
     mockState.pathname = "/settings";
@@ -207,5 +226,6 @@ describe("AppShell account dropdown", () => {
 
     const settingsLink = screen.getByRole("navigation").querySelector('a[href="/settings"]');
     expect(settingsLink?.className).toContain("bg-paper text-ink-950");
+    expect(settingsLink?.getAttribute("aria-current")).toBe("page");
   });
 });

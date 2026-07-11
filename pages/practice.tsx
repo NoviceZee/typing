@@ -199,7 +199,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const typedTextRef = useRef("");
   const attemptTimelineRef = useRef<AttemptTimelinePoint[]>([]);
   const attemptErrorEventsRef = useRef<AttemptErrorEvent[]>([]);
-  const historicalErrorIndexesRef = useRef<Set<number>>(new Set());
+  const activeErrorIndexesRef = useRef<Set<number>>(new Set());
   const elapsedSecondsRef = useRef(0);
   const suspiciousAttemptRef = useRef(false);
   const libraryRef = useRef<LibraryPassage[]>([]);
@@ -382,7 +382,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       typedTextRef.current = "";
       attemptTimelineRef.current = [];
       attemptErrorEventsRef.current = [];
-      historicalErrorIndexesRef.current = new Set();
+      activeErrorIndexesRef.current = new Set();
       suspiciousAttemptRef.current = false;
       typedCharacterDelaysRef.current = [];
       lastTypedCharacterAtRef.current = null;
@@ -514,7 +514,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         rules
       });
       point.burstWpm = getBurstWpm(typedCharacterDelaysRef.current, passage?.language === "chinese" || passage?.category === "training_chinese");
-      point.errorCount = historicalErrorIndexesRef.current.size;
+      point.errorCount = attemptErrorEventsRef.current.length;
       const existingIndex = attemptTimelineRef.current.findIndex(
         (timelinePoint) => timelinePoint.timeSeconds === point.timeSeconds
       );
@@ -574,7 +574,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         wpm: finalResult.wpm,
         accuracy: finalResult.accuracy,
         burstWpm: getBurstWpm(typedCharacterDelaysRef.current, passage.language === "chinese" || passage.category === "training_chinese"),
-        errorCount: historicalErrorIndexesRef.current.size
+        errorCount: attemptErrorEventsRef.current.length
       };
       const completedTimeline = upsertAttemptTimelinePoint(attemptTimelineRef.current, finalTimelinePoint);
       attemptTimelineRef.current = completedTimeline;
@@ -662,7 +662,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     typedTextRef.current = "";
     attemptTimelineRef.current = [];
     attemptErrorEventsRef.current = [];
-    historicalErrorIndexesRef.current = new Set();
+    activeErrorIndexesRef.current = new Set();
     suspiciousAttemptRef.current = false;
     typedCharacterDelaysRef.current = [];
     lastTypedCharacterAtRef.current = null;
@@ -929,7 +929,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       startedAtRef.current = now;
       attemptTimelineRef.current = [];
       attemptErrorEventsRef.current = [];
-      historicalErrorIndexesRef.current = new Set();
+      activeErrorIndexesRef.current = new Set();
       typedCharacterDelaysRef.current = [];
       lastTypedCharacterAtRef.current = null;
       elapsedSecondsRef.current = 0;
@@ -969,20 +969,23 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
   function recordHistoricalErrors(nextValue: string) {
     const nextComparison = validateTypedText({ targetText: sourceText, typedText: nextValue, rules });
+    const nextActiveErrors = new Set<number>();
     let didAddError = false;
 
     nextComparison.characters.forEach((character) => {
       if ((character.status !== "wrong" && character.status !== "extra") || !character.actual) return;
-      if (historicalErrorIndexesRef.current.has(character.index)) return;
+      nextActiveErrors.add(character.index);
+      if (activeErrorIndexesRef.current.has(character.index)) return;
 
-      historicalErrorIndexesRef.current.add(character.index);
+      const sessionStartedAt = startedAtRef.current;
       attemptErrorEventsRef.current.push({
-        timeSeconds: Math.max(0, elapsedSecondsRef.current),
+        timeSeconds: sessionStartedAt === null ? 0.1 : Math.max(0.1, (Date.now() - sessionStartedAt) / 1000),
         characterIndex: character.index
       });
       didAddError = true;
     });
 
+    activeErrorIndexesRef.current = nextActiveErrors;
     if (didAddError) setAttemptErrorEvents([...attemptErrorEventsRef.current]);
   }
 
@@ -1400,19 +1403,22 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
   return (
     <AppShell topAd={false} sideAd={false} focusMode={isFocusMode}>
-      <section className={clsx("mx-auto min-w-0 w-[calc(100vw-2.5rem)] overflow-x-hidden sm:w-full", isFocusMode ? "max-w-7xl" : "max-w-6xl")}>
+      <section className="mx-auto min-w-0 w-[calc(100vw-2.5rem)] max-w-6xl overflow-x-hidden sm:w-full">
         <h1 className="sr-only">{trainingMode?.pageTitle ?? "Practice"}</h1>
 
-        {!isFocusMode && passageNotice && (
-          <div className="mb-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+        {passageNotice && (
+          <div className={clsx("mb-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass", isFocusMode && "invisible pointer-events-none")}>
             {passageNotice}
           </div>
         )}
 
-        {!isFocusMode && shouldShowTypingHeader && (
+        {shouldShowTypingHeader && (
           <section
             data-testid="practice-header"
-            className="mx-auto mb-3 grid max-w-5xl grid-cols-1 items-start gap-x-4 gap-y-1.5 text-center sm:grid-cols-[minmax(0,1fr)_auto]"
+            className={clsx(
+              "mx-auto mb-3 grid max-w-5xl grid-cols-1 items-start gap-x-4 gap-y-1.5 text-center sm:grid-cols-[minmax(0,1fr)_auto]",
+              isFocusMode && "invisible pointer-events-none"
+            )}
           >
             <div className="min-w-0">
               {trainingMode?.controls}
@@ -1487,7 +1493,6 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
               )}
             </div>
 
-            <TypingTimer value={formatTime(clockSeconds)} />
           </section>
         )}
 
@@ -1507,9 +1512,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           }}
           className={clsx(
             "formaltype-practice-shell relative mx-auto flex w-full flex-col overflow-hidden rounded-lg outline-none transition-all duration-300 focus:ring-brass/30",
-            isFocusMode
-              ? "h-[82vh] max-h-[82vh] max-w-7xl bg-transparent p-2 md:h-[88vh] md:max-h-[88vh] md:p-6"
-              : "h-[60vh] max-h-[60vh] max-w-5xl bg-paper/[0.025] p-3 ring-1 ring-paper/5 md:h-[68vh] md:max-h-[72vh] md:p-5"
+            "h-[60vh] max-h-[60vh] max-w-5xl bg-paper/[0.025] p-3 md:h-[68vh] md:max-h-[72vh] md:p-5"
           )}
           data-focus-mode={isFocusMode ? "true" : "false"}
         >
@@ -1653,16 +1656,19 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         </div>
 
         {(status === "idle" || isFocusMode) && (
-          <div className={clsx("flex flex-wrap items-center gap-3 font-mono text-xs", isFocusMode ? "mt-2 justify-center text-paper/25" : "mt-3 text-paper/30")}>
+          <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-xs text-paper/30">
             <span>Tab = start</span>
             <span>Tab + Enter = restart</span>
             <span>Esc = finish</span>
           </div>
         )}
 
-        {!isFocusMode && <div data-testid={trainingMode ? "training-ad-slot" : "practice-ad-slot"} className="mt-6">
+        <div
+          data-testid={trainingMode ? "training-ad-slot" : "practice-ad-slot"}
+          className={clsx("mt-6", isFocusMode && "invisible pointer-events-none")}
+        >
           <AdPlaceholder variant="banner" />
-        </div>}
+        </div>
 
         {lastResult && passage && (
           <ResultsPanel
@@ -1683,7 +1689,6 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             progressMilestones={progressMilestones}
             attemptTimeline={attemptTimeline}
             errorEvents={attemptErrorEvents}
-            historicalErrorIndexes={Array.from(historicalErrorIndexesRef.current).sort((a, b) => a - b)}
             modeLabel={modeLabel}
             isSuspicious={isAttemptSuspicious}
             onClose={() => setIsResultModalOpen(false)}
@@ -1952,7 +1957,6 @@ export function ResultModal({
   progressMilestones = EMPTY_CELEBRATION_MILESTONES,
   attemptTimeline,
   errorEvents = [],
-  historicalErrorIndexes = [],
   modeLabel,
   isSuspicious = false,
   onGenerateImageCard = generateResultImageCard,
@@ -1967,7 +1971,6 @@ export function ResultModal({
   progressMilestones?: CelebrationMilestone[];
   attemptTimeline: AttemptTimelinePoint[];
   errorEvents?: AttemptErrorEvent[];
-  historicalErrorIndexes?: number[];
   modeLabel: string;
   isSuspicious?: boolean;
   onGenerateImageCard?: (input: ResultImageCardInput) => Promise<void> | void;
@@ -1977,6 +1980,47 @@ export function ResultModal({
   const hasSavedHistory = recentResults !== null;
   const [imageCardError, setImageCardError] = useState("");
   const [isGeneratingImageCard, setIsGeneratingImageCard] = useState(false);
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeButtonRef.current?.focus();
+
+    function handleDialogKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusable = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])') ?? []
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleDialogKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleDialogKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, []);
   const historySeries = hasSavedHistory
     ? buildResultHistorySeries({
         recentResults,
@@ -1993,17 +2037,25 @@ export function ResultModal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/85 px-3 py-3 backdrop-blur md:px-4">
       <CelebrationToast milestones={milestones} />
-      <section className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-brass/25 bg-ink-900 shadow-glow">
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="result-dialog-title"
+        aria-describedby="result-dialog-description"
+        className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-brass/25 bg-ink-900 shadow-glow"
+      >
         <div className="sticky top-0 z-10 border-b border-paper/10 bg-ink-900/95 px-4 py-3 backdrop-blur md:px-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="font-mono text-xs uppercase text-brass">Result</p>
-              <h2 className="mt-0.5 text-2xl font-semibold leading-tight text-paper">{completionLabel}</h2>
-              <div className="mt-1.5 truncate font-mono text-xs text-paper/45 md:text-sm">
+              <h2 id="result-dialog-title" className="mt-0.5 text-2xl font-semibold leading-tight text-paper">{completionLabel}</h2>
+              <div id="result-dialog-description" className="mt-1.5 truncate font-mono text-xs text-paper/45 md:text-sm">
                 {formatPassageResultMetadata(passage)}
               </div>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
               aria-label="Close result"
@@ -2020,7 +2072,7 @@ export function ResultModal({
               result={result}
               timeline={attemptTimeline}
               metricLabel={getMetricLabel(passage)}
-              historicalErrorCount={historicalErrorIndexes.length}
+              historicalErrorCount={errorEvents.length}
               imageAction={
                 <ResultImageCardAction
                   disabled={isGeneratingImageCard}
@@ -2057,7 +2109,7 @@ export function ResultModal({
           )}
 
           {!recentResults && <SignInResultCta />}
-          <SessionReview result={result} historicalErrorIndexes={historicalErrorIndexes} />
+          <SessionReview result={result} />
         </div>
 
         <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-paper/10 bg-ink-900 px-4 py-3 md:px-5">
@@ -2565,6 +2617,9 @@ function AttemptWpmGraph({
   const [hoveredPoint, setHoveredPoint] = useState<PositionedAttemptPoint | null>(null);
   const points = getAttemptGraphPoints(timeline, result);
   const graph = getAttemptGraphLayout(points, result);
+  const errorBuckets = getAttemptErrorBuckets(errorEvents);
+  const maxErrorsPerSecond = Math.max(1, ...errorBuckets.map((bucket) => bucket.count));
+  const errorTicks = getErrorTicks(maxErrorsPerSecond);
 
   return (
     <section>
@@ -2572,11 +2627,11 @@ function AttemptWpmGraph({
         <p className="font-mono text-sm uppercase text-brass">{metricLabel} Over Time</p>
         <div className="hidden gap-5 font-mono text-xs uppercase text-paper/45 sm:flex">
           <span className="inline-flex items-center gap-2">
-            <span className="h-px w-8 opacity-60" style={{ backgroundColor: "rgb(var(--chart-line-secondary))" }} />
+            <span className="w-8 border-t-2 border-dotted opacity-70" style={{ borderColor: "rgb(var(--chart-line-secondary))" }} />
             Burst
           </span>
           <span className="inline-flex items-center gap-2">
-            <span className="h-px w-8" style={{ backgroundColor: "rgb(var(--chart-line))" }} />
+            <span className="h-[3px] w-8 rounded-full" style={{ backgroundColor: "rgb(var(--chart-line))" }} />
             {metricLabel}
           </span>
           <span className="inline-flex items-center gap-2">
@@ -2608,7 +2663,7 @@ function AttemptWpmGraph({
                   strokeDasharray="4 6"
                 />
                 <text x={graph.left - 12} y={y + 4} textAnchor="end" className="formaltype-chart-muted-fill font-mono text-[12px]">
-                  {tick}
+                  {formatGraphTick(tick)}
                 </text>
               </g>
             );
@@ -2630,6 +2685,14 @@ function AttemptWpmGraph({
             stroke="rgb(var(--chart-axis))"
           />
           <line
+            data-testid="attempt-chart-axis-errors"
+            x1={graph.right}
+            x2={graph.right}
+            y1={graph.top}
+            y2={graph.bottom}
+            stroke="rgb(var(--chart-axis))"
+          />
+          <line
             data-testid="attempt-chart-average-line"
             x1={graph.left}
             x2={graph.right}
@@ -2638,20 +2701,31 @@ function AttemptWpmGraph({
             stroke="rgb(var(--chart-line-secondary))"
             strokeDasharray="8 8"
           />
-          {graph.xTicks.map((tick) => (
+          {graph.xTicks.map((tick, index) => (
             <text
-              key={tick}
+              key={`time-${index}`}
               x={getGraphX(tick, graph)}
               y={graph.bottom + 24}
               textAnchor="middle"
               className="formaltype-chart-muted-fill font-mono text-[12px]"
             >
-              {tick}
+              {formatGraphTick(tick)}
             </text>
           ))}
           <text x={graph.left - 30} y={graph.top - 14} className="formaltype-chart-muted-fill font-mono text-[12px] uppercase">
             {metricLabel}
           </text>
+          <text x={graph.right + 4} y={graph.top - 14} className="formaltype-chart-muted-fill font-mono text-[11px] uppercase">
+            Errors
+          </text>
+          {errorTicks.map((tick) => {
+            const y = getErrorGraphY(tick, maxErrorsPerSecond, graph);
+            return (
+              <text key={tick} x={graph.right + 10} y={y + 4} className="formaltype-chart-muted-fill font-mono text-[10px]">
+                {tick}
+              </text>
+            );
+          })}
           <text
             x={(graph.left + graph.right) / 2}
             y={graph.height - 8}
@@ -2668,7 +2742,8 @@ function AttemptWpmGraph({
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth="2"
-            opacity="0.52"
+            strokeDasharray="2 6"
+            opacity="0.72"
           />
           <path
             data-testid="attempt-chart-line"
@@ -2679,12 +2754,18 @@ function AttemptWpmGraph({
             strokeLinejoin="round"
             strokeWidth="3"
           />
-          {errorEvents.map((error, index) => {
-            const x = getGraphX(error.timeSeconds, graph);
+          {errorBuckets.map((error) => {
+            const x = Math.min(graph.right - 7, Math.max(graph.left + 7, getGraphX(error.second, graph)));
+            const y = getErrorGraphY(error.count, maxErrorsPerSecond, graph);
             return (
-              <g key={`${error.timeSeconds}-${error.characterIndex}-${index}`} data-testid="attempt-error-marker">
-                <line x1={x - 4} x2={x + 4} y1={graph.top + 4} y2={graph.top + 12} stroke="rgb(var(--color-ember))" strokeWidth="2" />
-                <line x1={x + 4} x2={x - 4} y1={graph.top + 4} y2={graph.top + 12} stroke="rgb(var(--color-ember))" strokeWidth="2" />
+              <g key={error.second} data-testid="attempt-error-marker" data-error-count={error.count}>
+                <line x1={x - 3.5} x2={x + 3.5} y1={y - 3.5} y2={y + 3.5} stroke="rgb(var(--chart-danger))" strokeWidth="2" />
+                <line x1={x + 3.5} x2={x - 3.5} y1={y - 3.5} y2={y + 3.5} stroke="rgb(var(--chart-danger))" strokeWidth="2" />
+                {error.count > 1 && (
+                  <text x={x + 5} y={y - 5} className="font-mono text-[9px]" fill="rgb(var(--chart-danger))">
+                    {error.count}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -2693,6 +2774,7 @@ function AttemptWpmGraph({
               <circle cx={point.x} cy={point.y} r="3.5" fill="rgb(var(--chart-line))" />
               <circle
                 data-testid={`attempt-graph-point-${point.timeSeconds}`}
+                aria-label={`${point.timeSeconds} seconds, ${metricLabel} ${point.wpm.toFixed(1)}, burst ${typeof point.burstWpm === "number" ? point.burstWpm.toFixed(1) : "unavailable"}, errors ${getAttemptErrorCountAtSecond(errorEvents, point.timeSeconds)}`}
                 cx={point.x}
                 cy={point.y}
                 r="12"
@@ -2704,19 +2786,20 @@ function AttemptWpmGraph({
             </g>
           ))}
           {hoveredPoint && (
-            <g transform={`translate(${getTooltipX(hoveredPoint.x, graph)} ${Math.max(graph.top + 12, hoveredPoint.y - 84)})`}>
-              <rect width="126" height="70" rx="6" className="formaltype-chart-tooltip" />
-              <text x="12" y="20" className="formaltype-chart-tooltip-text-fill font-mono text-[12px]">
+            <g transform={`translate(${getTooltipX(hoveredPoint.x, graph)} ${Math.max(graph.top + 6, hoveredPoint.y - 94)})`}>
+              <rect width="154" height="86" rx="6" className="formaltype-chart-tooltip" />
+              <text x="12" y="18" className="formaltype-chart-tooltip-text-fill font-mono text-[11px]">
                 {hoveredPoint.timeSeconds}s
               </text>
-              <text x="12" y="42" className="formaltype-chart-line-fill font-mono text-[12px]">
+              <text x="12" y="38" className="formaltype-chart-line-fill font-mono text-[11px]">
                 {metricLabel} {hoveredPoint.wpm.toFixed(1)}
               </text>
-              {typeof hoveredPoint.accuracy === "number" && (
-                <text x="12" y="62" className="formaltype-chart-muted-fill font-mono text-[12px]">
-                  Accuracy {hoveredPoint.accuracy.toFixed(1)}%
-                </text>
-              )}
+              <text x="12" y="56" className="font-mono text-[11px]" fill="rgb(var(--chart-line-secondary))">
+                Burst {typeof hoveredPoint.burstWpm === "number" ? hoveredPoint.burstWpm.toFixed(1) : "—"}
+              </text>
+              <text x="12" y="74" className="font-mono text-[11px]" fill="rgb(var(--chart-danger))">
+                Errors {getAttemptErrorCountAtSecond(errorEvents, hoveredPoint.timeSeconds)}
+              </text>
             </g>
           )}
         </svg>
@@ -2763,7 +2846,8 @@ function buildAttemptTimelinePoint({
 }): AttemptTimelinePoint {
   const comparison = validateTypedText({ targetText: sourceText, typedText, rules });
   const minutes = Math.max(elapsedSeconds, 1) / 60;
-  const pace = language === "chinese" || category === "training_chinese" ? comparison.correctCharacters / minutes : comparison.correctCharacters / 5 / minutes;
+  const usesCharacterPace = language === "chinese" || category === "training_chinese";
+  const pace = usesCharacterPace ? comparison.correctCharacters / minutes : comparison.correctCharacters / 5 / minutes;
 
   return {
     timeSeconds: Math.round(elapsedSeconds),
@@ -2876,7 +2960,7 @@ export function getAttemptGraphLayout(points: AttemptTimelinePoint[], result: Ty
   const width = 640;
   const height = 280;
   const left = 48;
-  const right = width - 18;
+  const right = width - 48;
   const top = 32;
   const bottom = height - 46;
   const maxTime = Math.max(result.timeUsedSeconds, ...normalizedPoints.map((point) => point.timeSeconds), 1);
@@ -2943,9 +3027,33 @@ function getGraphY(wpm: number, graph: Pick<AttemptGraphLayout, "top" | "bottom"
   return graph.bottom - (Math.min(Math.max(wpm, 0), graph.maxWpm) / graph.maxWpm) * range;
 }
 
+function getErrorGraphY(errorCount: number, maxErrors: number, graph: Pick<AttemptGraphLayout, "top" | "bottom">) {
+  const range = graph.bottom - graph.top;
+  return graph.bottom - (Math.min(Math.max(errorCount, 0), maxErrors) / maxErrors) * range;
+}
+
+function getAttemptErrorBuckets(errorEvents: AttemptErrorEvent[]) {
+  const counts = new Map<number, number>();
+  errorEvents.forEach((error) => {
+    const second = getAttemptErrorSecond(error.timeSeconds);
+    counts.set(second, (counts.get(second) ?? 0) + 1);
+  });
+  return Array.from(counts, ([second, count]) => ({ second, count })).sort((left, right) => left.second - right.second);
+}
+
+function getAttemptErrorCountAtSecond(errorEvents: AttemptErrorEvent[], timeSeconds: number) {
+  const second = getAttemptErrorSecond(timeSeconds);
+  return errorEvents.filter((error) => getAttemptErrorSecond(error.timeSeconds) === second).length;
+}
+
+function getAttemptErrorSecond(timeSeconds: number) {
+  return Math.max(1, Math.ceil(Math.max(0, timeSeconds)));
+}
+
 function getTooltipX(x: number, graph: Pick<AttemptGraphLayout, "left" | "right">) {
-  if (x > graph.right - 126) {
-    return graph.right - 126;
+  const tooltipWidth = 154;
+  if (x > graph.right - tooltipWidth) {
+    return graph.right - tooltipWidth;
   }
 
   return Math.max(graph.left, x + 12);
@@ -2956,11 +3064,28 @@ function getNiceGraphMax(value: number) {
 }
 
 function getWpmTicks(maxWpm: number) {
-  return [0, Math.round(maxWpm / 2), maxWpm];
+  return Array.from({ length: Math.floor(maxWpm / 15) + 1 }, (_, index) => index * 15);
 }
 
 function getTimeTicks(maxTime: number) {
-  return Array.from(new Set([0, Math.round(maxTime / 2), maxTime]));
+  const divisions = maxTime < 15 ? Math.max(1, Math.round(maxTime)) : maxTime < 60 ? 15 : 20;
+  return getEvenGraphTicks(maxTime, divisions);
+}
+
+function getEvenGraphTicks(maxValue: number, divisions: number) {
+  return Array.from({ length: divisions + 1 }, (_, index) => roundOne((maxValue * index) / divisions));
+}
+
+function formatGraphTick(value: number) {
+  return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+}
+
+function getErrorTicks(maxErrors: number) {
+  if (maxErrors <= 5) return Array.from({ length: maxErrors + 1 }, (_, index) => index);
+  const step = Math.ceil(maxErrors / 5);
+  const ticks = Array.from({ length: Math.ceil(maxErrors / step) + 1 }, (_, index) => index * step);
+  if (ticks[ticks.length - 1] !== maxErrors) ticks.push(maxErrors);
+  return ticks;
 }
 
 function getStableGraphMax(points: AttemptTimelinePoint[], result: TypingResult) {

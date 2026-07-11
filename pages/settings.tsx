@@ -39,7 +39,9 @@ export default function SettingsPage() {
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(DEFAULT_THEME_SETTINGS);
   const [rules, setRules] = useState<TypingRules>(DEFAULT_RULES);
   const [activeSectionId, setActiveSectionId] = useState(SETTINGS_NAV_ITEMS[0].id);
+  const [showSavedFeedback, setShowSavedFeedback] = useState(false);
   const soundPlayer = useRef(createKeyboardSoundPlayer());
+  const savedFeedbackTimerRef = useRef<number | null>(null);
   const selectedSoundOption = useMemo(
     () => KEYBOARD_SOUND_OPTIONS.find((option) => option.value === keyboardSoundSetting) ?? KEYBOARD_SOUND_OPTIONS[0],
     [keyboardSoundSetting]
@@ -53,6 +55,16 @@ export default function SettingsPage() {
     setRules(readStoredRules());
     soundPlayer.current.preload(savedSoundSetting);
   }, []);
+
+  useEffect(() => () => {
+    if (savedFeedbackTimerRef.current !== null) window.clearTimeout(savedFeedbackTimerRef.current);
+  }, []);
+
+  function announceSaved() {
+    setShowSavedFeedback(true);
+    if (savedFeedbackTimerRef.current !== null) window.clearTimeout(savedFeedbackTimerRef.current);
+    savedFeedbackTimerRef.current = window.setTimeout(() => setShowSavedFeedback(false), 1800);
+  }
 
   useEffect(() => {
     if (typeof IntersectionObserver === "undefined") {
@@ -83,6 +95,7 @@ export default function SettingsPage() {
   function handleKeyboardSoundSetting(nextSetting: KeyboardSoundSetting) {
     setKeyboardSoundSetting(nextSetting);
     writeKeyboardSoundSetting(nextSetting);
+    announceSaved();
     if (isRecordedKeyboardSoundSetting(nextSetting)) {
       void soundPlayer.current.reload(nextSetting).then(() => {
         soundPlayer.current.play(nextSetting, "normal", keyboardSoundVolume);
@@ -99,12 +112,14 @@ export default function SettingsPage() {
   function handleKeyboardSoundVolume(nextVolume: number) {
     setKeyboardSoundVolume(nextVolume);
     writeKeyboardSoundVolume(nextVolume);
+    announceSaved();
     if (keyboardSoundSetting !== "off") {
       soundPlayer.current.play(keyboardSoundSetting, "normal", nextVolume);
     }
   }
 
   function handleThemeSetting<Key extends keyof ThemeSettings>(key: Key, value: ThemeSettings[Key]) {
+    announceSaved();
     setThemeSettings((current) => {
       const nextSettings = { ...current, [key]: value };
       writeThemeSettings(nextSettings);
@@ -113,6 +128,7 @@ export default function SettingsPage() {
   }
 
   function handleThemePreset(preset: ThemePresetOption) {
+    announceSaved();
     setThemeSettings((current) => {
       const nextSettings: ThemeSettings = {
         ...current,
@@ -126,6 +142,7 @@ export default function SettingsPage() {
   }
 
   function handleRuleSetting<Key extends keyof TypingRules>(key: Key, value: TypingRules[Key]) {
+    announceSaved();
     setRules((current) => {
       const nextRules = { ...current, [key]: value };
       writeStoredRules(nextRules);
@@ -139,6 +156,9 @@ export default function SettingsPage() {
         <div className="mb-6 rounded-xl border border-paper/10 bg-ink-900/45 p-5 shadow-glow backdrop-blur">
           <p className="font-mono text-xs uppercase text-brass">Preferences</p>
           <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Settings</h1>
+          <div role="status" aria-live="polite" className="mt-2 min-h-5 font-mono text-xs text-mint">
+            {showSavedFeedback ? "Saved automatically" : "Changes save automatically"}
+          </div>
         </div>
 
         <div

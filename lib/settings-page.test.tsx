@@ -76,6 +76,14 @@ describe("SettingsPage", () => {
     expect(mockState.routerReplace).not.toHaveBeenCalled();
   });
 
+  it("announces that preference changes are saved automatically", () => {
+    render(<SettingsPage />);
+
+    expect(screen.getByRole("status").textContent).toContain("Changes save automatically");
+    fireEvent.click(screen.getByRole("button", { name: "Light mode" }));
+    expect(screen.getByRole("status").textContent).toContain("Saved automatically");
+  });
+
   it("renders keyboard sound choices and volume slider in a sound section", () => {
     render(<SettingsPage />);
 

@@ -192,23 +192,17 @@ describe("PracticePage passage loading", () => {
 
     const shell = container.querySelector(".formaltype-practice-shell");
     const viewport = screen.getByTestId("typing-viewport");
-    const timer = screen.getByTestId("typing-timer");
-    const timerSlot = screen.getByTestId("typing-timer-slot");
-    const initialTimerSlotClassName = timerSlot.className;
-
-    expect(screen.getAllByTestId("typing-timer")).toHaveLength(1);
+    expect(screen.queryByTestId("typing-timer")).toBeNull();
     expect(screen.queryByTestId("typing-timer-overlay")).toBeNull();
-    expect(timer.textContent).toBe("1:00");
-    expect(shell?.contains(timer)).toBe(false);
-    expect(viewport.contains(timer)).toBe(false);
-    expect(screen.getByTestId("practice-header").contains(timerSlot)).toBe(true);
 
     fireEvent.keyDown(window, { key: "Tab" });
-    expect(screen.getByTestId("typing-timer").textContent).toBe("1:00");
+    const timer = screen.getByTestId("typing-timer");
+    expect(timer.textContent).toBe("1:00");
+    expect(shell?.contains(timer)).toBe(true);
+    expect(viewport.contains(timer)).toBe(false);
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
     expect(screen.getByTestId("typing-timer").textContent).toBe("1:00");
-    expect(screen.getByTestId("typing-timer-slot").className).toBe(initialTimerSlotClassName);
   });
 
   it("keeps the English Practice target layout stable when typing starts", async () => {
@@ -232,14 +226,17 @@ describe("PracticePage passage loading", () => {
     const idleTextContainerClassName = textContainer.className;
 
     expect(idleShellClassName).toContain("flex");
+    expect(idleShellClassName).not.toContain("ring-1");
+    expect(idleShellClassName).not.toContain("ring-paper/5");
     expect(idleViewportClassName).toContain("h-full");
     expect(idleViewportClassName).not.toContain("h-[340px]");
 
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
-    expect(shell.className).not.toBe(idleShellClassName);
+    expect(shell.className).toBe(idleShellClassName);
     expect(shell.getAttribute("data-focus-mode")).toBe("true");
+    expect(screen.getByTestId("practice-header").className).toContain("invisible");
     expect(screen.getByTestId("typing-viewport").className).toBe(idleViewportClassName);
     expect(screen.getByTestId("typing-text-container").className).toBe(idleTextContainerClassName);
   });
@@ -287,14 +284,15 @@ describe("PracticePage passage loading", () => {
       nativeEvent: { isComposing: false, data: "客" }
     });
 
-    expect(shell.className).not.toBe(idleShellClassName);
+    expect(shell.className).toBe(idleShellClassName);
     expect(shell.getAttribute("data-focus-mode")).toBe("true");
+    expect(screen.getByTestId("practice-header").className).toContain("invisible");
     expect(screen.getByTestId("chinese-target-viewport").className).toBe(idleViewportClassName);
     expect(screen.getByTestId("chinese-input-area").className).toBe(idleInputAreaClassName);
     expect(screen.getByTestId("typing-text-container").className).toBe(idleTextContainerClassName);
   });
 
-  it("uses the same header timer slot for Infinite Practice elapsed time", async () => {
+  it("reveals Infinite Practice elapsed time only after Tab", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
       JSON.stringify([makePassage("local", "Local active", "Local fallback body text.")])
@@ -313,10 +311,12 @@ describe("PracticePage passage loading", () => {
       expect(screen.getByTestId("practice-passage-metadata").textContent).toContain("Infinite");
     });
 
+    expect(screen.queryByTestId("typing-timer")).toBeNull();
+    fireEvent.keyDown(window, { key: "Tab" });
     const timer = screen.getByTestId("typing-timer");
     expect(screen.getAllByTestId("typing-timer")).toHaveLength(1);
     expect(timer.textContent).toBe("0:00");
-    expect(container.querySelector(".formaltype-practice-shell")?.contains(timer)).toBe(false);
+    expect(container.querySelector(".formaltype-practice-shell")?.contains(timer)).toBe(true);
     expect(screen.queryByTestId("typing-timer-overlay")).toBeNull();
   });
 
@@ -370,7 +370,7 @@ describe("PracticePage passage loading", () => {
 
     expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("typing-timer").textContent).toBe("0:00");
+    expect(screen.queryByTestId("typing-timer")).toBeNull();
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.durationSeconds).toBe(60);
     expect(getResultAnalyticsDomain({ category: mockedSaveSupabaseTypingResult.mock.calls[0][0].passage.category })).toBe("english");
 
@@ -430,13 +430,12 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text for five minute expiry.");
     });
     fireEvent.click(screen.getByRole("button", { name: "5m" }));
-    await waitFor(() => {
-      expect(screen.getByTestId("typing-timer").textContent).toBe("5:00");
-    });
+    expect(screen.queryByTestId("typing-timer")).toBeNull();
 
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-07T12:00:00.000Z"));
     fireEvent.keyDown(window, { key: "Tab" });
+    expect(screen.getByTestId("typing-timer").textContent).toBe("5:00");
     typeIncrementally(screen.getByLabelText("Typing input"), "Local");
 
     await act(async () => {
@@ -445,7 +444,7 @@ describe("PracticePage passage loading", () => {
 
     expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("typing-timer").textContent).toBe("0:00");
+    expect(screen.queryByTestId("typing-timer")).toBeNull();
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.durationSeconds).toBe(300);
   });
 
@@ -1239,6 +1238,43 @@ describe("PracticePage passage loading", () => {
     expect(screen.getByText("Right Ring")).toBeTruthy();
     expect(screen.getAllByText("Left Pinky").length).toBeGreaterThan(0);
     expect(screen.getByText("Wrong hand")).toBeTruthy();
+    const errorMarker = screen.getByRole("img", { name: "WPM over time" }).querySelector('[data-testid="attempt-error-marker"]');
+    expect(errorMarker).toBeTruthy();
+    expect(errorMarker?.querySelector("line")?.getAttribute("stroke")).toBe("rgb(var(--chart-danger))");
+  });
+
+  it("keeps a corrected typo visible as an X on the result graph", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text for typing");
+    });
+
+    const input = screen.getByLabelText("Typing input");
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(input, { target: { value: "X" } });
+    fireEvent.change(input, { target: { value: "Xo" } });
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.change(input, { target: { value: "X" } });
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.change(input, { target: { value: "L" } });
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByText("Errors encountered")).toBeTruthy();
+    });
+    const chart = screen.getByRole("img", { name: "WPM over time" });
+    const marker = chart.querySelector('[data-testid="attempt-error-marker"]');
+    expect(marker).toBeTruthy();
+    expect(marker?.getAttribute("data-error-count")).toBe("2");
+    expect(marker?.querySelector("line")?.getAttribute("stroke")).toBe("rgb(var(--chart-danger))");
+    expect(screen.getByText("Errors encountered").parentElement?.textContent).toContain("2");
+    expect(screen.queryByText("Corrected errors")).toBeNull();
   });
 
   it("plays keyboard sound only for valid typing changes during a running session", async () => {

@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import React, { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, UserCircle, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { ProfileSectionNav } from "@/components/ProfileSectionNav";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import { ANALYTICS_DOMAIN_OPTIONS, AnalyticsDomain } from "@/lib/analyticsDomain";
@@ -223,11 +224,14 @@ export default function FriendsPage() {
             </div>
           )}
         </div>
+        <ProfileSectionNav />
 
         {user && (
           <div className="mt-6 space-y-4">
             {friendsMessage && (
               <div
+                role={friendsMessageKind === "error" ? "alert" : "status"}
+                aria-live={friendsMessageKind === "error" ? "assertive" : "polite"}
                 className={`rounded-md border px-4 py-3 font-mono text-sm ${
                   friendsMessageKind === "error"
                     ? "border-ember/25 bg-ember/10 text-ember"
@@ -239,7 +243,7 @@ export default function FriendsPage() {
             )}
 
             {isLoadingFriends && (
-              <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-sm text-paper/45">
+              <div role="status" aria-live="polite" className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-sm text-paper/45">
                 Loading friends...
               </div>
             )}
