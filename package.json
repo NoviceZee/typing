@@ -7,6 +7,7 @@
     "build": "next build",
     "lint": "next lint",
     "test": "vitest run",
+    "content:english": "node scripts/buildEnglishLongformMigration.mjs",
     "test:supabase-passages": "node --experimental-strip-types scripts/testSupabasePassages.ts",
     "test:supabase-typing-results": "node --experimental-strip-types scripts/testSupabaseTypingResults.ts",
     "test:supabase-leaderboard": "node --experimental-strip-types scripts/testSupabaseLeaderboard.ts",
