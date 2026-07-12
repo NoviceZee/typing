@@ -42,6 +42,17 @@ describe("typing rule comparison", () => {
     expect(comparison.characterStatuses[0]).toMatchObject({ expected: "D", actual: "d", status: "wrong" });
   });
 
+  it("does not report visually identical IME text as wrong because of Unicode variants", () => {
+    const comparison = validateTypedText({
+      targetText: "願以十五城請易璧。",
+      typedText: "願以十五城請易璧\uFE0F。",
+      rules: DEFAULT_RULES
+    });
+
+    expect(comparison.incorrectCharacters).toBe(0);
+    expect(comparison.correctCharacters).toBe(9);
+  });
+
   it("ignores case differences when case-sensitive mode is disabled", () => {
     const comparison = validateTypedText({
       targetText: "Dear Sir",

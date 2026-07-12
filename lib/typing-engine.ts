@@ -15,6 +15,14 @@ export type PracticeCategory =
   | "環境"
   | "健康"
   | "香港"
+  | "房屋"
+  | "土地"
+  | "交通"
+  | "民生"
+  | "養老"
+  | "勞工"
+  | "財政"
+  | "醫療"
   | "文言文"
   | "詩詞"
   | "numbers"
@@ -230,7 +238,15 @@ export function validateTypedText({
   typedText: string;
   rules: TypingRules;
 }): TypingComparison {
-  return compareTyping(normalizeTargetForRules(targetText, rules), typedText, rules);
+  return compareTyping(
+    normalizeComparableUnicode(normalizeTargetForRules(targetText, rules)),
+    normalizeComparableUnicode(typedText),
+    rules
+  );
+}
+
+export function normalizeComparableUnicode(value: string): string {
+  return value.normalize("NFKC").replace(/[\uFE00-\uFE0F]|\uDB40[\uDD00-\uDDEF]/g, "");
 }
 
 export function compareTyping(target: string, typed: string, rules: TypingRules): TypingComparison {
@@ -397,7 +413,7 @@ export function calculateResult(input: ResultInput): TypingResult {
 }
 
 export function isChinesePracticeCategory(category: string | null | undefined) {
-  return category === "生活" || category === "工作" || category === "教育" || category === "科技" || category === "文化" || category === "社會" || category === "環境" || category === "健康" || category === "香港";
+  return category === "生活" || category === "工作" || category === "教育" || category === "科技" || category === "文化" || category === "社會" || category === "環境" || category === "健康" || category === "香港" || category === "房屋" || category === "土地" || category === "交通" || category === "民生" || category === "養老" || category === "勞工" || category === "財政" || category === "醫療" || category === "文言文" || category === "詩詞";
 }
 
 export function getRequiredWordCount(durationSeconds: number): number {
