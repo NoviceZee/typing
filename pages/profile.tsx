@@ -307,8 +307,10 @@ export default function ProfilePage() {
               </div>
             )}
 
-            <AnalyticsDomainSelector value={analyticsDomain} onChange={setAnalyticsDomain} />
-            <ProfileViewPreferences value={displaySettings} onChange={(next) => { setDisplaySettings(next); writeProfileDisplaySettings(next); if (next.defaultTrendRange !== displaySettings.defaultTrendRange) setTrendRange(next.defaultTrendRange); }} />
+            <section className="flex flex-col gap-3 rounded-lg border border-paper/10 bg-ink-950/55 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+              <AnalyticsDomainSelector value={analyticsDomain} onChange={setAnalyticsDomain} />
+              <ProfileViewPreferences value={displaySettings} onChange={(next) => { setDisplaySettings(next); writeProfileDisplaySettings(next); if (next.defaultTrendRange !== displaySettings.defaultTrendRange) setTrendRange(next.defaultTrendRange); }} />
+            </section>
 
             {isLoadingResults && (
               <div role="status" aria-live="polite" className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-sm text-paper/45">
@@ -405,15 +407,13 @@ function AnalyticsDomainSelector({
 }
 
 function ProfileViewPreferences({ value, onChange }: { value: ProfileDisplaySettings; onChange: (value: ProfileDisplaySettings) => void }) {
-  return <section className="rounded-lg border border-paper/10 bg-ink-950/55 px-4 py-3">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-mono text-xs uppercase text-paper/55">View preferences</p><p className="mt-1 text-xs text-paper/35">Saved on this device</p></div>
+  return <div className="flex flex-wrap items-center justify-between gap-3"><div className="lg:hidden"><p className="font-mono text-xs uppercase text-paper/55">View preferences</p><p className="mt-1 text-xs text-paper/35">Saved on this device</p></div>
       <div className="flex flex-wrap gap-4 font-mono text-xs">
         <PreferenceButtons label="Speed unit" value={value.speedUnit} options={[{value:"wpm",label:"WPM"},{value:"cpm",label:"CPM"}]} onChange={(speedUnit) => onChange({...value,speedUnit: speedUnit as ProfileDisplaySettings["speedUnit"]})} />
         <PreferenceButtons label="Decimals" value={value.showDecimals ? "on" : "off"} options={[{value:"on",label:"On"},{value:"off",label:"Off"}]} onChange={(next) => onChange({...value,showDecimals:next === "on"})} />
         <PreferenceButtons label="Default range" value={value.defaultTrendRange} options={[{value:"30",label:"30"},{value:"90",label:"90"},{value:"all",label:"All"}]} onChange={(defaultTrendRange) => onChange({...value,defaultTrendRange: defaultTrendRange as TrendRange})} />
       </div>
-    </div>
-  </section>;
+    </div>;
 }
 
 function PreferenceButtons({ label, value, options, onChange }: { label: string; value: string; options: {value:string;label:string}[]; onChange:(value:string)=>void }) {
@@ -551,7 +551,9 @@ function ProfileIdentityCard({
         <IdentityStat label="Current streak" value={`${analytics.activity.currentStreakDays} days`} />
       </div>
 
-      <form onSubmit={onSaveIdentity} className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_14rem_12rem]">
+      <details className="mt-5 rounded-md border border-paper/10 bg-ink-900/35">
+        <summary className="cursor-pointer px-4 py-3 font-mono text-xs uppercase text-paper/55 transition hover:text-paper">Edit identity and visibility</summary>
+      <form onSubmit={onSaveIdentity} className="grid gap-4 border-t border-paper/10 p-4 lg:grid-cols-[minmax(0,1fr)_14rem_12rem]">
         <label className="block">
           <span className="font-mono text-xs uppercase text-paper/45">Bio</span>
           <textarea
@@ -610,6 +612,7 @@ function ProfileIdentityCard({
           {identityError}
         </div>
       )}
+      </details>
     </section>
   );
 }
@@ -1055,9 +1058,12 @@ function TypingWeaknessesSection({
         </p>
       ) : (
         <>
-          <div className="mt-5">
-            <KeyboardHeatmap keysByCharacter={keysByCharacter} mode={heatmapMode} />
-          </div>
+          <details className="mt-5 rounded-md border border-paper/10 bg-ink-900/35">
+            <summary className="flex cursor-pointer items-center justify-between px-4 py-3 font-mono text-xs uppercase text-paper/60 transition hover:text-paper">
+              <span>Keyboard heatmap</span><span className="text-paper/30">Open detailed key map</span>
+            </summary>
+            <div className="border-t border-paper/10 p-3"><KeyboardHeatmap keysByCharacter={keysByCharacter} mode={heatmapMode} /></div>
+          </details>
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <WeakKeysPanel keys={statistics.weakKeys} />
             <CommonMistakesPanel mistakes={statistics.commonMistakes} />

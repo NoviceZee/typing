@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { TYPING_ATTEMPT_DETAILS_STORAGE_KEY } from "@/lib/typingStatistics";
 
 function requireClient() {
   if (!supabase) throw new Error("Supabase is not configured yet.");
@@ -21,6 +22,6 @@ export async function deleteCurrentUserStats() {
   const { error } = await requireClient().rpc("delete_current_user_stats");
   if (error) throw error;
   if (typeof window !== "undefined") {
-    ["formaltype_previous_results", "formaltype_typing_attempt_details", "formaltype_previous_result"].forEach((key) => window.localStorage.removeItem(key));
+    ["formaltype_previous_results", "formaltype_previous_result", TYPING_ATTEMPT_DETAILS_STORAGE_KEY].forEach((key) => window.localStorage.removeItem(key));
   }
 }

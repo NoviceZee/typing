@@ -200,7 +200,7 @@ function HeaderAuthAction() {
   }, [isOpen]);
 
   if (isLoading) {
-    return <span role="status" aria-label="Checking login" className="block h-9 w-24 animate-pulse rounded-md border border-paper/10 bg-paper/[0.06]" />;
+    return <span role="status" aria-label="Checking login" className="block h-9 w-9 animate-pulse rounded-md border border-paper/10 bg-paper/[0.06] sm:w-36" />;
   }
 
   if (!user) {
@@ -254,10 +254,10 @@ function HeaderAuthAction() {
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((current) => !current)}
-        className="inline-flex max-w-[15rem] items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-2 py-2 font-mono text-xs text-paper/75 transition hover:border-brass/40 hover:text-paper sm:px-3"
+        className="inline-flex h-9 w-9 items-center justify-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-2 font-mono text-xs text-paper/75 transition hover:border-brass/40 hover:text-paper sm:w-36 sm:px-3"
       >
         <UserCircle className="h-4 w-4 text-brass" />
-        <span className="hidden truncate sm:inline">{accountLabel}</span>
+        <span className="hidden min-w-0 flex-1 truncate text-left sm:inline">{accountLabel}</span>
         <ChevronDown className={`h-3.5 w-3.5 transition ${isOpen ? "rotate-180" : ""}`} />
       </button>
       {isOpen && (
