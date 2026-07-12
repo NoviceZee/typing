@@ -18,6 +18,8 @@ const PRACTICE_CATEGORIES = [
   "環境",
   "健康",
   "香港",
+  "文言文",
+  "詩詞",
   "training_code",
   "training_chinese",
   "Uncategorised"

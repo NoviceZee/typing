@@ -51,6 +51,8 @@ export const CATEGORIES: PracticeCategory[] = [
   "環境",
   "健康",
   "香港",
+  "文言文",
+  "詩詞",
   "numbers",
   "symbols",
   "training_words",
