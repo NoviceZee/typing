@@ -5,6 +5,7 @@ import { LogIn, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { getSupabaseProfile } from "@/lib/profileStorage";
+import Link from "next/link";
 
 type AuthMode = "login" | "signup";
 
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
 
   const redirectTo = useMemo(() => {
     const rawRedirect = Array.isArray(router.query.redirectTo) ? router.query.redirectTo[0] : router.query.redirectTo;
@@ -128,10 +130,12 @@ export default function LoginPage() {
             </div>
           )}
 
+          {authMode === "signup" && <label className="flex items-start gap-3 rounded-md border border-paper/10 bg-paper/[0.025] px-3 py-3 text-sm leading-6 text-paper/55"><input type="checkbox" checked={acceptedLegal} onChange={(event) => setAcceptedLegal(event.target.checked)} required className="mt-1 accent-brass" /><span>I agree to the <Link href="/terms" className="text-brass hover:underline">Terms of Use</Link> and acknowledge the <Link href="/privacy" className="text-brass hover:underline">Privacy Policy</Link>.</span></label>}
+
           <div className="flex flex-wrap gap-3">
             <button
               type="submit"
-              disabled={!isConfigured || isSubmitting}
+              disabled={!isConfigured || isSubmitting || (authMode === "signup" && !acceptedLegal)}
               className="inline-flex items-center gap-2 rounded-md bg-brass px-4 py-2.5 font-mono text-sm font-semibold text-ink-950 transition hover:bg-brass/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <LogIn className="h-4 w-4" />

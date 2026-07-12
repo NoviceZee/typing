@@ -80,7 +80,7 @@ export default function Home() {
         <footer className="border-t border-paper/10 px-5 py-7 md:px-8">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 font-mono text-[11px] text-paper/30">
             <span>© {new Date().getFullYear()} FormalType</span>
-            <div className="flex gap-5"><Link href="/practice" className="hover:text-paper">Practice</Link><Link href="/settings" className="hover:text-paper">Settings</Link></div>
+            <div className="flex flex-wrap gap-5"><Link href="/practice" className="hover:text-paper">Practice</Link><Link href="/settings" className="hover:text-paper">Settings</Link><Link href="/terms" className="hover:text-paper">Terms</Link><Link href="/privacy" className="hover:text-paper">Privacy</Link><Link href="/security" className="hover:text-paper">Security</Link></div>
           </div>
         </footer>
       </main>

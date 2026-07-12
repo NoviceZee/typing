@@ -1,0 +1,11 @@
+import { LegalLayout, LegalSection } from "@/components/LegalLayout";
+
+export default function TermsPage() { return <LegalLayout title="Terms of Use" summary="The rules for using the FormalType beta, accounts, public profiles and community features.">
+  <LegalSection title="Using FormalType"><p>You may use FormalType for lawful personal typing practice. You are responsible for your account credentials, the accuracy of information you submit and activity performed through your account.</p></LegalSection>
+  <LegalSection title="Community and content"><p>Do not upload or publish unlawful, abusive, deceptive, infringing or privacy-invasive content. Handles, bios, passages and other public material may be removed when they harm users, the service or third parties.</p></LegalSection>
+  <LegalSection title="Results and availability"><p>Typing scores, analytics, rankings and training suggestions are informational and may change as measurement methods improve. The Beta may contain errors, change without notice or experience downtime. We do not promise uninterrupted availability or permanent retention of Beta data.</p></LegalSection>
+  <LegalSection title="Ownership"><p>FormalType and its original interface, software and branding remain owned by their respective owner. You retain rights in content you submit and grant FormalType permission to host and display it only as needed to operate features you choose to use.</p></LegalSection>
+  <LegalSection title="Suspension and deletion"><p>We may restrict accounts that abuse the service, manipulate rankings or threaten security. You may delete statistics or your account through Account settings. Deletion is irreversible once processed.</p></LegalSection>
+  <LegalSection title="Disclaimers and liability"><p>The service is provided on an “as available” basis to the extent permitted by law. FormalType is not liable for indirect loss, lost practice history or reliance on Beta analytics where liability can lawfully be limited.</p></LegalSection>
+  <LegalSection title="Changes and governing law"><p>Material changes will be announced in the service. Continued use after an effective date means you accept the updated terms. These terms are governed by the laws of Hong Kong, subject to mandatory rights that apply where you live.</p></LegalSection>
+</LegalLayout>; }

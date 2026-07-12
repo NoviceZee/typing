@@ -564,7 +564,7 @@ describe("TrainingPage", () => {
 
     expect(input.value).toBe(commit);
     expect(getCurrentCharacterIndex()).toBe(0);
-    expect(screen.getByText("Tab = start")).toBeTruthy();
+    expect(screen.getByText("Timer running")).toBeTruthy();
 
     fireEvent.compositionEnd(input, { data: "", target: { value: commit } });
     fireEvent.input(input, { target: { value: commit }, data: commit, inputType: "insertText" });
@@ -597,7 +597,7 @@ describe("TrainingPage", () => {
     fireEvent.input(input, { target: { value: "日月" }, data: "日月", inputType: "insertText" });
 
     expect(getCurrentCharacterIndex()).toBe(0);
-    expect(screen.getByText("Tab = start")).toBeTruthy();
+    expect(screen.getByText("Timer running")).toBeTruthy();
 
     fireEvent.compositionEnd(input, { data: "", target: { value: commit } });
     fireEvent.input(input, { target: { value: commit }, data: commit, inputType: "insertText" });
@@ -713,7 +713,7 @@ describe("TrainingPage", () => {
     expect(getCurrentCharacterIndex()).toBeGreaterThanOrEqual(1);
   });
 
-  it("does not start the Chinese timer until committed Chinese text flushes", async () => {
+  it("starts the Chinese timer on Tab so IME composition and candidate selection count", async () => {
     render(<TrainingPage />);
     const contentGroup = screen.getByRole("group", { name: "Content" });
 
@@ -730,24 +730,24 @@ describe("TrainingPage", () => {
     fireEvent.input(input, { target: { value: "ha" }, data: "ha", inputType: "insertCompositionText" });
 
     expect(screen.queryByText("Time up")).toBeNull();
-    expect(screen.getByText("Tab = start")).toBeTruthy();
+    expect(screen.queryByText("Tab = start")).toBeNull();
 
     fireEvent.compositionEnd(input, { data: "" });
     await act(async () => {
       await Promise.resolve();
     });
-    expect(screen.getByText("Tab = start")).toBeTruthy();
+    expect(screen.queryByText("Tab = start")).toBeNull();
 
     fireEvent.input(input, { target: { value: commit }, data: commit, inputType: "insertText" });
 
     await waitFor(() => {
-      expect(screen.getByText("Tab = start")).toBeTruthy();
+      expect(screen.queryByText("Tab = start")).toBeNull();
     });
     expect(input.value).toBe(commit);
     expect(getCurrentCharacterIndex()).toBe(1);
   });
 
-  it("focuses the Chinese IME sink with Tab without starting the timer", async () => {
+  it("focuses the Chinese IME sink and starts the timer with Tab", async () => {
     render(<TrainingPage />);
     const contentGroup = screen.getByRole("group", { name: "Content" });
 
@@ -760,7 +760,7 @@ describe("TrainingPage", () => {
     fireEvent.keyDown(window, { key: "Tab" });
 
     expect(document.activeElement).toBe(input);
-    expect(screen.getByText("Tab = start")).toBeTruthy();
+    expect(screen.queryByText("Tab = start")).toBeNull();
   });
 
   it("keeps committed Chinese text intact while Backspace clears an active IME draft", async () => {

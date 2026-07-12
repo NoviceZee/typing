@@ -719,6 +719,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           isInputActivatedRef.current = true;
           setIsInputActivated(true);
           if (shouldUseChineseImeSink) {
+            startSession();
             chineseImeInputRef.current?.focus({ preventScroll: true });
             return;
           }
@@ -759,7 +760,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", resetTabState);
     };
-  }, [finishTest, isRunning, resetSession, rules.requireTabToStart, shouldUseChineseImeSink, status]);
+  }, [finishTest, isRunning, resetSession, rules.requireTabToStart, shouldUseChineseImeSink, startSession, status]);
 
   useEffect(() => {
     if (isRunning) {
@@ -1504,6 +1505,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
               isInputActivatedRef.current = true;
               setIsInputActivated(true);
               if (shouldUseChineseImeSink) {
+                startSession();
                 chineseImeInputRef.current?.focus({ preventScroll: true });
                 return;
               }
@@ -1657,7 +1659,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
         {(status === "idle" || isFocusMode) && (
           <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-xs text-paper/30">
-            <span>Tab = start</span>
+            {status === "idle" || !shouldUseChineseImeSink ? <span>Tab = start</span> : <span>Timer running</span>}
             <span>Tab + Enter = restart</span>
             <span>Esc = finish</span>
           </div>
