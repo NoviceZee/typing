@@ -9,7 +9,7 @@ create temporary table formaltype_english_longform_seed (
   language text not null,
   is_active boolean not null,
   is_public boolean not null
-+) on commit drop;
+) on commit drop;
 
 insert into formaltype_english_longform_seed (title, category, style, content, language, is_active, is_public) values
   ('A Clear Project Handover', 'Business email', 'English longform v1', $formaltype$This message sets out a practical approach to handing a complex project to a new team. It is intended to make the requested action, supporting reasons, and next steps easy to identify. A useful business message should be concise without becoming incomplete, and courteous without hiding the decision that is needed.
