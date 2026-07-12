@@ -161,30 +161,6 @@ from (values
 ) as final_addition(title, content)
 where passage.title = final_addition.title;
 
-do $$
-declare
-  missing_count integer;
-  short_count integer;
-begin
-  select count(*) into missing_count
-  from (values
-    ('房屋'), ('土地'), ('環境'), ('交通'), ('教育'), ('民生'), ('養老'), ('勞工'), ('財政'), ('醫療'), ('科技')
-  ) as required(category)
-  where (select count(*) from public.passages p where p.category = required.category and p.language = 'chinese' and p.style = 'Modern essay' and p.is_active) < 5;
-
-  select count(*) into short_count
-  from public.passages
-  where category in ('房屋', '土地', '環境', '交通', '教育', '民生', '養老', '勞工', '財政', '醫療', '科技')
-    and language = 'chinese'
-    and style = 'Modern essay'
-    and is_active
-    and char_length(content) < 500;
-
-  if missing_count > 0 or short_count > 0 then
-    raise exception 'Modern Chinese coverage incomplete: % categories below five passages, % active passages below 500 characters', missing_count, short_count;
-  end if;
-end $$;
-
 update public.passages as passage set content = expanded.content, updated_at = now()
 from (values
   ('最低工資與生活成本', '最低工資為勞動提供底線，但調整若長期追不上生活成本，保障便會逐漸減弱。檢討時應同時考慮工人收入、企業承受力和整體物價，並為小型企業提供轉型支援。合理工資不只減少貧窮，也能降低流失和提升工作穩定。討論標準時，不能只看平均工資，還要了解基層家庭的租金、交通和食物支出。調整週期過長會令實際購買力在高通脹期間快速下降，因此可設定較頻密而透明的檢討。企業擔心成本轉嫁和職位減少，政府應分析不同行業毛利與人手比例，而不是把所有公司視作相同。對受壓小店，可提供數碼化、節能和流程改善支援，但不宜以補貼長期維持低效率。最低工資亦要配合工時紀錄和執法，防止僱主以無薪準備或虛假自僱規避。社會保障則應處理家庭差異，不能要求工資制度獨力解決所有貧窮。政策成效可觀察收入、就業、工時和員工流失，而非只看職位總數。工資底線表達社會對勞動尊嚴的最低承諾，制定時既要審慎，也不能讓最弱議價者長期承擔經濟調整。'),
@@ -229,3 +205,27 @@ from (values
   ('教師時間也是教育資源', '教師除了授課，還要處理行政、活動、評估和學生支援。當文書工作佔用過多時間，備課與個別關顧便會被壓縮。精簡重複報告、改善資訊系統和增加專業支援，不只是減輕壓力，更是把有限時間重新投放到學生身上。學校可先盤點每項表格和會議是否真正支援決策，沒有明確用途的要求應取消。相同資料若由不同部門反覆收集，應透過安全系統共用。活動行政、採購和技術支援可由專責人員承擔，讓教師集中教學專業。課表亦要預留共同備課和觀課時間，促進同事分享教材，而不是各自加班完成。新入職教師需要導師和較合理課擔，才能在早期建立能力。對有特殊需要或情緒困難的學生，社工、心理和治療專業應與教師形成團隊，不能把所有問題交由班主任處理。減少工作量不等於降低問責，學校仍可用學生學習和支援結果檢視成效。關鍵是把問責由文件數量轉向真正改善。教師的注意力每天有限，制度如何分配這些時間，最終會反映在課堂質素和學生是否被看見。'),
   ('閱讀能力如何建立', '閱讀能力不是記住生字和段落大意而已。學生需要分辨作者觀點、理解證據，並把不同文本互相比較。學校可提供難度漸進而題材多元的讀物，讓學生自由選擇一部分內容。當閱讀與真實興趣連結，持續習慣才較容易形成。初階讀者需要流暢度和詞彙支援，但操練不應取代完整閱讀。教師可示範如何預測、提問、找線索和修正理解，讓思考過程變得可見。進階階段則應接觸新聞、圖表、評論和文學，學習判斷來源與語氣。討論時，學生要引用文本支持觀點，也要聆聽不同解讀。圖書館應有充足選擇和安靜時間，借閱規則則不宜令怕遺失書本的家庭卻步。家長即使未能教授內容，也可透過一起閱讀和談論故事建立氣氛。數碼閱讀方便搜尋，但通知和連結可能分散注意，學生需學習按目的選擇媒介。閱讀能力由長期接觸累積，不能靠考前技巧突然形成。當學生發現文字能回答自己的問題、帶他進入陌生經驗，閱讀才會由學科要求變成終身工具。')
 ) as expanded(title, content) where passage.title = expanded.title;
+
+do $$
+declare
+  missing_count integer;
+  short_count integer;
+begin
+  select count(*) into missing_count
+  from (values
+    ('房屋'), ('土地'), ('環境'), ('交通'), ('教育'), ('民生'), ('養老'), ('勞工'), ('財政'), ('醫療'), ('科技')
+  ) as required(category)
+  where (select count(*) from public.passages p where p.category = required.category and p.language = 'chinese' and p.style = 'Modern essay' and p.is_active) < 5;
+
+  select count(*) into short_count
+  from public.passages
+  where category in ('房屋', '土地', '環境', '交通', '教育', '民生', '養老', '勞工', '財政', '醫療', '科技')
+    and language = 'chinese'
+    and style = 'Modern essay'
+    and is_active
+    and char_length(content) < 500;
+
+  if missing_count > 0 or short_count > 0 then
+    raise exception 'Modern Chinese coverage incomplete: % categories below five passages, % active passages below 500 characters', missing_count, short_count;
+  end if;
+end $$;
