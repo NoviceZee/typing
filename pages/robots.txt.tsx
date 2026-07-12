@@ -1,0 +1,3 @@
+import type { GetServerSideProps } from "next";
+export default function Robots() { return null; }
+export const getServerSideProps: GetServerSideProps = async ({ res }) => { const base = process.env.NEXT_PUBLIC_SITE_URL || "https://formaltype.app"; res.setHeader("Content-Type", "text/plain"); res.write(`User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`); res.end(); return { props: {} }; };

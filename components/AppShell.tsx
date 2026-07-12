@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Script from "next/script";
 import { useRouter } from "next/router";
 import React, { ReactNode, useEffect, useRef, useState } from "react";
 import { ChevronDown, LogIn, LogOut, Menu, UserCircle, X } from "lucide-react";
@@ -47,6 +48,7 @@ export function AppShell({
 
   return (
     <main className="min-h-screen px-5 py-5 text-paper md:px-8">
+      {process.env.NEXT_PUBLIC_ADSENSE_CLIENT && <Script async strategy="afterInteractive" crossOrigin="anonymous" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT}`} />}
       <a
         href="#main-content"
         className="sr-only z-[100] rounded-md bg-paper px-3 py-2 font-mono text-sm text-ink-950 focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
@@ -196,7 +198,7 @@ function HeaderAuthAction() {
   }, [isOpen]);
 
   if (isLoading) {
-    return <span role="status" aria-live="polite" className="font-mono text-xs text-paper/35">Checking login...</span>;
+    return <span role="status" aria-label="Checking login" className="block h-9 w-24 animate-pulse rounded-md border border-paper/10 bg-paper/[0.06]" />;
   }
 
   if (!user) {
@@ -302,6 +304,18 @@ function AccountMenuLink({ href, label, onClick }: { href: string; label: string
 }
 
 export function AdPlaceholder({ variant }: { variant: "banner" | "sidebar" | "mobile" }) {
+  const adClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
+  const slot = variant === "sidebar" ? process.env.NEXT_PUBLIC_ADSENSE_SIDEBAR_SLOT : process.env.NEXT_PUBLIC_ADSENSE_BANNER_SLOT;
+
+  useEffect(() => {
+    if (!adClient || !slot) return;
+    try {
+      const adsWindow = window as typeof window & { adsbygoogle?: Record<string, unknown>[] };
+      (adsWindow.adsbygoogle = adsWindow.adsbygoogle || []).push({});
+    } catch {
+      // Ad blockers and unfilled beta inventory should never interrupt practice.
+    }
+  }, [adClient, slot]);
   const className =
     variant === "sidebar"
       ? "h-[250px] w-[300px]"
@@ -309,11 +323,12 @@ export function AdPlaceholder({ variant }: { variant: "banner" | "sidebar" | "mo
         ? "mx-auto hidden h-[90px] w-full max-w-[728px] md:grid"
         : "grid h-[90px] w-full";
 
+  if (!adClient || !slot) return null;
   return (
     <div
-      className={`${className} place-items-center rounded-md border border-dashed border-paper/15 bg-ink-900/45 font-mono text-xs uppercase text-paper/30`}
+      className={`${className} overflow-hidden`}
     >
-      Ad space
+      <ins className="adsbygoogle block h-full w-full" data-ad-client={adClient} data-ad-slot={slot} data-ad-format={variant === "sidebar" ? "rectangle" : "horizontal"} data-full-width-responsive="true" />
     </div>
   );
 }

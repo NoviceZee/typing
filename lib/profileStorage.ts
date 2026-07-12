@@ -223,6 +223,20 @@ export async function updateSupabaseProfileIdentity(
   return data;
 }
 
+export async function updateSupabaseProfileDisplayName(
+  userId: string,
+  displayName: string,
+  client = requireSupabaseClient()
+): Promise<SupabaseProfile> {
+  const cleanDisplayName = displayName.trim();
+  if (cleanDisplayName.length < 2 || cleanDisplayName.length > 40) {
+    throw new Error("Display name must be 2-40 characters.");
+  }
+  const { data, error } = await client.from("profiles").update({ display_name: cleanDisplayName }).eq("user_id", userId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
 export function normalizeHandle(handle: string) {
   return handle.trim().toLowerCase();
 }

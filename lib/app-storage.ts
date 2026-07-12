@@ -186,8 +186,8 @@ export type PassageLibraryImportResult = {
 
 export type ThemeMode = "dark" | "light" | "system";
 export type AccentColor = "blue" | "purple" | "emerald" | "rose" | "amber" | "cyan" | "lime" | "red" | "orange";
-export type AppFont = "system" | "sans" | "serif" | "rounded";
-export type TypingFont = "system-mono" | "serif";
+export type AppFont = "system" | "sans" | "serif" | "rounded" | "humanist" | "grotesk" | "mono" | "editorial";
+export type TypingFont = "system-mono" | "serif" | "code" | "humanist-mono" | "geometric-mono" | "accessible" | "cjk";
 export type TypingTextSize = "small" | "medium" | "large";
 export type TypingWidth = "compact" | "comfortable" | "wide";
 export type ThemePreset =
@@ -202,7 +202,14 @@ export type ThemePreset =
   | "tangerine"
   | "matcha"
   | "milkshake"
-  | "paper";
+  | "paper"
+  | "gruvbox-dark"
+  | "rose-pine-moon"
+  | "terminal"
+  | "modern-ink"
+  | "serika"
+  | "copper"
+  | "iceberg";
 export type CaretStyle = "bar" | "block" | "underline";
 export type CaretBlink = "on" | "off";
 export type TypingColorStyle = "theme-default" | "high-contrast" | "soft";
@@ -403,6 +410,34 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
       accent: "#b7791f",
       muted: "#8d806d"
     }
+  },
+  {
+    value: "gruvbox-dark", label: "Gruvbox Dark", mode: "dark", accentColor: "amber",
+    preview: { background: "#282828", surface: "#3c3836", text: "#ebdbb2", accent: "#fabd2f", muted: "#928374" }
+  },
+  {
+    value: "rose-pine-moon", label: "Rose Pine Moon", mode: "dark", accentColor: "rose",
+    preview: { background: "#232136", surface: "#2a273f", text: "#e0def4", accent: "#ea9a97", muted: "#6e6a86" }
+  },
+  {
+    value: "terminal", label: "Terminal", mode: "dark", accentColor: "emerald",
+    preview: { background: "#07110a", surface: "#0d1c11", text: "#b8d8bd", accent: "#4ade80", muted: "#52705a" }
+  },
+  {
+    value: "modern-ink", label: "Modern Ink", mode: "light", accentColor: "red",
+    preview: { background: "#f4f1ea", surface: "#e6e1d7", text: "#181817", accent: "#dc2626", muted: "#858078" }
+  },
+  {
+    value: "serika", label: "Serika", mode: "dark", accentColor: "amber",
+    preview: { background: "#323437", surface: "#2c2e31", text: "#d1d0c5", accent: "#e2b714", muted: "#646669" }
+  },
+  {
+    value: "copper", label: "Copper", mode: "dark", accentColor: "orange",
+    preview: { background: "#17120f", surface: "#2b211b", text: "#eaded3", accent: "#d97745", muted: "#806b5e" }
+  },
+  {
+    value: "iceberg", label: "Iceberg", mode: "light", accentColor: "cyan",
+    preview: { background: "#e8eef3", surface: "#d7e1e8", text: "#26384a", accent: "#0e7490", muted: "#718393" }
   }
 ];
 
@@ -428,12 +463,21 @@ export const APP_FONT_OPTIONS: Array<{ value: AppFont; label: string }> = [
   { value: "system", label: "System" },
   { value: "sans", label: "Sans" },
   { value: "serif", label: "Serif" },
-  { value: "rounded", label: "Rounded" }
+  { value: "rounded", label: "Rounded" },
+  { value: "humanist", label: "Humanist" },
+  { value: "grotesk", label: "Grotesk" },
+  { value: "mono", label: "Monospace" },
+  { value: "editorial", label: "Editorial" }
 ];
 
 export const TYPING_FONT_OPTIONS: Array<{ value: TypingFont; label: string }> = [
   { value: "system-mono", label: "System Mono" },
-  { value: "serif", label: "Serif" }
+  { value: "serif", label: "Serif" },
+  { value: "code", label: "Code" },
+  { value: "humanist-mono", label: "Humanist Mono" },
+  { value: "geometric-mono", label: "Geometric Mono" },
+  { value: "accessible", label: "Accessible" },
+  { value: "cjk", label: "CJK Sans" }
 ];
 
 export const TYPING_TEXT_SIZE_OPTIONS: Array<{ value: TypingTextSize; label: string }> = [
@@ -1181,7 +1225,14 @@ function isThemePreset(value: unknown): value is ThemePreset {
     value === "tangerine" ||
     value === "matcha" ||
     value === "milkshake" ||
-    value === "paper"
+    value === "paper" ||
+    value === "gruvbox-dark" ||
+    value === "rose-pine-moon" ||
+    value === "terminal" ||
+    value === "modern-ink" ||
+    value === "serika" ||
+    value === "copper" ||
+    value === "iceberg"
   );
 }
 
@@ -1204,11 +1255,11 @@ function isAccentColor(value: unknown): value is AccentColor {
 }
 
 function isAppFont(value: unknown): value is AppFont {
-  return value === "system" || value === "sans" || value === "serif" || value === "rounded";
+  return value === "system" || value === "sans" || value === "serif" || value === "rounded" || value === "humanist" || value === "grotesk" || value === "mono" || value === "editorial";
 }
 
 function isTypingFont(value: unknown): value is TypingFont {
-  return value === "system-mono" || value === "serif";
+  return value === "system-mono" || value === "serif" || value === "code" || value === "humanist-mono" || value === "geometric-mono" || value === "accessible" || value === "cjk";
 }
 
 function isTypingTextSize(value: unknown): value is TypingTextSize {

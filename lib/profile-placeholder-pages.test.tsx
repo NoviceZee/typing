@@ -68,7 +68,7 @@ describe("profile subpages", () => {
     render(<AccountPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Profile Settings")).toBeTruthy();
+      expect(screen.getByText("Identity")).toBeTruthy();
     });
   });
 

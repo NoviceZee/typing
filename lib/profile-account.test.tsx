@@ -48,7 +48,7 @@ describe("Profile account page", () => {
     mockedGetSupabaseProfile.mockClear();
   });
 
-  it("renders simplified account settings without results", async () => {
+  it("renders working identity, security and deletion controls", async () => {
     render(<AccountPage />);
 
     await waitFor(() => {
@@ -56,14 +56,17 @@ describe("Profile account page", () => {
     });
 
     expect(mockedGetSupabaseProfile).toHaveBeenCalledWith("user-1");
-    expect(screen.getByText("Profile Settings")).toBeTruthy();
+    expect(screen.getByText("Identity")).toBeTruthy();
+    expect(screen.getByText("Security")).toBeTruthy();
+    expect(screen.getByText("Delete account")).toBeTruthy();
     expect(screen.getByText("Email")).toBeTruthy();
     expect(screen.getByText("typist@example.com")).toBeTruthy();
     expect(screen.getByText("Handle")).toBeTruthy();
     expect(screen.getByText("@formal_typist")).toBeTruthy();
-    expect(screen.getByText("Handles are locked for now. Handle editing will be added later.")).toBeTruthy();
-    expect(screen.queryByText("Display name")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Save name" })).toBeNull();
+    expect(screen.getByLabelText("Display name")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save name" })).toBeTruthy();
+    expect(screen.getByLabelText("New password")).toBeTruthy();
+    expect(screen.getByLabelText("Delete confirmation")).toBeTruthy();
     expect(screen.queryByText("My Results")).toBeNull();
     expect(screen.queryByText("Typing rules")).toBeNull();
   });

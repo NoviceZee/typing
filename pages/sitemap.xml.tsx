@@ -1,0 +1,3 @@
+import type { GetServerSideProps } from "next";
+export default function Sitemap() { return null; }
+export const getServerSideProps: GetServerSideProps = async ({ res }) => { const base = process.env.NEXT_PUBLIC_SITE_URL || "https://formaltype.app"; const routes = ["", "/practice", "/training", "/passages", "/leaderboard"]; const urls = routes.map((route) => `<url><loc>${base}${route}</loc><changefreq>weekly</changefreq></url>`).join(""); res.setHeader("Content-Type", "application/xml"); res.write(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`); res.end(); return { props: {} }; };

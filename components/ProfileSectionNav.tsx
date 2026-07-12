@@ -12,7 +12,7 @@ export function ProfileSectionNav() {
   const router = useRouter();
 
   return (
-    <nav aria-label="Profile sections" className="mt-5 flex max-w-full gap-1 overflow-x-auto border-b border-paper/10 pb-px font-mono text-xs">
+    <nav aria-label="Profile sections" className="mt-4 flex h-12 max-w-full gap-5 overflow-x-auto border-b border-paper/10 font-mono text-sm sm:gap-8">
       {PROFILE_SECTIONS.map((section) => {
         const isActive = router.pathname === section.href;
         return (
@@ -20,7 +20,7 @@ export function ProfileSectionNav() {
             key={section.href}
             href={section.href}
             aria-current={isActive ? "page" : undefined}
-            className={`shrink-0 border-b-2 px-3 py-2 transition ${
+            className={`flex shrink-0 items-center border-b-2 px-1 pt-1 transition ${
               isActive
                 ? "border-brass text-brass"
                 : "border-transparent text-paper/45 hover:border-paper/20 hover:text-paper/75"

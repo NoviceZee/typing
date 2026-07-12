@@ -212,6 +212,7 @@ export default function SettingsPage() {
 
                 <ButtonGroup
                   label="App font"
+                  description="Changes navigation, controls and analytics. Uses fonts already available on your device."
                   options={APP_FONT_OPTIONS}
                   value={themeSettings.appFont}
                   getAriaLabel={(option) => `${option.label} app font`}
@@ -232,6 +233,7 @@ export default function SettingsPage() {
               <div className="mt-5 grid gap-6 md:gap-7">
                 <ButtonGroup
                   label="Typing font"
+                  description="Choose separately from the interface font so passages stay comfortable to read."
                   options={TYPING_FONT_OPTIONS}
                   value={themeSettings.typingFont}
                   getAriaLabel={(option) => `${option.label} font`}

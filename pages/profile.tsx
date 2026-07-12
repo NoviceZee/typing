@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 import { Activity, Award, Camera, Clock, Copy, ExternalLink, Flame, Lock, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { ProfileSectionNav } from "@/components/ProfileSectionNav";
+import { ProfilePageHeader } from "@/components/ProfilePageHeader";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import {
@@ -37,6 +38,7 @@ import {
 import { getSupabaseTypingAttemptDetails, syncLocalTypingAttemptDetails } from "@/lib/typingAttemptStorage";
 import type { KeyStatistic, TypingAttemptDetail, TypingReplayEvent, TypingStatistics } from "@/lib/typingStatistics";
 import { buildAttemptConsistencySummary, getConsistencyScorePath } from "@/lib/practiceConsistency";
+import { DEFAULT_PROFILE_DISPLAY_SETTINGS, ProfileDisplaySettings, readProfileDisplaySettings, writeProfileDisplaySettings } from "@/lib/profileDisplaySettings";
 
 type TrendRange = "30" | "90" | "all";
 type HeatmapMode = "accuracy" | "speed" | "mistakes";
@@ -74,6 +76,7 @@ export default function ProfilePage() {
   const [trendRange, setTrendRange] = useState<TrendRange>("30");
   const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>("accuracy");
   const [analyticsDomain, setAnalyticsDomain] = useState<AnalyticsDomain>("english");
+  const [displaySettings, setDisplaySettings] = useState<ProfileDisplaySettings>(DEFAULT_PROFILE_DISPLAY_SETTINGS);
   const domainResults = useMemo(
     () => results.filter((result) => getResultAnalyticsDomain(result) === analyticsDomain),
     [analyticsDomain, results]
@@ -90,6 +93,12 @@ export default function ProfilePage() {
     [analyticsDomain, typingAttemptDetails]
   );
   const emptyState = getDomainEmptyState(analyticsDomain);
+
+  useEffect(() => {
+    const nextDisplaySettings = readProfileDisplaySettings();
+    setDisplaySettings(nextDisplaySettings);
+    setTrendRange(nextDisplaySettings.defaultTrendRange);
+  }, []);
 
   useEffect(() => {
     if (isAuthLoading || user) {
@@ -253,17 +262,7 @@ export default function ProfilePage() {
   return (
     <AppShell sideAd={false}>
       <section className="mx-auto max-w-6xl">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="font-mono text-xs uppercase text-brass">Profile</p>
-            <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Profile</h1>
-          </div>
-          <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 text-right shadow-glow">
-            <p className="font-mono text-2xl text-paper">{analytics.summary.totalTests}</p>
-            <p className="font-mono text-xs uppercase text-paper/45">saved tests</p>
-          </div>
-        </div>
-        <ProfileSectionNav />
+        <ProfilePageHeader />
 
         {!user && !isAuthLoading && (
           <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
@@ -309,6 +308,7 @@ export default function ProfilePage() {
             )}
 
             <AnalyticsDomainSelector value={analyticsDomain} onChange={setAnalyticsDomain} />
+            <ProfileViewPreferences value={displaySettings} onChange={(next) => { setDisplaySettings(next); writeProfileDisplaySettings(next); if (next.defaultTrendRange !== displaySettings.defaultTrendRange) setTrendRange(next.defaultTrendRange); }} />
 
             {isLoadingResults && (
               <div role="status" aria-live="polite" className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-sm text-paper/45">
@@ -341,7 +341,7 @@ export default function ProfilePage() {
 
             {domainResults.length > 0 && (
               <>
-                <ProgressSummary analytics={analytics} />
+                <ProgressSummary analytics={analytics} displaySettings={displaySettings} />
                 {analyticsDomain === "english" && (
                   <TypingWeaknessesSection
                     statistics={typingStatistics}
@@ -402,6 +402,22 @@ function AnalyticsDomainSelector({
       })}
     </div>
   );
+}
+
+function ProfileViewPreferences({ value, onChange }: { value: ProfileDisplaySettings; onChange: (value: ProfileDisplaySettings) => void }) {
+  return <section className="rounded-lg border border-paper/10 bg-ink-950/55 px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-mono text-xs uppercase text-paper/55">View preferences</p><p className="mt-1 text-xs text-paper/35">Saved on this device</p></div>
+      <div className="flex flex-wrap gap-4 font-mono text-xs">
+        <PreferenceButtons label="Speed unit" value={value.speedUnit} options={[{value:"wpm",label:"WPM"},{value:"cpm",label:"CPM"}]} onChange={(speedUnit) => onChange({...value,speedUnit: speedUnit as ProfileDisplaySettings["speedUnit"]})} />
+        <PreferenceButtons label="Decimals" value={value.showDecimals ? "on" : "off"} options={[{value:"on",label:"On"},{value:"off",label:"Off"}]} onChange={(next) => onChange({...value,showDecimals:next === "on"})} />
+        <PreferenceButtons label="Default range" value={value.defaultTrendRange} options={[{value:"30",label:"30"},{value:"90",label:"90"},{value:"all",label:"All"}]} onChange={(defaultTrendRange) => onChange({...value,defaultTrendRange: defaultTrendRange as TrendRange})} />
+      </div>
+    </div>
+  </section>;
+}
+
+function PreferenceButtons({ label, value, options, onChange }: { label: string; value: string; options: {value:string;label:string}[]; onChange:(value:string)=>void }) {
+  return <div role="group" aria-label={label} className="flex items-center gap-1"><span className="mr-1 text-paper/30">{label}</span>{options.map((option)=><button key={option.value} type="button" aria-pressed={value===option.value} onClick={()=>onChange(option.value)} className={`rounded px-2 py-1 transition ${value===option.value?"bg-brass/15 text-brass":"text-paper/45 hover:bg-paper/5 hover:text-paper"}`}>{option.label}</button>)}</div>;
 }
 
 function ProfileIdentityCard({
@@ -823,15 +839,15 @@ function ChineseMistakesSection({ statistics }: { statistics: TypingStatistics }
   );
 }
 
-function ProgressSummary({ analytics }: { analytics: ReturnType<typeof buildProgressAnalytics> }) {
+function ProgressSummary({ analytics, displaySettings }: { analytics: ReturnType<typeof buildProgressAnalytics>; displaySettings: ProfileDisplaySettings }) {
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
       <h2 className="font-mono text-sm uppercase text-brass">Summary Stats</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label="Total practice time" value={formatPracticeTime(analytics.summary.totalPracticeSeconds)} icon={<Clock className="h-4 w-4" />} />
-        <SummaryCard label="Average WPM all-time" value={formatNumber(analytics.summary.averageWpm)} icon={<Activity className="h-4 w-4" />} />
-        <SummaryCard label="Average WPM last 10" value={formatNumber(analytics.summary.averageWpmLast10)} icon={<Activity className="h-4 w-4" />} />
-        <SummaryCard label="Average WPM last 100" value={formatNumber(analytics.summary.averageWpmLast100)} icon={<Activity className="h-4 w-4" />} />
+        <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} all-time`} value={formatSpeed(analytics.summary.averageWpm, displaySettings)} icon={<Activity className="h-4 w-4" />} />
+        <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} last 10`} value={formatSpeed(analytics.summary.averageWpmLast10, displaySettings)} icon={<Activity className="h-4 w-4" />} />
+        <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} last 100`} value={formatSpeed(analytics.summary.averageWpmLast100, displaySettings)} icon={<Activity className="h-4 w-4" />} />
       </div>
     </section>
   );
@@ -1742,6 +1758,11 @@ function formatNullableWpm(value: number | null) {
 
 function formatNumber(value: number) {
   return Number(value).toFixed(1);
+}
+
+function formatSpeed(wpm: number, settings: ProfileDisplaySettings) {
+  const value = settings.speedUnit === "cpm" ? wpm * 5 : wpm;
+  return settings.showDecimals ? Number(value).toFixed(1) : String(Math.round(value));
 }
 
 function getPublicProfileUrl(handle: string) {

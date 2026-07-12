@@ -303,8 +303,8 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("button", { name: /Matcha theme preview/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Milkshake theme preview/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Paper theme preview/i })).toBeTruthy();
-    expect(screen.getAllByTestId("theme-preview-card")).toHaveLength(12);
-    expect(screen.getAllByTestId("theme-preview-accent-dot")).toHaveLength(12);
+    expect(screen.getAllByTestId("theme-preview-card")).toHaveLength(19);
+    expect(screen.getAllByTestId("theme-preview-accent-dot")).toHaveLength(19);
   });
 
   it("renders functional sidebar links for real settings sections", () => {

@@ -7,6 +7,7 @@ import React, { FormEvent, useCallback, useEffect, useMemo, useState } from "rea
 import { Plus, UserCircle, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { ProfileSectionNav } from "@/components/ProfileSectionNav";
+import { ProfilePageHeader } from "@/components/ProfilePageHeader";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import { ANALYTICS_DOMAIN_OPTIONS, AnalyticsDomain } from "@/lib/analyticsDomain";
@@ -22,10 +23,11 @@ import {
 } from "@/lib/friendStorage";
 import {
   getSupabaseAvatarPublicUrl,
+  getSupabaseProfile,
   getSupabasePublicProfileByHandle
 } from "@/lib/profileStorage";
 import type { SupabasePublicProfile } from "@/lib/profileStorage";
-import { getSupabasePublicTypingResultsByHandle } from "@/lib/typingResultStorage";
+import { getSupabaseAnalyticsTypingResults, getSupabasePublicTypingResultsByHandle } from "@/lib/typingResultStorage";
 import type { SupabaseAnalyticsTypingResultRow } from "@/lib/typingResultStorage";
 
 type FriendStats = {
@@ -39,12 +41,14 @@ type FriendStats = {
 type FriendRow = {
   friend: FriendListItem;
   stats: FriendStats;
+  isSelf?: boolean;
 };
 
 export default function FriendsPage() {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
   const [friendRows, setFriendRows] = useState<FriendRow[]>([]);
+  const [selfRow, setSelfRow] = useState<FriendRow | null>(null);
   const [incomingRequests, setIncomingRequests] = useState<FriendListItem[]>([]);
   const [outgoingRequests, setOutgoingRequests] = useState<FriendListItem[]>([]);
   const [isLoadingFriends, setIsLoadingFriends] = useState(false);
@@ -62,21 +66,23 @@ export default function FriendsPage() {
       setIsLoadingFriends(true);
     }
 
-    const [nextFriends, nextIncoming, nextOutgoing] = await Promise.all([
+    const [nextFriends, nextIncoming, nextOutgoing, nextSelfRow] = await Promise.all([
       listAcceptedFriends(),
       listIncomingFriendRequests(),
-      listOutgoingFriendRequests()
+      listOutgoingFriendRequests(),
+      user ? toSelfRow(user.id) : Promise.resolve(null)
     ]);
     const nextRows = await Promise.all(nextFriends.map(toFriendRow));
 
     setFriendRows(nextRows);
+    setSelfRow(nextSelfRow);
     setIncomingRequests(nextIncoming);
     setOutgoingRequests(nextOutgoing);
 
     if (showLoading) {
       setIsLoadingFriends(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (isAuthLoading || user) {
@@ -91,6 +97,7 @@ export default function FriendsPage() {
 
     if (!user) {
       setFriendRows([]);
+      setSelfRow(null);
       setIncomingRequests([]);
       setOutgoingRequests([]);
       setFriendsMessage("");
@@ -172,13 +179,11 @@ export default function FriendsPage() {
   return (
     <AppShell sideAd={false}>
       <section className="mx-auto max-w-6xl">
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-paper md:text-4xl">Friends</h1>
-            <p className="mt-2 font-mono text-xs uppercase text-paper/35">
-              {friendRows.length} friends{requestCount > 0 ? ` / ${requestCount} requests` : ""}
-            </p>
-          </div>
+        <ProfilePageHeader />
+        <div className="relative mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-mono text-xs uppercase text-paper/35">
+            {friendRows.length} friends{requestCount > 0 ? ` / ${requestCount} requests` : ""}
+          </p>
           {user && (
             <div className="relative">
               <button
@@ -224,8 +229,6 @@ export default function FriendsPage() {
             </div>
           )}
         </div>
-        <ProfileSectionNav />
-
         {user && (
           <div className="mt-6 space-y-4">
             {friendsMessage && (
@@ -243,8 +246,9 @@ export default function FriendsPage() {
             )}
 
             {isLoadingFriends && (
-              <div role="status" aria-live="polite" className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-sm text-paper/45">
-                Loading friends...
+              <div role="status" aria-label="Loading friends" className="space-y-4">
+                <div className="h-24 animate-pulse rounded-lg border border-paper/10 bg-paper/[0.035]" />
+                <div className="h-64 animate-pulse rounded-lg border border-paper/10 bg-paper/[0.035]" />
               </div>
             )}
 
@@ -266,6 +270,7 @@ export default function FriendsPage() {
                 />
                 <FriendsTable
                   rows={friendRows}
+                  selfRow={selfRow}
                   pendingActionId={pendingActionId}
                   onRemove={(item) =>
                     handleFriendAction(item, () => removeFriend(item.id), `Removed @${item.handle} from friends.`)
@@ -278,6 +283,46 @@ export default function FriendsPage() {
       </section>
     </AppShell>
   );
+}
+
+async function toSelfRow(userId: string): Promise<FriendRow | null> {
+  try {
+    const [profile, results] = await Promise.all([
+      getSupabaseProfile(userId),
+      getSupabaseAnalyticsTypingResults(userId)
+    ]);
+
+    if (!profile?.handle) return null;
+    const newestFirst = [...results].sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
+    return {
+      isSelf: true,
+      friend: {
+        id: `self-${userId}`,
+        user_id: userId,
+        handle: profile.handle,
+        status: "accepted",
+        direction: "accepted",
+        created_at: profile.created_at,
+        updated_at: profile.updated_at
+      },
+      stats: {
+        profile: {
+          handle: profile.handle,
+          bio: profile.bio,
+          avatar_style: profile.avatar_style,
+          avatar_path: profile.avatar_path,
+          public_profile_enabled: profile.public_profile_enabled,
+          created_at: profile.created_at
+        },
+        analytics: buildProgressAnalytics(results),
+        domainAnalytics: buildFriendDomainAnalytics(results),
+        latestResult: newestFirst[0] ?? null,
+        isPrivate: false
+      }
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function toFriendRow(friend: FriendListItem): Promise<FriendRow> {
@@ -308,14 +353,16 @@ async function toFriendRow(friend: FriendListItem): Promise<FriendRow> {
 
 function FriendsTable({
   rows,
+  selfRow,
   pendingActionId,
   onRemove
 }: {
   rows: FriendRow[];
+  selfRow: FriendRow | null;
   pendingActionId: string | null;
   onRemove: (friend: FriendListItem) => void;
 }) {
-  if (rows.length === 0) {
+  if (rows.length === 0 && !selfRow) {
     return (
       <section className="rounded-lg border border-paper/10 bg-ink-950/75 px-4 py-8 text-center shadow-glow">
         <p className="font-mono text-sm text-paper">No friends yet.</p>
@@ -324,8 +371,14 @@ function FriendsTable({
     );
   }
 
+  const comparisonRows = selfRow ? [selfRow, ...rows] : rows;
+
   return (
     <section className="overflow-x-auto rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
+      <div className="flex items-center justify-between border-b border-paper/10 px-4 py-3">
+        <div><h2 className="font-mono text-sm text-paper">Compare results</h2><p className="mt-1 text-xs text-paper/40">Best scores by practice type</p></div>
+        <span className="rounded-full border border-brass/25 bg-brass/10 px-2.5 py-1 font-mono text-[0.65rem] uppercase tracking-wide text-brass">You + {rows.length}</span>
+      </div>
       <table aria-label="Friends stats" className="min-w-[64rem] w-full border-collapse text-left">
         <thead className="border-b border-paper/10 font-mono text-[0.68rem] uppercase text-paper/35">
           <tr>
@@ -344,7 +397,7 @@ function FriendsTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {comparisonRows.map((row) => (
             <FriendTableRow
               key={row.friend.id}
               row={row}
@@ -373,9 +426,10 @@ function FriendTableRow({
   const domainAnalytics = stats.domainAnalytics;
   const latestResult = stats.latestResult;
   const hasPublicStats = Boolean(analytics && !stats.isPrivate);
+  const isSelf = Boolean(row.isSelf);
 
   return (
-    <tr className="border-b border-paper/10 last:border-b-0">
+    <tr className={`border-b border-paper/10 last:border-b-0 ${isSelf ? "bg-brass/[0.075] shadow-[inset_3px_0_rgb(var(--color-accent))]" : "transition hover:bg-paper/[0.025]"}`}>
       <td className="min-w-56 px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <FriendAvatar
@@ -384,11 +438,9 @@ function FriendTableRow({
             label={`@${friend.handle}`}
           />
           <div className="min-w-0">
-            <Link href={`/u/${friend.handle}`} className="font-mono text-sm text-paper transition hover:text-brass">
-              @{friend.handle}
-            </Link>
+            <div className="flex items-center gap-2"><Link href={`/u/${friend.handle}`} className="font-mono text-sm text-paper transition hover:text-brass">@{friend.handle}</Link>{isSelf && <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-[0.62rem] font-semibold uppercase text-ink-950">You</span>}</div>
             <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">
-              {stats.isPrivate ? "Private" : `Friends since ${formatShortDate(friend.updated_at || friend.created_at)}`}
+              {isSelf ? "Your benchmark" : stats.isPrivate ? "Private" : `Friends since ${formatShortDate(friend.updated_at || friend.created_at)}`}
             </p>
           </div>
         </div>
@@ -412,7 +464,7 @@ function FriendTableRow({
         )}
       </td>
       <td className="px-4 py-3 text-right">
-        <button
+        {!isSelf && <button
           type="button"
           onClick={onRemove}
           disabled={isPending}
@@ -421,7 +473,7 @@ function FriendTableRow({
           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-paper/10 bg-ink-900 text-paper/45 transition hover:border-ember/35 hover:text-ember disabled:cursor-not-allowed disabled:opacity-55"
         >
           <X className="h-4 w-4" />
-        </button>
+        </button>}
       </td>
     </tr>
   );

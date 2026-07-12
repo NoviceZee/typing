@@ -255,6 +255,14 @@
   color-scheme: light;
 }
 
+:root[data-theme-preset="gruvbox-dark"] { --color-ink-950: 40 40 40; --color-ink-900: 50 48 47; --color-ink-800: 60 56 54; --color-ink-700: 80 73 69; --color-paper: 235 219 178; --color-card: 45 43 42; --color-card-soft: 60 56 54; }
+:root[data-theme-preset="rose-pine-moon"] { --color-ink-950: 35 33 54; --color-ink-900: 42 39 63; --color-ink-800: 57 53 82; --color-ink-700: 110 106 134; --color-paper: 224 222 244; --color-card: 42 39 63; --color-card-soft: 57 53 82; }
+:root[data-theme-preset="terminal"] { --color-ink-950: 7 17 10; --color-ink-900: 13 28 17; --color-ink-800: 20 42 26; --color-ink-700: 49 83 58; --color-paper: 184 216 189; --color-card: 9 23 13; --color-card-soft: 20 42 26; --chart-line-secondary: 74 222 128; }
+:root[data-theme-preset="modern-ink"] { --color-ink-950: 244 241 234; --color-ink-900: 230 225 215; --color-ink-800: 213 207 196; --color-ink-700: 133 128 120; --color-paper: 24 24 23; --color-card: 250 248 243; --color-card-soft: 230 225 215; color-scheme: light; }
+:root[data-theme-preset="serika"] { --color-ink-950: 50 52 55; --color-ink-900: 44 46 49; --color-ink-800: 60 62 65; --color-ink-700: 100 102 105; --color-paper: 209 208 197; --color-card: 44 46 49; --color-card-soft: 60 62 65; }
+:root[data-theme-preset="copper"] { --color-ink-950: 23 18 15; --color-ink-900: 43 33 27; --color-ink-800: 59 44 36; --color-ink-700: 104 82 68; --color-paper: 234 222 211; --color-card: 32 24 20; --color-card-soft: 59 44 36; }
+:root[data-theme-preset="iceberg"] { --color-ink-950: 232 238 243; --color-ink-900: 215 225 232; --color-ink-800: 197 211 221; --color-ink-700: 113 131 147; --color-paper: 38 56 74; --color-card: 242 246 249; --color-card-soft: 215 225 232; color-scheme: light; }
+
 :root[data-accent="blue"] {
   --color-accent: 91 157 255;
 }
@@ -308,6 +316,11 @@
   --font-app: ui-rounded, "Arial Rounded MT Bold", "Avenir Next", Avenir, system-ui, sans-serif;
 }
 
+:root[data-app-font="humanist"] { --font-app: Optima, Candara, "Avenir Next", Avenir, sans-serif; }
+:root[data-app-font="grotesk"] { --font-app: "Helvetica Neue", Helvetica, "Nimbus Sans L", sans-serif; }
+:root[data-app-font="mono"] { --font-app: "SFMono-Regular", Menlo, Monaco, Consolas, monospace; }
+:root[data-app-font="editorial"] { --font-app: Charter, "Iowan Old Style", "Palatino Linotype", Palatino, serif; }
+
 * {
   box-sizing: border-box;
 }
@@ -325,6 +338,15 @@ body {
   font-family: var(--font-app);
 }
 
+.profile-page-header { min-height: 5rem; }
+.account-setting-row { align-items: center; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) auto; padding-block: 1rem; }
+.account-label { color: rgb(var(--color-paper) / 0.82); display: block; font-family: ui-monospace, monospace; font-size: 0.8rem; }
+.account-help { color: rgb(var(--color-paper) / 0.4); display: block; font-size: 0.8rem; line-height: 1.25rem; margin-top: 0.25rem; text-wrap: pretty; }
+.account-primary-button { align-items: center; background: rgb(var(--color-accent) / 0.14); border: 1px solid rgb(var(--color-accent) / 0.4); border-radius: 0.375rem; color: rgb(var(--color-accent)); display: inline-flex; font-family: ui-monospace, monospace; font-size: 0.75rem; min-height: 2.5rem; padding: 0.55rem 0.8rem; transition: background-color 150ms ease, border-color 150ms ease; }
+.account-primary-button:hover:not(:disabled) { background: rgb(var(--color-accent) / 0.22); border-color: rgb(var(--color-accent) / 0.65); }
+.account-primary-button:disabled { cursor: not-allowed; opacity: 0.4; }
+@media (max-width: 640px) { .account-setting-row { align-items: stretch; grid-template-columns: 1fr; } }
+
 button,
 input,
 select,
@@ -335,6 +357,79 @@ textarea {
 ::selection {
   background: rgb(var(--color-accent) / 0.35);
   color: rgb(var(--color-paper));
+}
+
+.landing-shell {
+  background:
+    radial-gradient(circle at 76% 18%, rgb(var(--color-accent) / 0.09), transparent 27rem),
+    linear-gradient(115deg, rgb(var(--color-ink-950)), rgb(var(--color-ink-900) / 0.74));
+  position: relative;
+}
+
+.landing-shell::before {
+  background-image: linear-gradient(rgb(var(--color-paper) / 0.025) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--color-paper) / 0.025) 1px, transparent 1px);
+  background-size: 52px 52px;
+  content: "";
+  inset: 0;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+  pointer-events: none;
+  position: absolute;
+}
+
+.landing-button-primary,
+.landing-button-secondary {
+  align-items: center;
+  border-radius: 0.375rem;
+  display: inline-flex;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  gap: 0.55rem;
+  justify-content: center;
+  letter-spacing: 0.01em;
+  min-height: 2.65rem;
+  padding: 0.7rem 1rem;
+  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.landing-button-primary {
+  background: rgb(var(--color-accent));
+  border: 1px solid rgb(var(--color-accent));
+  color: rgb(var(--color-ink-950));
+  box-shadow: 0 10px 34px rgb(var(--color-accent) / 0.12);
+}
+
+.landing-button-secondary { background: rgb(var(--color-ink-900) / 0.72); border: 1px solid rgb(var(--color-paper) / 0.13); color: rgb(var(--color-paper) / 0.72); }
+.landing-button-primary:hover, .landing-button-secondary:hover { transform: translateY(-2px); }
+.landing-button-primary:hover { box-shadow: 0 14px 38px rgb(var(--color-accent) / 0.22); }
+.landing-button-secondary:hover { border-color: rgb(var(--color-accent) / 0.42); color: rgb(var(--color-paper)); }
+.landing-button-primary:focus-visible, .landing-button-secondary:focus-visible { outline: 2px solid rgb(var(--color-accent) / 0.75); outline-offset: 3px; }
+
+.landing-practice-card {
+  background: linear-gradient(145deg, rgb(var(--color-card) / 0.96), rgb(var(--color-card-soft) / 0.65));
+  border: 1px solid rgb(var(--color-paper) / 0.12);
+  border-radius: 0.75rem;
+  box-shadow: 0 36px 90px rgb(0 0 0 / 0.42), inset 0 1px rgb(var(--color-paper) / 0.045);
+  padding: clamp(1.35rem, 4vw, 2.25rem);
+  position: relative;
+  transform: perspective(900px) rotateY(-2deg) rotateX(1deg);
+  z-index: 2;
+}
+
+.landing-caret { border-left: 2px solid rgb(var(--color-accent)); animation: landing-blink 1s steps(1) infinite; }
+.landing-orbit { border: 1px solid rgb(var(--color-accent) / 0.13); border-radius: 999px; pointer-events: none; position: absolute; }
+.landing-orbit-one { height: 8rem; right: -3rem; top: -4rem; width: 8rem; }
+.landing-orbit-two { bottom: -3.5rem; height: 13rem; left: -5rem; width: 13rem; }
+.landing-reveal { animation: landing-reveal 700ms cubic-bezier(.2,.8,.2,1) both; }
+.landing-delay-1 { animation-delay: 90ms; }
+.landing-delay-2 { animation-delay: 180ms; }
+.landing-delay-3 { animation-delay: 270ms; }
+
+@keyframes landing-reveal { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes landing-blink { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .landing-practice-card { transform: none; }
 }
 
 .formaltype-themed-select,
@@ -485,6 +580,12 @@ textarea {
     Times,
     serif;
 }
+
+.formaltype-typing-font-code { font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-variant-ligatures: contextual; }
+.formaltype-typing-font-humanist-mono { font-family: "Aptos Mono", "Andale Mono", "Lucida Console", monospace; }
+.formaltype-typing-font-geometric-mono { font-family: "Courier Prime", Courier, "Nimbus Mono PS", monospace; }
+.formaltype-typing-font-accessible { font-family: Atkinson Hyperlegible, Verdana, Tahoma, sans-serif; letter-spacing: 0.015em; }
+.formaltype-typing-font-cjk { font-family: "PingFang HK", "PingFang TC", "Noto Sans CJK TC", "Microsoft JhengHei", sans-serif; }
 
 .formaltype-typing-size-small {
   font-size: 1.45rem;

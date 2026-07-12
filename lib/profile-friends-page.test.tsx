@@ -14,8 +14,8 @@ import {
   removeFriend,
   sendFriendRequestByProfileHandle
 } from "@/lib/friendStorage";
-import { getSupabasePublicProfileByHandle } from "@/lib/profileStorage";
-import { getSupabasePublicTypingResultsByHandle } from "@/lib/typingResultStorage";
+import { getSupabaseProfile, getSupabasePublicProfileByHandle } from "@/lib/profileStorage";
+import { getSupabaseAnalyticsTypingResults, getSupabasePublicTypingResultsByHandle } from "@/lib/typingResultStorage";
 
 const mockState = vi.hoisted(() => ({
   user: { id: "user-1", email: "typist@example.com" } as { id: string; email: string } | null,
@@ -58,6 +58,7 @@ vi.mock("@/lib/profileStorage", async () => {
   return {
     ...actual,
     getSupabaseAvatarPublicUrl: vi.fn((path: string | null) => (path ? `https://cdn.example.com/${path}` : null)),
+    getSupabaseProfile: vi.fn().mockResolvedValue(null),
     getSupabasePublicProfileByHandle: vi.fn().mockResolvedValue(makePublicProfile())
   };
 });
@@ -67,6 +68,7 @@ vi.mock("@/lib/typingResultStorage", async () => {
 
   return {
     ...actual,
+    getSupabaseAnalyticsTypingResults: vi.fn().mockResolvedValue([]),
     getSupabasePublicTypingResultsByHandle: vi.fn().mockResolvedValue([makeResult("latest", 72, 98.2)])
   };
 });
@@ -80,6 +82,8 @@ const mockedRemove = vi.mocked(removeFriend);
 const mockedSend = vi.mocked(sendFriendRequestByProfileHandle);
 const mockedGetPublicProfile = vi.mocked(getSupabasePublicProfileByHandle);
 const mockedGetPublicResults = vi.mocked(getSupabasePublicTypingResultsByHandle);
+const mockedGetProfile = vi.mocked(getSupabaseProfile);
+const mockedGetOwnResults = vi.mocked(getSupabaseAnalyticsTypingResults);
 
 describe("Profile friends page", () => {
   beforeEach(() => {
@@ -95,6 +99,8 @@ describe("Profile friends page", () => {
     mockedSend.mockClear();
     mockedGetPublicProfile.mockClear();
     mockedGetPublicResults.mockClear();
+    mockedGetProfile.mockReset();
+    mockedGetOwnResults.mockReset();
     mockedListFriends.mockResolvedValue([]);
     mockedListIncoming.mockResolvedValue([]);
     mockedListOutgoing.mockResolvedValue([]);
@@ -104,6 +110,22 @@ describe("Profile friends page", () => {
     mockedSend.mockResolvedValue({} as any);
     mockedGetPublicProfile.mockResolvedValue(makePublicProfile() as any);
     mockedGetPublicResults.mockResolvedValue([makeResult("latest", 72, 98.2)] as any);
+    mockedGetProfile.mockResolvedValue(null);
+    mockedGetOwnResults.mockResolvedValue([]);
+  });
+
+  it("shows the signed-in user's results as the comparison benchmark", async () => {
+    mockedListFriends.mockResolvedValueOnce([makeFriend({ handle: "ada_type" })]);
+    mockedGetProfile.mockResolvedValueOnce({ user_id: "user-1", handle: "me_type", avatar_style: "amber", avatar_path: null, public_profile_enabled: true, bio: null, display_name: "Me", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-06-01T00:00:00.000Z" } as any);
+    mockedGetOwnResults.mockResolvedValueOnce([makeResult("mine", 81, 99.1)] as any);
+
+    render(<FriendsPage />);
+
+    expect(await screen.findByText("Your benchmark")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "@me_type" })).toBeTruthy();
+    expect(screen.getByText("You")).toBeTruthy();
+    expect(screen.getByText("81.0")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Remove friend @me_type" })).toBeNull();
   });
 
   it("renders a calm empty friends table state without large empty request boxes", async () => {
