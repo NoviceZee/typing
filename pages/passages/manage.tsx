@@ -6,6 +6,7 @@ import { AdminOnly } from "@/components/AdminOnly";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { PracticeCategory } from "@/lib/typing-engine";
+import { decodeUploadedTextFile, detectTextLanguage } from "@/lib/textFileImport";
 import {
   ALL_FILTER,
   CATEGORIES,
@@ -158,7 +159,8 @@ function ManagePassages() {
         content: extracted.content,
         category: newPassageCategory,
         style: newPassageStyle.trim() || "General",
-        source: "pasted"
+        source: "pasted",
+        language: detectTextLanguage(extracted.content)
       });
     });
 
@@ -185,7 +187,7 @@ function ManagePassages() {
       const uploadedPassages: LibraryPassage[] = [];
 
       for (const file of files) {
-        const text = await file.text();
+        const text = await decodeUploadedTextFile(file);
         const fallbackTitle = file.name.replace(/\.txt$/i, "").trim() || "Uploaded passage";
         const parts = splitTextIntoPassages(text).filter((part) => part.length >= 20);
 
@@ -201,7 +203,8 @@ function ManagePassages() {
               content: extracted.content,
               category: newPassageCategory,
               style: newPassageStyle.trim() || "General",
-              source: "uploaded"
+              source: "uploaded",
+              language: detectTextLanguage(extracted.content)
             })
           );
         });
@@ -216,7 +219,8 @@ function ManagePassages() {
       await refreshLibrary();
       setMessage(`Uploaded ${uploadedPassages.length} passage${uploadedPassages.length === 1 ? "" : "s"}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Upload failed. Please try another .txt file.");
+      const detail = error instanceof Error ? error.message : "Unknown upload error.";
+      setMessage(`Upload failed: ${detail}`);
     } finally {
       if (uploadInputRef.current) {
         uploadInputRef.current.value = "";
@@ -589,7 +593,8 @@ function toLibraryPassageFromImport(item: unknown): LibraryPassage | null {
     content,
     category,
     style,
-    source
+    source,
+    language: item.language === "chinese" || item.language === "english" ? item.language : detectTextLanguage(content)
   });
 
   return {

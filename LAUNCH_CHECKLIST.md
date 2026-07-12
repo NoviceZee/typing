@@ -17,6 +17,7 @@
 - [ ] Set `NEXT_PUBLIC_GA_MEASUREMENT_ID` and verify page views in analytics realtime view
 - [ ] Choose an error tracker and connect it to the `formaltype:error` browser event
 - [ ] Add AdSense client and slot values only after the site is approved; verify layout on mobile and desktop
+- [ ] In AdSense → Privacy & messaging, publish a European regulations message for the production domain, use `/privacy` as the privacy-policy URL, and enable Consent Mode before serving EEA/UK/Swiss traffic
 - [ ] Add Supabase production URL/key and apply all migrations to the production project
 
 ## Domain and release
