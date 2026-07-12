@@ -27,17 +27,32 @@ export function NotificationCenter() {
 
   useEffect(() => {
     if (!open) return;
-    const close = (event: MouseEvent) => { if (!rootRef.current?.contains(event.target as Node)) setOpen(false); };
+    const close = (event: MouseEvent) => {
+      if (rootRef.current?.contains(event.target as Node)) return;
+      const unreadIds = announcements.filter((item) => !readAnnouncementIds().has(item.id)).map((item) => item.id);
+      if (unreadIds.length) {
+        markAnnouncementsRead(unreadIds);
+        setReadIds(readAnnouncementIds());
+      }
+      setOpen(false);
+    };
     document.addEventListener("mousedown", close); return () => document.removeEventListener("mousedown", close);
-  }, [open]);
+  }, [announcements, open]);
 
   if (!user) return null;
   const unreadAnnouncements = announcements.filter((item) => !readIds.has(item.id));
   const unreadCount = requests.length + unreadAnnouncements.length;
 
+  function markVisibleAnnouncementsRead() {
+    if (!unreadAnnouncements.length) return;
+    const ids = unreadAnnouncements.map((item) => item.id);
+    markAnnouncementsRead(ids);
+    setReadIds(new Set([...Array.from(readIds), ...ids]));
+  }
+
   function toggle() {
-    const nextOpen = !open; setOpen(nextOpen);
-    if (nextOpen && unreadAnnouncements.length) { markAnnouncementsRead(unreadAnnouncements.map((item) => item.id)); setReadIds(new Set([...Array.from(readIds), ...unreadAnnouncements.map((item) => item.id)])); }
+    if (open) markVisibleAnnouncementsRead();
+    setOpen(!open);
   }
 
   return <div ref={rootRef} className="relative">
@@ -48,8 +63,8 @@ export function NotificationCenter() {
       <div className="flex items-center justify-between border-b border-paper/10 px-4 py-3"><h2 className="font-mono text-xs uppercase tracking-wider text-paper">Notifications</h2><span className="font-mono text-[10px] text-paper/35">{unreadCount ? `${unreadCount} new` : "Up to date"}</span></div>
       <div className="max-h-96 overflow-y-auto">
         {requests.map((request) => <Link key={request.id} href="/profile/friends" onClick={() => setOpen(false)} className="flex gap-3 border-b border-paper/10 px-4 py-3 transition hover:bg-paper/[0.04]"><UserPlus className="mt-0.5 h-4 w-4 shrink-0 text-brass" /><span><strong className="block font-mono text-xs font-normal text-paper">New friend request</strong><span className="mt-1 block text-xs text-paper/45">@{request.handle} wants to compare results.</span></span></Link>)}
-        {announcements.map((item) => <article key={item.id} className="flex gap-3 border-b border-paper/10 px-4 py-3 last:border-b-0"><Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-brass" /><div><div className="flex items-center gap-2"><h3 className="font-mono text-xs text-paper">{item.title}</h3>{!readIds.has(item.id) && <span className="h-1.5 w-1.5 rounded-full bg-brass" />}</div><p className="mt-1 text-xs leading-5 text-paper/45">{item.body}</p></div></article>)}
-        {requests.length === 0 && announcements.length === 0 && <div className="px-5 py-8 text-center"><Bell className="mx-auto h-5 w-5 text-paper/20" /><p className="mt-3 font-mono text-xs text-paper/40">No notifications yet.</p></div>}
+        {unreadAnnouncements.map((item) => <article key={item.id} className="flex gap-3 border-b border-paper/10 px-4 py-3 last:border-b-0"><Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-brass" /><div><div className="flex items-center gap-2"><h3 className="font-mono text-xs text-paper">{item.title}</h3><span className="h-1.5 w-1.5 rounded-full bg-brass" /></div><p className="mt-1 text-xs leading-5 text-paper/45">{item.body}</p></div></article>)}
+        {requests.length === 0 && unreadAnnouncements.length === 0 && <div className="px-5 py-8 text-center"><Bell className="mx-auto h-5 w-5 text-paper/20" /><p className="mt-3 font-mono text-xs text-paper/40">No notifications yet.</p></div>}
       </div>
     </section>}
   </div>;
