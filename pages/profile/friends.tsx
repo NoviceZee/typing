@@ -8,6 +8,7 @@ import { Plus, UserCircle, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { ProfileSectionNav } from "@/components/ProfileSectionNav";
 import { ProfilePageHeader } from "@/components/ProfilePageHeader";
+import { ProfilePageLayout } from "@/components/ProfilePageLayout";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import { ANALYTICS_DOMAIN_OPTIONS, AnalyticsDomain } from "@/lib/analyticsDomain";
@@ -178,8 +179,7 @@ export default function FriendsPage() {
 
   return (
     <AppShell sideAd={false}>
-      <section className="mx-auto max-w-6xl">
-        <ProfilePageHeader />
+      <ProfilePageLayout>
         <div className="relative mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-mono text-xs uppercase text-paper/35">
             {friendRows.length} friends{requestCount > 0 ? ` / ${requestCount} requests` : ""}
@@ -280,7 +280,7 @@ export default function FriendsPage() {
             )}
           </div>
         )}
-      </section>
+      </ProfilePageLayout>
     </AppShell>
   );
 }

@@ -5,6 +5,7 @@ import React, { ReactNode, useEffect, useRef, useState } from "react";
 import { ChevronDown, LogIn, LogOut, Menu, UserCircle, X } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { SupabaseProfile, getProfileDisplayLabel, getSupabaseProfile } from "@/lib/profileStorage";
+import { NotificationCenter } from "@/components/NotificationCenter";
 
 const NAV_ITEMS = [
   { href: "/practice", label: "Practice" },
@@ -67,6 +68,7 @@ export function AppShell({
                   <NavLink key={item.href} href={item.href} label={item.label} />
                 ))}
               </nav>
+              <NotificationCenter />
               <HeaderAuthAction />
               <button
                 ref={mobileNavButtonRef}

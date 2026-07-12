@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { AlertTriangle, Bell, DatabaseZap, KeyRound, UserRound } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { ProfilePageHeader } from "@/components/ProfilePageHeader";
+import { ProfilePageLayout } from "@/components/ProfilePageLayout";
 import { useAuth } from "@/components/AuthProvider";
 import { SupabaseProfile, getSupabaseProfile, updateSupabaseProfileDisplayName } from "@/lib/profileStorage";
 import { deleteCurrentUserAccount, deleteCurrentUserStats, updateCurrentUserPassword } from "@/lib/accountStorage";
@@ -68,8 +69,7 @@ export default function AccountPage() {
 
   return (
     <AppShell sideAd={false}>
-      <section className="mx-auto max-w-6xl">
-        <ProfilePageHeader />
+      <ProfilePageLayout>
         {user && <div className="mt-6 space-y-5">
           {(message || error) && <div role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 font-mono text-sm ${error ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>{error || message}</div>}
 
@@ -106,7 +106,7 @@ export default function AccountPage() {
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label><span className="account-label">Type DELETE to confirm</span><input aria-label="Delete confirmation" value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} className="formaltype-themed-input mt-2 px-3 py-2 font-mono" /></label><button type="button" onClick={deleteAccount} disabled={deleteConfirmation !== "DELETE" || pendingAction === "delete"} className="rounded-md border border-ember/35 bg-ember/10 px-4 py-2.5 font-mono text-xs uppercase text-ember transition hover:bg-ember/20 disabled:cursor-not-allowed disabled:opacity-35">{pendingAction === "delete" ? "Deleting…" : "Delete permanently"}</button></div>
           </section>
         </div>}
-      </section>
+      </ProfilePageLayout>
     </AppShell>
   );
 }

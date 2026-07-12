@@ -8,6 +8,7 @@ import { Activity, Award, Camera, Clock, Copy, ExternalLink, Flame, Lock, UserCi
 import { AppShell } from "@/components/AppShell";
 import { ProfileSectionNav } from "@/components/ProfileSectionNav";
 import { ProfilePageHeader } from "@/components/ProfilePageHeader";
+import { ProfilePageLayout } from "@/components/ProfilePageLayout";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import {
@@ -261,8 +262,7 @@ export default function ProfilePage() {
 
   return (
     <AppShell sideAd={false}>
-      <section className="mx-auto max-w-6xl">
-        <ProfilePageHeader />
+      <ProfilePageLayout>
 
         {!user && !isAuthLoading && (
           <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
@@ -367,7 +367,7 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-      </section>
+      </ProfilePageLayout>
     </AppShell>
   );
 }
