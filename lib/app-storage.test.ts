@@ -145,6 +145,29 @@ describe("toStoredPassage", () => {
     expect(timedPassage.text).toContain("Support body text");
     expect(singlePassage.text).toBe("Selected body text");
   });
+
+  it("sizes timed Chinese passages by characters instead of treating each passage as one word", () => {
+    const base = {
+      ...makePassage("zh-1", "中文一", "生活", "一般"),
+      language: "chinese" as const,
+      content: "中".repeat(120),
+      wordCount: 1,
+      characterCount: 120
+    };
+    const support = {
+      ...makePassage("zh-2", "中文二", "生活", "一般"),
+      language: "chinese" as const,
+      content: "文".repeat(120),
+      wordCount: 1,
+      characterCount: 120
+    };
+
+    const timedPassage = toStoredPassage(base, 60, [base, support]);
+    const comparableCharacters = Array.from(timedPassage.text).filter((character) => !/\s/.test(character));
+
+    expect(comparableCharacters.length).toBeGreaterThanOrEqual(300);
+    expect(comparableCharacters.length).toBeLessThan(500);
+  });
 });
 
 describe("readPracticePassageFromLibrary", () => {

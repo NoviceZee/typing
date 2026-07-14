@@ -35,16 +35,25 @@ vi.mock("next/router", () => ({
   })
 }));
 
-vi.mock("@/lib/profileStorage", () => ({
-  getSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "formal_typist", handle: "formal_typist" }),
-  upsertSupabaseProfile: vi.fn()
-}));
+vi.mock("@/lib/profileStorage", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/profileStorage")>("@/lib/profileStorage");
+  return {
+    ...actual,
+    getSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "formal_typist", handle: "formal_typist" }),
+    upsertSupabaseProfile: vi.fn()
+  };
+});
 
-vi.mock("@/lib/friendStorage", () => ({
-  listAcceptedFriends: vi.fn().mockResolvedValue([]),
-  listIncomingFriendRequests: vi.fn().mockResolvedValue([]),
-  listOutgoingFriendRequests: vi.fn().mockResolvedValue([])
-}));
+vi.mock("@/lib/friendStorage", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/friendStorage")>("@/lib/friendStorage");
+  return {
+    ...actual,
+    listAcceptedFriends: vi.fn().mockResolvedValue([]),
+    listIncomingFriendRequests: vi.fn().mockResolvedValue([]),
+    listOutgoingFriendRequests: vi.fn().mockResolvedValue([]),
+    listBlockedUsers: vi.fn().mockResolvedValue([])
+  };
+});
 
 vi.mock("@/lib/typingResultStorage", async () => {
   const actual = await vi.importActual<typeof import("@/lib/typingResultStorage")>("@/lib/typingResultStorage");

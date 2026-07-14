@@ -64,6 +64,27 @@ describe("typing rule comparison", () => {
     expect(comparison.characters.map((character) => character.expected).join("")).toBe("今天，天氣很好！");
   });
 
+  it("treats keyboard and typographic English punctuation as equivalent", () => {
+    const comparison = validateTypedText({
+      targetText: "A person’s notes—marked “private”",
+      typedText: "A person's notes-marked \"private\"",
+      rules: DEFAULT_RULES
+    });
+
+    expect(comparison.incorrectCharacters).toBe(0);
+    expect(comparison.correctCharacters).toBe(comparison.characters.length);
+  });
+
+  it("does not treat ASCII punctuation as Chinese full-width punctuation", () => {
+    const comparison = validateTypedText({
+      targetText: "中文，句號。",
+      typedText: "中文,句號。",
+      rules: DEFAULT_RULES
+    });
+
+    expect(comparison.incorrectCharacters).toBeGreaterThan(0);
+  });
+
   it("ignores case differences when case-sensitive mode is disabled", () => {
     const comparison = validateTypedText({
       targetText: "Dear Sir",

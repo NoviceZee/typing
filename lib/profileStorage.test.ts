@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   AVATAR_BUCKET,
+  canChangeHandle,
+  changeSupabaseProfileHandle,
+  getNextHandleChangeAt,
   getSupabaseAvatarPublicUrl,
   getProfileDisplayLabel,
   getSupabasePublicProfileByHandle,
@@ -16,6 +19,26 @@ describe("profileStorage handles", () => {
   it("normalizes and validates lowercase URL-safe handles", () => {
     expect(normalizeHandle(" Formal_Typist9 ")).toBe("formal_typist9");
     expect(validateHandle("formal_typist9")).toEqual({ isValid: true, handle: "formal_typist9" });
+  });
+
+  it("calculates the server-backed 30 day handle cooldown boundary", () => {
+    const changedAt = "2026-07-01T00:00:00.000Z";
+    expect(getNextHandleChangeAt(changedAt)?.toISOString()).toBe("2026-07-31T00:00:00.000Z");
+    expect(canChangeHandle(changedAt, new Date("2026-07-30T23:59:59.999Z"))).toBe(false);
+    expect(canChangeHandle(changedAt, new Date("2026-07-31T00:00:00.000Z"))).toBe(true);
+    expect(canChangeHandle(null)).toBe(true);
+  });
+
+  it("changes the current account handle through the owner-scoped RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { user_id: "user-1", handle: "new_handle", handle_changed_at: "2026-07-14T00:00:00.000Z" },
+      error: null
+    });
+
+    await expect(changeSupabaseProfileHandle(" New_Handle ", { rpc } as any)).resolves.toMatchObject({
+      handle: "new_handle"
+    });
+    expect(rpc).toHaveBeenCalledWith("change_own_handle", { new_handle: "new_handle" });
   });
 
   it("rejects handles outside the public format", () => {

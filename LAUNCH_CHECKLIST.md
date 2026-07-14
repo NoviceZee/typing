@@ -23,6 +23,7 @@
 - [ ] Verify sender-domain DNS and test delivery, bounce handling and recovery links with a non-team mailbox
 - [x] Apply `202607130002` and `202607130003`
 - [x] Apply `202607130004_tighten_result_coherence.sql` before deploying the client that writes `metric_domain`
+- [ ] Apply `202607140005_profile_handle_cooldown_and_user_blocks.sql` before enabling handle changes and block controls
 - [x] Run anonymous public-boundary checks against the linked Supabase project
 - [ ] Run user-A/user-B/admin RLS checks and inspect a genuinely private profile projection
 
@@ -38,7 +39,7 @@
 - [ ] Test signup, login, logout, password recovery, onboarding and a saved result
 - [x] Test keyboard-only navigation and simulated mobile/tablet viewports, including compact-nav focus restoration and no-overflow checks
 - [ ] Test native Safari IME and one physical mobile device
-- [x] Run the final local suite: 47 files / 436 tests, lint, typecheck, 24-route production build and production dependency audit all pass
+- [x] Run the final local suite: 48 files / 454 tests, lint, typecheck, 24-route production build and production dependency audit all pass
 - [x] Re-run live Supabase checks and deployed preview smoke after applying `202607130004`
 - [x] Verify security headers, primary route status, 404 behavior and absolute share metadata on the deployed Vercel preview
 - [ ] Exercise a failed authenticated result save on the deployed Vercel preview (the local failure/live-region regression test passes)

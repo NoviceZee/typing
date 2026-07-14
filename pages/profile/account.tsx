@@ -1,13 +1,20 @@
 "use client";
 
-import React, { FormEvent, useEffect, useState } from "react";
+import React, { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { AlertTriangle, Bell, DatabaseZap, KeyRound, UserRound } from "lucide-react";
+import { AlertTriangle, Bell, DatabaseZap, KeyRound, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { ProfilePageLayout } from "@/components/ProfilePageLayout";
 import { useAuth } from "@/components/AuthProvider";
-import { SupabaseProfile, getSupabaseProfile, updateSupabaseProfileDisplayName } from "@/lib/profileStorage";
+import {
+  SupabaseProfile,
+  canChangeHandle,
+  changeSupabaseProfileHandle,
+  getNextHandleChangeAt,
+  getSupabaseProfile,
+  updateSupabaseProfileDisplayName
+} from "@/lib/profileStorage";
 import { deleteCurrentUserAccount, deleteCurrentUserStats, updateCurrentUserPassword } from "@/lib/accountStorage";
 import { DEFAULT_NOTIFICATION_SETTINGS, NotificationSettings, readNotificationSettings, writeNotificationSettings } from "@/lib/notificationSettings";
 
@@ -18,6 +25,7 @@ export default function AccountPage() {
   const isRecoveryMode = router.isReady && recoveryQuery === "1";
   const [profile, setProfile] = useState<SupabaseProfile | null>(null);
   const [displayName, setDisplayName] = useState("");
+  const [handleDraft, setHandleDraft] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
@@ -25,7 +33,11 @@ export default function AccountPage() {
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [pendingAction, setPendingAction] = useState<"name" | "password" | "stats" | "delete" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"name" | "handle" | "password" | "stats" | "delete" | null>(null);
+  const [accountDialog, setAccountDialog] = useState<"name" | "handle" | "password" | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const newPasswordInputRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!router.isReady || isAuthLoading || user || isRecoveryMode) return;
@@ -36,16 +48,72 @@ export default function AccountPage() {
   }, []);
   useEffect(() => {
     let mounted = true;
-    if (!user) { setProfile(null); return; }
-    getSupabaseProfile(user.id).then((next) => { if (!mounted) return; setProfile(next); setDisplayName(next?.display_name ?? ""); }).catch((reason) => { if (mounted) setError(reason instanceof Error ? reason.message : "Profile could not be loaded."); });
+    if (!user) { setProfile(null); setIsProfileLoading(false); return; }
+    setIsProfileLoading(true);
+    getSupabaseProfile(user.id).then((next) => {
+      if (!mounted) return;
+      setProfile(next);
+      setDisplayName(next?.display_name ?? "");
+      setHandleDraft(next?.handle ?? "");
+      setIsProfileLoading(false);
+    }).catch((reason) => { if (mounted) { setError(reason instanceof Error ? reason.message : "Profile could not be loaded."); setIsProfileLoading(false); } });
     return () => { mounted = false; };
   }, [user]);
 
-  function begin(action: "name" | "password" | "stats" | "delete") { setMessage(""); setError(""); setPendingAction(action); }
+  function begin(action: "name" | "handle" | "password" | "stats" | "delete") { setMessage(""); setError(""); setPendingAction(action); }
+
+  function openAccountDialog(dialog: "name" | "handle" | "password") {
+    setMessage("");
+    setError("");
+    if (dialog === "name") setDisplayName(profile?.display_name ?? "");
+    if (dialog === "handle") setHandleDraft(profile?.handle ?? "");
+    if (dialog === "password") {
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    setAccountDialog(dialog);
+  }
+
+  function closeAccountDialog() {
+    if (pendingAction) return;
+    setAccountDialog(null);
+    setError("");
+    setNewPassword("");
+    setConfirmPassword("");
+  }
+
+  function clearPasswordFields() {
+    setNewPassword("");
+    setConfirmPassword("");
+    if (newPasswordInputRef.current) newPasswordInputRef.current.value = "";
+    if (confirmPasswordInputRef.current) confirmPasswordInputRef.current.value = "";
+  }
 
   async function saveName(event: FormEvent) {
     event.preventDefault(); if (!user) return; begin("name");
-    try { const next = await updateSupabaseProfileDisplayName(user.id, displayName); setProfile(next); setDisplayName(next.display_name); setMessage("Display name updated."); } catch (reason) { setError(reason instanceof Error ? reason.message : "Name could not be updated."); } finally { setPendingAction(null); }
+    try {
+      const next = await updateSupabaseProfileDisplayName(user.id, displayName);
+      setProfile(next);
+      setDisplayName(next.display_name);
+      setAccountDialog(null);
+      setMessage("Display name updated.");
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Name could not be updated."); } finally { setPendingAction(null); }
+  }
+
+  async function saveHandle(event: FormEvent) {
+    event.preventDefault();
+    begin("handle");
+    try {
+      const next = await changeSupabaseProfileHandle(handleDraft);
+      setProfile(next);
+      setHandleDraft(next.handle ?? "");
+      setAccountDialog(null);
+      setMessage("Public handle updated.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Handle could not be updated.");
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   async function savePassword(event: FormEvent) {
@@ -61,6 +129,7 @@ export default function AccountPage() {
         await router.replace("/login?passwordReset=1");
         return;
       }
+      setAccountDialog(null);
       setMessage("Password updated.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Password could not be updated.");
@@ -68,6 +137,9 @@ export default function AccountPage() {
       setPendingAction(null);
     }
   }
+
+  const handleChangeAllowed = canChangeHandle(profile?.handle_changed_at);
+  const nextHandleChangeAt = getNextHandleChangeAt(profile?.handle_changed_at);
 
   async function deleteAccount() {
     if (deleteConfirmation !== "DELETE") return;
@@ -129,23 +201,22 @@ export default function AccountPage() {
       ) : (
       <ProfilePageLayout>
         {user && <div className="mt-6 space-y-5">
-          {(message || error) && <div role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 font-mono text-sm ${error ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>{error || message}</div>}
+          {!accountDialog && (message || error) && <div role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 font-mono text-sm ${error ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>{error || message}</div>}
 
           <AccountSection icon={<UserRound className="h-5 w-5" />} title="Identity" description="Manage the private name and sign-in details attached to this account.">
-            <form onSubmit={saveName} className="account-setting-row">
-              <label className="min-w-0"><span className="account-label">Display name</span><span className="account-help">Used inside your account. Your public identity remains @{profile?.handle ?? "handle"}.</span></label>
-              <div className="flex gap-2"><input aria-label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} className="formaltype-themed-input min-w-0 px-3 py-2 font-mono text-sm" /><button disabled={pendingAction === "name"} className="account-primary-button">{pendingAction === "name" ? "Saving…" : "Save name"}</button></div>
-            </form>
-            <div className="account-setting-row"><div><span className="account-label">Handle</span><span className="account-help">Permanent public URL and leaderboard identity.</span></div><span className="font-mono text-sm text-paper">@{profile?.handle ?? "not-set"}</span></div>
+            <div className="account-setting-row">
+              <div className="min-w-0"><span className="account-label">Display name</span><span className="account-help">Private account label. Your public identity uses your handle.</span></div>
+              <div className="flex flex-wrap items-center justify-end gap-3"><span className="font-mono text-sm text-paper/75">{isProfileLoading ? "Loading…" : profile?.display_name ?? "Not set"}</span><button type="button" aria-label="Change display name" onClick={() => openAccountDialog("name")} disabled={!profile} className="account-primary-button">Change</button></div>
+            </div>
+            <div className="account-setting-row">
+              <div><span className="account-label">Public handle</span><span className="account-help">Profile URL and leaderboard identity. Changes are limited to once every 30 days.</span></div>
+              <div className="flex flex-wrap items-center justify-end gap-3"><span className="font-mono text-sm text-paper">{isProfileLoading ? "Loading…" : `@${profile?.handle ?? "not-set"}`}</span><button type="button" aria-label="Change public handle" onClick={() => openAccountDialog("handle")} disabled={!profile || !handleChangeAllowed} className="account-primary-button">{handleChangeAllowed ? "Change" : formatHandleAvailability(nextHandleChangeAt)}</button></div>
+            </div>
             <div className="account-setting-row"><div><span className="account-label">Email</span><span className="account-help">Used to sign in and recover access.</span></div><span className="font-mono text-sm text-paper/75">{user.email}</span></div>
           </AccountSection>
 
           <AccountSection icon={<KeyRound className="h-5 w-5" />} title="Security" description="Use at least eight characters and avoid reusing another password.">
-            <form onSubmit={savePassword} className="grid gap-3 sm:grid-cols-2">
-              <label><span className="account-label">New password</span><input aria-label="New password" type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-2" /></label>
-              <label><span className="account-label">Confirm password</span><input aria-label="Confirm password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-2" /></label>
-              <button disabled={!newPassword || pendingAction === "password"} className="account-primary-button sm:col-start-2 sm:justify-self-end">{pendingAction === "password" ? "Updating…" : "Update password"}</button>
-            </form>
+            <div className="account-setting-row"><div><span className="account-label">Password</span><span className="account-help">Open a private form only when you need to change it.</span></div><button type="button" onClick={() => openAccountDialog("password")} className="account-primary-button">Change password</button></div>
           </AccountSection>
 
           <AccountSection icon={<Bell className="h-5 w-5" />} title="Notifications" description="Choose which activity appears in your FormalType notification area.">
@@ -163,11 +234,154 @@ export default function AccountPage() {
             <div className="flex items-center gap-3"><AlertTriangle className="h-5 w-5 shrink-0 text-ember" /><div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-sm uppercase text-ember">Delete account</h2><p className="text-sm text-paper/45">Permanently deletes your profile, friendships, saved results and authentication account. This cannot be undone.</p></div></div>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label><span className="account-label">Type DELETE to confirm</span><input aria-label="Delete confirmation" value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} className="formaltype-themed-input mt-2 px-3 py-2 font-mono" /></label><button type="button" onClick={deleteAccount} disabled={deleteConfirmation !== "DELETE" || pendingAction === "delete"} className="rounded-md border border-ember/35 bg-ember/10 px-4 py-2.5 font-mono text-xs uppercase text-ember transition hover:bg-ember/20 disabled:cursor-not-allowed disabled:opacity-35">{pendingAction === "delete" ? "Deleting…" : "Delete permanently"}</button></div>
           </section>
+
+          {accountDialog === "name" && (
+            <AccountDialog id="display-name-dialog" eyebrow="Identity" title="Change display name" description="This label is private to your account." errorMessage={error} onClose={closeAccountDialog} isBusy={pendingAction === "name"}>
+              <form onSubmit={saveName} className="mt-5 grid gap-4">
+                <label><span className="account-label">Display name</span><input aria-label="Display name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} minLength={2} maxLength={40} required className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>
+                <DialogActions onCancel={closeAccountDialog} isBusy={pendingAction === "name"} submitLabel={pendingAction === "name" ? "Saving…" : "Save name"} />
+              </form>
+            </AccountDialog>
+          )}
+
+          {accountDialog === "handle" && (
+            <AccountDialog id="handle-dialog" eyebrow="Public identity" title="Change handle" description="Your old profile URL will stop working. The next change is available 30 days after saving." errorMessage={error} onClose={closeAccountDialog} isBusy={pendingAction === "handle"}>
+              <form onSubmit={saveHandle} className="mt-5 grid gap-4">
+                <label><span className="account-label">New handle</span><div className="formaltype-themed-input mt-2 flex items-center px-3"><span className="text-paper/35">@</span><input aria-label="New handle" value={handleDraft} onChange={(event) => setHandleDraft(event.target.value)} minLength={3} maxLength={20} pattern="[a-zA-Z0-9_]+" required className="min-w-0 flex-1 bg-transparent px-1 py-3 outline-none" /></div></label>
+                <DialogActions onCancel={closeAccountDialog} isBusy={pendingAction === "handle"} submitLabel={pendingAction === "handle" ? "Saving…" : "Save handle"} />
+              </form>
+            </AccountDialog>
+          )}
+
+          {accountDialog === "password" && (
+            <AccountDialog id="password-dialog" eyebrow="Security" title="Change password" description="Enter the password you want to use. Nothing is generated or saved by FormalType." errorMessage={error} onClose={closeAccountDialog} isBusy={pendingAction === "password"}>
+              <form onSubmit={savePassword} autoComplete="new-password" className="mt-5 grid gap-4">
+                <label><span className="account-label">New password</span><input ref={newPasswordInputRef} aria-label="New password" name="formaltype-new-password" type="password" autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" data-form-type="other" spellCheck={false} minLength={8} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>
+                <label><span className="account-label">Confirm password</span><input ref={confirmPasswordInputRef} aria-label="Confirm password" name="formaltype-confirm-password" type="password" autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" data-form-type="other" spellCheck={false} minLength={8} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <button type="button" onClick={clearPasswordFields} className="rounded-md px-2 py-2 font-mono text-xs text-paper/45 transition hover:text-paper">Clear fields</button>
+                  <DialogActions onCancel={closeAccountDialog} isBusy={pendingAction === "password"} submitLabel={pendingAction === "password" ? "Updating…" : "Update password"} submitDisabled={!newPassword || !confirmPassword} />
+                </div>
+              </form>
+            </AccountDialog>
+          )}
         </div>}
       </ProfilePageLayout>
       )}
     </AppShell>
   );
+}
+
+function AccountDialog({
+  id,
+  eyebrow,
+  title,
+  description,
+  errorMessage,
+  onClose,
+  isBusy,
+  children
+}: React.PropsWithChildren<{
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  errorMessage?: string;
+  onClose: () => void;
+  isBusy: boolean;
+}>) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  const isBusyRef = useRef(isBusy);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    isBusyRef.current = isBusy;
+  }, [isBusy, onClose]);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape" && !isBusyRef.current) {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusable = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      );
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-ink-950/85 px-4 py-4 backdrop-blur">
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} className="w-full max-w-lg rounded-lg border border-brass/25 bg-ink-900 p-5 shadow-glow md:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase text-brass">{eyebrow}</p>
+            <h2 id={`${id}-title`} className="mt-1 text-2xl font-semibold text-paper">{title}</h2>
+            <p id={`${id}-description`} className="mt-2 text-sm leading-6 text-paper/50">{description}</p>
+          </div>
+          <button ref={closeButtonRef} type="button" onClick={onClose} disabled={isBusy} aria-label={`Close ${title}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-800 text-paper/65 transition hover:border-brass/45 hover:text-paper disabled:opacity-40"><X className="h-4 w-4" /></button>
+        </div>
+        {errorMessage && <div role="alert" className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">{errorMessage}</div>}
+        {children}
+      </section>
+    </div>
+  );
+}
+
+function DialogActions({
+  onCancel,
+  isBusy,
+  submitLabel,
+  submitDisabled = false
+}: {
+  onCancel: () => void;
+  isBusy: boolean;
+  submitLabel: string;
+  submitDisabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap justify-end gap-2">
+      <button type="button" onClick={onCancel} disabled={isBusy} className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/65 transition hover:border-paper/20 hover:text-paper disabled:opacity-50">Cancel</button>
+      <button type="submit" disabled={isBusy || submitDisabled} className="account-primary-button disabled:cursor-not-allowed">{submitLabel}</button>
+    </div>
+  );
+}
+
+function formatHandleAvailability(nextChangeAt: Date | null) {
+  if (!nextChangeAt) return "Change";
+  return `Available ${nextChangeAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 }
 
 function AccountSection({ icon, title, description, children }: React.PropsWithChildren<{ icon: React.ReactNode; title: string; description: string }>) {

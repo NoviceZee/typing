@@ -8,11 +8,13 @@ import FriendsPage from "../pages/profile/friends";
 import {
   acceptFriendRequest,
   listAcceptedFriends,
+  listBlockedUsers,
   listIncomingFriendRequests,
   listOutgoingFriendRequests,
   rejectFriendRequest,
   removeFriend,
-  sendFriendRequestByProfileHandle
+  sendFriendRequestByProfileHandle,
+  unblockUserByProfileHandle
 } from "@/lib/friendStorage";
 import { getSupabaseProfile, getSupabasePublicProfileByHandle } from "@/lib/profileStorage";
 import { getSupabaseAnalyticsTypingResults, getSupabasePublicTypingResultsByHandle } from "@/lib/typingResultStorage";
@@ -45,11 +47,14 @@ vi.mock("next/router", () => ({
 vi.mock("@/lib/friendStorage", () => ({
   acceptFriendRequest: vi.fn().mockResolvedValue({}),
   listAcceptedFriends: vi.fn().mockResolvedValue([]),
+  listBlockedUsers: vi.fn().mockResolvedValue([]),
+  isMissingBlockMigrationError: (error: unknown) => Boolean(error && typeof error === "object" && (error as { code?: string }).code === "PGRST202"),
   listIncomingFriendRequests: vi.fn().mockResolvedValue([]),
   listOutgoingFriendRequests: vi.fn().mockResolvedValue([]),
   rejectFriendRequest: vi.fn().mockResolvedValue(undefined),
   removeFriend: vi.fn().mockResolvedValue(undefined),
-  sendFriendRequestByProfileHandle: vi.fn().mockResolvedValue({})
+  sendFriendRequestByProfileHandle: vi.fn().mockResolvedValue({}),
+  unblockUserByProfileHandle: vi.fn().mockResolvedValue(true)
 }));
 
 vi.mock("@/lib/profileStorage", async () => {
@@ -75,11 +80,13 @@ vi.mock("@/lib/typingResultStorage", async () => {
 
 const mockedAccept = vi.mocked(acceptFriendRequest);
 const mockedListFriends = vi.mocked(listAcceptedFriends);
+const mockedListBlocked = vi.mocked(listBlockedUsers);
 const mockedListIncoming = vi.mocked(listIncomingFriendRequests);
 const mockedListOutgoing = vi.mocked(listOutgoingFriendRequests);
 const mockedReject = vi.mocked(rejectFriendRequest);
 const mockedRemove = vi.mocked(removeFriend);
 const mockedSend = vi.mocked(sendFriendRequestByProfileHandle);
+const mockedUnblock = vi.mocked(unblockUserByProfileHandle);
 const mockedGetPublicProfile = vi.mocked(getSupabasePublicProfileByHandle);
 const mockedGetPublicResults = vi.mocked(getSupabasePublicTypingResultsByHandle);
 const mockedGetProfile = vi.mocked(getSupabaseProfile);
@@ -91,23 +98,27 @@ describe("Profile friends page", () => {
     mockState.isLoading = false;
     mockState.routerPush.mockClear();
     mockedListFriends.mockClear();
+    mockedListBlocked.mockClear();
     mockedListIncoming.mockClear();
     mockedListOutgoing.mockClear();
     mockedAccept.mockClear();
     mockedReject.mockClear();
     mockedRemove.mockClear();
     mockedSend.mockClear();
+    mockedUnblock.mockClear();
     mockedGetPublicProfile.mockClear();
     mockedGetPublicResults.mockClear();
     mockedGetProfile.mockReset();
     mockedGetOwnResults.mockReset();
     mockedListFriends.mockResolvedValue([]);
+    mockedListBlocked.mockResolvedValue([]);
     mockedListIncoming.mockResolvedValue([]);
     mockedListOutgoing.mockResolvedValue([]);
     mockedAccept.mockResolvedValue({} as any);
     mockedReject.mockResolvedValue(undefined);
     mockedRemove.mockResolvedValue(undefined);
     mockedSend.mockResolvedValue({} as any);
+    mockedUnblock.mockResolvedValue(true);
     mockedGetPublicProfile.mockResolvedValue(makePublicProfile() as any);
     mockedGetPublicResults.mockResolvedValue([makeResult("latest", 72, 98.2)] as any);
     mockedGetProfile.mockResolvedValue(null);
@@ -138,6 +149,28 @@ describe("Profile friends page", () => {
     expect(screen.getByRole("button", { name: "Add friend" })).toBeTruthy();
     expect(screen.queryByText("No incoming requests.")).toBeNull();
     expect(screen.queryByText("No outgoing requests.")).toBeNull();
+  });
+
+  it("lists blocked users and allows them to be unblocked", async () => {
+    mockedListBlocked.mockResolvedValueOnce([
+      { handle: "noisy_typist", created_at: "2026-07-14T00:00:00.000Z" }
+    ]);
+
+    render(<FriendsPage />);
+    expect(await screen.findByText("Blocked users")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "@noisy_typist" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Unblock" }));
+    await waitFor(() => expect(mockedUnblock).toHaveBeenCalledWith("noisy_typist"));
+  });
+
+  it("keeps the friends page usable before the block migration is applied", async () => {
+    mockedListBlocked.mockRejectedValueOnce({ code: "PGRST202", message: "Could not find the function list_blocked_users" });
+
+    render(<FriendsPage />);
+
+    expect(await screen.findByText(/latest database migration/)).toBeTruthy();
+    expect(screen.getByText("No friends yet.")).toBeTruthy();
   });
 
   it("renders a compact friends stats table", async () => {

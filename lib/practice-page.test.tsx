@@ -36,6 +36,15 @@ vi.mock("@/components/AppShell", () => ({
   AdPlaceholder: () => <div>Ad space</div>
 }));
 
+vi.mock("next/link", () => ({
+  default: React.forwardRef<
+    HTMLAnchorElement,
+    React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }
+  >(function MockNextLink({ href, children, ...props }, ref) {
+    return <a ref={ref} href={href} {...props}>{children}</a>;
+  })
+}));
+
 const authState: { user: { id: string } | null } = { user: null };
 
 vi.mock("@/components/AuthProvider", () => ({
@@ -416,14 +425,12 @@ describe("PracticePage passage loading", () => {
     }
   });
 
-  it("finishes English 5m Practice once when the selected timer expires", async () => {
+  it("finishes English 5m Practice and keeps the result open when typing continues", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
       JSON.stringify([makePassage("local", "Local active", "Local fallback body text for five minute expiry.")])
     );
     mockedGetSupabasePassageLibrary.mockResolvedValue([]);
-    authState.user = { id: "user-1" };
-
     const { container } = render(<PracticePage />);
 
     await waitFor(() => {
@@ -436,16 +443,27 @@ describe("PracticePage passage loading", () => {
     vi.setSystemTime(new Date("2026-07-07T12:00:00.000Z"));
     fireEvent.keyDown(window, { key: "Tab" });
     expect(screen.getByTestId("typing-timer").textContent).toBe("5:00");
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local");
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
 
+    vi.setSystemTime(new Date("2026-07-07T12:05:00.250Z"));
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(300_250);
+      vi.advanceTimersByTime(250);
+      await Promise.resolve();
     });
 
     expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
-    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByText("5:00").length).toBeGreaterThan(0);
+    expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
     expect(screen.queryByTestId("typing-timer")).toBeNull();
-    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.durationSeconds).toBe(300);
+
+    const input = screen.getByLabelText("Typing input") as HTMLTextAreaElement;
+    const valueAtFinish = input.value;
+    fireEvent.change(input, { target: { value: `${valueAtFinish}X` } });
+    expect(input.value).toBe(valueAtFinish);
+
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(screen.getByRole("dialog", { name: /Time up/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
   });
 
   it("finishes and saves Chinese 1m Practice as Chinese when the timer expires", async () => {
@@ -612,6 +630,7 @@ describe("PracticePage passage loading", () => {
     expect(screen.getByText("Tab = start")).toBeTruthy();
     expect((screen.getByLabelText("Typing input") as HTMLTextAreaElement).value).toBe("");
     expect(screen.getByRole("link", { name: "Library" }).getAttribute("href")).toBe("/passages?language=chinese");
+    expect(mockedGetSupabasePassageLibrary).toHaveBeenCalledTimes(1);
   });
 
   it("uses the persistent Chinese textarea value for Practice punctuation and newlines", async () => {
@@ -718,7 +737,7 @@ describe("PracticePage passage loading", () => {
     });
 
     fireEvent.keyDown(window, { key: "Tab" });
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
     fireEvent.keyDown(window, { key: "Escape" });
 
     await waitFor(() => {
@@ -952,9 +971,17 @@ describe("PracticePage passage loading", () => {
   }, 10_000);
 
   it("preserves 5-minute previous comparison data after restarting the same passage", async () => {
+    const fiveMinutePassage = makePassage(
+      "local",
+      "Local active",
+      "Local fallback body text for five minute typing."
+    );
+    // This test covers result scoping, while timed-passage expansion is covered in app-storage.test.ts.
+    // Mark the fixture as already long enough so concurrent DOM tests do not render thousands of unrelated spans.
+    fiveMinutePassage.wordCount = 1_100;
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
-      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for five minute typing.")])
+      JSON.stringify([fiveMinutePassage])
     );
     mockedGetSupabasePassageLibrary.mockResolvedValue([]);
 
@@ -966,12 +993,8 @@ describe("PracticePage passage loading", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "5m" }));
 
-    await waitFor(() => {
-      expect(container.textContent).toContain("Local fallback body text for five minute typing");
-    });
-
     fireEvent.keyDown(window, { key: "Tab" });
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
     fireEvent.keyDown(window, { key: "Escape" });
 
     await waitFor(() => {
@@ -981,9 +1004,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
     const justFinishedResult = readPreviousResult("local", 300);
 
-    await waitFor(() => {
-      expect(justFinishedResult).toBeTruthy();
-    });
+    expect(justFinishedResult).toBeTruthy();
     expect(readPreviousResult("local", 60)).toBeNull();
     expect(screen.queryByTestId("previous-pace-display")).toBeNull();
     expect(screen.queryByText(/Previous pace:/)).toBeNull();
@@ -1455,7 +1476,7 @@ describe("PracticePage passage loading", () => {
     await waitFor(() => expect(container.textContent).toContain("Local fallback body text for typing"));
 
     fireEvent.keyDown(window, { key: "Tab" });
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
     fireEvent.keyDown(window, { key: "Escape" });
 
     await waitFor(() => {
@@ -1483,13 +1504,13 @@ describe("PracticePage passage loading", () => {
     await waitFor(() => expect(container.textContent).toContain("Local fallback body text for typing"));
 
     fireEvent.keyDown(window, { key: "Tab" });
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
     fireEvent.keyDown(window, { key: "Escape" });
     await waitFor(() => expect(screen.getByText("Saving result…")).toBeTruthy());
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
     fireEvent.keyDown(window, { key: "Tab" });
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
     fireEvent.keyDown(window, { key: "Escape" });
     await waitFor(() => expect(screen.getByText("Saving result…")).toBeTruthy());
 

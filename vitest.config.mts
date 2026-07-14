@@ -7,7 +7,10 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
-    maxWorkers: 4,
+    // The UI suites exercise shared jsdom timers, storage and audio mocks.
+    // Running files concurrently can starve the event loop and turn valid
+    // interactions into flaky 5-second timeouts in CI.
+    maxWorkers: 1,
     minWorkers: 1
   },
   resolve: {

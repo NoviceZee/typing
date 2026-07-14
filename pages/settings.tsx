@@ -212,7 +212,7 @@ export default function SettingsPage() {
 
                 <ButtonGroup
                   label="App font"
-                  description="Changes navigation, controls and analytics. Uses fonts already available on your device."
+                  description="Changes the interface, navigation and analytics. Uses fonts already available on your device."
                   options={APP_FONT_OPTIONS}
                   value={themeSettings.appFont}
                   getAriaLabel={(option) => `${option.label} app font`}

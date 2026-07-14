@@ -24,9 +24,12 @@ const config: Config = {
         cyan: "#75d6ff"
       },
       fontFamily: {
-        sans: ["Avenir Next", "Avenir", "Segoe UI", "system-ui", "sans-serif"],
-        serif: ["Avenir Next", "Avenir", "Segoe UI", "system-ui", "sans-serif"],
-        mono: ["SFMono-Regular", "Menlo", "Monaco", "Consolas", "ui-monospace", "monospace"]
+        // Keep utility classes in sync with the runtime app-font preference.
+        // A hard-coded Tailwind stack was why a font change only affected
+        // body copy while navigation and controls stayed unchanged.
+        sans: ["var(--font-app)"],
+        serif: ["var(--font-app)"],
+        mono: ["var(--font-interface)"]
       },
       boxShadow: {
         glow: "0 0 0 1px rgb(var(--color-accent) / 0.18), 0 24px 80px rgb(0 0 0 / 0.36)"

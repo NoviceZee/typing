@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient";
 
 export const AVATAR_BUCKET = "avatars";
 export const MAX_AVATAR_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+export const HANDLE_CHANGE_COOLDOWN_DAYS = 30;
 const ALLOWED_AVATAR_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
 
 export type SupabaseProfile = {
@@ -12,6 +13,7 @@ export type SupabaseProfile = {
   avatar_style: string | null;
   avatar_path: string | null;
   public_profile_enabled: boolean;
+  handle_changed_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -253,6 +255,37 @@ export function validateHandle(handle: string): HandleValidationResult {
   }
 
   return { isValid: true, handle: cleanHandle };
+}
+
+export function getNextHandleChangeAt(handleChangedAt?: string | null): Date | null {
+  if (!handleChangedAt) return null;
+  const changedAt = new Date(handleChangedAt);
+  if (Number.isNaN(changedAt.getTime())) return null;
+  return new Date(changedAt.getTime() + HANDLE_CHANGE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+}
+
+export function canChangeHandle(handleChangedAt?: string | null, now = new Date()) {
+  const nextChangeAt = getNextHandleChangeAt(handleChangedAt);
+  return !nextChangeAt || nextChangeAt.getTime() <= now.getTime();
+}
+
+export async function changeSupabaseProfileHandle(
+  handle: string,
+  client = requireSupabaseClient()
+): Promise<SupabaseProfile> {
+  const validation = validateHandle(handle);
+  if (!validation.isValid) throw new Error(validation.message);
+
+  const { data, error } = await client.rpc("change_own_handle", {
+    new_handle: validation.handle
+  });
+
+  if (error) {
+    if (error.code === "23505") throw new Error("That handle is already taken.");
+    throw error;
+  }
+
+  return data;
 }
 
 export function getProfileDisplayLabel(profile: Pick<SupabaseProfile, "handle"> | null) {

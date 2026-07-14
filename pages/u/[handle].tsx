@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Award, Copy, Trophy, UserCircle } from "lucide-react";
+import { Award, Ban, Copy, Trophy, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/router";
@@ -18,8 +18,11 @@ import {
 import type { SupabaseProfile, SupabasePublicProfile } from "@/lib/profileStorage";
 import {
   FriendListItem,
+  blockUserByProfileHandle,
   getFriendshipWithProfileHandle,
-  sendFriendRequestByProfileHandle
+  isUserBlockedByProfileHandle,
+  sendFriendRequestByProfileHandle,
+  unblockUserByProfileHandle
 } from "@/lib/friendStorage";
 import {
   SupabaseAnalyticsTypingResultRow,
@@ -36,7 +39,11 @@ export default function PublicUserProfilePage() {
   const [friendship, setFriendship] = useState<FriendListItem | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [isFriendStatusUnavailable, setIsFriendStatusUnavailable] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [isBlockStatusUnavailable, setIsBlockStatusUnavailable] = useState(false);
+  const [isBlockActionPending, setIsBlockActionPending] = useState(false);
   const [friendActionMessage, setFriendActionMessage] = useState("");
+  const [isFriendActionError, setIsFriendActionError] = useState(false);
   const [results, setResults] = useState<SupabaseAnalyticsTypingResultRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [copyMessage, setCopyMessage] = useState("");
@@ -55,7 +62,11 @@ export default function PublicUserProfilePage() {
     setFriendship(null);
     setIsOwnProfile(false);
     setIsFriendStatusUnavailable(false);
+    setIsBlocked(false);
+    setIsBlockStatusUnavailable(false);
+    setIsBlockActionPending(false);
     setFriendActionMessage("");
+    setIsFriendActionError(false);
     getSupabasePublicProfileByHandle(routeHandle)
       .then(async (publicProfile) => {
         if (!isMounted) return;
@@ -77,22 +88,35 @@ export default function PublicUserProfilePage() {
         const isOwnVisibleProfile = ownProfile?.handle === visibleProfile.handle;
 
         if (visibleProfile.public_profile_enabled === false) {
+          const blockResult = user && !isOwnVisibleProfile
+            ? await isUserBlockedByProfileHandle(visibleProfile.handle)
+                .then((blocked) => ({ blocked, failed: false }))
+                .catch(() => ({ blocked: false, failed: true }))
+            : { blocked: false, failed: false };
+          if (!isMounted) return;
           setProfile(visibleProfile);
           setResults([]);
           setIsOwnProfile(isOwnVisibleProfile);
           setFriendship(null);
           setIsFriendStatusUnavailable(false);
+          setIsBlocked(blockResult.blocked);
+          setIsBlockStatusUnavailable(blockResult.failed);
           setLoadState("ready");
           return;
         }
 
-        const [publicResults, friendshipResult] = await Promise.all([
+        const [publicResults, friendshipResult, blockResult] = await Promise.all([
           getSupabasePublicTypingResultsByHandle(visibleProfile.handle),
           user
             ? getFriendshipWithProfileHandle(visibleProfile.handle)
                 .then((friendship) => ({ friendship, failed: false }))
                 .catch(() => ({ friendship: null, failed: true }))
-            : Promise.resolve({ friendship: null, failed: false })
+            : Promise.resolve({ friendship: null, failed: false }),
+          user && !isOwnVisibleProfile
+            ? isUserBlockedByProfileHandle(visibleProfile.handle)
+                .then((blocked) => ({ blocked, failed: false }))
+                .catch(() => ({ blocked: false, failed: true }))
+            : Promise.resolve({ blocked: false, failed: false })
         ]);
         if (!isMounted) return;
         setProfile(visibleProfile);
@@ -100,6 +124,8 @@ export default function PublicUserProfilePage() {
         setIsOwnProfile(isOwnVisibleProfile);
         setFriendship(friendshipResult.friendship);
         setIsFriendStatusUnavailable(friendshipResult.failed);
+        setIsBlocked(blockResult.blocked);
+        setIsBlockStatusUnavailable(blockResult.failed);
         setLoadState("ready");
       })
       .catch(() => {
@@ -129,6 +155,7 @@ export default function PublicUserProfilePage() {
     }
 
     setFriendActionMessage("");
+    setIsFriendActionError(false);
     try {
       const request = await sendFriendRequestByProfileHandle(profile.handle);
       setFriendship({
@@ -141,9 +168,53 @@ export default function PublicUserProfilePage() {
         updated_at: request.updated_at
       });
     } catch (error) {
+      setIsFriendActionError(true);
       setFriendActionMessage(error instanceof Error ? error.message : "Friend request could not be sent.");
     }
   }
+
+  async function handleBlockAction() {
+    if (!profile) return;
+    setIsBlockActionPending(true);
+    setFriendActionMessage("");
+    setIsFriendActionError(false);
+
+    try {
+      if (isBlocked) {
+        await unblockUserByProfileHandle(profile.handle);
+        setIsBlocked(false);
+        setFriendActionMessage(`Unblocked @${profile.handle}.`);
+      } else {
+        await blockUserByProfileHandle(profile.handle);
+        setIsBlocked(true);
+        setFriendship(null);
+        setFriendActionMessage(`Blocked @${profile.handle}. Existing friend connections and requests were removed.`);
+      }
+    } catch (error) {
+      setIsFriendActionError(true);
+      setFriendActionMessage(error instanceof Error ? error.message : "Block setting could not be updated.");
+    } finally {
+      setIsBlockActionPending(false);
+    }
+  }
+
+  const blockControl = user && !isOwnProfile ? (
+    isBlockStatusUnavailable ? (
+      <span className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/40">
+        Block unavailable
+      </span>
+    ) : (
+      <button
+        type="button"
+        onClick={handleBlockAction}
+        disabled={isBlockActionPending}
+        className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 font-mono text-xs transition disabled:cursor-wait disabled:opacity-55 ${isBlocked ? "border-paper/10 bg-ink-900 text-paper/60 hover:border-brass/35 hover:text-paper" : "border-ember/25 bg-ember/5 text-ember/75 hover:border-ember/45 hover:bg-ember/10"}`}
+      >
+        <Ban className="h-3.5 w-3.5" />
+        {isBlockActionPending ? "Updating..." : isBlocked ? "Unblock" : "Block user"}
+      </button>
+    )
+  ) : null;
 
   return (
     <AppShell sideAd={false}>
@@ -169,7 +240,13 @@ export default function PublicUserProfilePage() {
         )}
 
         {loadState === "ready" && profile && profile.public_profile_enabled === false && (
-          <PrivateProfileCard profile={profile} isOwnProfile={isOwnProfile} />
+          <PrivateProfileCard
+            profile={profile}
+            isOwnProfile={isOwnProfile}
+            blockAction={blockControl}
+            actionMessage={friendActionMessage}
+            isActionError={isFriendActionError}
+          />
         )}
 
         {loadState === "ready" && profile && profile.public_profile_enabled !== false && (
@@ -182,14 +259,20 @@ export default function PublicUserProfilePage() {
               isOwnProfile={isOwnProfile}
               friendAction={
                 user && !isOwnProfile ? (
-                  <FriendAction
-                    friendship={friendship}
-                    isUnavailable={isFriendStatusUnavailable}
-                    onAddFriend={handleAddFriend}
-                  />
+                  <>
+                    {!isBlocked && (
+                      <FriendAction
+                        friendship={friendship}
+                        isUnavailable={isFriendStatusUnavailable}
+                        onAddFriend={handleAddFriend}
+                      />
+                    )}
+                    {blockControl}
+                  </>
                 ) : null
               }
               friendActionMessage={friendActionMessage}
+              isFriendActionError={isFriendActionError}
             />
 
             <PublicStatsPanel domainAnalytics={domainAnalytics} />
@@ -214,10 +297,16 @@ function getOwnPublicProfileFallback(profile: SupabaseProfile): SupabasePublicPr
 
 function PrivateProfileCard({
   profile,
-  isOwnProfile
+  isOwnProfile,
+  blockAction,
+  actionMessage,
+  isActionError
 }: {
   profile: SupabasePublicProfile;
   isOwnProfile: boolean;
+  blockAction: React.ReactNode;
+  actionMessage: string;
+  isActionError: boolean;
 }) {
   const avatarStyle = profile.avatar_style || "default";
   const avatarUrl = getSupabaseAvatarPublicUrl(profile.avatar_path);
@@ -236,6 +325,12 @@ function PrivateProfileCard({
         >
           Manage visibility
         </Link>
+      )}
+      {!isOwnProfile && blockAction && <div className="mt-5 flex justify-center">{blockAction}</div>}
+      {actionMessage && (
+        <div role={isActionError ? "alert" : "status"} className={`mt-4 rounded-md border px-4 py-3 font-mono text-sm ${isActionError ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>
+          {actionMessage}
+        </div>
       )}
     </section>
   );
@@ -292,7 +387,8 @@ function ProfileCard({
   onCopyUrl,
   isOwnProfile,
   friendAction,
-  friendActionMessage
+  friendActionMessage,
+  isFriendActionError
 }: {
   profile: SupabasePublicProfile;
   analytics: ReturnType<typeof buildProgressAnalytics>;
@@ -301,6 +397,7 @@ function ProfileCard({
   isOwnProfile: boolean;
   friendAction: React.ReactNode;
   friendActionMessage: string;
+  isFriendActionError: boolean;
 }) {
   const avatarStyle = profile.avatar_style || "default";
   const avatarUrl = getSupabaseAvatarPublicUrl(profile.avatar_path);
@@ -336,7 +433,7 @@ function ProfileCard({
       </div>
 
       {friendActionMessage && (
-        <div className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
+        <div role={isFriendActionError ? "alert" : "status"} className={`mt-4 rounded-md border px-4 py-3 font-mono text-sm ${isFriendActionError ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>
           {friendActionMessage}
         </div>
       )}

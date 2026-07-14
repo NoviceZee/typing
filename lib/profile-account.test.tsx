@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AccountPage from "../pages/profile/account";
-import { getSupabaseProfile } from "@/lib/profileStorage";
+import { changeSupabaseProfileHandle, getSupabaseProfile, updateSupabaseProfileDisplayName } from "@/lib/profileStorage";
 import { updateCurrentUserPassword } from "@/lib/accountStorage";
 
 const mockState = vi.hoisted(() => ({
@@ -42,7 +42,11 @@ vi.mock("next/router", () => ({
 }));
 
 vi.mock("@/lib/profileStorage", () => ({
-  getSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Formal Typist", handle: "formal_typist" })
+  getSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Formal Typist", handle: "formal_typist", handle_changed_at: null }),
+  updateSupabaseProfileDisplayName: vi.fn().mockResolvedValue({ display_name: "Updated Typist", handle: "formal_typist", handle_changed_at: null }),
+  changeSupabaseProfileHandle: vi.fn().mockResolvedValue({ display_name: "Formal Typist", handle: "updated_typist", handle_changed_at: "2026-07-14T00:00:00.000Z" }),
+  canChangeHandle: vi.fn((changedAt?: string | null) => !changedAt),
+  getNextHandleChangeAt: vi.fn((changedAt?: string | null) => changedAt ? new Date("2026-08-13T00:00:00.000Z") : null)
 }));
 
 vi.mock("@/lib/accountStorage", () => ({
@@ -53,6 +57,8 @@ vi.mock("@/lib/accountStorage", () => ({
 
 const mockedGetSupabaseProfile = vi.mocked(getSupabaseProfile);
 const mockedUpdatePassword = vi.mocked(updateCurrentUserPassword);
+const mockedUpdateDisplayName = vi.mocked(updateSupabaseProfileDisplayName);
+const mockedChangeHandle = vi.mocked(changeSupabaseProfileHandle);
 
 describe("Profile account page", () => {
   beforeEach(() => {
@@ -65,6 +71,9 @@ describe("Profile account page", () => {
     mockState.signOut.mockClear();
     mockedGetSupabaseProfile.mockClear();
     mockedUpdatePassword.mockClear();
+    mockedUpdateDisplayName.mockClear();
+    mockedChangeHandle.mockClear();
+    mockedGetSupabaseProfile.mockResolvedValue({ display_name: "Formal Typist", handle: "formal_typist", handle_changed_at: null } as any);
   });
 
   it("renders working identity, security and deletion controls", async () => {
@@ -80,14 +89,68 @@ describe("Profile account page", () => {
     expect(screen.getByText("Delete account")).toBeTruthy();
     expect(screen.getByText("Email")).toBeTruthy();
     expect(screen.getByText("typist@example.com")).toBeTruthy();
-    expect(screen.getByText("Handle")).toBeTruthy();
+    expect(screen.getByText("Public handle")).toBeTruthy();
     expect(screen.getByText("@formal_typist")).toBeTruthy();
-    expect(screen.getByLabelText("Display name")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save name" })).toBeTruthy();
-    expect(screen.getByLabelText("New password")).toBeTruthy();
+    expect(screen.queryByLabelText("Display name")).toBeNull();
+    expect(screen.getByRole("button", { name: "Change display name" })).toBeTruthy();
+    expect(screen.queryByLabelText("New password")).toBeNull();
+    expect(screen.getByRole("button", { name: "Change password" })).toBeTruthy();
     expect(screen.getByLabelText("Delete confirmation")).toBeTruthy();
     expect(screen.queryByText("My Results")).toBeNull();
     expect(screen.queryByText("Typing rules")).toBeNull();
+  });
+
+  it("edits identity in dialogs and applies the handle cooldown returned by the server", async () => {
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText("@formal_typist")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Change display name" }));
+    expect(screen.getByRole("dialog", { name: "Change display name" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Display name"), { target: { value: "Updated Typist" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+    await waitFor(() => expect(mockedUpdateDisplayName).toHaveBeenCalledWith("user-1", "Updated Typist"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Change public handle" }));
+    fireEvent.change(screen.getByLabelText("New handle"), { target: { value: "updated_typist" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save handle" }));
+    await waitFor(() => expect(mockedChangeHandle).toHaveBeenCalledWith("updated_typist"));
+    expect(screen.getByText("@updated_typist")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Change public handle" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("opens password fields only on request and lets Safari autofill be cleared", async () => {
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText("@formal_typist")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+    const password = screen.getByLabelText("New password") as HTMLInputElement;
+    const confirmation = screen.getByLabelText("Confirm password") as HTMLInputElement;
+    expect(password.getAttribute("autocomplete")).toBe("new-password");
+
+    password.value = "safari-generated-password";
+    confirmation.value = "safari-generated-password";
+    fireEvent.click(screen.getByRole("button", { name: "Clear fields" }));
+    expect(password.value).toBe("");
+    expect(confirmation.value).toBe("");
+
+    fireEvent.change(password, { target: { value: "my-manual-password" } });
+    fireEvent.change(confirmation, { target: { value: "my-manual-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Update password" }));
+    await waitFor(() => expect(mockedUpdatePassword).toHaveBeenCalledWith("my-manual-password"));
+  });
+
+  it("keeps server errors visible inside the open account dialog", async () => {
+    mockedChangeHandle.mockRejectedValueOnce(new Error("Your handle can only be changed once every 30 days."));
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText("@formal_typist")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Change public handle" }));
+    fireEvent.change(screen.getByLabelText("New handle"), { target: { value: "another_handle" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save handle" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Change handle" });
+    await waitFor(() => expect(dialog.querySelector('[role="alert"]')?.textContent).toContain("once every 30 days"));
+    expect(screen.getByRole("dialog", { name: "Change handle" })).toBeTruthy();
   });
 
   it("redirects logged-out users to login", async () => {

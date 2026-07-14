@@ -21,7 +21,7 @@ vi.mock("@/components/AppShell", () => ({
 }));
 
 describe("ResultModal", () => {
-  it("exposes dialog semantics, focuses Close, and supports Escape", () => {
+  it("exposes dialog semantics, focuses the inert dialog surface, and supports Escape", () => {
     const onClose = vi.fn();
     render(
       <ResultModal
@@ -39,7 +39,7 @@ describe("ResultModal", () => {
 
     const dialog = screen.getByRole("dialog", { name: "Time up" });
     expect(dialog.getAttribute("aria-modal")).toBe("true");
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close result" }));
+    expect(document.activeElement).toBe(screen.getByRole("dialog", { name: /Time up/i }));
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
   });

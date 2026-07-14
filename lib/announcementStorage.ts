@@ -10,15 +10,35 @@ export async function listActiveAnnouncements(): Promise<AppAnnouncement[]> {
   return data ?? [];
 }
 
-const READ_KEY = "formaltype_read_announcements";
-export function readAnnouncementIds(): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  try { return new Set(JSON.parse(window.localStorage.getItem(READ_KEY) || "[]")); } catch { return new Set(); }
+const LEGACY_READ_KEY = "formaltype_read_announcements";
+const READ_KEY_PREFIX = "formaltype_read_announcements";
+
+function getReadKey(userId?: string | null) {
+  return userId ? `${READ_KEY_PREFIX}:${userId}` : LEGACY_READ_KEY;
 }
-export function markAnnouncementsRead(ids: string[]) {
+
+export function readAnnouncementIds(userId?: string | null): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const readKey = getReadKey(userId);
+    const scopedValue = window.localStorage.getItem(readKey);
+    if (scopedValue) return new Set<string>(JSON.parse(scopedValue));
+
+    const legacyValue = userId ? window.localStorage.getItem(LEGACY_READ_KEY) : null;
+    if (!legacyValue) return new Set();
+
+    const legacyIds = JSON.parse(legacyValue);
+    const migration = safeSetJsonStorageItem(readKey, legacyIds, { context: "migrateAnnouncementReadState" });
+    if (migration.ok) window.localStorage.removeItem(LEGACY_READ_KEY);
+    return new Set<string>(legacyIds);
+  } catch {
+    return new Set();
+  }
+}
+export function markAnnouncementsRead(ids: string[], userId?: string | null) {
   return safeSetJsonStorageItem(
-    READ_KEY,
-    Array.from(new Set([...Array.from(readAnnouncementIds()), ...ids])).slice(-100),
+    getReadKey(userId),
+    Array.from(new Set([...Array.from(readAnnouncementIds(userId)), ...ids])).slice(-100),
     { context: "markAnnouncementsRead" }
   );
 }

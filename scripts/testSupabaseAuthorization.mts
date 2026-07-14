@@ -30,6 +30,7 @@ async function main() {
   await assertOwnProfilesExist([userA, userB, admin]);
   await assertCrossUserReadsAreDenied(userA, userB);
   await assertCrossUserWritesAreDenied(userA, userB);
+  await assertBlockAuthorization(userA, userB);
   await assertResultOwnershipIsServerDerived(userA, userB);
   await assertPassageAuthorization(userA, admin);
 
@@ -125,6 +126,73 @@ async function assertCrossUserWritesAreDenied(userA: TestPrincipal, userB: TestP
     status: "pending"
   });
   assert(Boolean(friendshipError), `${userA.label} forged a request owned by ${userB.label}.`);
+
+}
+
+async function assertBlockAuthorization(userA: TestPrincipal, userB: TestPrincipal) {
+  const [userAHandle, userBHandle] = await Promise.all([getProfileHandle(userA), getProfileHandle(userB)]);
+
+  const { error: directReadError } = await userA.client.from("user_blocks").select("*").limit(1);
+  assert(Boolean(directReadError), "Authenticated clients can read the private user_blocks base table.");
+
+  const { error: directWriteError } = await userA.client.from("user_blocks").insert({
+    blocker_id: userA.user.id,
+    blocked_id: userB.user.id
+  });
+  assert(Boolean(directWriteError), "Authenticated clients can bypass the guarded block RPC.");
+
+  await userA.client.rpc("unblock_user_by_handle", { target_handle: userBHandle });
+  try {
+    const { error: blockError } = await userA.client.rpc("block_user_by_handle", { target_handle: userBHandle });
+    if (blockError) throw blockError;
+
+    const { data: blockedUsers, error: listError } = await userA.client.rpc("list_blocked_users");
+    if (listError) throw listError;
+    assert(
+      Array.isArray(blockedUsers) && blockedUsers.some((row) => row.handle === userBHandle),
+      "Blocked user was not returned by the owner-scoped list RPC."
+    );
+
+    const { error: reverseRequestError } = await userB.client.rpc("send_friend_request_by_handle", {
+      target_handle: userAHandle
+    });
+    assert(Boolean(reverseRequestError), "A blocked user sent a reverse friend request.");
+
+    const { error: outboundRequestError } = await userA.client.rpc("send_friend_request_by_handle", {
+      target_handle: userBHandle
+    });
+    assert(Boolean(outboundRequestError), "A blocker sent a friend request without unblocking first.");
+
+    const { data: friendship, error: friendshipError } = await userA.client.rpc("get_friendship_with_handle", {
+      target_handle: userBHandle
+    });
+    if (friendshipError) throw friendshipError;
+    assert(friendship === null, "Blocking left a stale friendship or pending request behind.");
+  } finally {
+    const { error } = await userA.client.rpc("unblock_user_by_handle", { target_handle: userBHandle });
+    if (error) throw error;
+  }
+
+  const { data: directFriendship, error: directFriendshipError } = await userA.client
+    .from("friendships")
+    .insert({ requester_id: userA.user.id, addressee_id: userB.user.id, status: "pending" })
+    .select("id")
+    .maybeSingle();
+  if (directFriendship?.id) {
+    await userA.client.from("friendships").delete().eq("id", directFriendship.id);
+  }
+  assert(Boolean(directFriendshipError), "Authenticated clients can bypass the guarded friend-request RPC.");
+}
+
+async function getProfileHandle(principal: TestPrincipal) {
+  const { data, error } = await principal.client
+    .from("profiles")
+    .select("handle")
+    .eq("user_id", principal.user.id)
+    .single();
+  if (error) throw error;
+  assert(typeof data.handle === "string" && data.handle.length > 0, `${principal.label} needs a handle for block tests.`);
+  return data.handle;
 }
 
 async function assertResultOwnershipIsServerDerived(userA: TestPrincipal, userB: TestPrincipal) {

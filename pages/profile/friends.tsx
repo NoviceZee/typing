@@ -4,23 +4,25 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, UserCircle, X } from "lucide-react";
+import { Ban, Plus, UserCircle, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { ProfileSectionNav } from "@/components/ProfileSectionNav";
-import { ProfilePageHeader } from "@/components/ProfilePageHeader";
 import { ProfilePageLayout } from "@/components/ProfilePageLayout";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import { ANALYTICS_DOMAIN_OPTIONS, AnalyticsDomain } from "@/lib/analyticsDomain";
 import {
   FriendListItem,
+  BlockedUser,
   acceptFriendRequest,
   listAcceptedFriends,
+  listBlockedUsers,
+  isMissingBlockMigrationError,
   listIncomingFriendRequests,
   listOutgoingFriendRequests,
   rejectFriendRequest,
   removeFriend,
-  sendFriendRequestByProfileHandle
+  sendFriendRequestByProfileHandle,
+  unblockUserByProfileHandle
 } from "@/lib/friendStorage";
 import {
   getSupabaseAvatarPublicUrl,
@@ -52,6 +54,8 @@ export default function FriendsPage() {
   const [selfRow, setSelfRow] = useState<FriendRow | null>(null);
   const [incomingRequests, setIncomingRequests] = useState<FriendListItem[]>([]);
   const [outgoingRequests, setOutgoingRequests] = useState<FriendListItem[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [isBlockingAvailable, setIsBlockingAvailable] = useState(true);
   const [isLoadingFriends, setIsLoadingFriends] = useState(false);
   const [friendsMessage, setFriendsMessage] = useState("");
   const [friendsMessageKind, setFriendsMessageKind] = useState<"success" | "error">("success");
@@ -67,11 +71,19 @@ export default function FriendsPage() {
       setIsLoadingFriends(true);
     }
 
-    const [nextFriends, nextIncoming, nextOutgoing, nextSelfRow] = await Promise.all([
+    const [nextFriends, nextIncoming, nextOutgoing, nextSelfRow, blockedUsersResult] = await Promise.all([
       listAcceptedFriends(),
       listIncomingFriendRequests(),
       listOutgoingFriendRequests(),
-      user ? toSelfRow(user.id) : Promise.resolve(null)
+      user ? toSelfRow(user.id) : Promise.resolve(null),
+      listBlockedUsers()
+        .then((users) => ({ users, available: true }))
+        .catch((error) => {
+          if (isMissingBlockMigrationError(error)) {
+            return { users: [], available: false };
+          }
+          throw error;
+        })
     ]);
     const nextRows = await Promise.all(nextFriends.map(toFriendRow));
 
@@ -79,6 +91,8 @@ export default function FriendsPage() {
     setSelfRow(nextSelfRow);
     setIncomingRequests(nextIncoming);
     setOutgoingRequests(nextOutgoing);
+    setBlockedUsers(blockedUsersResult.users);
+    setIsBlockingAvailable(blockedUsersResult.available);
 
     if (showLoading) {
       setIsLoadingFriends(false);
@@ -101,6 +115,8 @@ export default function FriendsPage() {
       setSelfRow(null);
       setIncomingRequests([]);
       setOutgoingRequests([]);
+      setBlockedUsers([]);
+      setIsBlockingAvailable(true);
       setFriendsMessage("");
       setFriendsMessageKind("success");
       setIsLoadingFriends(false);
@@ -171,6 +187,23 @@ export default function FriendsPage() {
       await loadFriends(false);
     } catch (error) {
       setFriendsMessage(error instanceof Error ? error.message : "Friend action could not be completed.");
+      setFriendsMessageKind("error");
+    } finally {
+      setPendingActionId(null);
+    }
+  }
+
+  async function handleUnblockUser(blockedUser: BlockedUser) {
+    const actionId = `blocked:${blockedUser.handle}`;
+    setPendingActionId(actionId);
+    setFriendsMessage("");
+    setFriendsMessageKind("success");
+    try {
+      await unblockUserByProfileHandle(blockedUser.handle);
+      setFriendsMessage(`Unblocked @${blockedUser.handle}.`);
+      await loadFriends(false);
+    } catch (error) {
+      setFriendsMessage(error instanceof Error ? error.message : "User could not be unblocked.");
       setFriendsMessageKind("error");
     } finally {
       setPendingActionId(null);
@@ -268,6 +301,12 @@ export default function FriendsPage() {
                     handleFriendAction(item, () => rejectFriendRequest(item.id), `Canceled request to @${item.handle}.`)
                   }
                 />
+                <BlockedUsersPanel
+                  users={blockedUsers}
+                  isAvailable={isBlockingAvailable}
+                  pendingActionId={pendingActionId}
+                  onUnblock={handleUnblockUser}
+                />
                 <FriendsTable
                   rows={friendRows}
                   selfRow={selfRow}
@@ -282,6 +321,50 @@ export default function FriendsPage() {
         )}
       </ProfilePageLayout>
     </AppShell>
+  );
+}
+
+function BlockedUsersPanel({
+  users,
+  isAvailable,
+  pendingActionId,
+  onUnblock
+}: {
+  users: BlockedUser[];
+  isAvailable: boolean;
+  pendingActionId: string | null;
+  onUnblock: (user: BlockedUser) => void;
+}) {
+  if (!isAvailable) {
+    return (
+      <p role="status" className="rounded-md border border-paper/10 bg-ink-950/60 px-4 py-3 font-mono text-xs text-paper/45">
+        Blocking controls are unavailable until the latest database migration is applied.
+      </p>
+    );
+  }
+
+  if (users.length === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-paper/10 bg-ink-950/75 px-4 py-3 shadow-glow">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2"><Ban className="h-4 w-4 text-ember/75" /><h2 className="font-mono text-sm text-paper">Blocked users</h2></div>
+          <p className="mt-1 text-xs text-paper/40">They cannot send you friend requests.</p>
+        </div>
+        <div className="grid gap-2 sm:min-w-72">
+          {users.map((blockedUser) => {
+            const actionId = `blocked:${blockedUser.handle}`;
+            return (
+              <div key={blockedUser.handle} className="flex items-center justify-between gap-3 rounded-md border border-paper/10 bg-ink-900/60 px-3 py-2">
+                <Link href={`/u/${blockedUser.handle}`} className="min-w-0 truncate font-mono text-sm text-paper/70 hover:text-brass">@{blockedUser.handle}</Link>
+                <button type="button" onClick={() => onUnblock(blockedUser)} disabled={pendingActionId === actionId} className="rounded-md border border-paper/10 px-3 py-1.5 font-mono text-xs text-paper/55 transition hover:border-brass/35 hover:text-paper disabled:cursor-wait disabled:opacity-50">{pendingActionId === actionId ? "Updating..." : "Unblock"}</button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }
 

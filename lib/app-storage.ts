@@ -1119,30 +1119,41 @@ function makeStarterChinesePassage(
 }
 
 function buildTimedPassageText(basePassage: LibraryPassage, library: LibraryPassage[], durationSeconds: number): string {
-  const requiredWordCount = getRequiredWordCount(durationSeconds);
+  const requiredUnitCount = getRequiredWordCount(durationSeconds);
   const selected: LibraryPassage[] = [basePassage];
-  let wordCount = basePassage.wordCount;
+  const baseUnitCount = getTimedPassageUnitCount(basePassage);
+  let unitCount = baseUnitCount;
 
-  if (wordCount >= requiredWordCount) {
+  if (unitCount >= requiredUnitCount) {
     return basePassage.content;
   }
 
-  const otherPassages = library.filter((passage) => passage.id !== basePassage.id);
+  const otherPassages = library.filter(
+    (passage) => passage.id !== basePassage.id && getTimedPassageUnitCount(passage) > 0
+  );
   let index = 0;
 
-  while (wordCount < requiredWordCount && otherPassages.length > 0) {
+  while (unitCount < requiredUnitCount && otherPassages.length > 0) {
     const nextPassage = otherPassages[index % otherPassages.length];
     selected.push(nextPassage);
-    wordCount += nextPassage.wordCount;
+    unitCount += getTimedPassageUnitCount(nextPassage);
     index += 1;
   }
 
-  while (wordCount < requiredWordCount && otherPassages.length === 0) {
+  while (unitCount < requiredUnitCount && otherPassages.length === 0 && baseUnitCount > 0) {
     selected.push(basePassage);
-    wordCount += basePassage.wordCount;
+    unitCount += baseUnitCount;
   }
 
   return selected.map((passage) => passage.content).join("\n\n");
+}
+
+function getTimedPassageUnitCount(passage: LibraryPassage) {
+  if (passage.language === "chinese") {
+    return Array.from(passage.content).filter((character) => !/\s/.test(character)).length;
+  }
+
+  return passage.wordCount > 0 ? passage.wordCount : countWords(passage.content);
 }
 
 function createId() {

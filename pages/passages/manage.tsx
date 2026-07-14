@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Eye, FilePlus, Pencil, Search, Trash2, Upload } from "lucide-react";
+import { Download, Eye, FilePlus, Pencil, Search, Sparkles, Trash2, Upload } from "lucide-react";
 import { AdminOnly } from "@/components/AdminOnly";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
@@ -33,6 +33,7 @@ import {
   updateSupabasePassage,
   updatePassage
 } from "@/lib/passageStorage";
+import { normalizeEnglishPassagePunctuation } from "@/lib/passageTextNormalization";
 
 type StatusFilter = "All" | "Active" | "Hidden";
 type StorageMode = "supabase" | "local";
@@ -65,10 +66,28 @@ function ManagePassages() {
   const [newPassageContent, setNewPassageContent] = useState("");
   const [editingPassage, setEditingPassage] = useState<LibraryPassage | null>(null);
   const [previewPassage, setPreviewPassage] = useState<LibraryPassage | null>(null);
+  const [isNormalizeDialogOpen, setIsNormalizeDialogOpen] = useState(false);
+  const [isNormalizingPunctuation, setIsNormalizingPunctuation] = useState(false);
   const [message, setMessage] = useState("");
 
   const activeCount = useMemo(() => library.filter((passage) => passage.isActive).length, [library]);
   const hiddenCount = library.length - activeCount;
+  const punctuationNormalizationSummary = useMemo(
+    () =>
+      library.reduce(
+        (summary, passage) => {
+          if (passage.language !== "english") return summary;
+          const result = normalizeEnglishPassagePunctuation(passage.content);
+          if (result.replacements > 0) {
+            summary.passages += 1;
+            summary.replacements += result.replacements;
+          }
+          return summary;
+        },
+        { passages: 0, replacements: 0 }
+      ),
+    [library]
+  );
 
   const filteredLibrary = useMemo(() => {
     const categoryStyleMatches = filterLibraryPassages(library, category, style);
@@ -138,6 +157,49 @@ function ManagePassages() {
       const errorMessage = error instanceof Error ? error.message : "Passage save failed.";
       setMessage(errorMessage);
       throw new Error(errorMessage);
+    }
+  }
+
+  async function normalizeEnglishPunctuation() {
+    const passagesToUpdate = library.flatMap((passage) => {
+      if (passage.language !== "english") return [];
+      const normalized = normalizeEnglishPassagePunctuation(passage.content);
+      return normalized.replacements > 0 ? [{ passage, normalized }] : [];
+    });
+
+    if (passagesToUpdate.length === 0) {
+      setIsNormalizeDialogOpen(false);
+      setMessage("No English punctuation needs normalization.");
+      return;
+    }
+
+    setIsNormalizingPunctuation(true);
+    setMessage("");
+    let updatedPassages = 0;
+    let updatedCharacters = 0;
+
+    try {
+      for (const { passage, normalized } of passagesToUpdate) {
+        if (storageMode === "supabase") {
+          await updateSupabasePassage(passage.id, { content: normalized.text });
+        } else {
+          const updatedPassage = updatePassage(passage.id, { content: normalized.text });
+          if (!updatedPassage) throw new Error(`Passage “${passage.title}” no longer exists.`);
+        }
+        updatedPassages += 1;
+        updatedCharacters += normalized.replacements;
+      }
+
+      setIsNormalizeDialogOpen(false);
+      setMessage(
+        `Normalized ${updatedCharacters} punctuation mark${updatedCharacters === 1 ? "" : "s"} across ${updatedPassages} English passage${updatedPassages === 1 ? "" : "s"}.`
+      );
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Unknown update error.";
+      setMessage(`Normalization stopped after ${updatedPassages} passage${updatedPassages === 1 ? "" : "s"}: ${detail}`);
+    } finally {
+      await refreshLibrary();
+      setIsNormalizingPunctuation(false);
     }
   }
 
@@ -461,9 +523,21 @@ function ManagePassages() {
         <section className="mt-5 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-semibold text-paper">Saved passages</h2>
-            <p className="font-mono text-sm text-paper/45">
-              {filteredLibrary.length} shown / {library.length} saved
-            </p>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {punctuationNormalizationSummary.passages > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsNormalizeDialogOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/45 hover:text-paper"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-brass" />
+                  Normalize punctuation
+                </button>
+              )}
+              <p className="font-mono text-sm text-paper/45">
+                {filteredLibrary.length} shown / {library.length} saved
+              </p>
+            </div>
           </div>
 
           <div className="mt-5 space-y-3">
@@ -532,7 +606,74 @@ function ManagePassages() {
         <EditPassageModal passage={editingPassage} onCancel={() => setEditingPassage(null)} onSave={savePassage} />
       )}
       {previewPassage && <PreviewModal passage={previewPassage} onClose={() => setPreviewPassage(null)} />}
+      {isNormalizeDialogOpen && (
+        <NormalizePunctuationModal
+          passageCount={punctuationNormalizationSummary.passages}
+          replacementCount={punctuationNormalizationSummary.replacements}
+          isSaving={isNormalizingPunctuation}
+          onCancel={() => setIsNormalizeDialogOpen(false)}
+          onConfirm={normalizeEnglishPunctuation}
+        />
+      )}
     </>
+  );
+}
+
+function NormalizePunctuationModal({
+  passageCount,
+  replacementCount,
+  isSaving,
+  onCancel,
+  onConfirm
+}: {
+  passageCount: number;
+  replacementCount: number;
+  isSaving: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  useDialogFocusManagement(dialogRef, cancelButtonRef, onCancel, !isSaving);
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4 backdrop-blur">
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="normalize-punctuation-title"
+        className="w-full max-w-lg rounded-lg border border-brass/25 bg-ink-900 p-5 shadow-glow md:p-6"
+      >
+        <p className="font-mono text-xs uppercase text-brass">Bulk edit</p>
+        <h2 id="normalize-punctuation-title" className="mt-1 text-2xl font-semibold text-paper">
+          Normalize English punctuation?
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-paper/55">
+          Replace smart quotes, full-width punctuation, long dashes, ellipses and non-breaking spaces with keyboard-friendly ASCII in {passageCount} English passage{passageCount === 1 ? "" : "s"}. CJK punctuation inside passages containing Han characters is left unchanged.
+        </p>
+        <p className="mt-3 font-mono text-xs text-paper/40">{replacementCount} character replacements</p>
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            ref={cancelButtonRef}
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/65 transition hover:border-paper/20 hover:text-paper disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isSaving}
+            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-sm text-brass transition hover:bg-brass/15 disabled:cursor-wait disabled:opacity-60"
+          >
+            {isSaving ? "Updating..." : "Normalize all"}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 

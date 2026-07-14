@@ -45,4 +45,21 @@ describe("database security migration contracts", () => {
     expect(sql).toContain("typing_results_ranked_domain_idx");
     expect(sql).toContain("validate constraint typing_results_metric_domain_check");
   });
+
+  it("enforces handle cooldowns and blocking below the client layer", () => {
+    const sql = readMigration("202607140005_profile_handle_cooldown_and_user_blocks.sql");
+
+    expect(sql).toContain("old.handle_changed_at > now() - interval '30 days'");
+    expect(sql).toContain("new.handle_changed_at := old.handle_changed_at");
+    expect(sql).toContain("where user_id = auth.uid()");
+    expect(sql).toContain("alter table public.user_blocks enable row level security");
+    expect(sql).toContain("blocker_id = auth.uid()");
+    expect(sql).toContain("before insert or update on public.friendships");
+    expect(sql).toContain("pg_advisory_xact_lock");
+    expect(sql).toContain("delete from public.friendships");
+    expect(sql).toContain("This profile is unavailable for friend requests.");
+    expect(sql).toContain("revoke all on public.user_blocks from anon, authenticated");
+    expect(sql).toContain("revoke insert on public.friendships from authenticated");
+    expect(sql).toContain("revoke execute on function public.block_user_by_handle(text) from public, anon");
+  });
 });

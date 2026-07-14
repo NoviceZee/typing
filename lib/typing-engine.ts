@@ -1,3 +1,5 @@
+import { normalizeEquivalentTypingPunctuation } from "./passageTextNormalization";
+
 export type PracticeCategory =
   | "Business email"
   | "Tender / proposal writing"
@@ -476,7 +478,7 @@ function charactersEquivalent(expected: string, actual: string, rules: TypingRul
     }
   }
 
-  return expected === actual;
+  return normalizeEquivalentTypingPunctuation(expected) === normalizeEquivalentTypingPunctuation(actual);
 }
 
 function shouldCountExtraCharacter(character: string, rules: TypingRules): boolean {

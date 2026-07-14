@@ -206,8 +206,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const elapsedSecondsRef = useRef(0);
   const suspiciousAttemptRef = useRef(false);
   const libraryRef = useRef<LibraryPassage[]>([]);
+  const libraryLoadPromiseRef = useRef<Promise<LibraryPassage[]> | null>(null);
   const isTabPressedRef = useRef(false);
   const isInputActivatedRef = useRef(false);
+  // Keep modal visibility synchronous with session refs so a timer completion
+  // cannot race a pending keyboard shortcut before React commits the render.
+  const isResultModalOpenRef = useRef(false);
   const isComposingRef = useRef(false);
   const explicitCompositionActiveRef = useRef(false);
   const awaitingChineseFinalCommitRef = useRef(false);
@@ -406,6 +410,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setLastResult(null);
       setProgressMilestones([]);
       setCloudSaveState("idle");
+      isResultModalOpenRef.current = false;
       setIsResultModalOpen(false);
       setPreviousResult(resetPassage ? readPreviousResult(resetPassage.id, resetPreviousResultScope) : null);
       setStatus("idle");
@@ -541,6 +546,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }, [resetActiveSessionState]);
 
   const closeResultModal = useCallback(() => {
+    isResultModalOpenRef.current = false;
     setIsResultModalOpen(false);
     window.requestAnimationFrame(() => resultPanelRestartButtonRef.current?.focus());
   }, []);
@@ -565,7 +571,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setElapsedSeconds(finalElapsed);
       setRemainingSeconds(isTimedMode ? (completionReason === "time_up" ? 0 : Math.max(0, durationSeconds - finalElapsed)) : 0);
       setStatus("finished");
+      isResultModalOpenRef.current = true;
       setIsResultModalOpen(true);
+      // Blur immediately; the disabled prop is applied on the next render and
+      // a held key could otherwise race the result modal.
+      pendingSoundKeyTypeRef.current = null;
+      inputRef.current?.blur();
       setRecentResults([]);
       setProgressMilestones([]);
       const finalResult = calculateResult({
@@ -708,6 +719,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     setStartedAt(now);
     setFinishedAt(null);
     setLastResult(null);
+    isResultModalOpenRef.current = false;
     setProgressMilestones([]);
     setPreviousResult(readPreviousResult(passage.id, previousResultScope));
     isInputActivatedRef.current = true;
@@ -762,7 +774,11 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         return;
       }
 
-      if (isRestartShortcut({ key: event.key, tabKey: isTabPressedRef.current })) {
+      if (
+        !isResultModalOpenRef.current &&
+        !event.repeat &&
+        isRestartShortcut({ key: event.key, tabKey: isTabPressedRef.current })
+      ) {
         event.preventDefault();
         resetSession();
         return;
@@ -975,6 +991,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setFinishedAt(null);
       setRemainingSeconds(isTimedMode ? durationSeconds : 0);
       setLastResult(null);
+      isResultModalOpenRef.current = false;
       setIsResultModalOpen(false);
       isInputActivatedRef.current = true;
       setIsInputActivated(true);
@@ -1123,7 +1140,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
   function handleChineseImeKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     logImeEvent("keydown", event);
-    if (isPassageLoading || isFinished || (!isRunning && rules.requireTabToStart && !isInputActivatedRef.current)) {
+    if (
+      isPassageLoading ||
+      isFinished ||
+      finishedRef.current ||
+      (!isRunning && rules.requireTabToStart && !isInputActivatedRef.current)
+    ) {
       pendingSoundKeyTypeRef.current = null;
       event.preventDefault();
       return;
@@ -1251,7 +1273,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
-    const activeLibrary = await loadActivePassageLibrary();
+    const activeLibrary = libraryRef.current.length > 0 ? libraryRef.current : await loadActivePassageLibrary();
     setAvailableLibrary(activeLibrary);
     choosePracticePassage({
       library: activeLibrary,
@@ -1276,7 +1298,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     setSelectedPassageId(RANDOM_PASSAGE_ID);
     setPassageSelectionMode("random");
 
-    const activeLibrary = await loadActivePassageLibrary();
+    const activeLibrary = libraryRef.current.length > 0 ? libraryRef.current : await loadActivePassageLibrary();
     setAvailableLibrary(activeLibrary);
     choosePracticePassage({
       library: activeLibrary,
@@ -1414,20 +1436,39 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }
 
   async function loadActivePassageLibrary(): Promise<LibraryPassage[]> {
-    try {
-      const supabaseLibrary = await getSupabasePassageLibrary();
-      if (supabaseLibrary.length > 0) {
-        const activeLibrary = withBuiltInSamplePassages(supabaseLibrary);
-        libraryRef.current = activeLibrary;
-        return activeLibrary;
-      }
-    } catch {
-      // Fall through to local active passages.
+    if (libraryRef.current.length > 0) {
+      return libraryRef.current;
     }
 
-    const localLibrary = getActivePassageLibrary();
-    libraryRef.current = localLibrary;
-    return localLibrary;
+    if (libraryLoadPromiseRef.current) {
+      return libraryLoadPromiseRef.current;
+    }
+
+    const loadPromise = (async () => {
+      try {
+        const supabaseLibrary = await getSupabasePassageLibrary();
+        if (supabaseLibrary.length > 0) {
+          const activeLibrary = withBuiltInSamplePassages(supabaseLibrary);
+          libraryRef.current = activeLibrary;
+          return activeLibrary;
+        }
+      } catch {
+        // Fall through to local active passages.
+      }
+
+      const localLibrary = getActivePassageLibrary();
+      libraryRef.current = localLibrary;
+      return localLibrary;
+    })();
+
+    libraryLoadPromiseRef.current = loadPromise;
+    try {
+      return await loadPromise;
+    } finally {
+      if (libraryLoadPromiseRef.current === loadPromise) {
+        libraryLoadPromiseRef.current = null;
+      }
+    }
   }
 
   function getFilteredLibrary() {
@@ -1646,7 +1687,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                 onChange={handleChineseChange}
                 onCompositionEnd={handleChineseCompositionEnd}
                 className={clsx(
-                  "block min-h-[104px] w-full resize-none rounded-md border border-paper/10 bg-paper/[0.035] px-3 py-2 font-mono text-lg leading-relaxed text-paper/85 caret-brass outline-none transition placeholder:text-paper/25 focus:border-brass/45 focus:bg-paper/[0.055]"
+                  "block min-h-[104px] w-full resize-none rounded-md border border-paper/10 bg-paper/[0.035] px-3 py-2 font-mono text-lg leading-relaxed text-paper/85 caret-brass outline-none transition placeholder:text-paper/25 focus:border-brass/45 focus:bg-paper/[0.055]",
+                  `formaltype-typing-font-${themeSettings.typingFont}`
                 )}
                 aria-label="Typing input"
                 placeholder="請在此按 Tab 後開始輸入"
@@ -1662,6 +1704,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                 if (
                   isPassageLoading ||
                   isFinished ||
+                  finishedRef.current ||
                   (!isRunning && rules.requireTabToStart && !isInputActivated)
                 ) {
                   pendingSoundKeyTypeRef.current = null;
@@ -2023,7 +2066,6 @@ export function ResultModal({
   const [imageCardError, setImageCardError] = useState("");
   const [isGeneratingImageCard, setIsGeneratingImageCard] = useState(false);
   const dialogRef = useRef<HTMLElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
 
   useEffect(() => {
@@ -2034,7 +2076,7 @@ export function ResultModal({
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    closeButtonRef.current?.focus();
+    dialogRef.current?.focus({ preventScroll: true });
 
     function handleDialogKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
@@ -2088,6 +2130,7 @@ export function ResultModal({
         aria-modal="true"
         aria-labelledby="result-dialog-title"
         aria-describedby="result-dialog-description"
+        tabIndex={-1}
         className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-brass/25 bg-ink-900 shadow-glow"
       >
         <div className="sticky top-0 z-10 border-b border-paper/10 bg-ink-900/95 px-4 py-3 backdrop-blur md:px-5">
@@ -2113,7 +2156,6 @@ export function ResultModal({
               )}
             </div>
             <button
-              ref={closeButtonRef}
               type="button"
               onClick={onClose}
               aria-label="Close result"

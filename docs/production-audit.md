@@ -58,10 +58,10 @@ This is a living report. `Status` is updated as remediation is verified. A findi
 | Severity | Count |
 | --- | ---: |
 | Critical | 0 |
-| High | 5 |
-| Medium | 17 |
+| High | 7 |
+| Medium | 22 |
 | Low | 5 |
-| **Total** | **27** |
+| **Total** | **34** |
 
 ## Prioritized findings
 
@@ -416,6 +416,16 @@ This is a living report. `Status` is updated as remediation is verified. A findi
 - Regression risk: **Medium** because sender DNS, templates, redirect links and deliverability must be verified together; no SMTP secret belongs in client code.
 - Evidence / status: **Verified live infrastructure failure and official platform limitation. Application UX is mitigated: raw provider errors are replaced with a non-enumerating, actionable rate-limit message announced as an error. Infrastructure remediation remains open and is a launch blocker for public email/password authentication**.
 
+## Follow-up product review (2026-07-14)
+
+- **FT-FUNC-028 — Time-up result could be displaced by a held key** — High / P1, `/practice`. Reproduced in the interaction path where the timer completed while a keyboard shortcut/input event was still queued. The result modal now synchronously locks finished state, blurs both input paths, clears pending sound, and rejects post-finish input. Covered by the 5-minute time-up regression test.
+- **FT-PERF-029 — Chinese switching could refetch the full passage library** — Medium / P2, `/practice`. Code-level risk reproduced by rapid language switching; an in-flight library promise and shared cache now prevent duplicate Supabase reads. Native Safari/network latency remains a device check.
+- **FT-UX-030 — Feedback control covered footer/result content** — Medium / P2, `FeedbackButton`. Reproduced in short/desktop layouts; the control is now in document flow with safe-area spacing rather than viewport-fixed.
+- **FT-UX-031 — App-font preference did not cover all interface utilities** — Medium / P2, theme CSS/Tailwind config. Reproduced by hard-coded utility font stacks; runtime font variables now drive body, interface, controls and utility classes while the typing font remains independent.
+- **FT-UX-032 — Announcement read state was not scoped reliably to the signed-in account** — Medium / P2, notification center. Reproduced as a read-state collision across account sessions; read IDs now use a per-user key with legacy migration and are marked when the panel opens. Storage-blocked/private-mode persistence remains a browser limitation.
+- **FT-AUTH-033 — Password manager suggestions obscured manual password replacement** — Medium / P1, `/profile/account`. Reproduced with generated password autofill; account password fields are now modal-only, use `new-password` and unique names, ignore common manager hints, and expose a clear-fields action. Safari/password-manager verification remains manual.
+- **FT-AUTH-034 — Handle cooldown and user blocking needed a server boundary** — High / P0, account/friends/public profile. Client controls and UI are implemented; migration `202607140005_profile_handle_cooldown_and_user_blocks.sql` adds the 30-day trigger, guarded RPCs, block table and friendship restrictions. It must be applied before release; live RLS verification is still pending.
+
 ## RLS and privacy assessment
 
 The reviewed policies correctly prevent direct client writes to other users' profiles, base results, attempt details, friendships and roles. Admin passage authorization is not solely frontend-based after the roles migration. Public views intentionally bypass private-table visibility by projecting selected fields; therefore view definitions are security-critical. The concrete projection issues are leaderboard eligibility/trust, private avatar leakage, and public exposure of non-qualifying profile history. Security-definer friend/account RPCs check `auth.uid()` and revoke anonymous execution. No service-role secret is present in client code; the checked environment example contains only a publishable Supabase key.
@@ -438,7 +448,7 @@ The reviewed policies correctly prevent direct client writes to other users' pro
 
 ## Current verification
 
-- Full Vitest suite: **47 files, 436 tests passed; no failed or skipped tests**.
+- Full Vitest suite: **48 files, 454 tests passed; no failed or skipped tests** (deterministic single-worker configuration).
 - ESLint: **passed with no errors**.
 - TypeScript (`tsc --noEmit`): **passed**.
 - Next.js 15.5.18 production build: **passed; 24 routes generated**. Shared first-load JavaScript is 173 kB; `/practice` is 200 kB and `/training` is 208 kB.
@@ -452,13 +462,14 @@ The reviewed policies correctly prevent direct client writes to other users' pro
 - Vercel preview `typing-k1yv4g4dt-novicetech-projects.vercel.app` (`dpl_7ueKNJXeQvLiLirTn2WMzuw1FXjD`) is READY on Node 24.16.0. Authenticated smoke checks returned 200 for the landing page, Practice and recovery request route, plus 404 for a missing route. CSP upgrade/HSTS/frame/MIME/referrer/permissions headers passed and preview is `noindex`. Error-level and HTTP 500 log queries returned no records. Deployment Protection still prevents an anonymous interactive preview pass, so authenticated account and physical-device branches remain manual.
 - React `act(...)` and Vite CommonJS deprecation warnings are fixed. The quota failure log is an intentional assertion path, not a harness warning.
 - A final PR-style regression review fixed stale result-save responses crossing session boundaries, destructive local-detail upserts, thrown-network busy states, false local-persistence success, measured-time totals, Safari storage/viewport fallbacks, over-broad HSTS policy, and result-dialog focus restoration. These paths are covered by user-behaviour tests and the final local browser smoke.
+- Follow-up fixes cover the time-up keyboard race, duplicate passage-library fetches, account edit dialogs/password autofill, announcement read scoping, app-font propagation, feedback placement, bulk punctuation normalization and server-enforced handle/block controls. Migration `202607140005` remains the only new database prerequisite.
 
 ## Remediation status summary
 
 | State | Findings |
 | --- | --- |
-| Fixed and locally verified | FT-FUNC-004, FT-SEC-007, FT-DATA-008, FT-DATA-009, FT-FUNC-010, FT-FUNC-011, FT-UX-012, FT-A11Y-013, FT-A11Y-015, FT-STOR-016, FT-AUTH-017, FT-DOC-019, FT-ERR-020, FT-UX-021, FT-TEST-023, FT-PERF-024, FT-SEO-025, FT-DEP-026 |
-| Implemented; production/staging configuration or live branch verification required | FT-DEP-001, FT-DATA-003, FT-DATA-005, FT-PRIV-006, FT-A11Y-014, FT-PRIV-022 |
+| Fixed and locally verified | FT-FUNC-004, FT-SEC-007, FT-DATA-008, FT-DATA-009, FT-FUNC-010, FT-FUNC-011, FT-UX-012, FT-A11Y-013, FT-A11Y-015, FT-STOR-016, FT-AUTH-017, FT-DOC-019, FT-ERR-020, FT-UX-021, FT-TEST-023, FT-PERF-024, FT-SEO-025, FT-DEP-026, FT-FUNC-028, FT-PERF-029, FT-UX-030, FT-UX-031, FT-UX-032, FT-AUTH-033 |
+| Implemented; production/staging configuration or live branch verification required | FT-DEP-001, FT-DATA-003, FT-DATA-005, FT-PRIV-006, FT-A11Y-014, FT-PRIV-022, FT-AUTH-034 |
 | Partially mitigated; residual launch risk remains | FT-SEC-002 |
 | Partially closed environment-level verification gap | FT-RLS-018 |
 | Open external launch blocker | FT-AUTH-027 |

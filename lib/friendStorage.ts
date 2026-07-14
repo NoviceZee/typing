@@ -23,6 +23,11 @@ export type FriendListItem = {
   updated_at: string;
 };
 
+export type BlockedUser = {
+  handle: string;
+  created_at: string;
+};
+
 export async function sendFriendRequestByProfileHandle(
   handle: string,
   client = requireSupabaseClient()
@@ -114,6 +119,63 @@ export async function getFriendshipWithProfileHandle(
   }
 
   return data;
+}
+
+export async function blockUserByProfileHandle(
+  handle: string,
+  client = requireSupabaseClient()
+): Promise<BlockedUser> {
+  const validation = validateHandle(normalizeFriendHandle(handle));
+  if (!validation.isValid) throw new Error(validation.message);
+
+  const { data, error } = await client.rpc("block_user_by_handle", {
+    target_handle: validation.handle
+  });
+  if (error) throw error;
+
+  const blockedUser = Array.isArray(data) ? data[0] : data;
+  if (!blockedUser) throw new Error("Profile could not be blocked.");
+  return blockedUser;
+}
+
+export async function unblockUserByProfileHandle(
+  handle: string,
+  client = requireSupabaseClient()
+): Promise<boolean> {
+  const validation = validateHandle(normalizeFriendHandle(handle));
+  if (!validation.isValid) throw new Error(validation.message);
+
+  const { data, error } = await client.rpc("unblock_user_by_handle", {
+    target_handle: validation.handle
+  });
+  if (error) throw error;
+  return Boolean(data);
+}
+
+export async function isUserBlockedByProfileHandle(
+  handle: string,
+  client = requireSupabaseClient()
+): Promise<boolean> {
+  const validation = validateHandle(normalizeFriendHandle(handle));
+  if (!validation.isValid) return false;
+
+  const { data, error } = await client.rpc("is_user_blocked_by_handle", {
+    target_handle: validation.handle
+  });
+  if (error) throw error;
+  return Boolean(data);
+}
+
+export async function listBlockedUsers(client = requireSupabaseClient()): Promise<BlockedUser[]> {
+  const { data, error } = await client.rpc("list_blocked_users");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export function isMissingBlockMigrationError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: string; message?: string };
+  return candidate.code === "42883" || candidate.code === "PGRST202" || /list_blocked_users/i.test(candidate.message ?? "");
 }
 
 async function listFriendships(

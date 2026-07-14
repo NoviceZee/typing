@@ -54,6 +54,20 @@ describe("NotificationCenter", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Notification area" })).toBeNull());
     expect(document.activeElement).toBe(trigger);
-    expect(readAnnouncementIds().has("announcement-1")).toBe(true);
+    expect(readAnnouncementIds("user-1").has("announcement-1")).toBe(true);
+  });
+
+  it("marks announcements read when opened so they do not return as new after login", async () => {
+    const firstRender = render(<NotificationCenter />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Notifications, 2 unread" }));
+    expect(screen.getByText("Maintenance notice")).toBeTruthy();
+    await waitFor(() => expect(readAnnouncementIds("user-1").has("announcement-1")).toBe(true));
+    firstRender.unmount();
+
+    render(<NotificationCenter />);
+    const trigger = await screen.findByRole("button", { name: "Notifications, 1 unread" });
+    fireEvent.click(trigger);
+    expect(screen.queryByText("Maintenance notice")).toBeNull();
   });
 });

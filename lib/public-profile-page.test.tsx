@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PublicUserProfilePage from "../pages/u/[handle]";
@@ -10,7 +10,12 @@ import {
 } from "@/lib/typingResultStorage";
 import { getSupabasePublicProfileByHandle } from "@/lib/profileStorage";
 import { getSupabaseProfile } from "@/lib/profileStorage";
-import { getFriendshipWithProfileHandle } from "@/lib/friendStorage";
+import {
+  blockUserByProfileHandle,
+  getFriendshipWithProfileHandle,
+  isUserBlockedByProfileHandle,
+  unblockUserByProfileHandle
+} from "@/lib/friendStorage";
 
 const mockState = vi.hoisted(() => ({
   handle: "Formal_Typist",
@@ -48,8 +53,11 @@ vi.mock("@/lib/profileStorage", async () => {
 });
 
 vi.mock("@/lib/friendStorage", () => ({
+  blockUserByProfileHandle: vi.fn().mockResolvedValue({ handle: "formal_typist", created_at: "2026-07-14T00:00:00.000Z" }),
   getFriendshipWithProfileHandle: vi.fn().mockResolvedValue(null),
-  sendFriendRequestByProfileHandle: vi.fn()
+  isUserBlockedByProfileHandle: vi.fn().mockResolvedValue(false),
+  sendFriendRequestByProfileHandle: vi.fn(),
+  unblockUserByProfileHandle: vi.fn().mockResolvedValue(true)
 }));
 
 vi.mock("@/lib/typingResultStorage", async () => {
@@ -68,6 +76,9 @@ const mockedGetProfile = vi.mocked(getSupabasePublicProfileByHandle);
 const mockedGetOwnProfile = vi.mocked(getSupabaseProfile);
 const mockedGetResults = vi.mocked(getSupabasePublicTypingResultsByHandle);
 const mockedGetFriendship = vi.mocked(getFriendshipWithProfileHandle);
+const mockedGetBlockStatus = vi.mocked(isUserBlockedByProfileHandle);
+const mockedBlockUser = vi.mocked(blockUserByProfileHandle);
+const mockedUnblockUser = vi.mocked(unblockUserByProfileHandle);
 
 describe("PublicUserProfilePage", () => {
   beforeEach(() => {
@@ -77,9 +88,13 @@ describe("PublicUserProfilePage", () => {
     mockedGetOwnProfile.mockClear();
     mockedGetResults.mockClear();
     mockedGetFriendship.mockClear();
+    mockedGetBlockStatus.mockClear();
+    mockedBlockUser.mockClear();
+    mockedUnblockUser.mockClear();
     mockedGetProfile.mockResolvedValue(makePublicProfile());
     mockedGetOwnProfile.mockResolvedValue({ user_id: "user-1", display_name: "Formal Typist", handle: "own_handle" } as any);
     mockedGetFriendship.mockResolvedValue(null);
+    mockedGetBlockStatus.mockResolvedValue(false);
     mockedGetResults.mockResolvedValue([
       makeResult("recent", 60, 72, 98.2, "Business email", "2026-06-21T00:02:00.000Z", 360),
       makeResult("perfect", 60, 64, 100, "Legal", "2026-06-20T00:01:00.000Z", 320)
@@ -250,6 +265,22 @@ describe("PublicUserProfilePage", () => {
     expect(mockedGetResults).not.toHaveBeenCalled();
   });
 
+  it("lets a signed-in user block a private profile without exposing private stats", async () => {
+    mockedGetProfile.mockResolvedValueOnce(
+      makePublicProfile({ public_profile_enabled: false, bio: null, avatar_path: null }) as any
+    );
+
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Block user" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Block user" }));
+
+    await waitFor(() => expect(mockedBlockUser).toHaveBeenCalledWith("formal_typist"));
+    expect(screen.getByRole("button", { name: "Unblock" })).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("Blocked @formal_typist");
+    expect(mockedGetResults).not.toHaveBeenCalled();
+  });
+
   it("shows pending friend state for outgoing requests", async () => {
     mockedGetFriendship.mockResolvedValueOnce(makeFriendship({ direction: "outgoing", status: "pending" }) as any);
 
@@ -270,6 +301,21 @@ describe("PublicUserProfilePage", () => {
       expect(screen.getByText("Friends")).toBeTruthy();
     });
     expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
+  });
+
+  it("blocks and unblocks another profile without leaving a stale friend action", async () => {
+    render(<PublicUserProfilePage />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Block user" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Block user" }));
+
+    await waitFor(() => expect(mockedBlockUser).toHaveBeenCalledWith("formal_typist"));
+    expect(screen.getByRole("button", { name: "Unblock" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add friend" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Unblock" }));
+    await waitFor(() => expect(mockedUnblockUser).toHaveBeenCalledWith("formal_typist"));
+    expect(screen.getByRole("button", { name: "Block user" })).toBeTruthy();
   });
 
   it("does not show add friend on the current user's own profile", async () => {

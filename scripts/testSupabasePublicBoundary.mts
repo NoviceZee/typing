@@ -19,7 +19,7 @@ async function main() {
   });
   const checks: CheckResult[] = [];
 
-  for (const table of ["profiles", "typing_results", "typing_attempt_details", "friendships", "user_roles"]) {
+  for (const table of ["profiles", "typing_results", "typing_attempt_details", "friendships", "user_roles", "user_blocks"]) {
     const { data, error } = await client.from(table).select("*").limit(1);
     if (!error && (data?.length ?? 0) > 0) {
       throw new Error(`Anonymous client could read private base table ${table}.`);

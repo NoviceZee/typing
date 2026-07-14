@@ -1,13 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   acceptFriendRequest,
+  blockUserByProfileHandle,
   getFriendshipWithProfileHandle,
   listAcceptedFriends,
+  listBlockedUsers,
   listIncomingFriendRequests,
   listOutgoingFriendRequests,
   rejectFriendRequest,
   removeFriend,
-  sendFriendRequestByProfileHandle
+  sendFriendRequestByProfileHandle,
+  unblockUserByProfileHandle,
+  isUserBlockedByProfileHandle
 } from "./friendStorage";
 
 describe("friendStorage", () => {
@@ -118,6 +122,39 @@ describe("friendStorage", () => {
     });
 
     expect(rpc).toHaveBeenCalledWith("get_friendship_with_handle", { target_handle: "formal_typist" });
+  });
+
+  it("blocks and unblocks normalized profile handles through database RPCs", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: [{ handle: "formal_typist", created_at: "2026-07-14T00:00:00.000Z" }],
+        error: null
+      })
+      .mockResolvedValueOnce({ data: true, error: null });
+
+    await expect(blockUserByProfileHandle("@Formal_Typist", { rpc })).resolves.toMatchObject({
+      handle: "formal_typist"
+    });
+    await expect(unblockUserByProfileHandle("Formal_Typist", { rpc })).resolves.toBe(true);
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "block_user_by_handle", { target_handle: "formal_typist" });
+    expect(rpc).toHaveBeenNthCalledWith(2, "unblock_user_by_handle", { target_handle: "formal_typist" });
+  });
+
+  it("reads block status and the current user's blocked list", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: true, error: null })
+      .mockResolvedValueOnce({
+        data: [{ handle: "noisy_typist", created_at: "2026-07-14T00:00:00.000Z" }],
+        error: null
+      });
+
+    await expect(isUserBlockedByProfileHandle("noisy_typist", { rpc })).resolves.toBe(true);
+    await expect(listBlockedUsers({ rpc })).resolves.toHaveLength(1);
+    expect(rpc).toHaveBeenNthCalledWith(1, "is_user_blocked_by_handle", { target_handle: "noisy_typist" });
+    expect(rpc).toHaveBeenNthCalledWith(2, "list_blocked_users");
   });
 });
 
