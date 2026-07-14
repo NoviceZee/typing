@@ -2,22 +2,29 @@
   "name": "formaltype",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "lint": "next lint",
+    "lint": "eslint pages components lib scripts next.config.js --ext .js,.ts,.tsx",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "content:english": "node scripts/buildEnglishLongformMigration.mjs",
     "test:supabase-passages": "node --experimental-strip-types scripts/testSupabasePassages.ts",
     "test:supabase-typing-results": "node --experimental-strip-types scripts/testSupabaseTypingResults.ts",
     "test:supabase-leaderboard": "node --experimental-strip-types scripts/testSupabaseLeaderboard.ts",
-    "test:supabase-own-results": "node --experimental-strip-types scripts/testSupabaseOwnResults.ts"
+    "test:supabase-own-results": "node --experimental-strip-types scripts/testSupabaseOwnResults.ts",
+    "test:supabase-public-boundary": "node --experimental-strip-types scripts/testSupabasePublicBoundary.mts",
+    "test:supabase-authorization": "node --experimental-strip-types scripts/testSupabaseAuthorization.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
-    "next": "^14.2.5",
+    "next": "15.5.18",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -30,11 +37,11 @@
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.5",
+    "eslint-config-next": "15.5.18",
     "jsdom": "^24.1.0",
-    "postcss": "^8.4.39",
+    "postcss": "8.5.10",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.5.2",
-    "vitest": "^2.0.2"
+    "vitest": "3.2.4"
   }
 }

@@ -64,7 +64,10 @@ export async function syncLocalTypingAttemptDetails(
   const syncableDetails = details.filter((detail) => detail.userId).map((detail) => toRow(detail));
   if (syncableDetails.length === 0) return;
 
-  const { error } = await client.from("typing_attempt_details").upsert(syncableDetails);
+  const { error } = await client.from("typing_attempt_details").upsert(syncableDetails, {
+    onConflict: "id",
+    ignoreDuplicates: true
+  });
   if (error) throw error;
 }
 

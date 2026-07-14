@@ -3,8 +3,8 @@
 import React, { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { AlertTriangle, Bell, DatabaseZap, KeyRound, UserRound } from "lucide-react";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { ProfilePageHeader } from "@/components/ProfilePageHeader";
 import { ProfilePageLayout } from "@/components/ProfilePageLayout";
 import { useAuth } from "@/components/AuthProvider";
 import { SupabaseProfile, getSupabaseProfile, updateSupabaseProfileDisplayName } from "@/lib/profileStorage";
@@ -13,7 +13,9 @@ import { DEFAULT_NOTIFICATION_SETTINGS, NotificationSettings, readNotificationSe
 
 export default function AccountPage() {
   const router = useRouter();
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading, signOut } = useAuth();
+  const recoveryQuery = Array.isArray(router.query?.recovery) ? router.query.recovery[0] : router.query?.recovery;
+  const isRecoveryMode = router.isReady && recoveryQuery === "1";
   const [profile, setProfile] = useState<SupabaseProfile | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -25,7 +27,10 @@ export default function AccountPage() {
   const [error, setError] = useState("");
   const [pendingAction, setPendingAction] = useState<"name" | "password" | "stats" | "delete" | null>(null);
 
-  useEffect(() => { if (!isAuthLoading && !user) void router.push("/login?redirectTo=/profile/account"); }, [isAuthLoading, router, user]);
+  useEffect(() => {
+    if (!router.isReady || isAuthLoading || user || isRecoveryMode) return;
+    void router.push("/login?redirectTo=/profile/account");
+  }, [isAuthLoading, isRecoveryMode, router, user]);
   useEffect(() => {
     setNotificationSettings(readNotificationSettings());
   }, []);
@@ -47,7 +52,21 @@ export default function AccountPage() {
     event.preventDefault();
     if (newPassword !== confirmPassword) { setError("Passwords do not match."); return; }
     begin("password");
-    try { await updateCurrentUserPassword(newPassword); setNewPassword(""); setConfirmPassword(""); setMessage("Password updated."); } catch (reason) { setError(reason instanceof Error ? reason.message : "Password could not be updated."); } finally { setPendingAction(null); }
+    try {
+      await updateCurrentUserPassword(newPassword);
+      setNewPassword("");
+      setConfirmPassword("");
+      if (isRecoveryMode) {
+        await signOut();
+        await router.replace("/login?passwordReset=1");
+        return;
+      }
+      setMessage("Password updated.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Password could not be updated.");
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   async function deleteAccount() {
@@ -64,11 +83,50 @@ export default function AccountPage() {
 
   function updateNotifications(key: keyof NotificationSettings, enabled: boolean) {
     const next = { ...notificationSettings, [key]: enabled };
-    setNotificationSettings(next); writeNotificationSettings(next); setMessage("Notification preferences saved."); setError("");
+    const writeResult = writeNotificationSettings(next);
+
+    if (!writeResult.ok) {
+      setMessage("");
+      setError("Notification preferences could not be saved on this device.");
+      return;
+    }
+
+    setNotificationSettings(next);
+    setMessage("Notification preferences saved.");
+    setError("");
   }
 
   return (
     <AppShell sideAd={false}>
+      {isRecoveryMode ? (
+        <section className="mx-auto max-w-xl rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow md:p-6">
+          <div className="flex items-start gap-3">
+            <div className="rounded-md border border-brass/25 bg-brass/10 p-2 text-brass"><KeyRound className="h-5 w-5" /></div>
+            <div>
+              <p className="font-mono text-xs uppercase text-brass">Account recovery</p>
+              <h1 className="mt-2 text-3xl font-semibold text-paper">Set a new password</h1>
+              <p className="mt-3 text-sm leading-6 text-paper/60">Choose a new password for this account. You will return to Login when it has been updated.</p>
+            </div>
+          </div>
+
+          {(message || error) && <div role={error ? "alert" : "status"} className={`mt-5 rounded-md border px-4 py-3 font-mono text-sm ${error ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>{error || message}</div>}
+
+          {isAuthLoading ? (
+            <p role="status" className="mt-6 font-mono text-sm text-paper/55">Checking recovery link…</p>
+          ) : user ? (
+            <form onSubmit={savePassword} className="mt-6 grid gap-4">
+              <label><span className="account-label">New password</span><input aria-label="New password" type="password" autoComplete="new-password" required minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>
+              <label><span className="account-label">Confirm password</span><input aria-label="Confirm password" type="password" autoComplete="new-password" required minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>
+              <button disabled={!newPassword || !confirmPassword || pendingAction === "password"} className="account-primary-button justify-self-start">{pendingAction === "password" ? "Updating…" : "Update password"}</button>
+            </form>
+          ) : (
+            <div className="mt-6 rounded-md border border-ember/25 bg-ember/10 px-4 py-4">
+              <p role="alert" className="font-mono text-sm text-ember">This recovery link is invalid or has expired.</p>
+              <Link href="/login?mode=recovery" className="mt-3 inline-flex font-mono text-sm text-brass hover:underline">Request a new link</Link>
+            </div>
+          )}
+        </section>
+      ) : (
       <ProfilePageLayout>
         {user && <div className="mt-6 space-y-5">
           {(message || error) && <div role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 font-mono text-sm ${error ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>{error || message}</div>}
@@ -107,6 +165,7 @@ export default function AccountPage() {
           </section>
         </div>}
       </ProfilePageLayout>
+      )}
     </AppShell>
   );
 }

@@ -21,7 +21,7 @@ import {
 const ALL_FILTER = "All";
 const DURATION_OPTIONS = getDurationFilterOptions(ALL_FILTER).map((option) => ({
   ...option,
-  label: option.value === ALL_FILTER ? "Infinite" : option.value === "60" ? "1m" : option.value === "300" ? "5m" : option.value === "600" ? "10m" : option.label
+  label: option.value === ALL_FILTER ? "All" : option.value === "60" ? "1m" : option.value === "300" ? "5m" : option.value === "600" ? "10m" : option.label
 }));
 const TRAINING_DURATION_OPTIONS = [
   { label: "15", value: "15" },
@@ -275,10 +275,10 @@ export default function LeaderboardPage() {
                   <div>
                     <h2 className="font-semibold text-paper">{result.passage_title}</h2>
                     <p className="mt-1 font-mono text-xs text-paper/40 md:hidden">
-                      {formatDuration(result.duration_seconds)} · {formatDate(result.created_at)}
+                      {formatLeaderboardDuration(result.duration_seconds)} · {formatDate(result.created_at)}
                     </p>
                   </div>
-                  <Metric label="Duration" value={formatDuration(result.duration_seconds)} />
+                  <Metric label="Duration" value={formatLeaderboardDuration(result.duration_seconds)} />
                   <Metric label="WPM" value={formatNumber(result.wpm)} strong />
                   <Metric label="Accuracy" value={`${formatNumber(result.accuracy)}%`} />
                   <div className="font-mono text-sm text-paper/55 max-md:hidden">{formatDate(result.created_at)}</div>
@@ -361,9 +361,13 @@ function Metric({ label, value, strong = false }: { label: string; value: string
   );
 }
 
-function formatDuration(seconds: number) {
-  const minutes = Math.round(seconds / 60);
-  return `${minutes} min`;
+export function formatLeaderboardDuration(seconds: number) {
+  const roundedSeconds = Math.round(seconds);
+  if (!Number.isFinite(seconds) || roundedSeconds <= 0) return "—";
+  if (roundedSeconds < 60) return `${roundedSeconds} sec`;
+  if (roundedSeconds % 60 === 0) return `${roundedSeconds / 60} min`;
+  const minutes = Math.floor(roundedSeconds / 60);
+  return `${minutes}:${String(roundedSeconds % 60).padStart(2, "0")}`;
 }
 
 function formatNumber(value: number) {

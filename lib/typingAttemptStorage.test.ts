@@ -49,10 +49,13 @@ describe("typingAttemptStorage", () => {
 
     await syncLocalTypingAttemptDetails([makeDetail(), { ...makeDetail(), id: "attempt-2" }], { from });
 
-    expect(upsert).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ id: "attempt-1", user_id: "user-1" }),
-      expect.objectContaining({ id: "attempt-2", user_id: "user-1" })
-    ]));
+    expect(upsert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "attempt-1", user_id: "user-1" }),
+        expect.objectContaining({ id: "attempt-2", user_id: "user-1" })
+      ]),
+      { onConflict: "id", ignoreDuplicates: true }
+    );
   });
 });
 

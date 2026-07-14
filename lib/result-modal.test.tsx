@@ -100,6 +100,28 @@ describe("ResultModal", () => {
     );
   });
 
+  it("announces a failed cloud save without hiding the local result", () => {
+    render(
+      <ResultModal
+        result={makeResult()}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={null}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        cloudSaveState="failed"
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Cloud save failed. Your current result is still visible here."
+    );
+    expect(screen.getByText("This Result")).toBeTruthy();
+  });
+
   it("shows the authenticated result layout without duplicated summary sections", () => {
     render(
       <ResultModal

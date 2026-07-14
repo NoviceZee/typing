@@ -1,6 +1,9 @@
 import Head from "next/head";
 import Link from "next/link";
 import { ArrowRight, BarChart3, BookOpenText, Keyboard, Sparkles, Trophy } from "lucide-react";
+import { getSiteUrl } from "@/lib/siteMetadata";
+
+const SITE_URL = getSiteUrl();
 
 const FEATURES = [
   { icon: Keyboard, eyebrow: "Focused practice", title: "Train the writing you actually use", body: "Build speed with formal English, business passages, numbers, symbols, Chinese and code—not filler text." },
@@ -14,7 +17,7 @@ export default function Home() {
       <Head>
         <title>FormalType — Deliberate typing practice</title>
         <meta name="description" content="A focused typing practice room for formal English, business writing, Chinese, code, numbers and symbols." />
-        <link rel="canonical" href="/" />
+        <link rel="canonical" href={SITE_URL} />
       </Head>
       <main className="landing-shell min-h-screen overflow-hidden text-paper">
         <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">

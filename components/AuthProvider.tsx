@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useState } fr
 import { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 import { AppRole, getSupabaseUserRole } from "@/lib/roleStorage";
+import { formatPasswordResetError } from "@/lib/authErrors";
 
 type AuthResult = {
   errorMessage?: string;
@@ -17,6 +18,7 @@ type AuthContextValue = {
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<AuthResult>;
   signUp: (email: string, password: string) => Promise<AuthResult>;
+  sendPasswordReset: (email: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
 };
 
@@ -102,6 +104,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
           return error ? { errorMessage: error.message } : { needsConfirmation: !data.session };
+        },
+        async sendPasswordReset(email) {
+          if (!supabase) return { errorMessage: "Supabase is not configured yet." };
+          const redirectTo = typeof window === "undefined"
+            ? undefined
+            : `${window.location.origin}/profile/account?recovery=1`;
+          const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+          return error ? { errorMessage: formatPasswordResetError(error.message) } : {};
         },
         async signOut() {
           if (!supabase) return;

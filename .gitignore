@@ -6,8 +6,11 @@ tsconfig.tsbuildinfo
 .env*.local
 
 formaltype-passage-library-*.json
+chinese.txt
 .DS_Store
 
 # Local keyboard sound source/candidates
 Sound Pack/
 public/sounds/keyboard/candidates/
+.vercel
+.playwright-cli/

@@ -351,6 +351,8 @@ describe("typingStatistics", () => {
     expect(stored).toHaveLength(50);
     expect(stored.every((attempt: { characters: unknown[] }) => attempt.characters.length <= 1_500)).toBe(true);
     expect(stored.every((attempt: { timeline: unknown[] }) => attempt.timeline.length <= 120)).toBe(true);
+    expect(stored.reduce((total: number, attempt: { characters: unknown[] }) => total + attempt.characters.length, 0)).toBeLessThanOrEqual(15_000);
+    expect(stored.reduce((total: number, attempt: { timeline: unknown[] }) => total + attempt.timeline.length, 0)).toBeLessThanOrEqual(3_000);
     expect(readTypingAttemptDetails("user-1")).toHaveLength(50);
   });
 });

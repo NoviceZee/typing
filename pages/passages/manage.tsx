@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, Eye, FilePlus, Pencil, Search, Trash2, Upload } from "lucide-react";
 import { AdminOnly } from "@/components/AdminOnly";
 import { AppShell } from "@/components/AppShell";
@@ -624,15 +624,8 @@ function EditPassageModal({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    cancelButtonRef.current?.focus();
-    function handleKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape" && !isSaving) onCancel();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isSaving, onCancel]);
+  const dialogRef = useRef<HTMLElement>(null);
+  useDialogFocusManagement(dialogRef, cancelButtonRef, onCancel, !isSaving);
 
   async function handleSave() {
     if (!draft.title.trim() || !draft.content.trim()) {
@@ -653,7 +646,7 @@ function EditPassageModal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4 backdrop-blur">
-      <section role="dialog" aria-modal="true" aria-labelledby="edit-passage-title" className="w-full max-w-3xl rounded-lg border border-brass/30 bg-ink-900 p-5 shadow-glow md:p-6">
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="edit-passage-title" className="max-h-[calc(100vh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg border border-brass/30 bg-ink-900 p-5 shadow-glow md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-paper/10 pb-4">
           <div>
             <p className="font-mono text-xs uppercase text-brass">Edit</p>
@@ -721,19 +714,12 @@ function EditPassageModal({
 
 function PreviewModal({ passage, onClose }: { passage: LibraryPassage; onClose: () => void }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    closeButtonRef.current?.focus();
-    function handleKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  const dialogRef = useRef<HTMLElement>(null);
+  useDialogFocusManagement(dialogRef, closeButtonRef, onClose);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4 backdrop-blur">
-      <section role="dialog" aria-modal="true" aria-labelledby="preview-passage-title" className="w-full max-w-3xl rounded-lg border border-paper/10 bg-ink-900 p-5 shadow-glow md:p-6">
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="preview-passage-title" className="max-h-[calc(100vh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg border border-paper/10 bg-ink-900 p-5 shadow-glow md:p-6">
         <p className="font-mono text-xs uppercase text-brass">Preview</p>
         <h2 id="preview-passage-title" className="mt-1 text-2xl font-semibold text-paper">{passage.title}</h2>
         <p className="mt-2 font-mono text-xs text-paper/45">
@@ -755,6 +741,63 @@ function PreviewModal({ passage, onClose }: { passage: LibraryPassage; onClose: 
       </section>
     </div>
   );
+}
+
+function useDialogFocusManagement(
+  dialogRef: RefObject<HTMLElement | null>,
+  initialFocusRef: RefObject<HTMLElement | null>,
+  onEscape: () => void,
+  canEscape = true
+) {
+  const onEscapeRef = useRef(onEscape);
+  const canEscapeRef = useRef(canEscape);
+
+  useEffect(() => {
+    onEscapeRef.current = onEscape;
+    canEscapeRef.current = canEscape;
+  }, [canEscape, onEscape]);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    initialFocusRef.current?.focus();
+
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape" && canEscapeRef.current) {
+        event.preventDefault();
+        onEscapeRef.current();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      );
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
+  }, [dialogRef, initialFocusRef]);
 }
 
 function TextInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {

@@ -7,11 +7,16 @@ export const ANALYTICS_DOMAIN_OPTIONS: Array<{ id: AnalyticsDomain; label: strin
 ];
 
 export function getResultAnalyticsDomain(result: {
+  metric_domain?: string | null;
   passage_category?: string | null;
   category?: string | null;
   passage_title?: string | null;
   title?: string | null;
 }): AnalyticsDomain {
+  if (result.metric_domain === "english" || result.metric_domain === "chinese" || result.metric_domain === "code") {
+    return result.metric_domain;
+  }
+
   const categoryDomain = getCategoryAnalyticsDomain(result.passage_category ?? result.category ?? null);
 
   if (categoryDomain !== "english" || hasExplicitEnglishCategory(result.passage_category ?? result.category ?? null)) {

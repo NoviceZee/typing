@@ -16,10 +16,12 @@ import {
   filterLibraryPassagesByLanguage,
   selectRandomLibraryPassage,
   toStoredPassage,
+  withBuiltInSamplePassages,
   writeStoredPassage
 } from "@/lib/app-storage";
 import {
   getActivePassageId,
+  getActivePassageLibrary,
   getPassageLibrary,
   getPassageSelectionMode,
   getSelectedCategory,
@@ -58,9 +60,10 @@ export default function PassagesPage() {
 
   const refreshLibrary = useCallback(async () => {
     try {
-      setLibrary(await getSupabasePassageLibrary());
+      const remoteLibrary = await getSupabasePassageLibrary();
+      setLibrary(remoteLibrary.length > 0 ? withBuiltInSamplePassages(remoteLibrary) : getActivePassageLibrary());
     } catch {
-      setLibrary(getPassageLibrary());
+      setLibrary(getActivePassageLibrary());
     }
 
     setActivePassageId(getActivePassageId());

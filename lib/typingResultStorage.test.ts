@@ -3,6 +3,7 @@ import {
   getSupabasePublicTypingResultsByHandle,
   getSupabaseAnalyticsTypingResults,
   getSupabaseLeaderboardResults,
+  saveSupabaseTypingResult,
   toSupabaseTypingResultInsert
 } from "./typingResultStorage";
 import type { StoredPassage } from "./app-storage";
@@ -44,15 +45,21 @@ describe("typingResultStorage", () => {
     expect(
       toSupabaseTypingResultInsert({
         userId: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+        attemptId: "attempt-business-1",
         passage,
         result,
         typedCharacters: 123
       })
     ).toEqual({
       user_id: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+      client_attempt_id: "attempt-business-1",
       passage_id: null,
       passage_title: "Generated business email practice",
       duration_seconds: 60,
+      elapsed_seconds: 30,
+      completion_reason: "text_completed",
+      is_rankable: true,
+      metric_domain: "english",
       wpm: 48,
       accuracy: 97.6,
       correct_chars: 120,
@@ -94,12 +101,38 @@ describe("typingResultStorage", () => {
 
     const insert = toSupabaseTypingResultInsert({
       userId: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+      attemptId: "attempt-ten-minute",
       passage,
       result,
       typedCharacters: 405
     });
 
     expect(insert.duration_seconds).toBe(600);
+  });
+
+  it("returns the existing row when a repeated attempt hits the idempotency index", async () => {
+    const input = makeSaveInput();
+    const existing = {
+      id: "saved-result",
+      created_at: "2026-06-14T00:01:01.000Z",
+      ...toSupabaseTypingResultInsert(input)
+    };
+    const insertSingle = vi.fn().mockResolvedValue({ data: null, error: { code: "23505" } });
+    const maybeSingle = vi.fn().mockResolvedValue({ data: existing, error: null });
+    const from = vi
+      .fn()
+      .mockReturnValueOnce({
+        insert: vi.fn(() => ({ select: vi.fn(() => ({ single: insertSingle })) }))
+      })
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle })) }))
+        }))
+      });
+
+    await expect(saveSupabaseTypingResult(input, { from })).resolves.toEqual(existing);
+    expect(from).toHaveBeenCalledTimes(2);
+    expect(maybeSingle).toHaveBeenCalledTimes(1);
   });
 
   it("builds a safe insert payload for generated numbers training results", () => {
@@ -137,6 +170,7 @@ describe("typingResultStorage", () => {
     expect(
       toSupabaseTypingResultInsert({
         userId: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+        attemptId: "attempt-numbers-1",
         passage,
         result,
         typedCharacters: 49,
@@ -144,9 +178,14 @@ describe("typingResultStorage", () => {
       })
     ).toEqual({
       user_id: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+      client_attempt_id: "attempt-numbers-1",
       passage_id: null,
       passage_title: "Numbers training",
       duration_seconds: 60,
+      elapsed_seconds: 60,
+      completion_reason: "time_up",
+      is_rankable: true,
+      metric_domain: "english",
       wpm: 36,
       accuracy: 98,
       correct_chars: 48,
@@ -189,6 +228,7 @@ describe("typingResultStorage", () => {
     expect(
       toSupabaseTypingResultInsert({
         userId: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+        attemptId: "attempt-symbols-1",
         passage,
         result,
         typedCharacters: 49,
@@ -196,9 +236,14 @@ describe("typingResultStorage", () => {
       })
     ).toEqual({
       user_id: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+      client_attempt_id: "attempt-symbols-1",
       passage_id: null,
       passage_title: "Symbols training",
       duration_seconds: 60,
+      elapsed_seconds: 60,
+      completion_reason: "time_up",
+      is_rankable: true,
+      metric_domain: "english",
       wpm: 36,
       accuracy: 98,
       correct_chars: 48,
@@ -213,6 +258,7 @@ describe("typingResultStorage", () => {
           id: "result-1",
           passage_title: "Board memo",
           duration_seconds: 60,
+          elapsed_seconds: 20,
           wpm: 72,
           accuracy: 98.5,
           correct_chars: 360,
@@ -243,6 +289,7 @@ describe("typingResultStorage", () => {
         passage_title: "Board memo",
         passage_category: "Business email",
         duration_seconds: 60,
+        elapsed_seconds: 20,
         wpm: 72,
         accuracy: 98.5,
         correct_chars: 360,
@@ -261,7 +308,7 @@ describe("typingResultStorage", () => {
     ]);
     expect(from).toHaveBeenCalledWith("typing_results");
     expect(select).toHaveBeenCalledWith(
-      "id,passage_title,duration_seconds,wpm,accuracy,correct_chars,created_at,passages(category)"
+      "id,passage_title,metric_domain,duration_seconds,elapsed_seconds,wpm,accuracy,correct_chars,created_at,passages(category)"
     );
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
     expect(order).toHaveBeenCalledWith("created_at", { ascending: false });
@@ -301,44 +348,19 @@ describe("typingResultStorage", () => {
   });
 
   it("applies server-side leaderboard domain filters when no category is selected", async () => {
-    const englishQuery: any = {};
-    const englishLimit = vi.fn().mockResolvedValue({ data: [], error: null });
-    const englishNot = vi.fn(() => englishQuery);
-    const englishOr = vi.fn(() => englishQuery);
-    const englishOrder = vi.fn(() => englishQuery);
-    Object.assign(englishQuery, { order: englishOrder, limit: englishLimit, not: englishNot, or: englishOr });
-    const englishSelect = vi.fn(() => englishQuery);
-    const englishFrom = vi.fn(() => ({ select: englishSelect }));
+    for (const domain of ["english", "chinese", "code"] as const) {
+      const query: any = {};
+      const limit = vi.fn().mockResolvedValue({ data: [], error: null });
+      const eq = vi.fn(() => query);
+      const order = vi.fn(() => query);
+      Object.assign(query, { order, limit, eq });
+      const select = vi.fn(() => query);
+      const from = vi.fn(() => ({ select }));
 
-    await getSupabaseLeaderboardResults({ domain: "english" }, { from: englishFrom } as any);
+      await getSupabaseLeaderboardResults({ domain }, { from } as any);
 
-    expect(englishOr).toHaveBeenCalledWith("passage_category.is.null,passage_category.not.in.(training_chinese,training_code)");
-    expect(englishNot).toHaveBeenCalledWith("passage_title", "ilike", "%Training Chinese%");
-    expect(englishNot).toHaveBeenCalledWith("passage_title", "ilike", "%Training Code%");
-
-    const chineseQuery: any = {};
-    const chineseLimit = vi.fn().mockResolvedValue({ data: [], error: null });
-    const chineseOr = vi.fn(() => chineseQuery);
-    const chineseOrder = vi.fn(() => chineseQuery);
-    Object.assign(chineseQuery, { order: chineseOrder, limit: chineseLimit, or: chineseOr });
-    const chineseSelect = vi.fn(() => chineseQuery);
-    const chineseFrom = vi.fn(() => ({ select: chineseSelect }));
-
-    await getSupabaseLeaderboardResults({ domain: "chinese" }, { from: chineseFrom } as any);
-
-    expect(chineseOr).toHaveBeenCalledWith("passage_category.eq.training_chinese,passage_title.ilike.%Training Chinese%");
-
-    const codeQuery: any = {};
-    const codeLimit = vi.fn().mockResolvedValue({ data: [], error: null });
-    const codeOr = vi.fn(() => codeQuery);
-    const codeOrder = vi.fn(() => codeQuery);
-    Object.assign(codeQuery, { order: codeOrder, limit: codeLimit, or: codeOr });
-    const codeSelect = vi.fn(() => codeQuery);
-    const codeFrom = vi.fn(() => ({ select: codeSelect }));
-
-    await getSupabaseLeaderboardResults({ domain: "code" }, { from: codeFrom } as any);
-
-    expect(codeOr).toHaveBeenCalledWith("passage_category.eq.training_code,passage_title.ilike.%Training Code%");
+      expect(eq).toHaveBeenCalledWith("metric_domain", domain);
+    }
   });
 
   it("loads public typing results by normalized handle without private fields", async () => {
@@ -348,6 +370,7 @@ describe("typingResultStorage", () => {
           id: "public-result",
           passage_title: "Public passage",
           passage_category: "Business email",
+          metric_domain: "english",
           duration_seconds: 60,
           wpm: 66,
           accuracy: 99.2,
@@ -367,6 +390,7 @@ describe("typingResultStorage", () => {
         id: "public-result",
         passage_title: "Public passage",
         passage_category: "Business email",
+        metric_domain: "english",
         duration_seconds: 60,
         wpm: 66,
         accuracy: 99.2,
@@ -377,9 +401,49 @@ describe("typingResultStorage", () => {
 
     expect(from).toHaveBeenCalledWith("public_profile_typing_results");
     expect(select).toHaveBeenCalledWith(
-      "id,passage_title,passage_category,duration_seconds,wpm,accuracy,correct_chars,created_at"
+      "id,passage_title,passage_category,metric_domain,duration_seconds,wpm,accuracy,correct_chars,created_at"
     );
     expect(eq).toHaveBeenCalledWith("handle", "formal_typist");
     expect(limit).toHaveBeenCalledWith(10);
   });
 });
+
+function makeSaveInput() {
+  const passage: StoredPassage = {
+    id: "generated",
+    title: "Generated practice",
+    category: "Business email",
+    style: "Formal",
+    text: "Sample passage text.",
+    source: "generated",
+    updatedAt: "2026-06-14T00:00:00.000Z"
+  };
+  const result: TypingResult = {
+    characters: [],
+    characterStatuses: [],
+    correctCharacters: 120,
+    incorrectCharacters: 0,
+    missedCharacters: 0,
+    extraCharacters: 0,
+    totalCharacters: 120,
+    comparableTargetLength: 120,
+    comparableTypedLength: 120,
+    accuracy: 100,
+    wpm: 48,
+    rawWpm: 48,
+    timeUsedSeconds: 30,
+    durationSeconds: 60,
+    category: "Business email",
+    presetName: "Custom rules",
+    completionReason: "manual",
+    completedAt: "2026-06-14T00:01:00.000Z",
+    isRankable: true
+  };
+  return {
+    userId: "6dc3f88f-d1c1-4d99-921d-6c388ef8d9b3",
+    attemptId: "attempt-idempotent",
+    passage,
+    result,
+    typedCharacters: 120
+  };
+}

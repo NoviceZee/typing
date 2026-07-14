@@ -636,14 +636,14 @@ describe("PracticePage passage loading", () => {
     fireEvent.input(input, { target: { value: "cw" }, nativeEvent: { isComposing: true, data: "cw" } });
     fireEvent.compositionUpdate(input, { data: "cw" });
 
-    expect(screen.getByText("Tab = start")).toBeTruthy();
+    expect(screen.getByText("Timer running")).toBeTruthy();
     expect(screen.getByTestId("typing-character-layer").textContent).not.toContain("cw");
 
     fireEvent.compositionEnd(input, { data: "今天" });
     fireEvent.input(input, { target: { value: "今天，" }, nativeEvent: { isComposing: false, data: "今天，" } });
 
     await waitFor(() => {
-      expect(screen.getByText("Tab = start")).toBeTruthy();
+      expect(screen.getByText("Timer running")).toBeTruthy();
     });
     expect(input.value).toBe("今天，");
 
@@ -672,7 +672,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(window, { key: "Tab" });
     fireEvent.input(input, { target: { value: "客戶測試" }, nativeEvent: { isComposing: false, data: "客戶測試" } });
     await waitFor(() => {
-      expect(screen.getByText("Tab = start")).toBeTruthy();
+      expect(screen.getByText("Timer running")).toBeTruthy();
     });
     fireEvent.keyDown(window, { key: "Escape" });
 
@@ -1013,6 +1013,9 @@ describe("PracticePage passage loading", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Restart" }));
+    });
     fireEvent.click(screen.getByRole("button", { name: "Restart" }));
     const justFinishedResult = readPreviousResult("local", 60);
 
@@ -1436,6 +1439,73 @@ describe("PracticePage passage loading", () => {
     expect(details).toHaveLength(1);
     expect(details[0].userId).toBe("user-1");
     expect(details[0].characters.some((character) => character.expected === "L" && character.actual === "L")).toBe(true);
+  });
+
+  it("keeps the result visible and announces a cloud save failure", async () => {
+    authState.user = { id: "user-1" };
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockedSaveSupabaseTypingResult.mockRejectedValueOnce(new Error("offline"));
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+    await waitFor(() => expect(container.textContent).toContain("Local fallback body text for typing"));
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain("Cloud save failed");
+    });
+    expect(screen.getByText("This Result")).toBeTruthy();
+    expect(warnSpy).toHaveBeenCalledWith("Supabase typing result save failed", expect.any(Error));
+    warnSpy.mockRestore();
+  });
+
+  it("does not let an older save response overwrite a restarted session", async () => {
+    authState.user = { id: "user-1" };
+    let resolveFirstSave: (value: any) => void = () => {};
+    let resolveSecondSave: (value: any) => void = () => {};
+    mockedSaveSupabaseTypingResult
+      .mockReturnValueOnce(new Promise<any>((resolve) => { resolveFirstSave = resolve; }))
+      .mockReturnValueOnce(new Promise<any>((resolve) => { resolveSecondSave = resolve; }));
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+    await waitFor(() => expect(container.textContent).toContain("Local fallback body text for typing"));
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.getByText("Saving result…")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.getByText("Saving result…")).toBeTruthy());
+
+    await act(async () => {
+      resolveFirstSave({ id: "first-result", created_at: "2026-07-14T01:00:00.000Z" });
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Saving result…")).toBeTruthy();
+    expect(screen.queryByText("Result saved to your account.")).toBeNull();
+
+    await act(async () => {
+      resolveSecondSave({ id: "second-result", created_at: "2026-07-14T01:01:00.000Z" });
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(screen.getByText("Result saved to your account.")).toBeTruthy());
   });
 
   it("flags suspicious bursts and does not save or update previous pace", async () => {

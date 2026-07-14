@@ -1,3 +1,5 @@
+import { safeSetJsonStorageItem } from "@/lib/storageSafety";
+
 export type ProfileDisplaySettings = { speedUnit: "wpm" | "cpm"; showDecimals: boolean; defaultTrendRange: "30" | "90" | "all" };
 export const DEFAULT_PROFILE_DISPLAY_SETTINGS: ProfileDisplaySettings = { speedUnit: "wpm", showDecimals: true, defaultTrendRange: "30" };
 const KEY = "formaltype_profile_display_settings";
@@ -15,5 +17,5 @@ export function readProfileDisplaySettings(): ProfileDisplaySettings {
 }
 
 export function writeProfileDisplaySettings(settings: ProfileDisplaySettings) {
-  if (typeof window !== "undefined") window.localStorage.setItem(KEY, JSON.stringify(settings));
+  return safeSetJsonStorageItem(KEY, settings, { context: "writeProfileDisplaySettings" });
 }

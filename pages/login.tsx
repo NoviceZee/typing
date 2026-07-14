@@ -7,15 +7,16 @@ import { useAuth } from "@/components/AuthProvider";
 import { getSupabaseProfile } from "@/lib/profileStorage";
 import Link from "next/link";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "recovery";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, isLoading, isConfigured, signIn, signUp } = useAuth();
+  const { user, isLoading, isConfigured, signIn, signUp, sendPasswordReset } = useAuth();
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [messageKind, setMessageKind] = useState<"status" | "error">("status");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [acceptedLegal, setAcceptedLegal] = useState(false);
 
@@ -23,6 +24,16 @@ export default function LoginPage() {
     const rawRedirect = Array.isArray(router.query.redirectTo) ? router.query.redirectTo[0] : router.query.redirectTo;
     return rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/practice";
   }, [router.query.redirectTo]);
+
+  useEffect(() => {
+    const requestedMode = Array.isArray(router.query.mode) ? router.query.mode[0] : router.query.mode;
+    const passwordReset = Array.isArray(router.query.passwordReset) ? router.query.passwordReset[0] : router.query.passwordReset;
+    if (requestedMode === "recovery") setAuthMode("recovery");
+    if (passwordReset === "1") {
+      setMessageKind("status");
+      setMessage("Password updated. Log in with your new password.");
+    }
+  }, [router.query.mode, router.query.passwordReset]);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,22 +64,40 @@ export default function LoginPage() {
     event.preventDefault();
     setIsSubmitting(true);
     setMessage("");
+    setMessageKind("status");
 
-    const result = authMode === "login" ? await signIn(email, password) : await signUp(email, password);
+    try {
+      const result = authMode === "login"
+        ? await signIn(email, password)
+        : authMode === "signup"
+          ? await signUp(email, password)
+          : await sendPasswordReset(email);
 
-    if (result.errorMessage) {
-      setMessage(result.errorMessage);
+      if (result.errorMessage) {
+        setMessageKind("error");
+        setMessage(result.errorMessage);
+        return;
+      }
+
+      if (authMode === "signup" && result.needsConfirmation) {
+        setMessageKind("status");
+        setMessage("Account created. Check your email if Supabase requires confirmation, then log in.");
+        return;
+      }
+
+      if (authMode === "recovery") {
+        setMessageKind("status");
+        setMessage("If an account exists for that email, a password reset link has been sent.");
+        return;
+      }
+
+      await router.push(redirectTo);
+    } catch {
+      setMessageKind("error");
+      setMessage("The request could not be completed. Check your connection and try again.");
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    if (authMode === "signup" && result.needsConfirmation) {
-      setMessage("Account created. Check your email if Supabase requires confirmation, then log in.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    router.push(redirectTo);
   }
 
   return (
@@ -81,11 +110,12 @@ export default function LoginPage() {
           <div>
             <p className="font-mono text-xs uppercase text-brass">FormalType login</p>
             <h1 className="mt-2 text-3xl font-semibold text-paper">
-              {authMode === "login" ? "Log in" : "Create account"}
+              {authMode === "login" ? "Log in" : authMode === "signup" ? "Create account" : "Reset password"}
             </h1>
             <p className="mt-3 text-sm leading-6 text-paper/60">
-              Practice stays public. Admin access is required for Manage passages, and passage data still remains in
-              localStorage for now.
+              {authMode === "recovery"
+                ? "Enter your account email and we will send a secure recovery link."
+                : "Practice stays public. Sign in to sync results and profile progress across devices."}
             </p>
           </div>
         </div>
@@ -111,7 +141,7 @@ export default function LoginPage() {
             />
           </label>
 
-          <label className="block">
+          {authMode !== "recovery" && <label className="block">
             <span className="font-mono text-xs uppercase text-paper/45">Password</span>
             <input
               type="password"
@@ -122,10 +152,10 @@ export default function LoginPage() {
               className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-3 font-mono text-sm text-paper outline-none transition focus:border-brass/60"
               placeholder="At least 6 characters"
             />
-          </label>
+          </label>}
 
           {message && (
-            <div className="rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+            <div role={messageKind === "error" ? "alert" : "status"} className={`rounded-md border px-4 py-3 font-mono text-sm ${messageKind === "error" ? "border-ember/25 bg-ember/10 text-ember" : "border-brass/25 bg-brass/10 text-brass"}`}>
               {message}
             </div>
           )}
@@ -139,18 +169,32 @@ export default function LoginPage() {
               className="inline-flex items-center gap-2 rounded-md bg-brass px-4 py-2.5 font-mono text-sm font-semibold text-ink-950 transition hover:bg-brass/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <LogIn className="h-4 w-4" />
-              {isSubmitting ? "Working..." : authMode === "login" ? "Log in" : "Sign up"}
+              {isSubmitting ? "Working..." : authMode === "login" ? "Log in" : authMode === "signup" ? "Sign up" : "Send reset link"}
             </button>
             <button
               type="button"
               onClick={() => {
                 setAuthMode(authMode === "login" ? "signup" : "login");
                 setMessage("");
+                setMessageKind("status");
               }}
               className="rounded-md border border-paper/10 bg-ink-900 px-4 py-2.5 font-mono text-sm text-paper/70 transition hover:border-paper/25 hover:text-paper"
             >
               {authMode === "login" ? "Create account" : "Use existing account"}
             </button>
+            {authMode === "login" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("recovery");
+                  setMessage("");
+                  setMessageKind("status");
+                }}
+                className="px-2 py-2.5 font-mono text-sm text-paper/55 transition hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass/70"
+              >
+                Forgot password?
+              </button>
+            )}
           </div>
         </form>
       </section>

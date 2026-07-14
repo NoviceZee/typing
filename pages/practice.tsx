@@ -119,6 +119,7 @@ export type PracticeTrainingMode = {
 };
 
 type SessionStatus = "idle" | "running" | "finished";
+type CloudSaveState = "idle" | "saving" | "saved" | "failed";
 
 export type AttemptTimelinePoint = {
   timeSeconds: number;
@@ -173,6 +174,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const [recentResults, setRecentResults] = useState<SupabaseOwnTypingResultRow[]>([]);
   const [progressMilestones, setProgressMilestones] = useState<CelebrationMilestone[]>([]);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [cloudSaveState, setCloudSaveState] = useState<CloudSaveState>("idle");
   const [passageNotice, setPassageNotice] = useState("");
   const [isAttemptSuspicious, setIsAttemptSuspicious] = useState(false);
   const [isInputActivated, setIsInputActivated] = useState(false);
@@ -186,6 +188,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const chineseImeInputRef = useRef<HTMLTextAreaElement | null>(null);
   const typingWindowRef = useRef<HTMLDivElement>(null);
   const typingTextRef = useRef<HTMLDivElement>(null);
+  const resultPanelRestartButtonRef = useRef<HTMLButtonElement>(null);
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
   const previousPaceMarkerRef = useRef<HTMLSpanElement | null>(null);
   const characterRefs = useRef<Array<HTMLSpanElement | null>>([]);
@@ -221,6 +224,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const pendingSoundKeyTypeRef = useRef<KeyboardSoundKeyType | null>(null);
   const typedCharacterDelaysRef = useRef<number[]>([]);
   const lastTypedCharacterAtRef = useRef<number | null>(null);
+  const activeAttemptIdRef = useRef(createClientAttemptId());
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
@@ -401,6 +405,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setFinishedAt(null);
       setLastResult(null);
       setProgressMilestones([]);
+      setCloudSaveState("idle");
       setIsResultModalOpen(false);
       setPreviousResult(resetPassage ? readPreviousResult(resetPassage.id, resetPreviousResultScope) : null);
       setStatus("idle");
@@ -535,6 +540,11 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     resetActiveSessionState();
   }, [resetActiveSessionState]);
 
+  const closeResultModal = useCallback(() => {
+    setIsResultModalOpen(false);
+    window.requestAnimationFrame(() => resultPanelRestartButtonRef.current?.focus());
+  }, []);
+
   const finishTest = useCallback(
     (completionReason: CompletionReason) => {
       const sessionStartedAt = startedAtRef.current;
@@ -606,22 +616,38 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setAttemptErrorEvents([...attemptErrorEventsRef.current]);
       setIsAttemptSuspicious(isSuspicious);
 
+      const completedSessionGeneration = activeSessionGenerationRef.current;
+      const completedAttemptId = activeAttemptIdRef.current;
+      const isCurrentCompletedSession = () =>
+        activeSessionGenerationRef.current === completedSessionGeneration &&
+        activeAttemptIdRef.current === completedAttemptId &&
+        finishedRef.current;
+
       if (user) {
         void getSupabaseOwnTypingResults(user.id, 50)
-          .then((typingResults) => setRecentResults(filterComparableRecentResults(typingResults, passage, finalResult)))
+          .then((typingResults) => {
+            if (isCurrentCompletedSession()) {
+              setRecentResults(filterComparableRecentResults(typingResults, passage, finalResult));
+            }
+          })
           .catch((error) => {
             console.warn("Supabase recent typing results load failed", error);
           });
 
         if (!isSuspicious) {
+          setCloudSaveState("saving");
           void saveSupabaseTypingResult({
             userId: user.id,
+            attemptId: completedAttemptId,
             passage,
             result: finalResult,
             typedCharacters: typedTextRef.current.length,
             supabasePassageId: passage.id ?? null
           })
             .then((savedResult) => {
+              if (isCurrentCompletedSession()) {
+                setCloudSaveState("saved");
+              }
               if (attemptDetail) {
                 void saveSupabaseTypingAttemptDetail(attemptDetail, savedResult.id).catch((error) => {
                   console.warn("Supabase typing attempt detail save failed", error);
@@ -629,19 +655,24 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
               }
               void getSupabaseAnalyticsTypingResults(user.id)
                 .then((typingResults) => {
-                  setProgressMilestones(
-                    buildProgressCelebrationMilestones(
-                      typingResults.filter((typingResult) => typingResult.id !== savedResult.id),
-                      passage,
-                      { ...finalResult, completedAt: savedResult.created_at }
-                    )
-                  );
+                  if (isCurrentCompletedSession()) {
+                    setProgressMilestones(
+                      buildProgressCelebrationMilestones(
+                        typingResults.filter((typingResult) => typingResult.id !== savedResult.id),
+                        passage,
+                        { ...finalResult, completedAt: savedResult.created_at }
+                      )
+                    );
+                  }
                 })
                 .catch((error) => {
                   console.warn("Supabase progress analytics load failed", error);
                 });
             })
             .catch((error) => {
+              if (isCurrentCompletedSession()) {
+                setCloudSaveState("failed");
+              }
               console.warn("Supabase typing result save failed", error);
             });
         }
@@ -656,6 +687,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     }
 
     finishedRef.current = false;
+    activeAttemptIdRef.current = createClientAttemptId();
     const now = Date.now();
     statusRef.current = "running";
     startedAtRef.current = now;
@@ -926,6 +958,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     if (!isRunning) {
       const now = Date.now();
       finishedRef.current = false;
+      activeAttemptIdRef.current = createClientAttemptId();
       statusRef.current = "running";
       startedAtRef.current = now;
       attemptTimelineRef.current = [];
@@ -1514,7 +1547,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           }}
           className={clsx(
             "formaltype-practice-shell relative mx-auto flex w-full flex-col overflow-hidden rounded-lg outline-none transition-all duration-300 focus:ring-brass/30",
-            "h-[60vh] max-h-[60vh] max-w-5xl bg-paper/[0.025] p-3 md:h-[68vh] md:max-h-[72vh] md:p-5"
+            "h-[60vh] h-[60dvh] max-h-[60vh] max-h-[60dvh] max-w-5xl bg-paper/[0.025] p-3 md:h-[68vh] md:h-[68dvh] md:max-h-[72vh] md:max-h-[72dvh] md:p-5"
           )}
           data-focus-mode={isFocusMode ? "true" : "false"}
         >
@@ -1678,6 +1711,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             metricLabel={getMetricLabel(passage)}
             onRestart={resetSession}
             onNextPassage={loadNextPassage}
+            restartButtonRef={resultPanelRestartButtonRef}
           />
         )}
         {lastResult && passage && isResultModalOpen && (
@@ -1693,7 +1727,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             errorEvents={attemptErrorEvents}
             modeLabel={modeLabel}
             isSuspicious={isAttemptSuspicious}
-            onClose={() => setIsResultModalOpen(false)}
+            cloudSaveState={cloudSaveState}
+            onClose={closeResultModal}
           />
         )}
       </section>
@@ -1894,12 +1929,14 @@ function ResultsPanel({
   result,
   metricLabel,
   onRestart,
-  onNextPassage
+  onNextPassage,
+  restartButtonRef
 }: {
   result: TypingResult;
   metricLabel: string;
   onRestart: () => void;
   onNextPassage: () => void;
+  restartButtonRef: React.RefObject<HTMLButtonElement>;
 }) {
   return (
     <section className="mt-6 rounded-lg bg-paper/[0.025] p-4 md:p-5">
@@ -1910,6 +1947,7 @@ function ResultsPanel({
         </div>
         <div className="flex flex-wrap gap-2">
           <button
+            ref={restartButtonRef}
             type="button"
             onClick={onRestart}
             className="inline-flex items-center gap-2 rounded-md bg-paper/[0.045] px-3 py-2 font-mono text-xs text-paper/70 transition hover:bg-paper/[0.075] hover:text-paper"
@@ -1961,6 +1999,7 @@ export function ResultModal({
   errorEvents = [],
   modeLabel,
   isSuspicious = false,
+  cloudSaveState = "idle",
   onGenerateImageCard = generateResultImageCard,
   onClose
 }: {
@@ -1975,6 +2014,7 @@ export function ResultModal({
   errorEvents?: AttemptErrorEvent[];
   modeLabel: string;
   isSuspicious?: boolean;
+  cloudSaveState?: CloudSaveState;
   onGenerateImageCard?: (input: ResultImageCardInput) => Promise<void> | void;
   onClose: () => void;
 }) {
@@ -1992,6 +2032,8 @@ export function ResultModal({
 
   useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
 
     function handleDialogKeyDown(event: globalThis.KeyboardEvent) {
@@ -2020,6 +2062,7 @@ export function ResultModal({
     document.addEventListener("keydown", handleDialogKeyDown);
     return () => {
       document.removeEventListener("keydown", handleDialogKeyDown);
+      document.body.style.overflow = previousOverflow;
       previouslyFocused?.focus();
     };
   }, []);
@@ -2055,6 +2098,19 @@ export function ResultModal({
               <div id="result-dialog-description" className="mt-1.5 truncate font-mono text-xs text-paper/45 md:text-sm">
                 {formatPassageResultMetadata(passage)}
               </div>
+              {cloudSaveState !== "idle" && (
+                <p
+                  role={cloudSaveState === "failed" ? "alert" : "status"}
+                  aria-live="polite"
+                  className={`mt-2 font-mono text-xs ${cloudSaveState === "failed" ? "text-ember" : cloudSaveState === "saved" ? "text-mint" : "text-paper/45"}`}
+                >
+                  {cloudSaveState === "saving"
+                    ? "Saving result…"
+                    : cloudSaveState === "saved"
+                      ? "Result saved to your account."
+                      : "Cloud save failed. Your current result is still visible here."}
+                </p>
+              )}
             </div>
             <button
               ref={closeButtonRef}
@@ -2223,6 +2279,7 @@ function toCurrentAnalyticsResult(
     passage_title: passage.title?.trim() || "Untitled passage",
     passage_category: passage.category,
     duration_seconds: result.durationSeconds,
+    elapsed_seconds: result.timeUsedSeconds,
     wpm: result.wpm,
     accuracy: result.accuracy,
     correct_chars: result.correctCharacters,
@@ -3306,4 +3363,12 @@ function formatSigned(value: number, suffix: string) {
 
 function roundOne(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function createClientAttemptId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 }

@@ -1,0 +1,15 @@
+# Local audit/input artifacts are not part of the deployed application.
+chinese.txt
+.playwright-cli/
+
+# Source, audit and QA assets that are not used by the Next.js build.
+Articles.txt
+formaltype-passage-library-*.json
+Sound Pack/
+tippy-pet-run/
+tippy-orange-cat-run/
+docs/
+supabase/
+scripts/
+**/*.test.ts
+**/*.test.tsx

@@ -27,6 +27,10 @@ vi.mock("@/components/AuthProvider", () => ({
   })
 }));
 
+vi.mock("@/components/NotificationCenter", () => ({
+  NotificationCenter: () => null
+}));
+
 vi.mock("next/router", () => ({
   useRouter: () => ({
     pathname: mockState.pathname,
@@ -103,6 +107,7 @@ describe("AppShell account dropdown", () => {
   it("hides Manage passages while a switched account role is loading", () => {
     mockState.isAdmin = true;
     mockState.isLoading = true;
+    mockedGetSupabaseProfile.mockReturnValue(new Promise(() => {}) as any);
 
     render(<AppShell sideAd={false}>Content</AppShell>);
 
@@ -198,6 +203,7 @@ describe("AppShell account dropdown", () => {
   });
 
   it("uses Library as the passage information architecture label", () => {
+    mockState.user = null;
     render(<AppShell sideAd={false}>Content</AppShell>);
 
     expect(screen.getByRole("link", { name: "Library" }).getAttribute("href")).toBe("/passages");
@@ -205,9 +211,12 @@ describe("AppShell account dropdown", () => {
   });
 
   it("provides a skip link and an accessible mobile navigation", () => {
+    mockState.user = null;
     render(<AppShell sideAd={false}>Content</AppShell>);
 
     expect(screen.getByRole("link", { name: "Skip to main content" }).getAttribute("href")).toBe("#main-content");
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(screen.getByRole("main").id).toBe("main-content");
     const menuButton = screen.getByRole("button", { name: "Open navigation" });
     expect(menuButton.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(menuButton);

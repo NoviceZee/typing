@@ -5,7 +5,11 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { SiteTelemetry } from "@/components/SiteTelemetry";
+import { getShareImageUrl, getSiteUrl } from "@/lib/siteMetadata";
 import "@/styles/globals.css";
+
+const SITE_URL = getSiteUrl();
+const SHARE_IMAGE_URL = getShareImageUrl();
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -22,9 +26,13 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta property="og:site_name" content="FormalType" />
         <meta property="og:title" content="FormalType — Deliberate typing practice" />
         <meta property="og:description" content="Build speed and accuracy with writing that resembles real work." />
-        <meta property="og:image" content="/formaltype-share.svg" />
+        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:image" content={SHARE_IMAGE_URL} />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content="/formaltype-share.svg" />
+        <meta name="twitter:image" content={SHARE_IMAGE_URL} />
         <link rel="icon" href="/favicon.svg" />
       </Head>
       <SiteTelemetry />

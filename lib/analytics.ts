@@ -94,7 +94,9 @@ export function buildProgressAnalytics(
   options: BuildProgressAnalyticsOptions = {}
 ): ProgressAnalytics {
   const domain = options.domain ?? "english";
+  const now = options.now ?? new Date();
   const normalizedResults = results
+    .filter(isValidAnalyticsResult)
     .filter((result) => getResultAnalyticsDomain(result) === domain)
     .map((result) => ({
       ...result,
@@ -113,16 +115,16 @@ export function buildProgressAnalytics(
     averageWpmLast100: roundOne(average(newestFirst.slice(0, 100).map((result) => result.wpm))),
     bestAccuracy: roundOne(maxOrZero(normalizedResults.map((result) => result.accuracy))),
     totalTests: normalizedResults.length,
-    totalPracticeSeconds: normalizedResults.reduce((total, result) => total + result.duration_seconds, 0),
+    totalPracticeSeconds: normalizedResults.reduce((total, result) => total + getPracticeSeconds(result), 0),
     totalWordsTyped:
       domain === "chinese"
         ? normalizedResults.reduce((total, result) => total + Math.max(0, result.correct_chars), 0)
         : Math.floor(normalizedResults.reduce((total, result) => total + Math.max(0, result.correct_chars), 0) / 5)
   };
-  const activity = getActivitySummary(normalizedResults);
+  const activity = getActivitySummary(normalizedResults, now);
   const progression = getProgression(normalizedResults, activity);
   const improvement = getImprovement(normalizedResults);
-  const challenges = getChallenges(normalizedResults, options.now ?? new Date());
+  const challenges = getChallenges(normalizedResults, now);
 
   return {
     summary,
@@ -450,18 +452,28 @@ function getWeakestCategory(categories: ProgressAnalytics["categoryBreakdown"]) 
   return [...categories].sort((left, right) => left.averageWpm - right.averageWpm || left.averageAccuracy - right.averageAccuracy)[0] ?? null;
 }
 
-function getActivitySummary(results: SupabaseAnalyticsTypingResultRow[]) {
+function getActivitySummary(results: SupabaseAnalyticsTypingResultRow[], now: Date) {
   const activeDates = Array.from(new Set(results.map((result) => toDateKey(result.created_at)).filter(Boolean) as string[])).sort();
 
   return {
-    currentStreakDays: getCurrentStreakDays(activeDates),
+    currentStreakDays: getCurrentStreakDays(activeDates, now),
     activeDays: activeDates.length,
     activeDates
   };
 }
 
-function getCurrentStreakDays(activeDates: string[]) {
+function getCurrentStreakDays(activeDates: string[], now: Date) {
   if (activeDates.length === 0) {
+    return 0;
+  }
+
+  const latestDate = activeDates[activeDates.length - 1];
+  const today = toDateKey(now);
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = toDateKey(yesterdayDate);
+
+  if (latestDate !== today && latestDate !== yesterday) {
     return 0;
   }
 
@@ -475,6 +487,27 @@ function getCurrentStreakDays(activeDates: string[]) {
   }
 
   return streak;
+}
+
+function isValidAnalyticsResult(result: SupabaseAnalyticsTypingResultRow) {
+  return (
+    Boolean(result?.id) &&
+    Number.isFinite(result.duration_seconds) &&
+    result.duration_seconds > 0 &&
+    result.duration_seconds <= 86_400 &&
+    (result.elapsed_seconds === undefined ||
+      (Number.isFinite(result.elapsed_seconds) && result.elapsed_seconds > 0 && result.elapsed_seconds <= 86_400)) &&
+    Number.isFinite(result.wpm) &&
+    result.wpm >= 0 &&
+    result.wpm <= 1_000 &&
+    Number.isFinite(result.accuracy) &&
+    result.accuracy >= 0 &&
+    result.accuracy <= 100 &&
+    Number.isFinite(result.correct_chars) &&
+    result.correct_chars >= 0 &&
+    result.correct_chars <= 1_000_000 &&
+    Number.isFinite(Date.parse(result.created_at))
+  );
 }
 
 function compareByWpmAccuracyAndDate(left: SupabaseAnalyticsTypingResultRow, right: SupabaseAnalyticsTypingResultRow) {
@@ -494,7 +527,11 @@ function normalizeCategory(category: string | null) {
 }
 
 function sumPracticeSeconds(results: SupabaseAnalyticsTypingResultRow[]) {
-  return results.reduce((total, result) => total + result.duration_seconds, 0);
+  return results.reduce((total, result) => total + getPracticeSeconds(result), 0);
+}
+
+function getPracticeSeconds(result: SupabaseAnalyticsTypingResultRow) {
+  return result.elapsed_seconds ?? result.duration_seconds;
 }
 
 function isBusinessCategory(category: string | null) {

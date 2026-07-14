@@ -146,12 +146,15 @@ describe("buildProgressAnalytics", () => {
   });
 
   it("calculates the current activity streak from saved result dates", () => {
-    const analytics = buildProgressAnalytics([
-      makeResult("latest", 60, 70, 98, "Business email", "2026-06-21T10:00:00.000Z"),
-      makeResult("same-day", 60, 68, 98, "Business email", "2026-06-21T08:00:00.000Z"),
-      makeResult("yesterday", 60, 65, 98, "Business email", "2026-06-20T10:00:00.000Z"),
-      makeResult("gap", 60, 62, 98, "Business email", "2026-06-18T10:00:00.000Z")
-    ]);
+    const analytics = buildProgressAnalytics(
+      [
+        makeResult("latest", 60, 70, 98, "Business email", "2026-06-21T10:00:00.000Z"),
+        makeResult("same-day", 60, 68, 98, "Business email", "2026-06-21T08:00:00.000Z"),
+        makeResult("yesterday", 60, 65, 98, "Business email", "2026-06-20T10:00:00.000Z"),
+        makeResult("gap", 60, 62, 98, "Business email", "2026-06-18T10:00:00.000Z")
+      ],
+      { now: new Date("2026-06-21T12:00:00.000Z") }
+    );
 
     expect(analytics.activity.currentStreakDays).toBe(2);
     expect(analytics.activity.activeDays).toBe(3);
@@ -186,11 +189,14 @@ describe("buildProgressAnalytics", () => {
   });
 
   it("unlocks streak achievements from consecutive practice days", () => {
-    const threeDayStreak = buildProgressAnalytics([
-      makeResult("day-3", 60, 70, 98, "Business email", "2026-06-21T10:00:00.000Z"),
-      makeResult("day-2", 60, 70, 98, "Business email", "2026-06-20T10:00:00.000Z"),
-      makeResult("day-1", 60, 70, 98, "Business email", "2026-06-19T10:00:00.000Z")
-    ]);
+    const threeDayStreak = buildProgressAnalytics(
+      [
+        makeResult("day-3", 60, 70, 98, "Business email", "2026-06-21T10:00:00.000Z"),
+        makeResult("day-2", 60, 70, 98, "Business email", "2026-06-20T10:00:00.000Z"),
+        makeResult("day-1", 60, 70, 98, "Business email", "2026-06-19T10:00:00.000Z")
+      ],
+      { now: new Date("2026-06-21T12:00:00.000Z") }
+    );
     const threeDayAchievements = new Map(
       threeDayStreak.achievements.items.map((achievement) => [achievement.id, achievement.isUnlocked])
     );
@@ -208,7 +214,8 @@ describe("buildProgressAnalytics", () => {
           "Business email",
           new Date(Date.UTC(2026, 5, 15 + index)).toISOString()
         )
-      )
+      ),
+      { now: new Date("2026-06-21T12:00:00.000Z") }
     );
     const sevenDayAchievements = new Map(
       sevenDayStreak.achievements.items.map((achievement) => [achievement.id, achievement.isUnlocked])
@@ -223,6 +230,18 @@ describe("buildProgressAnalytics", () => {
     expect(analytics.achievements.totalCount).toBe(23);
     expect(analytics.achievements.unlockedCount).toBe(0);
     expect(analytics.achievements.items.every((achievement) => !achievement.isUnlocked)).toBe(true);
+  });
+
+  it("expires a historical streak and ignores malformed numeric rows", () => {
+    const valid = makeResult("valid", 60, 50, 98, "Business email", "2026-06-01T10:00:00.000Z", 250);
+    const malformed = makeResult("bad", 60, Number.NaN, 98, "Business email", "not-a-date", 250);
+    const analytics = buildProgressAnalytics([valid, malformed], {
+      now: new Date("2026-06-10T12:00:00.000Z")
+    });
+
+    expect(analytics.activity.currentStreakDays).toBe(0);
+    expect(analytics.summary.totalTests).toBe(1);
+    expect(analytics.summary.averageWpm).toBe(50);
   });
 
   it("calculates XP, level, and progress from saved results", () => {
@@ -298,6 +317,18 @@ describe("buildProgressAnalytics", () => {
     expect(analytics.improvement.averageWpmGain).toBe(21);
     expect(achievements.get("improvement-10")).toBe(true);
     expect(achievements.get("improvement-20")).toBe(true);
+  });
+
+  it("uses measured elapsed time for practice totals without changing duration records", () => {
+    const result = {
+      ...makeResult("manual-finish", 60, 72, 98, "Business email", "2026-06-21T10:00:00.000Z", 120),
+      elapsed_seconds: 20
+    };
+
+    const analytics = buildProgressAnalytics([result], { now: new Date("2026-06-21T12:00:00.000Z") });
+
+    expect(analytics.summary.totalPracticeSeconds).toBe(20);
+    expect(analytics.records.fastestOneMinute?.id).toBe("manual-finish");
   });
 });
 

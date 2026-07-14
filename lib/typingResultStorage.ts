@@ -1,5 +1,5 @@
 import type { StoredPassage } from "./app-storage";
-import { AnalyticsDomain } from "./analyticsDomain";
+import { AnalyticsDomain, getResultAnalyticsDomain } from "./analyticsDomain";
 import { LeaderboardTimeRange, getLeaderboardDateRange } from "./leaderboardFilters";
 import { normalizeHandle } from "./profileStorage";
 import { supabase } from "./supabaseClient";
@@ -7,9 +7,14 @@ import type { TypingResult } from "./typing-engine";
 
 export type SupabaseTypingResultInsert = {
   user_id: string;
+  client_attempt_id: string;
   passage_id: string | null;
   passage_title: string;
   duration_seconds: number;
+  elapsed_seconds: number;
+  completion_reason: TypingResult["completionReason"];
+  is_rankable: boolean;
+  metric_domain: AnalyticsDomain;
   wpm: number;
   accuracy: number;
   correct_chars: number;
@@ -26,6 +31,7 @@ export type SupabaseLeaderboardResultRow = {
   display_name: string;
   passage_title: string;
   passage_category: string | null;
+  metric_domain?: AnalyticsDomain;
   duration_seconds: number;
   wpm: number;
   accuracy: number;
@@ -36,6 +42,7 @@ export type SupabaseOwnTypingResultRow = {
   id: string;
   passage_title: string;
   passage_category?: string | null;
+  metric_domain?: AnalyticsDomain;
   duration_seconds: number;
   wpm: number;
   accuracy: number;
@@ -44,6 +51,7 @@ export type SupabaseOwnTypingResultRow = {
 
 export type SupabaseAnalyticsTypingResultRow = SupabaseOwnTypingResultRow & {
   passage_category: string | null;
+  elapsed_seconds?: number;
   correct_chars: number;
 };
 
@@ -58,6 +66,7 @@ export type SupabaseLeaderboardFilters = {
 
 export type SaveTypingResultInput = {
   userId: string;
+  attemptId: string;
   passage: StoredPassage;
   result: TypingResult;
   typedCharacters: number;
@@ -66,6 +75,7 @@ export type SaveTypingResultInput = {
 
 export function toSupabaseTypingResultInsert({
   userId,
+  attemptId,
   passage,
   result,
   typedCharacters,
@@ -73,9 +83,17 @@ export function toSupabaseTypingResultInsert({
 }: SaveTypingResultInput): SupabaseTypingResultInsert {
   return {
     user_id: userId,
+    client_attempt_id: attemptId,
     passage_id: isUuid(supabasePassageId) ? supabasePassageId : null,
     passage_title: passage.title?.trim() || "Untitled passage",
     duration_seconds: result.durationSeconds,
+    elapsed_seconds: result.timeUsedSeconds,
+    completion_reason: result.completionReason,
+    is_rankable: result.isRankable,
+    metric_domain: getResultAnalyticsDomain({
+      category: result.category ?? passage.category,
+      title: passage.title
+    }),
     wpm: result.wpm,
     accuracy: result.accuracy,
     correct_chars: result.correctCharacters,
@@ -87,13 +105,23 @@ export async function saveSupabaseTypingResult(
   input: SaveTypingResultInput,
   client = requireSupabaseClient()
 ): Promise<SupabaseTypingResultRow> {
+  const payload = toSupabaseTypingResultInsert(input);
   const { data, error } = await client
     .from("typing_results")
-    .insert(toSupabaseTypingResultInsert(input))
+    .insert(payload)
     .select("*")
     .single();
 
   if (error) {
+    if (error.code === "23505" && payload.client_attempt_id) {
+      const { data: existing, error: existingError } = await client
+        .from("typing_results")
+        .select("*")
+        .eq("user_id", payload.user_id)
+        .eq("client_attempt_id", payload.client_attempt_id)
+        .maybeSingle();
+      if (!existingError && existing) return existing;
+    }
     throw error;
   }
 
@@ -114,7 +142,7 @@ export async function getSupabaseLeaderboardResults({
 
   let query = client
     .from("typing_results_leaderboard")
-    .select("id,display_name,passage_title,passage_category,duration_seconds,wpm,accuracy,created_at")
+    .select("id,display_name,passage_title,passage_category,metric_domain,duration_seconds,wpm,accuracy,created_at")
     .order("wpm", { ascending: false })
     .order("accuracy", { ascending: false })
     .order("created_at", { ascending: false });
@@ -152,7 +180,7 @@ export async function getSupabaseLeaderboardCategories(limit = 200, domain: Anal
 
   let query = supabase
     .from("typing_results_leaderboard")
-    .select("passage_category")
+    .select("passage_category,metric_domain")
     .not("passage_category", "is", null)
     .order("passage_category", { ascending: true });
 
@@ -193,7 +221,7 @@ export async function getSupabaseOwnTypingResults(
 
   const { data, error } = await supabase
     .from("typing_results")
-    .select("id,passage_title,duration_seconds,wpm,accuracy,created_at,passages(category)")
+    .select("id,passage_title,metric_domain,duration_seconds,wpm,accuracy,created_at,passages(category)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -212,7 +240,7 @@ export async function getSupabaseAnalyticsTypingResults(
 ): Promise<SupabaseAnalyticsTypingResultRow[]> {
   const { data, error } = await client
     .from("typing_results")
-    .select("id,passage_title,duration_seconds,wpm,accuracy,correct_chars,created_at,passages(category)")
+    .select("id,passage_title,metric_domain,duration_seconds,elapsed_seconds,wpm,accuracy,correct_chars,created_at,passages(category)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -237,7 +265,7 @@ export async function getSupabasePublicTypingResultsByHandle(
 
   const { data, error } = await client
     .from("public_profile_typing_results")
-    .select("id,passage_title,passage_category,duration_seconds,wpm,accuracy,correct_chars,created_at")
+    .select("id,passage_title,passage_category,metric_domain,duration_seconds,wpm,accuracy,correct_chars,created_at")
     .eq("handle", cleanHandle)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -264,7 +292,9 @@ function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingRe
     id: row.id,
     passage_title: row.passage_title,
     passage_category: passage?.category ?? null,
+    ...toMetricDomainField(row.metric_domain),
     duration_seconds: Number(row.duration_seconds),
+    ...(row.elapsed_seconds == null ? {} : { elapsed_seconds: Number(row.elapsed_seconds) }),
     wpm: Number(row.wpm),
     accuracy: Number(row.accuracy),
     correct_chars: Number(row.correct_chars ?? 0),
@@ -279,6 +309,7 @@ function toSupabaseOwnTypingResultRow(row: any): SupabaseOwnTypingResultRow {
     id: row.id,
     passage_title: row.passage_title,
     passage_category: passage?.category ?? row.passage_category ?? null,
+    ...toMetricDomainField(row.metric_domain),
     duration_seconds: Number(row.duration_seconds),
     wpm: Number(row.wpm),
     accuracy: Number(row.accuracy),
@@ -291,6 +322,7 @@ function toSupabasePublicTypingResultRow(row: any): SupabaseAnalyticsTypingResul
     id: row.id,
     passage_title: row.passage_title,
     passage_category: row.passage_category ?? null,
+    ...toMetricDomainField(row.metric_domain),
     duration_seconds: Number(row.duration_seconds),
     wpm: Number(row.wpm),
     accuracy: Number(row.accuracy),
@@ -300,34 +332,13 @@ function toSupabasePublicTypingResultRow(row: any): SupabaseAnalyticsTypingResul
 }
 
 function applyLeaderboardDomainFilter(query: any, domain: AnalyticsDomain) {
-  if (domain === "chinese") {
-    if (typeof query.or === "function") {
-      return query.or("passage_category.eq.training_chinese,passage_title.ilike.%Training Chinese%");
-    }
+  return query.eq("metric_domain", domain);
+}
 
-    return query.eq("passage_category", "training_chinese");
-  }
-
-  if (domain === "code") {
-    if (typeof query.or === "function") {
-      return query.or("passage_category.eq.training_code,passage_title.ilike.%Training Code%");
-    }
-
-    return query.eq("passage_category", "training_code");
-  }
-
-  if (typeof query.or === "function") {
-    query = query.or("passage_category.is.null,passage_category.not.in.(training_chinese,training_code)");
-  } else {
-    query = query.not("passage_category", "in", "(training_chinese,training_code)");
-  }
-
-  if (typeof query.not === "function") {
-    query = query.not("passage_title", "ilike", "%Training Chinese%");
-    query = query.not("passage_title", "ilike", "%Training Code%");
-  }
-
-  return query;
+function toMetricDomainField(value: unknown): { metric_domain?: AnalyticsDomain } {
+  return value === "english" || value === "chinese" || value === "code"
+    ? { metric_domain: value }
+    : {};
 }
 
 function isUuid(value?: string | null): value is string {

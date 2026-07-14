@@ -48,7 +48,7 @@ export function AppShell({
   }, [isMobileNavOpen]);
 
   return (
-    <main className="min-h-screen px-5 py-5 text-paper md:px-8">
+    <div className="min-h-screen px-5 py-5 text-paper md:px-8">
       {process.env.NEXT_PUBLIC_ADSENSE_CLIENT && <Script async strategy="afterInteractive" crossOrigin="anonymous" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT}`} />}
       <a
         href="#main-content"
@@ -63,7 +63,7 @@ export function AppShell({
               FormalType
             </Link>
             <div className="flex min-w-0 items-center gap-2 md:gap-3">
-              <nav aria-label="Primary navigation" className="hidden gap-1 font-mono text-sm text-paper/60 md:flex lg:gap-2">
+              <nav aria-label="Primary navigation" className="hidden gap-1 font-mono text-sm text-paper/60 lg:flex lg:gap-2">
                 {NAV_ITEMS.map((item) => (
                   <NavLink key={item.href} href={item.href} label={item.label} />
                 ))}
@@ -77,7 +77,7 @@ export function AppShell({
                 aria-expanded={isMobileNavOpen}
                 aria-controls="mobile-navigation"
                 onClick={() => setIsMobileNavOpen((current) => !current)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-900 text-paper/70 transition hover:border-brass/40 hover:text-paper md:hidden"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-900 text-paper/70 transition hover:border-brass/40 hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass/70 lg:hidden"
               >
                 {isMobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               </button>
@@ -87,7 +87,7 @@ export function AppShell({
             <nav
               id="mobile-navigation"
               aria-label="Mobile navigation"
-              className="mt-3 grid grid-cols-2 gap-2 border-t border-paper/10 pt-3 font-mono text-sm sm:grid-cols-3 md:hidden"
+              className="mt-3 grid grid-cols-2 gap-2 border-t border-paper/10 pt-3 font-mono text-sm sm:grid-cols-3 lg:hidden"
             >
               {NAV_ITEMS.map((item) => (
                 <NavLink key={item.href} href={item.href} label={item.label} onClick={() => setIsMobileNavOpen(false)} />
@@ -103,7 +103,7 @@ export function AppShell({
         )}
 
         <div className={sideAd ? "mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]" : "mt-6"}>
-          <div id="main-content" tabIndex={-1} className="min-w-0 outline-none">{children}</div>
+          <main id="main-content" tabIndex={-1} className="min-w-0 outline-none">{children}</main>
           {sideAd && (
             <aside className="hidden xl:block">
               <AdPlaceholder variant="sidebar" />
@@ -121,7 +121,7 @@ export function AppShell({
           <div aria-label="Legal links" className="flex flex-wrap gap-5"><Link href="/terms" className="transition hover:text-paper">Terms</Link><Link href="/privacy" className="transition hover:text-paper">Privacy</Link><Link href="/security" className="transition hover:text-paper">Security</Link></div>
         </footer>}
       </div>
-    </main>
+    </div>
   );
 }
 

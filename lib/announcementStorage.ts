@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { safeSetJsonStorageItem } from "@/lib/storageSafety";
 
 export type AppAnnouncement = { id: string; title: string; body: string; published_at: string };
 
@@ -15,6 +16,9 @@ export function readAnnouncementIds(): Set<string> {
   try { return new Set(JSON.parse(window.localStorage.getItem(READ_KEY) || "[]")); } catch { return new Set(); }
 }
 export function markAnnouncementsRead(ids: string[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(READ_KEY, JSON.stringify(Array.from(new Set([...Array.from(readAnnouncementIds()), ...ids])).slice(-100)));
+  return safeSetJsonStorageItem(
+    READ_KEY,
+    Array.from(new Set([...Array.from(readAnnouncementIds()), ...ids])).slice(-100),
+    { context: "markAnnouncementsRead" }
+  );
 }

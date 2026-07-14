@@ -46,6 +46,45 @@ describe("storageSafety", () => {
     vi.unstubAllGlobals();
   });
 
+  it("treats a blocked Safari storage getter as unavailable", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const blockedWindow = {} as Window;
+    Object.defineProperty(blockedWindow, "localStorage", {
+      configurable: true,
+      get() {
+        throw new DOMException("Access is denied.", "SecurityError");
+      }
+    });
+    vi.stubGlobal("window", blockedWindow);
+
+    expect(safeSetStorageItem("formaltype_previous_results", "x", { context: "test-blocked" })).toMatchObject({
+      ok: false,
+      reason: "unavailable"
+    });
+
+    warnSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it("treats a browser SecurityError during storage writes as unavailable", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("window", {
+      localStorage: makeStorage({
+        setItem: () => {
+          throw new DOMException("Access is denied.", "SecurityError");
+        }
+      })
+    });
+
+    expect(safeSetStorageItem("formaltype_previous_results", "x", { context: "test-security" })).toMatchObject({
+      ok: false,
+      reason: "unavailable"
+    });
+
+    warnSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
   it("reports FormalType storage usage largest first without inspecting unrelated keys", () => {
     const storage = makeStorage();
     storage.setItem("formaltype_previous_results", "a".repeat(50));

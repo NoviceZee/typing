@@ -36,7 +36,11 @@ function getStorage(kind: StorageKind): Storage | null {
     return null;
   }
 
-  return kind === "localStorage" ? window.localStorage : window.sessionStorage;
+  try {
+    return kind === "localStorage" ? window.localStorage : window.sessionStorage;
+  } catch {
+    return null;
+  }
 }
 
 export function isFormalTypeStorageKey(key: string): boolean {
@@ -81,6 +85,11 @@ export function safeSetStorageItem(
     if (isQuotaExceededError(error)) {
       logStorageWrite({ storageKind, key, bytes, context, ok: false, reason: "quota_exceeded" });
       return { ok: false, key, bytes, reason: "quota_exceeded" };
+    }
+
+    if (error instanceof DOMException && error.name === "SecurityError") {
+      logStorageWrite({ storageKind, key, bytes, context, ok: false, reason: "unavailable" });
+      return { ok: false, key, bytes, reason: "unavailable" };
     }
 
     throw error;

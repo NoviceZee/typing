@@ -53,6 +53,17 @@ describe("typing rule comparison", () => {
     expect(comparison.correctCharacters).toBe(9);
   });
 
+  it("preserves authored full-width Chinese punctuation during comparison", () => {
+    const comparison = validateTypedText({
+      targetText: "今天，天氣很好！",
+      typedText: "今天，天氣很好！",
+      rules: DEFAULT_RULES
+    });
+
+    expect(comparison.incorrectCharacters).toBe(0);
+    expect(comparison.characters.map((character) => character.expected).join("")).toBe("今天，天氣很好！");
+  });
+
   it("ignores case differences when case-sensitive mode is disabled", () => {
     const comparison = validateTypedText({
       targetText: "Dear Sir",

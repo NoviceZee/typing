@@ -20,6 +20,8 @@ describe("analytics domain classification", () => {
   });
 
   it("classifies result-like rows by their category metadata", () => {
+    expect(getResultAnalyticsDomain({ metric_domain: "chinese", passage_category: null })).toBe("chinese");
+    expect(getResultAnalyticsDomain({ metric_domain: "code", passage_category: "Business email" })).toBe("code");
     expect(getResultAnalyticsDomain({ passage_category: "training_chinese" })).toBe("chinese");
     expect(getResultAnalyticsDomain({ passage_category: "training_code" })).toBe("code");
     expect(getResultAnalyticsDomain({ category: "training_words" })).toBe("english");

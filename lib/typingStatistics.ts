@@ -6,6 +6,8 @@ export const TYPING_ATTEMPT_DETAILS_STORAGE_KEY = "formaltype.typing_attempt_det
 const MAX_STORED_ATTEMPT_DETAILS = 50;
 const MAX_STORED_ATTEMPT_CHARACTERS = 1_500;
 const MAX_STORED_ATTEMPT_TIMELINE_POINTS = 120;
+const MAX_STORED_CHARACTER_EVENTS = 15_000;
+const MAX_STORED_TIMELINE_POINTS = 3_000;
 const DEFAULT_MIN_WEAK_KEY_HITS = 20;
 
 export type TypingAttemptCharacterDetail = Pick<CharacterComparison, "expected" | "actual" | "index" | "status"> & {
@@ -409,7 +411,7 @@ export function appendTypingAttemptDetail(detail: TypingAttemptDetail) {
   const nextDetails = [detail, ...readTypingAttemptDetails()]
     .sort((first, second) => Date.parse(second.completedAt) - Date.parse(first.completedAt))
     .slice(0, MAX_STORED_ATTEMPT_DETAILS);
-  safeSetJsonStorageItem(TYPING_ATTEMPT_DETAILS_STORAGE_KEY, nextDetails.map(compactTypingAttemptDetail), {
+  safeSetJsonStorageItem(TYPING_ATTEMPT_DETAILS_STORAGE_KEY, compactTypingAttemptDetails(nextDetails), {
     context: "appendTypingAttemptDetail"
   });
 }
@@ -480,10 +482,31 @@ function toCommonMistake(character: TypingAttemptCharacterDetail): CommonMistake
   return null;
 }
 
+function compactTypingAttemptDetails(details: TypingAttemptDetail[]): TypingAttemptDetail[] {
+  let remainingCharacterEvents = MAX_STORED_CHARACTER_EVENTS;
+  let remainingTimelinePoints = MAX_STORED_TIMELINE_POINTS;
+
+  return details.map((detail) => {
+    const compacted = compactTypingAttemptDetail(detail);
+    const characterCount = Math.min(compacted.characters.length, remainingCharacterEvents);
+    const timelineCount = Math.min(compacted.timeline?.length ?? 0, remainingTimelinePoints);
+    remainingCharacterEvents -= characterCount;
+    remainingTimelinePoints -= timelineCount;
+
+    return {
+      ...compacted,
+      characters: compacted.characters.slice(0, characterCount),
+      timeline: compacted.timeline?.slice(0, timelineCount) ?? []
+    };
+  });
+}
+
 function compactTypingAttemptDetail(detail: TypingAttemptDetail): TypingAttemptDetail {
   return {
     ...detail,
-    characters: detail.characters.slice(0, MAX_STORED_ATTEMPT_CHARACTERS),
+    characters: detail.characters.length > MAX_STORED_ATTEMPT_CHARACTERS
+      ? detail.characters.slice(0, MAX_STORED_ATTEMPT_CHARACTERS)
+      : detail.characters,
     timeline: downsampleTimeline(detail.timeline ?? [])
   };
 }

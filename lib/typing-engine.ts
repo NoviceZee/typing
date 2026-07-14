@@ -246,7 +246,9 @@ export function validateTypedText({
 }
 
 export function normalizeComparableUnicode(value: string): string {
-  return value.normalize("NFKC").replace(/[\uFE00-\uFE0F]|\uDB40[\uDD00-\uDDEF]/g, "");
+  // Canonical composition removes visually irrelevant encoding differences
+  // without compatibility-folding authored full-width Chinese punctuation.
+  return value.normalize("NFC").replace(/[\uFE00-\uFE0F]|\uDB40[\uDD00-\uDDEF]/g, "");
 }
 
 export function compareTyping(target: string, typed: string, rules: TypingRules): TypingComparison {

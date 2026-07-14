@@ -4,7 +4,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import LeaderboardPage from "../pages/leaderboard";
+import LeaderboardPage, { formatLeaderboardDuration } from "../pages/leaderboard";
 import { getSupabaseLeaderboardResults } from "@/lib/typingResultStorage";
 
 const mockState = vi.hoisted(() => ({
@@ -64,6 +64,16 @@ describe("LeaderboardPage", () => {
         created_at: "2026-06-21T00:00:00.000Z"
       }
     ] as any);
+  });
+
+  it("formats short and exact-minute durations without rounding them into the wrong bucket", () => {
+    expect(formatLeaderboardDuration(15)).toBe("15 sec");
+    expect(formatLeaderboardDuration(30)).toBe("30 sec");
+    expect(formatLeaderboardDuration(60)).toBe("1 min");
+    expect(formatLeaderboardDuration(90)).toBe("1:30");
+    expect(formatLeaderboardDuration(59.6)).toBe("1 min");
+    expect(formatLeaderboardDuration(119.8)).toBe("2 min");
+    expect(formatLeaderboardDuration(0)).toBe("—");
   });
 
   it("renders public handles and never exposes email", async () => {
@@ -133,7 +143,7 @@ describe("LeaderboardPage", () => {
     expect(screen.getByRole("button", { name: "1m" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "5m" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "10m" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Infinite" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Month" }));
     fireEvent.click(screen.getByRole("button", { name: "5m" }));

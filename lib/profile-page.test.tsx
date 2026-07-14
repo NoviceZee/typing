@@ -403,6 +403,23 @@ describe("ProfilePage", () => {
     expect(screen.queryByText("Passage english")).toBeNull();
     expect(screen.queryByText("Passage chinese")).toBeNull();
   });
+
+  it("keeps the current display preference when device storage rejects the change", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    render(<ProfilePage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "CPM" })).toBeTruthy());
+    const storageSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementationOnce(() => {
+      throw new DOMException("Storage full", "QuotaExceededError");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "CPM" }));
+
+    expect(screen.getByRole("alert").textContent).toContain("Display preferences could not be saved");
+    expect(screen.getByRole("button", { name: "WPM" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "CPM" }).getAttribute("aria-pressed")).toBe("false");
+    storageSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
 });
 
 function makeProfile(overrides: Partial<Record<string, unknown>> = {}) {

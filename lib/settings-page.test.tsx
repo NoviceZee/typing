@@ -329,7 +329,7 @@ describe("SettingsPage", () => {
     expect(document.getElementById("sound")?.className).toContain("order-4");
     expect(screen.queryByRole("link", { name: "Appearance" })).toBeNull();
     expect(screen.queryByRole("link", { name: /account/i })).toBeNull();
-    expect(screen.queryByRole("link", { name: /privacy/i })).toBeNull();
+    expect(screen.getByRole("navigation", { name: "Settings sections" }).querySelector('a[href="/privacy"]')).toBeNull();
 
     expect(screen.getByRole("link", { name: "Behavior" }).getAttribute("aria-current")).toBe("true");
     fireEvent.click(screen.getByRole("link", { name: "Sound" }));

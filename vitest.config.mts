@@ -6,7 +6,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    globals: true
+    globals: true,
+    maxWorkers: 4,
+    minWorkers: 1
   },
   resolve: {
     alias: {

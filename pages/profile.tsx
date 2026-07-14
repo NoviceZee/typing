@@ -78,6 +78,7 @@ export default function ProfilePage() {
   const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>("accuracy");
   const [analyticsDomain, setAnalyticsDomain] = useState<AnalyticsDomain>("english");
   const [displaySettings, setDisplaySettings] = useState<ProfileDisplaySettings>(DEFAULT_PROFILE_DISPLAY_SETTINGS);
+  const [displaySettingsError, setDisplaySettingsError] = useState("");
   const domainResults = useMemo(
     () => results.filter((result) => getResultAnalyticsDomain(result) === analyticsDomain),
     [analyticsDomain, results]
@@ -162,6 +163,21 @@ export default function ProfilePage() {
 
     await navigator.clipboard.writeText(getPublicProfileUrl(profile.handle));
     setCopyMessage("Copied");
+  }
+
+  function handleDisplaySettingsChange(next: ProfileDisplaySettings) {
+    const writeResult = writeProfileDisplaySettings(next);
+
+    if (!writeResult.ok) {
+      setDisplaySettingsError("Display preferences could not be saved on this device.");
+      return;
+    }
+
+    setDisplaySettings(next);
+    setDisplaySettingsError("");
+    if (next.defaultTrendRange !== displaySettings.defaultTrendRange) {
+      setTrendRange(next.defaultTrendRange);
+    }
   }
 
   async function handleSaveIdentity(event: React.FormEvent<HTMLFormElement>) {
@@ -309,8 +325,14 @@ export default function ProfilePage() {
 
             <section className="flex flex-col gap-3 rounded-lg border border-paper/10 bg-ink-950/55 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
               <AnalyticsDomainSelector value={analyticsDomain} onChange={setAnalyticsDomain} />
-              <ProfileViewPreferences value={displaySettings} onChange={(next) => { setDisplaySettings(next); writeProfileDisplaySettings(next); if (next.defaultTrendRange !== displaySettings.defaultTrendRange) setTrendRange(next.defaultTrendRange); }} />
+              <ProfileViewPreferences value={displaySettings} onChange={handleDisplaySettingsChange} />
             </section>
+
+            {displaySettingsError && (
+              <p role="alert" className="font-mono text-sm text-ember">
+                {displaySettingsError}
+              </p>
+            )}
 
             {isLoadingResults && (
               <div role="status" aria-live="polite" className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-sm text-paper/45">
