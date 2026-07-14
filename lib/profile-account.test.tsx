@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AccountPage from "../pages/profile/account";
-import { changeSupabaseProfileHandle, getSupabaseProfile, updateSupabaseProfileDisplayName } from "@/lib/profileStorage";
+import { changeSupabaseProfileHandle, getSupabaseProfile } from "@/lib/profileStorage";
 import { updateCurrentUserPassword } from "@/lib/accountStorage";
 
 const mockState = vi.hoisted(() => ({
@@ -43,7 +43,6 @@ vi.mock("next/router", () => ({
 
 vi.mock("@/lib/profileStorage", () => ({
   getSupabaseProfile: vi.fn().mockResolvedValue({ display_name: "Formal Typist", handle: "formal_typist", handle_changed_at: null }),
-  updateSupabaseProfileDisplayName: vi.fn().mockResolvedValue({ display_name: "Updated Typist", handle: "formal_typist", handle_changed_at: null }),
   changeSupabaseProfileHandle: vi.fn().mockResolvedValue({ display_name: "Formal Typist", handle: "updated_typist", handle_changed_at: "2026-07-14T00:00:00.000Z" }),
   canChangeHandle: vi.fn((changedAt?: string | null) => !changedAt),
   getNextHandleChangeAt: vi.fn((changedAt?: string | null) => changedAt ? new Date("2026-08-13T00:00:00.000Z") : null)
@@ -57,7 +56,6 @@ vi.mock("@/lib/accountStorage", () => ({
 
 const mockedGetSupabaseProfile = vi.mocked(getSupabaseProfile);
 const mockedUpdatePassword = vi.mocked(updateCurrentUserPassword);
-const mockedUpdateDisplayName = vi.mocked(updateSupabaseProfileDisplayName);
 const mockedChangeHandle = vi.mocked(changeSupabaseProfileHandle);
 
 describe("Profile account page", () => {
@@ -71,7 +69,6 @@ describe("Profile account page", () => {
     mockState.signOut.mockClear();
     mockedGetSupabaseProfile.mockClear();
     mockedUpdatePassword.mockClear();
-    mockedUpdateDisplayName.mockClear();
     mockedChangeHandle.mockClear();
     mockedGetSupabaseProfile.mockResolvedValue({ display_name: "Formal Typist", handle: "formal_typist", handle_changed_at: null } as any);
   });
@@ -91,8 +88,8 @@ describe("Profile account page", () => {
     expect(screen.getByText("typist@example.com")).toBeTruthy();
     expect(screen.getByText("Public handle")).toBeTruthy();
     expect(screen.getByText("@formal_typist")).toBeTruthy();
-    expect(screen.queryByLabelText("Display name")).toBeNull();
-    expect(screen.getByRole("button", { name: "Change display name" })).toBeTruthy();
+    expect(screen.queryByText("Display name")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Change display name" })).toBeNull();
     expect(screen.queryByLabelText("New password")).toBeNull();
     expect(screen.getByRole("button", { name: "Change password" })).toBeTruthy();
     expect(screen.getByLabelText("Delete confirmation")).toBeTruthy();
@@ -100,15 +97,9 @@ describe("Profile account page", () => {
     expect(screen.queryByText("Typing rules")).toBeNull();
   });
 
-  it("edits identity in dialogs and applies the handle cooldown returned by the server", async () => {
+  it("edits the public handle in a dialog and applies the cooldown returned by the server", async () => {
     render(<AccountPage />);
     await waitFor(() => expect(screen.getByText("@formal_typist")).toBeTruthy());
-
-    fireEvent.click(screen.getByRole("button", { name: "Change display name" }));
-    expect(screen.getByRole("dialog", { name: "Change display name" })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Display name"), { target: { value: "Updated Typist" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save name" }));
-    await waitFor(() => expect(mockedUpdateDisplayName).toHaveBeenCalledWith("user-1", "Updated Typist"));
 
     fireEvent.click(screen.getByRole("button", { name: "Change public handle" }));
     fireEvent.change(screen.getByLabelText("New handle"), { target: { value: "updated_typist" } });

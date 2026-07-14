@@ -93,6 +93,17 @@ describe("AppShell account dropdown", () => {
     expect(screen.getByRole("navigation").querySelector('a[href="/passages/manage"]')).toBeNull();
   });
 
+  it("keeps feedback with the footer links instead of overlaying page content", async () => {
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /account menu/i })).toBeTruthy());
+    const footerLinks = screen.getByLabelText("Footer links");
+    const feedback = screen.getByRole("link", { name: "Feedback" });
+
+    expect(footerLinks.contains(feedback)).toBe(true);
+    expect(feedback.getAttribute("href")).toContain("mailto:feedback@formaltype.app");
+  });
+
   it("keeps library management in the admin account menu", async () => {
     mockState.isAdmin = true;
 

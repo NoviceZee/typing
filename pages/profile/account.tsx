@@ -12,8 +12,7 @@ import {
   canChangeHandle,
   changeSupabaseProfileHandle,
   getNextHandleChangeAt,
-  getSupabaseProfile,
-  updateSupabaseProfileDisplayName
+  getSupabaseProfile
 } from "@/lib/profileStorage";
 import { deleteCurrentUserAccount, deleteCurrentUserStats, updateCurrentUserPassword } from "@/lib/accountStorage";
 import { DEFAULT_NOTIFICATION_SETTINGS, NotificationSettings, readNotificationSettings, writeNotificationSettings } from "@/lib/notificationSettings";
@@ -24,7 +23,6 @@ export default function AccountPage() {
   const recoveryQuery = Array.isArray(router.query?.recovery) ? router.query.recovery[0] : router.query?.recovery;
   const isRecoveryMode = router.isReady && recoveryQuery === "1";
   const [profile, setProfile] = useState<SupabaseProfile | null>(null);
-  const [displayName, setDisplayName] = useState("");
   const [handleDraft, setHandleDraft] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,8 +31,8 @@ export default function AccountPage() {
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [pendingAction, setPendingAction] = useState<"name" | "handle" | "password" | "stats" | "delete" | null>(null);
-  const [accountDialog, setAccountDialog] = useState<"name" | "handle" | "password" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"handle" | "password" | "stats" | "delete" | null>(null);
+  const [accountDialog, setAccountDialog] = useState<"handle" | "password" | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const newPasswordInputRef = useRef<HTMLInputElement>(null);
   const confirmPasswordInputRef = useRef<HTMLInputElement>(null);
@@ -53,19 +51,17 @@ export default function AccountPage() {
     getSupabaseProfile(user.id).then((next) => {
       if (!mounted) return;
       setProfile(next);
-      setDisplayName(next?.display_name ?? "");
       setHandleDraft(next?.handle ?? "");
       setIsProfileLoading(false);
     }).catch((reason) => { if (mounted) { setError(reason instanceof Error ? reason.message : "Profile could not be loaded."); setIsProfileLoading(false); } });
     return () => { mounted = false; };
   }, [user]);
 
-  function begin(action: "name" | "handle" | "password" | "stats" | "delete") { setMessage(""); setError(""); setPendingAction(action); }
+  function begin(action: "handle" | "password" | "stats" | "delete") { setMessage(""); setError(""); setPendingAction(action); }
 
-  function openAccountDialog(dialog: "name" | "handle" | "password") {
+  function openAccountDialog(dialog: "handle" | "password") {
     setMessage("");
     setError("");
-    if (dialog === "name") setDisplayName(profile?.display_name ?? "");
     if (dialog === "handle") setHandleDraft(profile?.handle ?? "");
     if (dialog === "password") {
       setNewPassword("");
@@ -87,17 +83,6 @@ export default function AccountPage() {
     setConfirmPassword("");
     if (newPasswordInputRef.current) newPasswordInputRef.current.value = "";
     if (confirmPasswordInputRef.current) confirmPasswordInputRef.current.value = "";
-  }
-
-  async function saveName(event: FormEvent) {
-    event.preventDefault(); if (!user) return; begin("name");
-    try {
-      const next = await updateSupabaseProfileDisplayName(user.id, displayName);
-      setProfile(next);
-      setDisplayName(next.display_name);
-      setAccountDialog(null);
-      setMessage("Display name updated.");
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Name could not be updated."); } finally { setPendingAction(null); }
   }
 
   async function saveHandle(event: FormEvent) {
@@ -203,11 +188,7 @@ export default function AccountPage() {
         {user && <div className="mt-6 space-y-5">
           {!accountDialog && (message || error) && <div role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 font-mono text-sm ${error ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>{error || message}</div>}
 
-          <AccountSection icon={<UserRound className="h-5 w-5" />} title="Identity" description="Manage the private name and sign-in details attached to this account.">
-            <div className="account-setting-row">
-              <div className="min-w-0"><span className="account-label">Display name</span><span className="account-help">Private account label. Your public identity uses your handle.</span></div>
-              <div className="flex flex-wrap items-center justify-end gap-3"><span className="font-mono text-sm text-paper/75">{isProfileLoading ? "Loading…" : profile?.display_name ?? "Not set"}</span><button type="button" aria-label="Change display name" onClick={() => openAccountDialog("name")} disabled={!profile} className="account-primary-button">Change</button></div>
-            </div>
+          <AccountSection icon={<UserRound className="h-5 w-5" />} title="Identity" description="Manage the public handle and sign-in details attached to this account.">
             <div className="account-setting-row">
               <div><span className="account-label">Public handle</span><span className="account-help">Profile URL and leaderboard identity. Changes are limited to once every 30 days.</span></div>
               <div className="flex flex-wrap items-center justify-end gap-3"><span className="font-mono text-sm text-paper">{isProfileLoading ? "Loading…" : `@${profile?.handle ?? "not-set"}`}</span><button type="button" aria-label="Change public handle" onClick={() => openAccountDialog("handle")} disabled={!profile || !handleChangeAllowed} className="account-primary-button">{handleChangeAllowed ? "Change" : formatHandleAvailability(nextHandleChangeAt)}</button></div>
@@ -234,15 +215,6 @@ export default function AccountPage() {
             <div className="flex items-center gap-3"><AlertTriangle className="h-5 w-5 shrink-0 text-ember" /><div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-sm uppercase text-ember">Delete account</h2><p className="text-sm text-paper/45">Permanently deletes your profile, friendships, saved results and authentication account. This cannot be undone.</p></div></div>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label><span className="account-label">Type DELETE to confirm</span><input aria-label="Delete confirmation" value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} className="formaltype-themed-input mt-2 px-3 py-2 font-mono" /></label><button type="button" onClick={deleteAccount} disabled={deleteConfirmation !== "DELETE" || pendingAction === "delete"} className="rounded-md border border-ember/35 bg-ember/10 px-4 py-2.5 font-mono text-xs uppercase text-ember transition hover:bg-ember/20 disabled:cursor-not-allowed disabled:opacity-35">{pendingAction === "delete" ? "Deleting…" : "Delete permanently"}</button></div>
           </section>
-
-          {accountDialog === "name" && (
-            <AccountDialog id="display-name-dialog" eyebrow="Identity" title="Change display name" description="This label is private to your account." errorMessage={error} onClose={closeAccountDialog} isBusy={pendingAction === "name"}>
-              <form onSubmit={saveName} className="mt-5 grid gap-4">
-                <label><span className="account-label">Display name</span><input aria-label="Display name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} minLength={2} maxLength={40} required className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>
-                <DialogActions onCancel={closeAccountDialog} isBusy={pendingAction === "name"} submitLabel={pendingAction === "name" ? "Saving…" : "Save name"} />
-              </form>
-            </AccountDialog>
-          )}
 
           {accountDialog === "handle" && (
             <AccountDialog id="handle-dialog" eyebrow="Public identity" title="Change handle" description="Your old profile URL will stop working. The next change is available 30 days after saving." errorMessage={error} onClose={closeAccountDialog} isBusy={pendingAction === "handle"}>

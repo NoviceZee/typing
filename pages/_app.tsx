@@ -3,7 +3,6 @@ import Head from "next/head";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
-import { FeedbackButton } from "@/components/FeedbackButton";
 import { SiteTelemetry } from "@/components/SiteTelemetry";
 import { getShareImageUrl, getSiteUrl } from "@/lib/siteMetadata";
 import "@/styles/globals.css";
@@ -38,7 +37,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <SiteTelemetry />
       <ThemeProvider>
         <AuthProvider>
-          <AppErrorBoundary><Component {...pageProps} /><FeedbackButton /></AppErrorBoundary>
+          <AppErrorBoundary><Component {...pageProps} /></AppErrorBoundary>
         </AuthProvider>
       </ThemeProvider>
     </>

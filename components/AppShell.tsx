@@ -6,6 +6,7 @@ import { ChevronDown, LogIn, LogOut, Menu, UserCircle, X } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { SupabaseProfile, getProfileDisplayLabel, getSupabaseProfile } from "@/lib/profileStorage";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import { FeedbackButton } from "@/components/FeedbackButton";
 
 const NAV_ITEMS = [
   { href: "/practice", label: "Practice" },
@@ -118,7 +119,7 @@ export function AppShell({
         )}
         {!focusMode && <footer className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-paper/10 py-6 font-mono text-[11px] text-paper/30">
           <span>© {new Date().getFullYear()} FormalType</span>
-          <div aria-label="Legal links" className="flex flex-wrap gap-5"><Link href="/terms" className="transition hover:text-paper">Terms</Link><Link href="/privacy" className="transition hover:text-paper">Privacy</Link><Link href="/security" className="transition hover:text-paper">Security</Link></div>
+          <div aria-label="Footer links" className="flex flex-wrap gap-5"><Link href="/terms" className="transition hover:text-paper">Terms</Link><FeedbackButton /><Link href="/privacy" className="transition hover:text-paper">Privacy</Link><Link href="/security" className="transition hover:text-paper">Security</Link></div>
         </footer>}
       </div>
     </div>
