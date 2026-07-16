@@ -2,6 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { ArrowRight, BarChart3, BookOpenText, Keyboard, Sparkles, Trophy } from "lucide-react";
 import { getSiteUrl } from "@/lib/siteMetadata";
+import { PublicSiteHeader, SITE_FRAME_CLASS, SITE_PAGE_GUTTERS_CLASS, SiteFooter } from "@/components/SiteChrome";
 
 const SITE_URL = getSiteUrl();
 
@@ -20,13 +21,16 @@ export default function Home() {
         <link rel="canonical" href={SITE_URL} />
       </Head>
       <main className="landing-shell min-h-screen overflow-hidden text-paper">
-        <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
-          <Link href="/" className="font-mono text-lg font-semibold tracking-[0.18em]">Typing Station</Link>
+        <div className={`relative z-20 pt-5 ${SITE_PAGE_GUTTERS_CLASS}`}>
+          <div className={SITE_FRAME_CLASS}>
+          <PublicSiteHeader>
           <nav aria-label="Landing navigation" className="flex items-center gap-2">
             <Link href="/login" className="hidden rounded-md px-3 py-2 font-mono text-xs text-paper/60 transition hover:bg-paper/10 hover:text-paper sm:block">Log in</Link>
             <Link href="/practice" className="landing-button-secondary">Open practice <ArrowRight className="h-4 w-4" /></Link>
           </nav>
-        </header>
+          </PublicSiteHeader>
+          </div>
+        </div>
 
         <section className="landing-hero relative mx-auto grid min-h-[calc(100vh-5.5rem)] max-w-7xl items-center gap-14 px-5 pb-20 pt-10 md:px-8 lg:grid-cols-[1.02fr_.98fr] lg:py-20">
           <div className="relative z-10 max-w-3xl">
@@ -80,12 +84,7 @@ export default function Home() {
           <Link href="/practice" className="landing-button-primary mt-8">Enter the practice room <ArrowRight className="h-4 w-4" /></Link>
         </section>
 
-        <footer className="border-t border-paper/10 px-5 py-7 md:px-8">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 font-mono text-[11px] text-paper/30">
-            <span>© {new Date().getFullYear()} Typing Station</span>
-            <div className="flex flex-wrap gap-5"><Link href="/practice" className="hover:text-paper">Practice</Link><Link href="/settings" className="hover:text-paper">Settings</Link><Link href="/terms" className="hover:text-paper">Terms</Link><Link href="/privacy" className="hover:text-paper">Privacy</Link><Link href="/security" className="hover:text-paper">Security</Link></div>
-          </div>
-        </footer>
+        <div className={SITE_PAGE_GUTTERS_CLASS}><div className={SITE_FRAME_CLASS}><SiteFooter /></div></div>
       </main>
     </>
   );

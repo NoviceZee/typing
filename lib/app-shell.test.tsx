@@ -101,6 +101,7 @@ describe("AppShell account dropdown", () => {
     const feedback = screen.getByRole("link", { name: "Feedback" });
 
     expect(footerLinks.contains(feedback)).toBe(true);
+    expect(screen.getByRole("link", { name: "FAQ" }).getAttribute("href")).toBe("/faq");
     expect(feedback.getAttribute("href")).toBe("https://github.com/NoviceZee/typing/issues/new");
   });
 
