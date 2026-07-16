@@ -40,6 +40,7 @@ import { getSupabaseTypingAttemptDetails, syncLocalTypingAttemptDetails } from "
 import type { KeyStatistic, TypingAttemptDetail, TypingReplayEvent, TypingStatistics } from "@/lib/typingStatistics";
 import { buildAttemptConsistencySummary, getConsistencyScorePath } from "@/lib/practiceConsistency";
 import { DEFAULT_PROFILE_DISPLAY_SETTINGS, ProfileDisplaySettings, readProfileDisplaySettings, writeProfileDisplaySettings } from "@/lib/profileDisplaySettings";
+import { getSiteUrl } from "@/lib/siteMetadata";
 
 type TrendRange = "30" | "90" | "all";
 type HeatmapMode = "accuracy" | "speed" | "mistakes";
@@ -1794,7 +1795,7 @@ function formatSpeed(wpm: number, settings: ProfileDisplaySettings) {
 }
 
 function getPublicProfileUrl(handle: string) {
-  return `https://formaltype.app/u/${handle}`;
+  return `${getSiteUrl()}/u/${handle}`;
 }
 
 function getAvatarStyleClass(style: string) {

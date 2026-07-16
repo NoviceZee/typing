@@ -101,7 +101,7 @@ describe("AppShell account dropdown", () => {
     const feedback = screen.getByRole("link", { name: "Feedback" });
 
     expect(footerLinks.contains(feedback)).toBe(true);
-    expect(feedback.getAttribute("href")).toContain("mailto:feedback@formaltype.app");
+    expect(feedback.getAttribute("href")).toBe("https://github.com/NoviceZee/typing/issues/new");
   });
 
   it("keeps library management in the admin account menu", async () => {

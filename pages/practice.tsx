@@ -1735,9 +1735,14 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
         {(status === "idle" || isFocusMode) && (
           <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-xs text-paper/30">
-            {status === "idle" || !shouldUseChineseImeSink ? <span>Tab = start</span> : <span>Timer running</span>}
-            <span>Tab + Enter = restart</span>
-            <span>Esc = finish</span>
+            {status === "idle" || !shouldUseChineseImeSink ? (
+              <>
+                <span className="sm:hidden">Tap to start</span>
+                <span className="hidden sm:inline">Tab = start</span>
+              </>
+            ) : <span>Timer running</span>}
+            <span className="hidden sm:inline">Tab + Enter = restart</span>
+            <span className="hidden sm:inline">Esc = finish</span>
           </div>
         )}
 
@@ -3237,7 +3242,7 @@ export async function generateResultImageCard({ result, passage, modeLabel }: Re
   context.scale(scale, scale);
   drawResultImageCard(context, { result, passage, modeLabel }, width, height);
   const blob = await canvasToPngBlob(canvas);
-  downloadBlob(blob, "formaltype-result-card.png");
+  downloadBlob(blob, "typing-station-result-card.png");
 }
 
 function drawResultImageCard(
@@ -3297,7 +3302,7 @@ function drawResultImageCard(
   });
 
   drawCardText(context, dateLabel, 82, height - 110, 22, "rgba(238, 231, 216, 0.44)", "400", 560);
-  drawCardText(context, "formaltype", width - 282, height - 110, 24, "rgba(199, 156, 74, 0.78)", "600", 220);
+  drawCardText(context, "typing station", width - 282, height - 110, 24, "rgba(199, 156, 74, 0.78)", "600", 220);
 }
 
 function drawCardText(

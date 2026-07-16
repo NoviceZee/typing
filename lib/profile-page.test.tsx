@@ -147,7 +147,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("@formal_typist")).toBeTruthy();
     expect(screen.getByText("Joined Jun 20, 2026")).toBeTruthy();
     expect(screen.getAllByText("I type with ceremonial precision.").length).toBeGreaterThan(0);
-    expect(screen.getByText("https://formaltype.app/u/formal_typist")).toBeTruthy();
+    expect(screen.getByText("https://typing-puce-one.vercel.app/u/formal_typist")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Copy public profile URL" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "View public profile" }).getAttribute("href")).toBe("/u/formal_typist");
     expect(screen.queryByRole("link", { name: "Edit identity settings" })).toBeNull();

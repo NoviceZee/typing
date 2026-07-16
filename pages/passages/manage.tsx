@@ -314,7 +314,7 @@ function ManagePassages() {
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = `formaltype-passage-library-${fileDate}.json`;
+    link.download = `typing-station-passage-library-${fileDate}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();

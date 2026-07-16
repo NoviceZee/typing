@@ -13,7 +13,7 @@
 ## Connect before beta
 
 - [x] Set `NEXT_PUBLIC_SITE_URL` to the current HTTPS production origin (`https://typing-puce-one.vercel.app`)
-- [ ] Point `NEXT_PUBLIC_FEEDBACK_URL` at the chosen feedback form, or confirm `feedback@formaltype.app` works
+- [ ] Point `NEXT_PUBLIC_FEEDBACK_URL` at a dedicated feedback form; until then, Feedback opens the GitHub issue form
 - [ ] Set `NEXT_PUBLIC_GA_MEASUREMENT_ID` and verify page views in analytics realtime view
 - [ ] Choose an error tracker and connect it to the `formaltype:error` browser event
 - [ ] Add AdSense client and slot values only after the site is approved; verify layout on mobile and desktop

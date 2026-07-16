@@ -526,16 +526,16 @@ function SettingsLivePreview({
           className={`formaltype-typing-font-${themeSettings.typingFont} formaltype-settings-preview-size-${themeSettings.typingTextSize}`}
           aria-label="Typing preview"
         >
-          <span className="formaltype-typed-correct">form</span>
-          <span className="formaltype-typed-wrong">a</span>
+          <span className="formaltype-typed-correct">typ</span>
+          <span className="formaltype-typed-wrong">i</span>
           <span
             className={`formaltype-typed-current formaltype-caret-${themeSettings.caretStyle} ${
               themeSettings.caretBlink === "off" ? "formaltype-caret-static" : "formaltype-caret-animated"
             }`}
           >
-            l
+            n
           </span>
-          <span className="formaltype-typed-pending"> type</span>
+          <span className="formaltype-typed-pending">g station</span>
         </p>
         <p className="mt-2 font-mono text-[0.68rem] uppercase text-paper/35">
           {themeSettings.caretStyle} caret / {themeSettings.typingColorStyle.replace("-", " ")}

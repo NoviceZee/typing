@@ -150,6 +150,7 @@ describe("SettingsPage", () => {
     expect(screen.getByTestId("settings-typing-preview-sample").className).toContain(
       "formaltype-settings-preview-size-large"
     );
+    expect(screen.getByTestId("settings-typing-preview-sample").textContent).toBe("typing station");
     expect(screen.getByTestId("settings-typing-preview-frame").className).toContain(
       "formaltype-settings-preview-width-wide"
     );

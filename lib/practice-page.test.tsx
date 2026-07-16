@@ -619,6 +619,8 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "English");
     expect(screen.getByText("Tab = start")).toBeTruthy();
+    expect(screen.getByText("Tab = start").className).toContain("hidden sm:inline");
+    expect(screen.getByText("Tap to start").className).toContain("sm:hidden");
 
     fireEvent.keyDown(window, { key: "Enter" });
     fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
