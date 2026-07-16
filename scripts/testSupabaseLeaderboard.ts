@@ -4,8 +4,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const TEST_TITLE = "FormalType Supabase Leaderboard Display Name Test";
-const TEST_DISPLAY_NAME = "FormalType Tester";
+const TEST_TITLE = "Typing Station Supabase Leaderboard Display Name Test";
+const TEST_DISPLAY_NAME = "Typing Station Tester";
 const TEST_CATEGORY = "Business email";
 
 let supabaseClient: any;
@@ -104,7 +104,7 @@ async function insertTestPassage(userId: string) {
       title: TEST_TITLE,
       category: TEST_CATEGORY,
       style: "Formal",
-      content: "FormalType leaderboard category verification passage.",
+      content: "Typing Station leaderboard category verification passage.",
       is_active: true,
       is_public: true,
       created_by: userId
@@ -366,7 +366,7 @@ function createAuthenticatedCrudClient(accessToken: string) {
 }
 
 function logStep(message: string) {
-  console.log(`\n[FormalType Supabase leaderboard] ${message}`);
+  console.log(`\n[Typing Station Supabase leaderboard] ${message}`);
 }
 
 function logResult(message: string) {

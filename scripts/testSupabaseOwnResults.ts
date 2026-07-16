@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const TEST_TITLE = "FormalType Supabase Own Results Test";
+const TEST_TITLE = "Typing Station Supabase Own Results Test";
 
 let insertedResultId: string | null = null;
 let supabaseClient: any;
@@ -191,7 +191,7 @@ function createAuthenticatedCrudClient(accessToken: string) {
 }
 
 function logStep(message: string) {
-  console.log(`\n[FormalType Supabase own results] ${message}`);
+  console.log(`\n[Typing Station Supabase own results] ${message}`);
 }
 
 function logResult(message: string) {

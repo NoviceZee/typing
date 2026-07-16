@@ -1,6 +1,6 @@
-# FormalType
+# Typing Station
 
-FormalType is a production-oriented typing practice application for English, Chinese IME input, generated training drills, passage libraries, public leaderboards and private progress analytics. It uses the Next.js Pages Router, React, TypeScript and Supabase Auth/Postgres/RLS/Storage.
+Typing Station is a production-oriented typing practice application for English, Chinese IME input, generated training drills, passage libraries, public leaderboards and private progress analytics. It uses the Next.js Pages Router, React, TypeScript and Supabase Auth/Postgres/RLS/Storage.
 
 ## Requirements
 

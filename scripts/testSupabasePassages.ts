@@ -26,9 +26,9 @@ type SupabasePassageRow = {
   created_by: string | null;
 };
 
-const TEST_TITLE = "FormalType Supabase CRUD Test";
-const UPDATED_TITLE = "FormalType Supabase CRUD Test Updated";
-const IMPORT_TEST_TITLES = ["FormalType Supabase Import Test A", "FormalType Supabase Import Test B"];
+const TEST_TITLE = "Typing Station Supabase CRUD Test";
+const UPDATED_TITLE = "Typing Station Supabase CRUD Test Updated";
+const IMPORT_TEST_TITLES = ["Typing Station Supabase Import Test A", "Typing Station Supabase Import Test B"];
 const require = createRequire(import.meta.url);
 
 let insertedPassageId: string | null = null;
@@ -80,7 +80,7 @@ async function main() {
       insertedPassage.id,
       {
         title: UPDATED_TITLE,
-        content: "Updated FormalType Supabase CRUD verification content."
+        content: "Updated Typing Station Supabase CRUD verification content."
       },
       supabaseCrudClient
     );
@@ -143,7 +143,7 @@ async function main() {
         title,
         category: "News article",
         style: "Simple",
-        content: `FormalType Supabase import verification content ${index + 1}.`,
+        content: `Typing Station Supabase import verification content ${index + 1}.`,
         is_active: true,
         is_public: true,
         created_by: authContext.userId
@@ -268,10 +268,10 @@ async function assertNoTestRowsRemain() {
   }
 
   if (data && data.length > 0) {
-    throw new Error(`Found ${data.length} remaining FormalType Supabase CRUD Test row(s).`);
+    throw new Error(`Found ${data.length} remaining Typing Station Supabase CRUD Test row(s).`);
   }
 
-  logResult("No FormalType Supabase CRUD Test rows remain.");
+  logResult("No Typing Station Supabase CRUD Test rows remain.");
 }
 
 async function insertSupabasePassageRows(
@@ -308,7 +308,7 @@ function makeTestPassage(): SupabasePassageInsert {
     title: TEST_TITLE,
     category: "News article",
     style: "Simple",
-    content: "FormalType Supabase CRUD verification content.",
+    content: "Typing Station Supabase CRUD verification content.",
     is_active: true,
     is_public: true
   };
@@ -406,7 +406,7 @@ function assertPassage(passage: SupabasePassageRow | null, message: string): ass
 }
 
 function logStep(message: string) {
-  console.log(`\n[FormalType Supabase passages] ${message}`);
+  console.log(`\n[Typing Station Supabase passages] ${message}`);
 }
 
 function logResult(message: string) {

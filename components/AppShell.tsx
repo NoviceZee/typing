@@ -61,7 +61,7 @@ export function AppShell({
         <header className={focusMode ? "invisible border-b border-paper/10 pb-4" : "border-b border-paper/10 pb-4"}>
           <div className="flex items-center justify-between gap-3">
             <Link href="/practice" className="shrink-0 font-mono text-lg font-semibold tracking-[0.18em] text-paper">
-              FormalType
+              Typing Station
             </Link>
             <div className="flex min-w-0 items-center gap-2 md:gap-3">
               <nav aria-label="Primary navigation" className="hidden gap-1 font-mono text-sm text-paper/60 lg:flex lg:gap-2">
@@ -118,7 +118,7 @@ export function AppShell({
           </div>
         )}
         {!focusMode && <footer className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-paper/10 py-6 font-mono text-[11px] text-paper/30">
-          <span>© {new Date().getFullYear()} FormalType</span>
+          <span>© {new Date().getFullYear()} Typing Station</span>
           <div aria-label="Footer links" className="flex flex-wrap gap-5"><Link href="/terms" className="transition hover:text-paper">Terms</Link><FeedbackButton /><Link href="/privacy" className="transition hover:text-paper">Privacy</Link><Link href="/security" className="transition hover:text-paper">Security</Link></div>
         </footer>}
       </div>

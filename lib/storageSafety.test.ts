@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import {
-  FORMALTYPE_STORAGE_MIGRATION_KEY,
-  getFormalTypeStorageReport,
-  runFormalTypeStorageMigration,
+  TYPING_STATION_STORAGE_MIGRATION_KEY,
+  getTypingStationStorageReport,
+  runTypingStationStorageMigration,
   safeSetStorageItem
 } from "./storageSafety";
 
@@ -85,20 +85,20 @@ describe("storageSafety", () => {
     vi.unstubAllGlobals();
   });
 
-  it("reports FormalType storage usage largest first without inspecting unrelated keys", () => {
+  it("reports Typing Station storage usage largest first without inspecting unrelated keys", () => {
     const storage = makeStorage();
     storage.setItem("formaltype_previous_results", "a".repeat(50));
     storage.setItem("formaltype_current_passage", "b".repeat(10));
     storage.setItem("sb-project-auth-token", "secret".repeat(100));
 
-    const report = getFormalTypeStorageReport(storage);
+    const report = getTypingStationStorageReport(storage);
 
     expect(report.entries.map((entry) => entry.key)).toEqual(["formaltype_previous_results", "formaltype_current_passage"]);
     expect(report.entries[0].approximateBytes).toBe(100);
     expect(report.totalApproximateBytes).toBe(120);
   });
 
-  it("removes only known obsolete FormalType keys during migration", () => {
+  it("removes only known obsolete Typing Station keys during migration", () => {
     const storage = makeStorage();
     storage.setItem("formaltype.passage.v1", "obsolete");
     storage.setItem("formaltype_current_passage", "keep active passage cache");
@@ -107,13 +107,13 @@ describe("storageSafety", () => {
     const clearSpy = vi.spyOn(storage, "clear");
     vi.stubGlobal("window", { localStorage: storage });
 
-    runFormalTypeStorageMigration(storage);
+    runTypingStationStorageMigration(storage);
 
     expect(storage.getItem("formaltype.passage.v1")).toBeNull();
     expect(storage.getItem("formaltype_current_passage")).toBe("keep active passage cache");
     expect(storage.getItem("formaltype.theme.v1")).toBe("keep settings");
     expect(storage.getItem("sb-project-auth-token")).toBe("keep auth");
-    expect(storage.getItem(FORMALTYPE_STORAGE_MIGRATION_KEY)).toBe("complete");
+    expect(storage.getItem(TYPING_STATION_STORAGE_MIGRATION_KEY)).toBe("complete");
     expect(clearSpy).not.toHaveBeenCalled();
 
     vi.unstubAllGlobals();

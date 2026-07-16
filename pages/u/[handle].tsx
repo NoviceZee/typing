@@ -235,7 +235,7 @@ export default function PublicUserProfilePage() {
           <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
             <p className="font-mono text-xs uppercase text-brass">Public profile</p>
             <h1 className="mt-2 text-3xl font-semibold text-paper">Profile not found</h1>
-            <p className="mt-4 text-sm leading-6 text-paper/55">No FormalType profile exists for that handle.</p>
+            <p className="mt-4 text-sm leading-6 text-paper/55">No Typing Station profile exists for that handle.</p>
           </section>
         )}
 

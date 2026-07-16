@@ -1090,7 +1090,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     }
 
     imeDebugSequenceRef.current += 1;
-    console.info("[FormalType IME]", {
+    console.info("[Typing Station IME]", {
       sequence: imeDebugSequenceRef.current,
       eventType: action,
       timestamp: Date.now(),
@@ -1118,7 +1118,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     };
 
     imeDebugSequenceRef.current += 1;
-    console.info("[FormalType IME]", {
+    console.info("[Typing Station IME]", {
       sequence: imeDebugSequenceRef.current,
       eventType,
       timestamp: Date.now(),
@@ -3273,7 +3273,7 @@ function drawResultImageCard(
   const metadata = formatPassageResultMetadata(passage);
   const cardMetadata = metadata.endsWith(` · ${modeLabel}`) ? metadata : `${metadata} · ${modeLabel}`;
 
-  drawCardText(context, "FormalType", 82, 112, 34, "#c79c4a", "600");
+  drawCardText(context, "Typing Station", 82, 112, 34, "#c79c4a", "600");
   drawCardText(context, metadata.split(" · ")[0] ?? "Untitled passage", 82, 176, 34, "rgba(238, 231, 216, 0.9)", "600", 850);
   drawCardText(context, cardMetadata, 82, 226, 22, "rgba(238, 231, 216, 0.48)", "400", 850);
 

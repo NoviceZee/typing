@@ -2,7 +2,7 @@ import React from "react";
 
 export function FeedbackButton() {
   const feedbackUrl = process.env.NEXT_PUBLIC_FEEDBACK_URL?.trim();
-  const href = feedbackUrl || "mailto:feedback@formaltype.app?subject=FormalType%20beta%20feedback";
+  const href = feedbackUrl || "mailto:feedback@formaltype.app?subject=Typing%20Station%20beta%20feedback";
   return (
     <a
       href={href}

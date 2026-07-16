@@ -194,7 +194,7 @@ const PASSAGE_BANK: Partial<Record<PracticeCategory, string[]>> = {
   Uncategorised: [
     "This locally uploaded passage has not been assigned to a formal category. It remains available for practice and can be selected from the passage library.",
     "Use the category and style filters before uploading if you want future passages to appear in a more specific library group.",
-    "FormalType will still measure speed, accuracy, punctuation, and spacing rules for uncategorised material in exactly the same way."
+    "Typing Station will still measure speed, accuracy, punctuation, and spacing rules for uncategorised material in exactly the same way."
   ]
 };
 

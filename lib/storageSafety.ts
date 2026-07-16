@@ -4,27 +4,27 @@ export type SafeStorageWriteResult =
   | { ok: true; key: string; bytes: number }
   | { ok: false; key: string; bytes: number; reason: "quota_exceeded" | "unavailable" };
 
-export type FormalTypeStorageEntry = {
+export type TypingStationStorageEntry = {
   key: string;
   characters: number;
   approximateBytes: number;
   disposable: boolean;
 };
 
-export type FormalTypeStorageReport = {
-  entries: FormalTypeStorageEntry[];
+export type TypingStationStorageReport = {
+  entries: TypingStationStorageEntry[];
   totalApproximateBytes: number;
 };
 
-export const FORMALTYPE_STORAGE_MIGRATION_KEY = "formaltype_storage_migration_v2";
-export const OBSOLETE_FORMALTYPE_STORAGE_KEYS = ["formaltype.passage.v1"];
-export const DISPOSABLE_FORMALTYPE_STORAGE_KEYS = [
-  ...OBSOLETE_FORMALTYPE_STORAGE_KEYS,
+export const TYPING_STATION_STORAGE_MIGRATION_KEY = "formaltype_storage_migration_v2";
+export const OBSOLETE_TYPING_STATION_STORAGE_KEYS = ["formaltype.passage.v1"];
+export const DISPOSABLE_TYPING_STATION_STORAGE_KEYS = [
+  ...OBSOLETE_TYPING_STATION_STORAGE_KEYS,
   "formaltype_current_passage",
   "formaltype.typing_attempt_details.v1"
 ];
 
-const FORMALTYPE_KEY_PATTERNS = [
+const TYPING_STATION_KEY_PATTERNS = [
   /^formaltype(?:[._-]|$)/,
   /^formaltype_/,
   /^formaltype_passage_library$/,
@@ -43,8 +43,8 @@ function getStorage(kind: StorageKind): Storage | null {
   }
 }
 
-export function isFormalTypeStorageKey(key: string): boolean {
-  return FORMALTYPE_KEY_PATTERNS.some((pattern) => pattern.test(key));
+export function isTypingStationStorageKey(key: string): boolean {
+  return TYPING_STATION_KEY_PATTERNS.some((pattern) => pattern.test(key));
 }
 
 export function getApproximateStorageBytes(value: string): number {
@@ -107,17 +107,17 @@ export function safeSetJsonStorageItem(
   return safeSetStorageItem(key, JSON.stringify(value), options);
 }
 
-export function getFormalTypeStorageReport(storage: Storage | null = getStorage("localStorage")): FormalTypeStorageReport {
+export function getTypingStationStorageReport(storage: Storage | null = getStorage("localStorage")): TypingStationStorageReport {
   if (!storage) {
     return { entries: [], totalApproximateBytes: 0 };
   }
 
-  const entries: FormalTypeStorageEntry[] = [];
+  const entries: TypingStationStorageEntry[] = [];
 
   for (let index = 0; index < storage.length; index += 1) {
     const key = storage.key(index);
 
-    if (!key || !isFormalTypeStorageKey(key)) {
+    if (!key || !isTypingStationStorageKey(key)) {
       continue;
     }
 
@@ -126,7 +126,7 @@ export function getFormalTypeStorageReport(storage: Storage | null = getStorage(
       key,
       characters: value.length,
       approximateBytes: getApproximateStorageBytes(value),
-      disposable: DISPOSABLE_FORMALTYPE_STORAGE_KEYS.includes(key)
+      disposable: DISPOSABLE_TYPING_STATION_STORAGE_KEYS.includes(key)
     });
   }
 
@@ -138,26 +138,26 @@ export function getFormalTypeStorageReport(storage: Storage | null = getStorage(
   };
 }
 
-export function runFormalTypeStorageMigration(storage: Storage | null = getStorage("localStorage")) {
-  if (!storage || storage.getItem(FORMALTYPE_STORAGE_MIGRATION_KEY) === "complete") {
+export function runTypingStationStorageMigration(storage: Storage | null = getStorage("localStorage")) {
+  if (!storage || storage.getItem(TYPING_STATION_STORAGE_MIGRATION_KEY) === "complete") {
     return;
   }
 
-  for (const key of OBSOLETE_FORMALTYPE_STORAGE_KEYS) {
+  for (const key of OBSOLETE_TYPING_STATION_STORAGE_KEYS) {
     storage.removeItem(key);
   }
 
-  safeSetStorageItem(FORMALTYPE_STORAGE_MIGRATION_KEY, "complete", {
+  safeSetStorageItem(TYPING_STATION_STORAGE_MIGRATION_KEY, "complete", {
     context: "storage-migration"
   });
 }
 
-export function installFormalTypeStorageDebugHelper() {
+export function installTypingStationStorageDebugHelper() {
   if (typeof window === "undefined" || process.env.NODE_ENV === "production") {
     return;
   }
 
-  runFormalTypeStorageMigration();
+  runTypingStationStorageMigration();
 
   const params = new URLSearchParams(window.location.search);
   if (params.get("storageDebug") !== "1") {
@@ -165,18 +165,18 @@ export function installFormalTypeStorageDebugHelper() {
   }
 
   const helper = {
-    report: () => getFormalTypeStorageReport(),
+    report: () => getTypingStationStorageReport(),
     clearDisposable: () => {
       const storage = window.localStorage;
-      for (const key of DISPOSABLE_FORMALTYPE_STORAGE_KEYS) {
+      for (const key of DISPOSABLE_TYPING_STATION_STORAGE_KEYS) {
         storage.removeItem(key);
       }
-      return getFormalTypeStorageReport();
+      return getTypingStationStorageReport();
     }
   };
 
   (window as typeof window & { formalTypeStorageDebug?: typeof helper }).formalTypeStorageDebug = helper;
-  console.info("[FormalType storage] report", helper.report());
+  console.info("[Typing Station storage] report", helper.report());
 }
 
 function logStorageWrite({
@@ -194,7 +194,7 @@ function logStorageWrite({
   ok: boolean;
   reason?: string;
 }) {
-  if (process.env.NODE_ENV === "production" || !isFormalTypeStorageKey(key)) {
+  if (process.env.NODE_ENV === "production" || !isTypingStationStorageKey(key)) {
     return;
   }
 
@@ -203,7 +203,7 @@ function logStorageWrite({
       return;
     }
 
-    console.info("[FormalType storage]", {
+    console.info("[Typing Station storage]", {
       storage: storageKind,
       key,
       payloadLength: Math.ceil(bytes / 2),
@@ -225,7 +225,7 @@ function logStorageWrite({
     return;
   }
 
-  console.warn("[FormalType storage]", {
+  console.warn("[Typing Station storage]", {
     storage: storageKind,
     key,
     approximateBytes: bytes,

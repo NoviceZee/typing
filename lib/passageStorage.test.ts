@@ -59,7 +59,7 @@ describe("passageStorage", () => {
     expect(storage.get(ACTIVE_PASSAGE_ID_STORAGE_KEY)).toBe("one");
   });
 
-  it("imports arrays and exports the FormalType library payload", () => {
+  it("imports arrays and exports the Typing Station library payload", () => {
     const summary = importPassageLibrary([makePassage("one", "Imported passage")]);
     const exported = exportPassageLibrary();
 

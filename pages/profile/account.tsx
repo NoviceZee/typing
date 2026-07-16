@@ -200,7 +200,7 @@ export default function AccountPage() {
             <div className="account-setting-row"><div><span className="account-label">Password</span><span className="account-help">Open a private form only when you need to change it.</span></div><button type="button" onClick={() => openAccountDialog("password")} className="account-primary-button">Change password</button></div>
           </AccountSection>
 
-          <AccountSection icon={<Bell className="h-5 w-5" />} title="Notifications" description="Choose which activity appears in your FormalType notification area.">
+          <AccountSection icon={<Bell className="h-5 w-5" />} title="Notifications" description="Choose which activity appears in your Typing Station notification area.">
             <NotificationRow label="Achievements" description="Milestones, personal bests and streak updates." checked={notificationSettings.achievements} onChange={(value) => updateNotifications("achievements", value)} />
             <NotificationRow label="Friend requests" description="New requests and accepted connections." checked={notificationSettings.friendRequests} onChange={(value) => updateNotifications("friendRequests", value)} />
             <NotificationRow label="Weekly summary" description="A compact recap of practice, speed and accuracy." checked={notificationSettings.weeklySummary} onChange={(value) => updateNotifications("weeklySummary", value)} />
@@ -226,7 +226,7 @@ export default function AccountPage() {
           )}
 
           {accountDialog === "password" && (
-            <AccountDialog id="password-dialog" eyebrow="Security" title="Change password" description="Enter the password you want to use. Nothing is generated or saved by FormalType." errorMessage={error} onClose={closeAccountDialog} isBusy={pendingAction === "password"}>
+            <AccountDialog id="password-dialog" eyebrow="Security" title="Change password" description="Enter the password you want to use. Nothing is generated or saved by Typing Station." errorMessage={error} onClose={closeAccountDialog} isBusy={pendingAction === "password"}>
               <form onSubmit={savePassword} autoComplete="new-password" className="mt-5 grid gap-4">
                 <label><span className="account-label">New password</span><input ref={newPasswordInputRef} aria-label="New password" name="formaltype-new-password" type="password" autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" data-form-type="other" spellCheck={false} minLength={8} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>
                 <label><span className="account-label">Confirm password</span><input ref={confirmPasswordInputRef} aria-label="Confirm password" name="formaltype-confirm-password" type="password" autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" data-form-type="other" spellCheck={false} minLength={8} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>

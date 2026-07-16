@@ -347,7 +347,7 @@ function ManagePassages() {
         );
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Import failed. Please choose a valid FormalType JSON export.");
+      setMessage(error instanceof Error ? error.message : "Import failed. Please choose a valid Typing Station JSON export.");
     } finally {
       if (importInputRef.current) {
         importInputRef.current.value = "";
@@ -496,7 +496,7 @@ function ManagePassages() {
               />
               Replace existing library
             </label>
-            <p className="font-mono text-xs text-paper/35">Import accepts FormalType .json exports.</p>
+            <p className="font-mono text-xs text-paper/35">Import accepts Typing Station .json exports.</p>
           </div>
         </section>
 

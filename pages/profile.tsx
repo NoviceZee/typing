@@ -584,7 +584,7 @@ function ProfileIdentityCard({
             maxLength={180}
             rows={3}
             className="mt-2 w-full resize-none rounded-md border border-paper/10 bg-ink-900 px-3 py-2 text-sm leading-6 text-paper outline-none transition placeholder:text-paper/30 focus:border-brass"
-            placeholder="A short public note for your FormalType profile."
+            placeholder="A short public note for your Typing Station profile."
           />
         </label>
         <label className="block">

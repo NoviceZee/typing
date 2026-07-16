@@ -15,13 +15,13 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>FormalType — Deliberate typing practice</title>
+        <title>Typing Station — Deliberate typing practice</title>
         <meta name="description" content="A focused typing practice room for formal English, business writing, Chinese, code, numbers and symbols." />
         <link rel="canonical" href={SITE_URL} />
       </Head>
       <main className="landing-shell min-h-screen overflow-hidden text-paper">
         <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
-          <Link href="/" className="font-mono text-lg font-semibold tracking-[0.18em]">FormalType</Link>
+          <Link href="/" className="font-mono text-lg font-semibold tracking-[0.18em]">Typing Station</Link>
           <nav aria-label="Landing navigation" className="flex items-center gap-2">
             <Link href="/login" className="hidden rounded-md px-3 py-2 font-mono text-xs text-paper/60 transition hover:bg-paper/10 hover:text-paper sm:block">Log in</Link>
             <Link href="/practice" className="landing-button-secondary">Open practice <ArrowRight className="h-4 w-4" /></Link>
@@ -44,7 +44,7 @@ export default function Home() {
             <p className="landing-reveal landing-delay-3 mt-4 font-mono text-[11px] uppercase tracking-[0.15em] text-paper/30">No account required to begin</p>
           </div>
 
-          <div className="landing-reveal landing-delay-2 relative mx-auto w-full max-w-xl" aria-label="FormalType practice preview">
+          <div className="landing-reveal landing-delay-2 relative mx-auto w-full max-w-xl" aria-label="Typing Station practice preview">
             <div className="landing-practice-card">
               <div className="flex items-center justify-between border-b border-paper/10 pb-4 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/35">
                 <span>Business correspondence</span><span>01:00</span>
@@ -82,7 +82,7 @@ export default function Home() {
 
         <footer className="border-t border-paper/10 px-5 py-7 md:px-8">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 font-mono text-[11px] text-paper/30">
-            <span>© {new Date().getFullYear()} FormalType</span>
+            <span>© {new Date().getFullYear()} Typing Station</span>
             <div className="flex flex-wrap gap-5"><Link href="/practice" className="hover:text-paper">Practice</Link><Link href="/settings" className="hover:text-paper">Settings</Link><Link href="/terms" className="hover:text-paper">Terms</Link><Link href="/privacy" className="hover:text-paper">Privacy</Link><Link href="/security" className="hover:text-paper">Security</Link></div>
           </div>
         </footer>

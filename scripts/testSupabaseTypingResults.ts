@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const TEST_TITLE = "FormalType Supabase Typing Result Test";
+const TEST_TITLE = "Typing Station Supabase Typing Result Test";
 
 let insertedResultId: string | null = null;
 let supabaseClient: any;
@@ -150,10 +150,10 @@ async function assertNoTestRowsRemain() {
   }
 
   if (data && data.length > 0) {
-    throw new Error(`Found ${data.length} remaining FormalType Supabase Typing Result Test row(s).`);
+    throw new Error(`Found ${data.length} remaining Typing Station Supabase Typing Result Test row(s).`);
   }
 
-  logResult("No FormalType Supabase Typing Result Test rows remain.");
+  logResult("No Typing Station Supabase Typing Result Test rows remain.");
 }
 
 function loadEnvLocal() {
@@ -221,7 +221,7 @@ function createAuthenticatedCrudClient(accessToken: string) {
 }
 
 function logStep(message: string) {
-  console.log(`\n[FormalType Supabase typing results] ${message}`);
+  console.log(`\n[Typing Station Supabase typing results] ${message}`);
 }
 
 function logResult(message: string) {

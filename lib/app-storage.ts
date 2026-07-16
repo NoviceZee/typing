@@ -8,8 +8,8 @@ import {
   getRequiredWordCount
 } from "./typing-engine";
 import {
-  installFormalTypeStorageDebugHelper,
-  runFormalTypeStorageMigration,
+  installTypingStationStorageDebugHelper,
+  runTypingStationStorageMigration,
   safeSetJsonStorageItem,
   safeSetStorageItem
 } from "./storageSafety";
@@ -524,7 +524,7 @@ export function readStoredRules(): TypingRules {
     return DEFAULT_RULES;
   }
 
-  installFormalTypeStorageDebugHelper();
+  installTypingStationStorageDebugHelper();
 
   try {
     const stored = window.localStorage.getItem(RULES_STORAGE_KEY);
@@ -1177,7 +1177,7 @@ function restoreImportedSettings(settings: unknown, library: LibraryPassage[]) {
     return;
   }
 
-  runFormalTypeStorageMigration();
+  runTypingStationStorageMigration();
 
   if (typeof settings.selectedCategory === "string") {
     safeSetStorageItem(SELECTED_CATEGORY_STORAGE_KEY, settings.selectedCategory, { context: "restoreImportedSettings" });

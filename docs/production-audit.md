@@ -1,4 +1,4 @@
-# FormalType production-readiness audit
+# Typing Station production-readiness audit
 
 Audit date: 2026-07-13–14 (Asia/Hong_Kong)
 Scope: Next.js Pages Router application, React/TypeScript client, Supabase Auth/Postgres/RLS/Storage, Vercel build, local persistence, tests and primary user journeys.

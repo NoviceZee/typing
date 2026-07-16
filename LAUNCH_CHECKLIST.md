@@ -1,4 +1,4 @@
-# FormalType beta launch checklist
+# Typing Station beta launch checklist
 
 ## Already implemented
 

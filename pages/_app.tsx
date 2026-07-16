@@ -14,7 +14,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <title>FormalType</title>
+        <title>Typing Station</title>
         <meta
           name="description"
           content="Custom typing practice for formal English, business writing, and tender-style passages."
@@ -22,8 +22,8 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#070807" />
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="FormalType" />
-        <meta property="og:title" content="FormalType — Deliberate typing practice" />
+        <meta property="og:site_name" content="Typing Station" />
+        <meta property="og:title" content="Typing Station — Deliberate typing practice" />
         <meta property="og:description" content="Build speed and accuracy with writing that resembles real work." />
         <meta property="og:url" content={SITE_URL} />
         <meta property="og:image" content={SHARE_IMAGE_URL} />

@@ -108,7 +108,7 @@ export default function LoginPage() {
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-mono text-xs uppercase text-brass">FormalType login</p>
+            <p className="font-mono text-xs uppercase text-brass">Typing Station login</p>
             <h1 className="mt-2 text-3xl font-semibold text-paper">
               {authMode === "login" ? "Log in" : authMode === "signup" ? "Create account" : "Reset password"}
             </h1>
