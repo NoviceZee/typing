@@ -99,11 +99,11 @@ export default function FaqPage() {
           <div className="mx-auto max-w-5xl">
           <section className="grid gap-10 py-12 md:grid-cols-[minmax(0,1fr)_15rem] md:items-end md:py-20">
             <div>
-              <p className="font-mono text-xs uppercase tracking-[0.24em] text-brass">Quick answers / {String(questionCount).padStart(2, "0")}</p>
+              <p className="font-mono text-utility uppercase tracking-[0.24em] text-brass">Quick answers / {String(questionCount).padStart(2, "0")}</p>
               <h1 className="mt-5 max-w-3xl text-5xl font-semibold leading-[0.95] tracking-[-0.045em] md:text-7xl">Find your rhythm.<br /><span className="text-paper/35">Keep moving.</span></h1>
-              <p className="mt-7 max-w-2xl text-base leading-7 text-paper/55">Straight answers about practising, understanding results and controlling your account—without interrupting a good typing session.</p>
+              <p className="mt-7 max-w-2xl text-body leading-7 text-paper/55">Straight answers about practising, understanding results and controlling your account—without interrupting a good typing session.</p>
             </div>
-            <nav aria-label="FAQ categories" className="border-l border-brass/25 pl-5 font-mono text-xs uppercase tracking-[0.15em] text-paper/40">
+            <nav aria-label="FAQ categories" className="border-l border-brass/25 pl-5 font-mono text-control uppercase tracking-[0.15em] text-paper/40">
               {FAQ_GROUPS.map((group) => <a key={group.id} href={`#${group.id}`} className="flex items-center justify-between border-b border-paper/10 py-3 transition hover:border-brass/35 hover:text-brass"><span>{group.title}</span><span>{group.number}</span></a>)}
             </nav>
           </section>
@@ -112,19 +112,19 @@ export default function FaqPage() {
             {FAQ_GROUPS.map(({ id, number, title, description, icon: Icon, questions }) => (
               <section id={id} key={id} className="scroll-mt-8 md:grid md:grid-cols-[15rem_minmax(0,1fr)] md:gap-12">
                 <div className="mb-7 md:mb-0">
-                  <Icon className="h-5 w-5 text-brass" aria-hidden="true" />
-                  <p className="mt-5 font-mono text-secondary uppercase tracking-[0.2em] text-paper/30">Station {number}</p>
+                  <Icon className="icon-prominent text-brass" aria-hidden="true" />
+                  <p className="mt-5 font-mono text-utility uppercase tracking-[0.2em] text-paper/30">Station {number}</p>
                   <h2 className="mt-2 text-section font-semibold tracking-tight">{title}</h2>
-                  <p className="mt-3 text-sm leading-6 text-paper/45">{description}</p>
+                  <p className="mt-3 text-body leading-6 text-paper/45">{description}</p>
                 </div>
                 <div className="border-t border-paper/12">
                   {questions.map(({ question, answer }) => (
                     <details key={question} className="group border-b border-paper/12">
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 text-left text-base font-medium text-paper/80 transition hover:text-brass focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass/70 md:py-6">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 text-left text-body font-medium text-paper/80 transition hover:text-brass focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass/70 md:py-6">
                         <span>{question}</span>
-                        <ChevronDown className="h-4 w-4 shrink-0 text-brass transition-transform duration-300 group-open:rotate-180" aria-hidden="true" />
+                        <ChevronDown className="icon-inline text-brass transition-transform duration-300 group-open:rotate-180" aria-hidden="true" />
                       </summary>
-                      <p className="max-w-2xl pb-6 pr-8 text-sm leading-7 text-paper/52">{answer}</p>
+                      <p className="max-w-2xl pb-6 pr-8 text-body leading-7 text-paper/52">{answer}</p>
                     </details>
                   ))}
                 </div>
@@ -133,8 +133,8 @@ export default function FaqPage() {
           </div>
 
           <section className="mb-16 grid gap-6 border border-brass/20 bg-brass/[0.045] p-6 shadow-glow sm:grid-cols-[1fr_auto] sm:items-center md:p-8">
-            <div><p className="font-mono text-secondary uppercase tracking-[0.2em] text-brass">Still curious?</p><h2 className="mt-2 text-section font-semibold tracking-tight">The fastest answer may be one session away.</h2></div>
-            <Link href="/practice" className="inline-flex items-center justify-center gap-2 rounded-md bg-brass px-4 py-3 font-mono text-xs font-semibold uppercase tracking-wide text-ink-950 transition hover:bg-paper">Start practising <ArrowRight className="h-4 w-4" /></Link>
+            <div><p className="font-mono text-utility uppercase tracking-[0.2em] text-brass">Still curious?</p><h2 className="mt-2 text-section font-semibold tracking-tight">The fastest answer may be one session away.</h2></div>
+            <Link href="/practice" className="inline-flex items-center justify-center gap-2 rounded-md bg-brass px-4 py-3 font-mono text-control font-semibold uppercase tracking-wide text-ink-950 transition hover:bg-paper">Start practising <ArrowRight className="icon-control" /></Link>
           </section>
           </div>
 

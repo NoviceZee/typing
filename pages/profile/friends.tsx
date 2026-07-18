@@ -214,7 +214,7 @@ export default function FriendsPage() {
     <AppShell sideAd={false}>
       <ProfilePageLayout>
         <div className="relative mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-mono text-xs uppercase text-paper/35">
+          <p className="font-mono text-utility uppercase text-paper/35">
             {friendRows.length} friends{requestCount > 0 ? ` / ${requestCount} requests` : ""}
           </p>
           {user && (
@@ -222,9 +222,9 @@ export default function FriendsPage() {
               <button
                 type="button"
                 onClick={() => setIsAddFriendOpen((isOpen) => !isOpen)}
-                className="inline-flex items-center gap-2 rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15"
+                className="inline-flex items-center gap-2 rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-control uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="icon-control" />
                 Add friend
               </button>
               {isAddFriendOpen && (
@@ -233,26 +233,26 @@ export default function FriendsPage() {
                   className="absolute right-0 z-10 mt-2 w-72 rounded-lg border border-paper/10 bg-ink-950 p-3 shadow-glow"
                 >
                   <label className="block">
-                    <span className="font-mono text-xs uppercase text-paper/45">Add friend by handle</span>
+                    <span className="font-mono text-utility uppercase text-paper/45">Add friend by handle</span>
                     <input
                       value={friendHandle}
                       onChange={(event) => setFriendHandle(event.target.value)}
                       placeholder="@handle"
-                      className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-sm text-paper outline-none transition placeholder:text-paper/30 focus:border-brass"
+                      className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-control text-paper outline-none transition placeholder:text-paper/30 focus:border-brass"
                     />
                   </label>
                   <div className="mt-3 flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setIsAddFriendOpen(false)}
-                      className="rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs uppercase text-paper/55 transition hover:border-paper/20 hover:text-paper"
+                      className="rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-control uppercase text-paper/55 transition hover:border-paper/20 hover:text-paper"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={isSendingRequest}
-                      className="rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-55"
+                      className="rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-control uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-55"
                     >
                       {isSendingRequest ? "Sending..." : "Send request"}
                     </button>
@@ -268,7 +268,7 @@ export default function FriendsPage() {
               <div
                 role={friendsMessageKind === "error" ? "alert" : "status"}
                 aria-live={friendsMessageKind === "error" ? "assertive" : "polite"}
-                className={`rounded-md border px-4 py-3 font-mono text-sm ${
+                className={`rounded-md border px-4 py-3 font-mono text-body ${
                   friendsMessageKind === "error"
                     ? "border-ember/25 bg-ember/10 text-ember"
                     : "border-brass/25 bg-brass/10 text-brass"
@@ -337,7 +337,7 @@ function BlockedUsersPanel({
 }) {
   if (!isAvailable) {
     return (
-      <p role="status" className="rounded-md border border-paper/10 bg-ink-950/60 px-4 py-3 font-mono text-xs text-paper/45">
+      <p role="status" className="rounded-md border border-paper/10 bg-ink-950/60 px-4 py-3 font-mono text-utility text-paper/45">
         Blocking controls are unavailable until the latest database migration is applied.
       </p>
     );
@@ -346,19 +346,19 @@ function BlockedUsersPanel({
   if (users.length === 0) return null;
 
   return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 px-4 py-3 shadow-glow">
+    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 px-4 py-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2"><Ban className="h-4 w-4 text-ember/75" /><h2 className="font-mono text-sm text-paper">Blocked users</h2></div>
-          <p className="mt-1 text-xs text-paper/40">They cannot send you friend requests.</p>
+          <div className="flex items-center gap-2"><Ban className="icon-inline text-ember/75" /><h2 className="font-mono text-body text-paper">Blocked users</h2></div>
+          <p className="mt-1 text-utility text-paper/40">They cannot send you friend requests.</p>
         </div>
         <div className="grid gap-2 sm:min-w-72">
           {users.map((blockedUser) => {
             const actionId = `blocked:${blockedUser.handle}`;
             return (
               <div key={blockedUser.handle} className="flex items-center justify-between gap-3 rounded-md border border-paper/10 bg-ink-900/60 px-3 py-2">
-                <Link href={`/u/${blockedUser.handle}`} className="min-w-0 truncate font-mono text-sm text-paper/70 hover:text-brass">@{blockedUser.handle}</Link>
-                <button type="button" onClick={() => onUnblock(blockedUser)} disabled={pendingActionId === actionId} className="rounded-md border border-paper/10 px-3 py-1.5 font-mono text-xs text-paper/55 transition hover:border-brass/35 hover:text-paper disabled:cursor-wait disabled:opacity-50">{pendingActionId === actionId ? "Updating..." : "Unblock"}</button>
+                <Link href={`/u/${blockedUser.handle}`} className="min-w-0 truncate font-mono text-body text-paper/70 hover:text-brass">@{blockedUser.handle}</Link>
+                <button type="button" onClick={() => onUnblock(blockedUser)} disabled={pendingActionId === actionId} className="rounded-md border border-paper/10 px-3 py-1.5 font-mono text-control text-paper/55 transition hover:border-brass/35 hover:text-paper disabled:cursor-wait disabled:opacity-50">{pendingActionId === actionId ? "Updating..." : "Unblock"}</button>
               </div>
             );
           })}
@@ -447,9 +447,9 @@ function FriendsTable({
 }) {
   if (rows.length === 0 && !selfRow) {
     return (
-      <section className="rounded-lg border border-paper/10 bg-ink-950/75 px-4 py-8 text-center shadow-glow">
-        <p className="font-mono text-sm text-paper">No friends yet.</p>
-        <p className="mt-2 text-sm text-paper/45">Add a handle to start building your stats table.</p>
+      <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 px-4 py-8 text-center">
+        <p className="font-mono text-body text-paper">No friends yet.</p>
+        <p className="mt-2 text-body text-paper/45">Add a handle to start building your stats table.</p>
       </section>
     );
   }
@@ -457,13 +457,14 @@ function FriendsTable({
   const comparisonRows = selfRow ? [selfRow, ...rows] : rows;
 
   return (
-    <section className="overflow-x-auto rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
+    <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-paper/[0.08] bg-ink-950/45">
       <div className="flex items-center justify-between border-b border-paper/10 px-4 py-3">
-        <div><h2 className="font-mono text-sm text-paper">Compare results</h2><p className="mt-1 text-xs text-paper/40">Best scores by practice type</p></div>
-        <span className="rounded-full border border-brass/25 bg-brass/10 px-2.5 py-1 font-mono text-secondary uppercase tracking-wide text-brass">You + {rows.length}</span>
+        <div><h2 className="font-mono text-body text-paper">Compare results</h2><p className="mt-1 text-utility text-paper/40">Best scores by practice type</p></div>
+        <span className="rounded-full border border-brass/25 bg-brass/10 px-2.5 py-1 font-mono text-utility uppercase tracking-wide text-brass">You + {rows.length}</span>
       </div>
+      <div className="w-full max-w-full overflow-x-auto">
       <table aria-label="Friends stats" className="min-w-[64rem] w-full border-collapse text-left">
-        <thead className="border-b border-paper/10 font-mono text-secondary uppercase text-paper/35">
+        <thead className="border-b border-paper/10 font-mono text-utility uppercase text-paper/35">
           <tr>
             <th className="px-4 py-3 font-normal">Friend</th>
             <th className="px-3 py-3 font-normal">Level</th>
@@ -474,9 +475,7 @@ function FriendsTable({
             <th className="px-3 py-3 font-normal">Acc</th>
             <th className="px-3 py-3 font-normal">Streak</th>
             <th className="px-3 py-3 font-normal">Latest</th>
-            <th className="px-4 py-3 text-right font-normal">
-              <span className="sr-only">Actions</span>
-            </th>
+            <th aria-label="Actions" className="px-4 py-3 text-right font-normal" />
           </tr>
         </thead>
         <tbody>
@@ -490,6 +489,7 @@ function FriendsTable({
           ))}
         </tbody>
       </table>
+      </div>
     </section>
   );
 }
@@ -521,8 +521,8 @@ function FriendTableRow({
             label={`@${friend.handle}`}
           />
           <div className="min-w-0">
-            <div className="flex items-center gap-2"><Link href={`/u/${friend.handle}`} className="font-mono text-sm text-paper transition hover:text-brass">@{friend.handle}</Link>{isSelf && <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-secondary font-semibold uppercase text-ink-950">You</span>}</div>
-            <p className="mt-1 font-mono text-secondary uppercase text-paper/35">
+            <div className="flex items-center gap-2"><Link href={`/u/${friend.handle}`} className="font-mono text-body text-paper transition hover:text-brass">@{friend.handle}</Link>{isSelf && <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-utility font-semibold uppercase text-ink-950">You</span>}</div>
+            <p className="mt-1 font-mono text-utility uppercase text-paper/35">
               {isSelf ? "Your benchmark" : stats.isPrivate ? "Private" : `Friends since ${formatShortDate(friend.updated_at || friend.created_at)}`}
             </p>
           </div>
@@ -537,7 +537,7 @@ function FriendTableRow({
         value={hasPublicStats && analytics?.summary.bestAccuracy ? `${formatNumber(analytics.summary.bestAccuracy)}%` : null}
       />
       <FriendStatCell value={hasPublicStats ? `${analytics?.activity.currentStreakDays ?? 0}d` : null} />
-      <td className="max-w-44 px-3 py-3 font-mono text-xs text-paper/60">
+      <td className="max-w-44 px-3 py-3 font-mono text-utility text-paper/60">
         {hasPublicStats && latestResult ? (
           <span className="block truncate" title={latestResult.passage_title}>
             {latestResult.passage_title}
@@ -555,7 +555,7 @@ function FriendTableRow({
           title={`Remove friend @${friend.handle}`}
           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-paper/10 bg-ink-900 text-paper/45 transition hover:border-ember/35 hover:text-ember disabled:cursor-not-allowed disabled:opacity-55"
         >
-          <X className="h-4 w-4" />
+          <X className="icon-control" />
         </button>}
       </td>
     </tr>
@@ -584,11 +584,11 @@ function RequestsPanel({
   }
 
   return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 px-4 py-3 shadow-glow">
+    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 px-4 py-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 className="font-mono text-section uppercase text-brass">Requests</h2>
-          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">
+          <p className="mt-1 font-mono text-utility uppercase text-paper/35">
             {incomingRequests.length} incoming / {outgoingRequests.length} outgoing
           </p>
         </div>
@@ -645,10 +645,10 @@ function RequestRow({
   return (
     <div className="flex flex-col gap-2 rounded-md border border-paper/10 bg-ink-900/60 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
-        <Link href={`/u/${item.handle}`} className="font-mono text-sm text-paper transition hover:text-brass">
+        <Link href={`/u/${item.handle}`} className="font-mono text-body text-paper transition hover:text-brass">
           @{item.handle}
         </Link>
-        <span className="font-mono text-secondary uppercase text-paper/35">{statusLabel}</span>
+        <span className="font-mono text-utility uppercase text-paper/35">{statusLabel}</span>
       </div>
       <div className="flex gap-2">
         <button
@@ -657,7 +657,7 @@ function RequestRow({
           disabled={isPending}
           aria-label={primaryActionLabel}
           title={primaryActionLabel}
-          className="rounded-md border border-brass/30 bg-brass/10 px-3 py-1.5 font-mono text-xs uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-55"
+          className="rounded-md border border-brass/30 bg-brass/10 px-3 py-1.5 font-mono text-control uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-55"
         >
           {primaryLabel}
         </button>
@@ -668,7 +668,7 @@ function RequestRow({
             disabled={isPending}
             aria-label={secondaryActionLabel}
             title={secondaryActionLabel}
-            className="rounded-md border border-paper/10 bg-ink-900 px-3 py-1.5 font-mono text-xs uppercase text-paper/55 transition hover:border-ember/35 hover:text-ember disabled:cursor-not-allowed disabled:opacity-55"
+            className="rounded-md border border-paper/10 bg-ink-900 px-3 py-1.5 font-mono text-control uppercase text-paper/55 transition hover:border-ember/35 hover:text-ember disabled:cursor-not-allowed disabled:opacity-55"
           >
             {secondaryLabel}
           </button>
@@ -712,7 +712,7 @@ function FriendAvatar({
 }
 
 function FriendStatCell({ value }: { value: string | number | null | undefined }) {
-  return <td className="px-3 py-3 font-mono text-sm text-paper/70">{value ?? "—"}</td>;
+  return <td className="px-3 py-3 font-mono text-body text-paper/70">{value ?? "—"}</td>;
 }
 
 function buildFriendDomainAnalytics(results: SupabaseAnalyticsTypingResultRow[]) {

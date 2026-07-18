@@ -1,7 +1,10 @@
 import React from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { BookOpen, CalendarDays, Clock, Languages } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
+import { FilterControl, SecondaryToolbar, ToolbarGroup, ToolbarSeparator } from "@/components/SecondaryNavigation";
 import { useAuth } from "@/components/AuthProvider";
 import { ANALYTICS_DOMAIN_OPTIONS, AnalyticsDomain } from "@/lib/analyticsDomain";
 import {
@@ -137,97 +140,86 @@ export default function LeaderboardPage() {
   }, [isAuthLoading, results, user]);
 
   return (
-    <AppShell>
-      <section className="mx-auto max-w-5xl">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="font-mono text-xs uppercase text-brass">Leaderboard</p>
-            <h1 className="mt-2 text-page font-semibold text-paper">
-              {LEADERBOARD_HEADING_BY_RANGE[timeRange]}
-            </h1>
-          </div>
-          <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 text-right shadow-glow">
-            <p className="font-mono text-2xl text-paper">{results.length}</p>
-            <p className="font-mono text-xs uppercase text-paper/45">shown</p>
-          </div>
-        </div>
+    <AppShell sideAd={false}>
+      <PageContainer>
+        <PageHeader
+          eyebrow="Leaderboard"
+          title={LEADERBOARD_HEADING_BY_RANGE[timeRange]}
+          description="Ranked by WPM, then accuracy. Only public handles are shown."
+          aside={
+            <div aria-label={`${results.length} results shown`} className="flex items-baseline gap-2 font-mono">
+              <span className="text-section font-semibold text-paper">{results.length}</span>
+              <span className="text-utility uppercase text-paper/45">shown</span>
+            </div>
+          }
+        />
 
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/55">
-          Ranked by WPM, then accuracy. Only public handles are shown.
-        </p>
-
-        <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-xs" data-testid="leaderboard-filters">
-        <div className="flex flex-wrap gap-x-2 gap-y-1" role="group" aria-label="Leaderboard domain">
+        <SecondaryToolbar label="Leaderboard filters" data-testid="leaderboard-filters">
+        <ToolbarGroup label="Leaderboard domain" icon={Languages}>
           {ANALYTICS_DOMAIN_OPTIONS.map((option) => {
             const isSelected = leaderboardDomain === option.id;
 
             return (
-              <button
+              <FilterControl
                 key={option.id}
-                type="button"
-                aria-pressed={isSelected}
+                selected={isSelected}
                 onClick={() => setLeaderboardDomain(option.id)}
-                className={`px-1.5 py-1 transition focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60 ${
-                  isSelected ? "text-brass" : "text-paper/45 hover:text-paper/75"
-                }`}
               >
                 {option.label}
-              </button>
+              </FilterControl>
             );
           })}
-        </div>
+        </ToolbarGroup>
 
-        <FilterSeparator />
+        <ToolbarSeparator />
 
-        <div className="flex flex-wrap gap-x-2 gap-y-1" role="group" aria-label="Leaderboard time range">
+        <ToolbarGroup label="Leaderboard time range" icon={CalendarDays}>
           {LEADERBOARD_TIME_RANGE_OPTIONS.map((option) => {
             const isSelected = timeRange === option.value;
 
             return (
-              <button
+              <FilterControl
                 key={option.value}
-                type="button"
-                aria-pressed={isSelected}
+                selected={isSelected}
                 onClick={() => setTimeRange(option.value)}
-                className={`px-1.5 py-1 transition focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60 ${
-                  isSelected ? "text-brass" : "text-paper/45 hover:text-paper/75"
-                }`}
               >
                 {option.label}
-              </button>
+              </FilterControl>
             );
           })}
-        </div>
+        </ToolbarGroup>
 
-        <FilterSeparator />
+        <ToolbarSeparator />
 
           <FilterChoiceGroup
             label="Leaderboard duration"
+            icon={Clock}
             value={durationFilter}
             onChange={setDurationFilter}
             options={activeDurationOptions}
           />
           {isEnglishLeaderboard && (
             <>
-              <FilterSeparator />
+              <ToolbarSeparator />
               <FilterChoiceGroup
               label="Leaderboard category"
+              icon={BookOpen}
               value={categoryFilter}
               onChange={setCategoryFilter}
               options={[ALL_FILTER, ...categories].map((category) => ({ label: category, value: category }))}
             />
             </>
           )}
-        </div>
+        </SecondaryToolbar>
 
         {message && (
-          <div className="mt-6 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
+          <div className="mt-6 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-body text-ember">
             {message}
           </div>
         )}
 
-        <section className="mt-6 overflow-hidden rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
-          <div className="grid grid-cols-[4rem_minmax(0,0.85fr)_minmax(0,1fr)_7rem_6rem_7rem_10rem] border-b border-paper/10 px-4 py-3 font-mono text-xs uppercase text-paper/40 max-md:hidden">
+        <section className="mt-6 overflow-hidden rounded-lg border border-paper/[0.09] bg-ink-950/45">
+          <div className="grid grid-cols-[4rem_minmax(0,0.85fr)_minmax(0,1fr)_7rem_6rem_7rem_10rem] border-b border-paper/10 px-4 py-3 font-mono text-utility uppercase text-paper/40 max-md:hidden">
             <span>Rank</span>
             <span>Name</span>
             <span>Passage</span>
@@ -238,11 +230,11 @@ export default function LeaderboardPage() {
           </div>
 
           {isLoading && (
-            <div className="px-4 py-8 text-center font-mono text-sm text-paper/45">Loading leaderboard...</div>
+            <div className="px-4 py-8 text-center font-mono text-body text-paper/45">Loading leaderboard...</div>
           )}
 
           {!isLoading && results.length === 0 && !message && (
-            <div className="px-4 py-8 text-center font-mono text-sm text-paper/45">
+            <div className="px-4 py-8 text-center font-mono text-body text-paper/45">
               {leaderboardDomain === "english"
                 ? "No saved typing results match this time range."
                 : `No saved ${leaderboardDomain} typing results match this time range.`}
@@ -260,13 +252,13 @@ export default function LeaderboardPage() {
                     isOwnResult ? "border-brass/25 bg-brass/10" : "border-paper/10"
                   }`}
                 >
-                  <div className="font-mono text-lg font-semibold text-brass md:text-base">#{index + 1}</div>
+                  <div className="font-mono text-section font-semibold text-brass">#{index + 1}</div>
                   <div>
-                    <div className="font-mono text-secondary uppercase text-paper/35 md:hidden">Name</div>
+                    <div className="font-mono text-utility uppercase text-paper/35 md:hidden">Name</div>
                     <div className="flex flex-wrap items-center gap-2">
                       <LeaderboardName displayName={result.display_name} />
                       {isOwnResult && (
-                        <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-secondary font-semibold uppercase text-ink-950">
+                        <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-utility font-semibold uppercase text-ink-950">
                           You
                         </span>
                       )}
@@ -274,19 +266,19 @@ export default function LeaderboardPage() {
                   </div>
                   <div>
                     <h2 className="font-semibold text-paper">{result.passage_title}</h2>
-                    <p className="mt-1 font-mono text-xs text-paper/40 md:hidden">
+                    <p className="mt-1 font-mono text-utility text-paper/40 md:hidden">
                       {formatLeaderboardDuration(result.duration_seconds)} · {formatDate(result.created_at)}
                     </p>
                   </div>
                   <Metric label="Duration" value={formatLeaderboardDuration(result.duration_seconds)} />
                   <Metric label="WPM" value={formatNumber(result.wpm)} strong />
                   <Metric label="Accuracy" value={`${formatNumber(result.accuracy)}%`} />
-                  <div className="font-mono text-sm text-paper/55 max-md:hidden">{formatDate(result.created_at)}</div>
+                  <div className="font-mono text-body text-paper/55 max-md:hidden">{formatDate(result.created_at)}</div>
                 </article>
               );
             })}
         </section>
-      </section>
+      </PageContainer>
     </AppShell>
   );
 }
@@ -315,48 +307,42 @@ function getHandleFromDisplayName(displayName: string) {
 
 function FilterChoiceGroup({
   label,
+  icon,
   value,
   onChange,
   options
 }: {
   label: string;
+  icon: typeof Clock;
   value: string;
   onChange: (value: string) => void;
   options: Array<{ label: string; value: string }>;
 }) {
   return (
-    <div role="group" aria-label={label} className="flex flex-wrap gap-x-2 gap-y-1">
+    <ToolbarGroup label={label} icon={icon}>
       {options.map((option) => {
         const isSelected = value === option.value;
 
         return (
-          <button
+          <FilterControl
             key={option.value}
-            type="button"
             aria-label={label === "Leaderboard category" ? `${option.label} category` : option.label}
-            aria-pressed={isSelected}
+            selected={isSelected}
             onClick={() => onChange(option.value)}
-            className={`px-1.5 py-1 transition focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60 ${
-              isSelected ? "text-brass" : "text-paper/45 hover:text-paper/75"
-            }`}
           >
             {option.label}
-          </button>
+          </FilterControl>
         );
       })}
-    </div>
+    </ToolbarGroup>
   );
-}
-
-function FilterSeparator() {
-  return <span className="text-paper/18" aria-hidden="true">|</span>;
 }
 
 function Metric({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
     <div>
-      <div className="font-mono text-secondary uppercase text-paper/35 md:hidden">{label}</div>
-      <div className={`font-mono text-sm ${strong ? "font-semibold text-paper" : "text-paper/65"}`}>{value}</div>
+      <div className="font-mono text-utility uppercase text-paper/35 md:hidden">{label}</div>
+      <div className={`font-mono text-body ${strong ? "font-semibold text-paper" : "text-paper/65"}`}>{value}</div>
     </div>
   );
 }

@@ -255,7 +255,7 @@ describe("AppShell account dropdown", () => {
     render(<AppShell sideAd={false}>Content</AppShell>);
 
     const settingsLink = screen.getByRole("navigation").querySelector('a[href="/settings"]');
-    expect(settingsLink?.className).toContain("bg-paper text-ink-950");
+    expect(settingsLink?.className).toContain("bg-paper/[0.07] text-brass");
     expect(settingsLink?.getAttribute("aria-current")).toBe("page");
   });
 });

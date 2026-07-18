@@ -11,8 +11,8 @@ export function SessionReview({ result }: { result: TypingResult }) {
 
   return (
     <section className="mt-5 rounded-md bg-ink-950/35 p-4">
-      <h3 className="text-lg font-semibold text-paper">Session review</h3>
-      <p className="mt-1 text-sm leading-6 text-paper/50">A quick breakdown of where the finished attempt drifted.</p>
+      <h3 className="text-section font-semibold text-paper">Session review</h3>
+      <p className="mt-1 text-body leading-6 text-paper/50">A quick breakdown of where the finished attempt drifted.</p>
 
       <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5">
         <ReviewStat label="Mistakes" value={result.incorrectCharacters} />
@@ -24,14 +24,14 @@ export function SessionReview({ result }: { result: TypingResult }) {
 
       {mismatches.length > 0 && (
         <div className="mt-4 overflow-x-auto rounded-md bg-paper/[0.025]">
-          <div className="grid min-w-[64rem] grid-cols-[4rem_1fr_1fr_1fr_1fr_1fr_1.2fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-secondary uppercase text-paper/35">
+          <div className="grid min-w-[64rem] grid-cols-[4rem_1fr_1fr_1fr_1fr_1fr_1.2fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-utility uppercase text-paper/35">
             <span>Pos</span><span>Expected</span><span>Typed</span><span>Finger</span>
             <span>Expected finger</span><span>Typed finger</span><span>Classification</span><span>Type</span>
           </div>
           {mismatches.map((mismatch, index) => (
             <div
               key={`${mismatch.index}-${index}-${mismatch.expected}-${mismatch.actual}`}
-              className="grid min-w-[64rem] grid-cols-[4rem_1fr_1fr_1fr_1fr_1fr_1.2fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-xs text-paper/70 last:border-b-0"
+              className="grid min-w-[64rem] grid-cols-[4rem_1fr_1fr_1fr_1fr_1fr_1.2fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-utility text-paper/70 last:border-b-0"
             >
               <span className="text-paper/40">{mismatch.index + 1}</span>
               <span>{formatReviewCharacter(mismatch.expected, "Missing")}</span>
@@ -52,7 +52,7 @@ export function SessionReview({ result }: { result: TypingResult }) {
 function ReviewStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-md bg-paper/[0.03] px-3 py-3">
-      <div className="font-mono text-secondary uppercase text-paper/35">{label}</div>
+      <div className="font-mono text-utility uppercase text-paper/35">{label}</div>
       <div className="mt-1 font-mono text-xl font-semibold text-paper/90">{value}</div>
     </div>
   );

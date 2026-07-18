@@ -44,8 +44,8 @@ export default function Home() {
           <div className={SITE_FRAME_CLASS}>
           <PublicSiteHeader>
           <nav aria-label="Landing navigation" className="flex items-center gap-2">
-            <Link href="/login" className="hidden rounded-md px-3 py-2 font-mono text-xs text-paper/60 transition hover:bg-paper/10 hover:text-paper sm:block">Log in</Link>
-            <Link href="/practice" className="landing-button-secondary">Open practice <ArrowRight className="h-4 w-4" /></Link>
+            <Link href="/login" className="hidden rounded-md px-3 py-2 font-mono text-control text-paper/60 transition hover:bg-paper/10 hover:text-paper sm:block">Log in</Link>
+            <Link href="/practice" className="landing-button-secondary">Open practice <ArrowRight className="icon-control" /></Link>
           </nav>
           </PublicSiteHeader>
           </div>
@@ -53,7 +53,7 @@ export default function Home() {
 
         <section className="landing-hero relative mx-auto grid min-h-[calc(100vh-5.5rem)] max-w-7xl items-center gap-14 px-5 pb-20 pt-10 md:px-8 lg:grid-cols-[1.02fr_.98fr] lg:py-20">
           <div className="relative z-10 max-w-3xl">
-            <p className="landing-reveal font-mono text-xs uppercase tracking-[0.26em] text-brass">Precision becomes instinct.</p>
+            <p className="landing-reveal font-mono text-utility uppercase tracking-[0.26em] text-brass">Precision becomes instinct.</p>
             <h1 className="landing-reveal landing-delay-1 mt-6 text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
               Type with purpose.<br /><span className="text-paper/42">Write with pace.</span>
             </h1>
@@ -61,15 +61,15 @@ export default function Home() {
               A deliberate practice room for the words, formats and rhythms that show up in real work.
             </p>
             <div className="landing-reveal landing-delay-3 mt-9 flex flex-wrap gap-3">
-              <Link href="/practice" className="landing-button-primary">Start a one-minute test <ArrowRight className="h-4 w-4" /></Link>
-              <Link href="/training" className="landing-button-secondary"><BookOpenText className="h-4 w-4" /> Explore training</Link>
+              <Link href="/practice" className="landing-button-primary">Start a one-minute test <ArrowRight className="icon-control" /></Link>
+              <Link href="/training" className="landing-button-secondary"><BookOpenText className="icon-control" /> Explore training</Link>
             </div>
-            <p className="landing-reveal landing-delay-3 mt-4 font-mono text-secondary uppercase tracking-[0.15em] text-paper/30">No account required to begin</p>
+            <p className="landing-reveal landing-delay-3 mt-4 font-mono text-utility uppercase tracking-[0.15em] text-paper/30">No account required to begin</p>
           </div>
 
           <div className="landing-reveal landing-delay-2 relative mx-auto w-full max-w-xl" aria-label="Typing Station practice preview">
             <div className="landing-practice-card">
-              <div className="flex items-center justify-between border-b border-paper/10 pb-4 font-mono text-secondary uppercase tracking-[0.18em] text-paper/35">
+              <div className="flex items-center justify-between border-b border-paper/10 pb-4 font-mono text-utility uppercase tracking-[0.18em] text-paper/35">
                 <span>Business correspondence</span><span>01:00</span>
               </div>
               <p className="mt-8 font-mono text-xl leading-[2.15] tracking-wide sm:text-2xl">
@@ -87,20 +87,20 @@ export default function Home() {
           <div className="mx-auto grid max-w-7xl md:grid-cols-3">
             {FEATURES.map(({ icon: Icon, eyebrow, title, body }) => (
               <article key={title} className="group border-b border-paper/10 px-6 py-12 transition hover:bg-paper/[0.035] md:border-b-0 md:border-r md:last:border-r-0 lg:px-9">
-                <Icon className="h-5 w-5 text-brass transition-transform duration-300 group-hover:-translate-y-1" />
-                <p className="mt-8 font-mono text-secondary uppercase tracking-[0.2em] text-paper/35">{eyebrow}</p>
+                <Icon className="icon-prominent text-brass transition-transform duration-300 group-hover:-translate-y-1" />
+                <p className="mt-8 font-mono text-utility uppercase tracking-[0.2em] text-paper/35">{eyebrow}</p>
                 <h2 className="mt-3 text-section font-semibold tracking-tight">{title}</h2>
-                <p className="mt-3 text-sm leading-6 text-paper/48">{body}</p>
+                <p className="mt-3 text-body leading-6 text-paper/48">{body}</p>
               </article>
             ))}
           </div>
         </section>
 
         <section className="mx-auto max-w-4xl px-5 py-24 text-center md:px-8 md:py-32">
-          <Sparkles className="mx-auto h-5 w-5 text-brass" />
+          <Sparkles className="icon-prominent mx-auto text-brass" />
           <h2 className="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">One minute is enough to begin.</h2>
           <p className="mx-auto mt-4 max-w-lg leading-7 text-paper/50">Choose a passage, settle into the rhythm, and let each session show you what to practise next.</p>
-          <Link href="/practice" className="landing-button-primary mt-8">Enter the practice room <ArrowRight className="h-4 w-4" /></Link>
+          <Link href="/practice" className="landing-button-primary mt-8">Enter the practice room <ArrowRight className="icon-control" /></Link>
         </section>
 
         <div className={SITE_PAGE_GUTTERS_CLASS}><div className={SITE_FRAME_CLASS}><SiteFooter /></div></div>
@@ -110,5 +110,5 @@ export default function Home() {
 }
 
 function PreviewStat({ label, value }: { label: string; value: string }) {
-  return <div><p className="text-secondary uppercase tracking-[0.16em] text-paper/28">{label}</p><p className="mt-2 text-xl text-paper/80">{value}</p></div>;
+  return <div><p className="text-utility uppercase tracking-[0.16em] text-paper/28">{label}</p><p className="mt-2 text-xl text-paper/80">{value}</p></div>;
 }

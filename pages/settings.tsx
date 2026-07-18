@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Keyboard, Palette, SlidersHorizontal, Volume2, type LucideIcon } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
+import { FilterControl, SecondaryToolbar } from "@/components/SecondaryNavigation";
 import {
   ACCENT_COLOR_OPTIONS,
   APP_FONT_OPTIONS,
@@ -151,15 +154,17 @@ export default function SettingsPage() {
   }
 
   return (
-    <AppShell>
-      <section className="mx-auto w-full max-w-6xl px-1">
-        <div className="mb-6 rounded-xl border border-paper/10 bg-ink-900/45 p-5 shadow-glow backdrop-blur">
-          <p className="font-mono text-xs uppercase text-brass">Preferences</p>
-          <h1 className="mt-2 text-page font-semibold text-paper">Settings</h1>
-          <div role="status" aria-live="polite" className="mt-2 min-h-5 font-mono text-xs text-mint">
-            {showSavedFeedback ? "Saved automatically" : "Changes save automatically"}
-          </div>
-        </div>
+    <AppShell sideAd={false}>
+      <PageContainer>
+        <PageHeader
+          eyebrow="Preferences"
+          title="Settings"
+          description={
+            <div role="status" aria-live="polite" className="min-h-5 font-mono text-utility text-mint">
+              {showSavedFeedback ? "Saved automatically" : "Changes save automatically"}
+            </div>
+          }
+        />
 
         <div
           data-testid="settings-layout"
@@ -167,18 +172,18 @@ export default function SettingsPage() {
         >
           <SettingsSidebar
             activeSectionId={activeSectionId}
-            onSelectSection={setActiveSectionId}
             themeSettings={themeSettings}
             soundLabel={selectedSoundOption.label}
             keyboardSoundSetting={keyboardSoundSetting}
             keyboardSoundVolume={keyboardSoundVolume}
+            onSelectSection={setActiveSectionId}
             onTestSound={() => soundPlayer.current.play(keyboardSoundSetting, "normal", keyboardSoundVolume)}
           />
 
           <div data-testid="settings-content" className="grid min-w-0 gap-5">
             <section
               id="personalization"
-              className="formaltype-settings-card order-2 scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur"
+              className="formaltype-settings-card order-2 scroll-mt-5 rounded-lg border border-paper/[0.07] bg-ink-950/45 p-5"
             >
               <SectionHeading
                 eyebrow="Personalization"
@@ -223,7 +228,7 @@ export default function SettingsPage() {
 
             <section
               id="typing"
-              className="formaltype-settings-card order-3 scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur"
+              className="formaltype-settings-card order-3 scroll-mt-5 rounded-lg border border-paper/[0.07] bg-ink-950/45 p-5"
             >
               <SectionHeading
                 eyebrow="Typing"
@@ -284,7 +289,7 @@ export default function SettingsPage() {
 
             <section
               id="behavior"
-              className="formaltype-settings-card order-1 scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur"
+              className="formaltype-settings-card order-1 scroll-mt-5 rounded-lg border border-paper/[0.07] bg-ink-950/45 p-5"
             >
               <SectionHeading
                 eyebrow="Typing Rules"
@@ -362,7 +367,7 @@ export default function SettingsPage() {
 
             <section
               id="sound"
-              className="formaltype-settings-card order-4 scroll-mt-5 rounded-xl bg-ink-950/70 p-5 shadow-glow backdrop-blur"
+              className="formaltype-settings-card order-4 scroll-mt-5 rounded-lg border border-paper/[0.07] bg-ink-950/45 p-5"
             >
               <SectionHeading
                 eyebrow="Sound"
@@ -376,10 +381,10 @@ export default function SettingsPage() {
 
               <div className="mt-6 grid gap-x-8 gap-y-3 py-1 lg:grid-cols-[minmax(280px,1fr)_minmax(12rem,16rem)] lg:items-center">
                 <div>
-                  <label htmlFor="keyboard-sound-volume" className="font-mono text-sm text-paper/80">
+                  <label htmlFor="keyboard-sound-volume" className="font-mono text-body text-paper/80">
                     Keyboard sound volume
                   </label>
-                  <p className="mt-1 text-sm text-paper/45">
+                  <p className="mt-1 text-body text-paper/45">
                     App click volume: {Math.round(keyboardSoundVolume * 100)}%
                   </p>
                 </div>
@@ -397,7 +402,7 @@ export default function SettingsPage() {
             </section>
           </div>
         </div>
-      </section>
+      </PageContainer>
     </AppShell>
   );
 }
@@ -432,7 +437,7 @@ function ThemePreviewCard({
           boxShadow: `0 0 0 3px ${preset.preview.background}, 0 0 0 4px ${preset.preview.muted}`
         }}
       />
-      <span className="min-w-0 flex-1 truncate font-mono text-secondary font-semibold leading-none text-paper">
+      <span className="min-w-0 flex-1 truncate font-mono text-control font-semibold leading-none text-paper">
         {preset.label}
       </span>
       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isSelected ? "bg-brass" : "bg-paper/25"}`} />
@@ -442,51 +447,24 @@ function ThemePreviewCard({
 
 function SettingsSidebar({
   activeSectionId,
-  onSelectSection,
   themeSettings,
   soundLabel,
   keyboardSoundSetting,
   keyboardSoundVolume,
+  onSelectSection,
   onTestSound
 }: {
   activeSectionId: string;
-  onSelectSection: (sectionId: string) => void;
   themeSettings: ThemeSettings;
   soundLabel: string;
   keyboardSoundSetting: KeyboardSoundSetting;
   keyboardSoundVolume: number;
+  onSelectSection: (sectionId: string) => void;
   onTestSound: () => void;
 }) {
   return (
     <aside data-testid="settings-sidebar" className="grid w-full min-w-0 gap-4 self-start lg:sticky lg:top-5">
-      <nav
-        aria-label="Settings sections"
-        className="rounded-xl border border-paper/10 bg-ink-950/80 p-3 shadow-glow backdrop-blur"
-      >
-        <p className="px-2 font-mono text-xs uppercase text-brass">Settings</p>
-        <div className="mt-3 grid gap-1">
-          {SETTINGS_NAV_ITEMS.map((item) => {
-            const isActive = activeSectionId === item.id;
-
-            return (
-              <a
-                key={item.id}
-                href={`#${item.id}`}
-                aria-current={isActive ? "true" : undefined}
-                onClick={() => onSelectSection(item.id)}
-                className={`rounded-md px-2.5 py-2 font-mono text-sm transition ${
-                  isActive
-                    ? "bg-brass/15 text-brass shadow-[0_0_0_1px_rgb(var(--color-accent)/0.12)]"
-                    : "text-paper/55 hover:bg-paper/[0.055] hover:text-paper/80"
-                }`}
-              >
-                {item.label}
-              </a>
-            );
-          })}
-        </div>
-      </nav>
-
+      <SettingsSectionNav activeSectionId={activeSectionId} onSelectSection={onSelectSection} />
       <SettingsLivePreview
         themeSettings={themeSettings}
         soundLabel={soundLabel}
@@ -495,6 +473,40 @@ function SettingsSidebar({
         onTestSound={onTestSound}
       />
     </aside>
+  );
+}
+
+function SettingsSectionNav({ activeSectionId, onSelectSection }: { activeSectionId: string; onSelectSection: (sectionId: string) => void }) {
+  return (
+    <nav
+      aria-label="Settings sections"
+      className="max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-visible"
+    >
+      <SecondaryToolbar className="min-w-max flex-nowrap lg:min-w-0 lg:flex-col lg:items-stretch lg:gap-1">
+        {SETTINGS_NAV_ITEMS.map((item, index) => {
+          const Icon = item.icon;
+          const isActive = activeSectionId === item.id;
+          return (
+            <React.Fragment key={item.id}>
+              {index > 0 && <span aria-hidden="true" className="mx-0.5 h-4 w-px shrink-0 bg-paper/12 lg:hidden" />}
+              <a
+                href={`#${item.id}`}
+                aria-current={isActive ? "true" : undefined}
+                onClick={() => onSelectSection(item.id)}
+                className={`inline-flex min-h-8 shrink-0 items-center gap-2 rounded-md px-2 py-1 font-mono text-control outline-none transition focus-visible:ring-2 focus-visible:ring-brass/60 lg:w-full ${
+                  isActive
+                    ? "text-brass lg:bg-brass/[0.09]"
+                    : "text-paper/45 hover:bg-paper/[0.045] hover:text-paper/75"
+                }`}
+              >
+                <Icon className="icon-control" strokeWidth={1.75} aria-hidden="true" />
+                {item.label}
+              </a>
+            </React.Fragment>
+          );
+        })}
+      </SecondaryToolbar>
+    </nav>
   );
 }
 
@@ -514,9 +526,9 @@ function SettingsLivePreview({
   return (
     <aside
       data-testid="settings-live-preview"
-      className="rounded-xl border border-paper/10 bg-ink-950/80 p-4 shadow-glow backdrop-blur"
+      className="rounded-lg border border-paper/[0.09] bg-ink-950/55 p-4"
     >
-      <p className="font-mono text-xs uppercase text-brass">Live preview</p>
+      <p className="font-mono text-utility uppercase text-brass">Live preview</p>
       <div
         data-testid="settings-typing-preview-frame"
         className={`mt-4 rounded-lg border border-paper/10 bg-ink-900/65 p-3 formaltype-typing-colors-${themeSettings.typingColorStyle} formaltype-settings-preview-width-${themeSettings.typingWidth}`}
@@ -537,23 +549,23 @@ function SettingsLivePreview({
           </span>
           <span className="formaltype-typed-pending">g station</span>
         </p>
-        <p className="mt-2 font-mono text-secondary uppercase text-paper/35">
+        <p className="mt-2 font-mono text-utility uppercase text-paper/35">
           {themeSettings.caretStyle} caret / {themeSettings.typingColorStyle.replace("-", " ")}
         </p>
       </div>
 
       <div className="mt-4 rounded-lg border border-paper/10 bg-paper/[0.035] p-3">
-        <p className="font-mono text-secondary uppercase text-paper/35">Sound</p>
+        <p className="font-mono text-utility uppercase text-paper/35">Sound</p>
         <div className="mt-2 flex items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-sm text-paper/80">{soundLabel}</p>
-            <p className="mt-1 font-mono text-xs text-paper/40">{Math.round(keyboardSoundVolume * 100)}% volume</p>
+            <p className="font-mono text-body text-paper/80">{soundLabel}</p>
+            <p className="mt-1 font-mono text-utility text-paper/40">{Math.round(keyboardSoundVolume * 100)}% volume</p>
           </div>
           <button
             type="button"
             onClick={onTestSound}
             disabled={keyboardSoundSetting === "off"}
-            className="rounded-md border border-paper/10 bg-brass/15 px-2.5 py-1.5 font-mono text-xs text-brass transition hover:border-brass/50 disabled:cursor-not-allowed disabled:opacity-45"
+            className="rounded-md border border-paper/10 bg-brass/15 px-2.5 py-1.5 font-mono text-control text-brass transition hover:border-brass/50 disabled:cursor-not-allowed disabled:opacity-45"
           >
             Test
           </button>
@@ -566,9 +578,9 @@ function SettingsLivePreview({
 function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
   return (
     <div>
-      <p className="font-mono text-xs uppercase text-brass">{eyebrow}</p>
+      <p className="font-mono text-utility uppercase text-brass">{eyebrow}</p>
       <h2 className="mt-1 text-section font-semibold text-paper">{title}</h2>
-      {description && <p className="mt-1 max-w-2xl text-sm text-paper/55">{description}</p>}
+      {description && <p className="mt-1 max-w-2xl text-body text-paper/55">{description}</p>}
     </div>
   );
 }
@@ -583,7 +595,7 @@ function AccentSelector({
   return (
     <fieldset className="grid gap-x-8 gap-y-3 py-1">
       <div>
-        <legend className="font-mono text-sm text-paper/80">Accent</legend>
+        <legend className="font-mono text-body text-paper/80">Accent</legend>
       </div>
       <div role="group" aria-label="Accent color" className="flex flex-wrap gap-2">
         {ACCENT_COLOR_OPTIONS.map((option) => {
@@ -626,24 +638,19 @@ function SoundPackSelector({
     <div className="mt-5 grid gap-5">
       <div role="group" aria-labelledby="keyboard-sound-label" className="grid gap-3 py-1">
         <div data-testid="keyboard-sound-row" className="formaltype-setting-row">
-          <p id="keyboard-sound-label" className="font-mono text-sm text-paper/80">
+          <p id="keyboard-sound-label" className="font-mono text-body text-paper/80">
             Keyboard sound
           </p>
           <div className="formaltype-setting-row-controls">
             {offOption && (
-              <button
+              <FilterControl
                 type="button"
                 aria-label={`${offOption.label} sound`}
-                aria-pressed={value === offOption.value}
+                selected={value === offOption.value}
                 onClick={() => onChange(offOption.value)}
-                className={`inline-flex min-h-10 items-center rounded-md border px-3 py-2 font-mono text-xs transition ${
-                  value === offOption.value
-                    ? "border-brass/70 bg-brass/15 text-brass shadow-[0_0_0_1px_rgb(var(--color-accent)/0.14)]"
-                    : "border-paper/10 bg-paper/[0.035] text-paper/60 hover:border-paper/20 hover:bg-paper/[0.06] hover:text-paper/80"
-                }`}
               >
                 {offOption.label}
-              </button>
+              </FilterControl>
             )}
           </div>
         </div>
@@ -652,26 +659,20 @@ function SoundPackSelector({
       <div className="grid gap-4">
         {SOUND_PACK_GROUPS.map((group) => (
           <fieldset key={group.label} role="group" aria-label={`${group.label} sound packs`} className="grid gap-2">
-            <legend className="font-mono text-secondary uppercase text-paper/35">{group.label}</legend>
+            <legend className="font-mono text-utility uppercase text-paper/35">{group.label}</legend>
             <div className="flex flex-wrap gap-2">
               {group.options.map((option) => {
                 const isSelected = option.value === value;
 
                 return (
-                  <button
+                  <FilterControl
                     key={option.value}
-                    type="button"
                     aria-label={`${option.label} sound`}
-                    aria-pressed={isSelected}
+                    selected={isSelected}
                     onClick={() => onChange(option.value)}
-                    className={`inline-flex min-h-10 items-center rounded-md border px-3 py-2 font-mono text-xs transition ${
-                      isSelected
-                        ? "border-brass/70 bg-brass/15 text-brass shadow-[0_0_0_1px_rgb(var(--color-accent)/0.14)]"
-                        : "border-paper/10 bg-paper/[0.035] text-paper/60 hover:border-paper/20 hover:bg-paper/[0.06] hover:text-paper/80"
-                    }`}
                   >
                     {option.label}
-                  </button>
+                  </FilterControl>
                 );
               })}
             </div>
@@ -733,8 +734,8 @@ function ButtonGroup<Option extends { value: string; label: string }>({
       className={isStacked ? "grid gap-x-8 gap-y-3 py-1" : "formaltype-setting-row py-1"}
     >
       <div>
-        <legend className="font-mono text-sm text-paper/80">{label}</legend>
-        {description && <p className="mt-1 text-sm text-paper/45">{description}</p>}
+        <legend className="font-mono text-body text-paper/80">{label}</legend>
+        {description && <p className="mt-1 text-body text-paper/45">{description}</p>}
       </div>
       <div role="group" aria-label={label} className={isStacked ? "flex flex-wrap gap-2" : "formaltype-setting-row-controls"}>
         {options.map((option) => {
@@ -747,11 +748,7 @@ function ButtonGroup<Option extends { value: string; label: string }>({
               aria-label={getAriaLabel(option)}
               aria-pressed={isSelected}
               onClick={() => onChange(option.value)}
-              className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 font-mono text-xs transition ${
-                isSelected
-                  ? "border-brass/70 bg-brass/15 text-brass shadow-[0_0_0_1px_rgb(var(--color-accent)/0.14)]"
-                  : "border-paper/10 bg-paper/[0.035] text-paper/60 hover:border-paper/20 hover:bg-paper/[0.06] hover:text-paper/80"
-              }`}
+              className={`inline-flex min-h-8 items-center gap-2 px-1.5 py-1 font-mono text-control outline-none transition focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60 ${isSelected ? "text-brass" : "text-paper/45 hover:text-paper/75"}`}
             >
               {renderPrefix?.(option)}
               {option.label}
@@ -818,9 +815,9 @@ function getSoundOptions(values: KeyboardSoundSetting[]) {
     .filter((option): option is (typeof KEYBOARD_SOUND_OPTIONS)[number] => Boolean(option));
 }
 
-const SETTINGS_NAV_ITEMS = [
-  { id: "behavior", label: "Behavior" },
-  { id: "personalization", label: "Personalization" },
-  { id: "typing", label: "Typing" },
-  { id: "sound", label: "Sound" }
+const SETTINGS_NAV_ITEMS: Array<{ id: string; label: string; icon: LucideIcon }> = [
+  { id: "behavior", label: "Behavior", icon: SlidersHorizontal },
+  { id: "personalization", label: "Appearance", icon: Palette },
+  { id: "typing", label: "Typing", icon: Keyboard },
+  { id: "sound", label: "Sound", icon: Volume2 }
 ];

@@ -6,6 +6,7 @@ import { AlertTriangle, Bell, DatabaseZap, KeyRound, UserRound, X } from "lucide
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { ProfilePageLayout } from "@/components/ProfilePageLayout";
+import { IconButton } from "@/components/SecondaryNavigation";
 import { useAuth } from "@/components/AuthProvider";
 import {
   SupabaseProfile,
@@ -156,20 +157,20 @@ export default function AccountPage() {
   return (
     <AppShell sideAd={false}>
       {isRecoveryMode ? (
-        <section className="mx-auto max-w-xl rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow md:p-6">
+        <section className="mx-auto max-w-xl rounded-lg border border-paper/[0.08] bg-ink-950/45 p-5 md:p-6">
           <div className="flex items-start gap-3">
-            <div className="rounded-md border border-brass/25 bg-brass/10 p-2 text-brass"><KeyRound className="h-5 w-5" /></div>
+            <div className="rounded-md border border-brass/25 bg-brass/10 p-2 text-brass"><KeyRound className="icon-prominent" /></div>
             <div>
-              <p className="font-mono text-xs uppercase text-brass">Account recovery</p>
+              <p className="font-mono text-utility uppercase text-brass">Account recovery</p>
               <h1 className="mt-2 text-page font-semibold text-paper">Set a new password</h1>
-              <p className="mt-3 text-sm leading-6 text-paper/60">Choose a new password for this account. You will return to Login when it has been updated.</p>
+              <p className="mt-3 text-body leading-6 text-paper/60">Choose a new password for this account. You will return to Login when it has been updated.</p>
             </div>
           </div>
 
-          {(message || error) && <div role={error ? "alert" : "status"} className={`mt-5 rounded-md border px-4 py-3 font-mono text-sm ${error ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>{error || message}</div>}
+          {(message || error) && <div role={error ? "alert" : "status"} className={`mt-5 rounded-md border px-4 py-3 font-mono text-body ${error ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>{error || message}</div>}
 
           {isAuthLoading ? (
-            <p role="status" className="mt-6 font-mono text-sm text-paper/55">Checking recovery link…</p>
+            <p role="status" className="mt-6 font-mono text-body text-paper/55">Checking recovery link…</p>
           ) : user ? (
             <form onSubmit={savePassword} className="mt-6 grid gap-4">
               <label><span className="account-label">New password</span><input aria-label="New password" type="password" autoComplete="new-password" required minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>
@@ -178,42 +179,42 @@ export default function AccountPage() {
             </form>
           ) : (
             <div className="mt-6 rounded-md border border-ember/25 bg-ember/10 px-4 py-4">
-              <p role="alert" className="font-mono text-sm text-ember">This recovery link is invalid or has expired.</p>
-              <Link href="/login?mode=recovery" className="mt-3 inline-flex font-mono text-sm text-brass hover:underline">Request a new link</Link>
+              <p role="alert" className="font-mono text-body text-ember">This recovery link is invalid or has expired.</p>
+              <Link href="/login?mode=recovery" className="mt-3 inline-flex font-mono text-body text-brass hover:underline">Request a new link</Link>
             </div>
           )}
         </section>
       ) : (
       <ProfilePageLayout>
         {user && <div className="mt-6 space-y-5">
-          {!accountDialog && (message || error) && <div role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 font-mono text-sm ${error ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>{error || message}</div>}
+          {!accountDialog && (message || error) && <div role={error ? "alert" : "status"} className={`rounded-md border px-4 py-3 font-mono text-body ${error ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>{error || message}</div>}
 
-          <AccountSection icon={<UserRound className="h-5 w-5" />} title="Identity" description="Manage the public handle and sign-in details attached to this account.">
+          <AccountSection icon={<UserRound className="icon-prominent" />} title="Identity" description="Manage the public handle and sign-in details attached to this account.">
             <div className="account-setting-row">
               <div><span className="account-label">Public handle</span><span className="account-help">Profile URL and leaderboard identity. Changes are limited to once every 30 days.</span></div>
-              <div className="flex flex-wrap items-center justify-end gap-3"><span className="font-mono text-sm text-paper">{isProfileLoading ? "Loading…" : `@${profile?.handle ?? "not-set"}`}</span><button type="button" aria-label="Change public handle" onClick={() => openAccountDialog("handle")} disabled={!profile || !handleChangeAllowed} className="account-primary-button">{handleChangeAllowed ? "Change" : formatHandleAvailability(nextHandleChangeAt)}</button></div>
+              <div className="flex flex-wrap items-center justify-end gap-3"><span className="font-mono text-body text-paper">{isProfileLoading ? "Loading…" : `@${profile?.handle ?? "not-set"}`}</span><button type="button" aria-label="Change public handle" onClick={() => openAccountDialog("handle")} disabled={!profile || !handleChangeAllowed} className="account-primary-button">{handleChangeAllowed ? "Change" : formatHandleAvailability(nextHandleChangeAt)}</button></div>
             </div>
-            <div className="account-setting-row"><div><span className="account-label">Email</span><span className="account-help">Used to sign in and recover access.</span></div><span className="font-mono text-sm text-paper/75">{user.email}</span></div>
+            <div className="account-setting-row"><div><span className="account-label">Email</span><span className="account-help">Used to sign in and recover access.</span></div><span className="font-mono text-body text-paper/75">{user.email}</span></div>
           </AccountSection>
 
-          <AccountSection icon={<KeyRound className="h-5 w-5" />} title="Security" description="Use at least eight characters and avoid reusing another password.">
+          <AccountSection icon={<KeyRound className="icon-prominent" />} title="Security" description="Use at least eight characters and avoid reusing another password.">
             <div className="account-setting-row"><div><span className="account-label">Password</span><span className="account-help">Open a private form only when you need to change it.</span></div><button type="button" onClick={() => openAccountDialog("password")} className="account-primary-button">Change password</button></div>
           </AccountSection>
 
-          <AccountSection icon={<Bell className="h-5 w-5" />} title="Notifications" description="Choose which activity appears in your Typing Station notification area.">
+          <AccountSection icon={<Bell className="icon-prominent" />} title="Notifications" description="Choose which activity appears in your Typing Station notification area.">
             <NotificationRow label="Achievements" description="Milestones, personal bests and streak updates." checked={notificationSettings.achievements} onChange={(value) => updateNotifications("achievements", value)} />
             <NotificationRow label="Friend requests" description="New requests and accepted connections." checked={notificationSettings.friendRequests} onChange={(value) => updateNotifications("friendRequests", value)} />
             <NotificationRow label="Weekly summary" description="A compact recap of practice, speed and accuracy." checked={notificationSettings.weeklySummary} onChange={(value) => updateNotifications("weeklySummary", value)} />
           </AccountSection>
 
-          <section className="rounded-xl border border-ember/20 bg-ember/[0.035] p-5">
-            <div className="flex items-center gap-3"><DatabaseZap className="h-5 w-5 shrink-0 text-ember" /><div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-section uppercase text-ember">Delete stats</h2><p className="text-sm text-paper/45">Clears results, analytics and attempt details without deleting your account.</p></div></div>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label><span className="account-label">Type DELETE STATS to confirm</span><input aria-label="Delete stats confirmation" value={statsConfirmation} onChange={(e) => setStatsConfirmation(e.target.value)} className="formaltype-themed-input mt-2 px-3 py-2 font-mono" /></label><button type="button" onClick={deleteStats} disabled={statsConfirmation !== "DELETE STATS" || pendingAction === "stats"} className="rounded-md border border-ember/35 bg-ember/10 px-4 py-2.5 font-mono text-xs uppercase text-ember transition hover:bg-ember/20 disabled:cursor-not-allowed disabled:opacity-35">{pendingAction === "stats" ? "Deleting…" : "Delete stats"}</button></div>
+          <section className="rounded-lg border border-ember/20 bg-ember/[0.035] p-5">
+            <div className="flex items-center gap-3"><DatabaseZap className="icon-prominent text-ember" /><div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-section uppercase text-ember">Delete stats</h2><p className="text-body text-paper/45">Clears results, analytics and attempt details without deleting your account.</p></div></div>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label><span className="account-label">Type DELETE STATS to confirm</span><input aria-label="Delete stats confirmation" value={statsConfirmation} onChange={(e) => setStatsConfirmation(e.target.value)} className="formaltype-themed-input mt-2 px-3 py-2 font-mono" /></label><button type="button" onClick={deleteStats} disabled={statsConfirmation !== "DELETE STATS" || pendingAction === "stats"} className="rounded-md border border-ember/35 bg-ember/10 px-4 py-2.5 font-mono text-control uppercase text-ember transition hover:bg-ember/20 disabled:cursor-not-allowed disabled:opacity-35">{pendingAction === "stats" ? "Deleting…" : "Delete stats"}</button></div>
           </section>
 
-          <section className="rounded-xl border border-ember/20 bg-ember/[0.045] p-5">
-            <div className="flex items-center gap-3"><AlertTriangle className="h-5 w-5 shrink-0 text-ember" /><div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-section uppercase text-ember">Delete account</h2><p className="text-sm text-paper/45">Permanently deletes your profile, friendships, saved results and authentication account. This cannot be undone.</p></div></div>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label><span className="account-label">Type DELETE to confirm</span><input aria-label="Delete confirmation" value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} className="formaltype-themed-input mt-2 px-3 py-2 font-mono" /></label><button type="button" onClick={deleteAccount} disabled={deleteConfirmation !== "DELETE" || pendingAction === "delete"} className="rounded-md border border-ember/35 bg-ember/10 px-4 py-2.5 font-mono text-xs uppercase text-ember transition hover:bg-ember/20 disabled:cursor-not-allowed disabled:opacity-35">{pendingAction === "delete" ? "Deleting…" : "Delete permanently"}</button></div>
+          <section className="rounded-lg border border-ember/20 bg-ember/[0.045] p-5">
+            <div className="flex items-center gap-3"><AlertTriangle className="icon-prominent text-ember" /><div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-section uppercase text-ember">Delete account</h2><p className="text-body text-paper/45">Permanently deletes your profile, friendships, saved results and authentication account. This cannot be undone.</p></div></div>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label><span className="account-label">Type DELETE to confirm</span><input aria-label="Delete confirmation" value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} className="formaltype-themed-input mt-2 px-3 py-2 font-mono" /></label><button type="button" onClick={deleteAccount} disabled={deleteConfirmation !== "DELETE" || pendingAction === "delete"} className="rounded-md border border-ember/35 bg-ember/10 px-4 py-2.5 font-mono text-control uppercase text-ember transition hover:bg-ember/20 disabled:cursor-not-allowed disabled:opacity-35">{pendingAction === "delete" ? "Deleting…" : "Delete permanently"}</button></div>
           </section>
 
           {accountDialog === "handle" && (
@@ -231,7 +232,7 @@ export default function AccountPage() {
                 <label><span className="account-label">New password</span><input ref={newPasswordInputRef} aria-label="New password" name="formaltype-new-password" type="password" autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" data-form-type="other" spellCheck={false} minLength={8} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>
                 <label><span className="account-label">Confirm password</span><input ref={confirmPasswordInputRef} aria-label="Confirm password" name="formaltype-confirm-password" type="password" autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" data-form-type="other" spellCheck={false} minLength={8} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="formaltype-themed-input mt-2 w-full px-3 py-3" /></label>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <button type="button" onClick={clearPasswordFields} className="rounded-md px-2 py-2 font-mono text-xs text-paper/45 transition hover:text-paper">Clear fields</button>
+                  <button type="button" onClick={clearPasswordFields} className="rounded-md px-2 py-2 font-mono text-control text-paper/45 transition hover:text-paper">Clear fields</button>
                   <DialogActions onCancel={closeAccountDialog} isBusy={pendingAction === "password"} submitLabel={pendingAction === "password" ? "Updating…" : "Update password"} submitDisabled={!newPassword || !confirmPassword} />
                 </div>
               </form>
@@ -319,13 +320,13 @@ function AccountDialog({
       <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} className="w-full max-w-lg rounded-lg border border-brass/25 bg-ink-900 p-5 shadow-glow md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="font-mono text-xs uppercase text-brass">{eyebrow}</p>
+            <p className="font-mono text-utility uppercase text-brass">{eyebrow}</p>
             <h2 id={`${id}-title`} className="mt-1 text-page font-semibold text-paper">{title}</h2>
-            <p id={`${id}-description`} className="mt-2 text-sm leading-6 text-paper/50">{description}</p>
+            <p id={`${id}-description`} className="mt-2 text-body leading-6 text-paper/50">{description}</p>
           </div>
-          <button ref={closeButtonRef} type="button" onClick={onClose} disabled={isBusy} aria-label={`Close ${title}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-800 text-paper/65 transition hover:border-brass/45 hover:text-paper disabled:opacity-40"><X className="h-4 w-4" /></button>
+          <IconButton ref={closeButtonRef} onClick={onClose} disabled={isBusy} label={`Close ${title}`}><X className="icon-control" strokeWidth={1.75} /></IconButton>
         </div>
-        {errorMessage && <div role="alert" className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">{errorMessage}</div>}
+        {errorMessage && <div role="alert" className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-body text-ember">{errorMessage}</div>}
         {children}
       </section>
     </div>
@@ -345,7 +346,7 @@ function DialogActions({
 }) {
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      <button type="button" onClick={onCancel} disabled={isBusy} className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/65 transition hover:border-paper/20 hover:text-paper disabled:opacity-50">Cancel</button>
+      <button type="button" onClick={onCancel} disabled={isBusy} className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-control text-paper/65 transition hover:border-paper/20 hover:text-paper disabled:opacity-50">Cancel</button>
       <button type="submit" disabled={isBusy || submitDisabled} className="account-primary-button disabled:cursor-not-allowed">{submitLabel}</button>
     </div>
   );
@@ -357,7 +358,7 @@ function formatHandleAvailability(nextChangeAt: Date | null) {
 }
 
 function AccountSection({ icon, title, description, children }: React.PropsWithChildren<{ icon: React.ReactNode; title: string; description: string }>) {
-  return <section className="rounded-xl border border-paper/10 bg-ink-950/75 p-5 shadow-glow"><div className="flex items-center gap-3 text-brass">{icon}<div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-section uppercase">{title}</h2><p className="text-sm text-paper/45">{description}</p></div></div><div className="mt-5 divide-y divide-paper/10">{children}</div></section>;
+  return <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-5"><div className="flex items-center gap-3 text-brass">{icon}<div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-section uppercase">{title}</h2><p className="text-body text-paper/45">{description}</p></div></div><div className="mt-5 divide-y divide-paper/10">{children}</div></section>;
 }
 
 function NotificationRow({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: (checked: boolean) => void }) {

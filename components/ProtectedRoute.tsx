@@ -17,7 +17,7 @@ export function ProtectedRoute({ children, adminOnly = true }: { children: React
   if (isLoading || !user) {
     return (
       <AuthStatePanel>
-        <p className="font-mono text-sm text-paper/55">Checking login...</p>
+        <p className="font-mono text-body text-paper/55">Checking login...</p>
       </AuthStatePanel>
     );
   }
@@ -27,12 +27,12 @@ export function ProtectedRoute({ children, adminOnly = true }: { children: React
       <AuthStatePanel>
         <div className="flex items-start gap-3">
           <div className="rounded-md border border-ember/25 bg-ember/10 p-2 text-ember">
-            <ShieldCheck className="h-5 w-5" />
+            <ShieldCheck className="icon-prominent" />
           </div>
           <div>
-            <p className="font-mono text-xs uppercase text-ember">Access denied</p>
+            <p className="font-mono text-utility uppercase text-ember">Access denied</p>
             <h1 className="mt-2 text-page font-semibold text-paper">Admin access required</h1>
-            <p className="mt-3 text-sm leading-6 text-paper/60">
+            <p className="mt-3 text-body leading-6 text-paper/60">
               Your account is signed in, but it does not have permission to open this area.
             </p>
           </div>

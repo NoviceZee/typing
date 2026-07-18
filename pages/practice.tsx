@@ -1484,7 +1484,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         <h1 className="sr-only">{trainingMode?.pageTitle ?? "Practice"}</h1>
 
         {passageNotice && (
-          <div className={clsx("mb-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass", isFocusMode && "invisible pointer-events-none")}>
+          <div className={clsx("mb-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-body text-brass", isFocusMode && "invisible pointer-events-none")}>
             {passageNotice}
           </div>
         )}
@@ -1509,7 +1509,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                     className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-control"
                   >
                     {!trainingMode && (
-                      <TextChoiceGroup label="Practice language" icon={<Languages className="h-4 w-4" />}>
+                      <TextChoiceGroup label="Practice language" icon={<Languages className="icon-control" />}>
                         {(["english", "chinese"] as const).map((language) => (
                           <TextChoiceButton
                             key={language}
@@ -1531,7 +1531,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                             selected={selectedPassageId === RANDOM_PASSAGE_ID}
                             disabled={isRunning || isPassageLoading}
                             onClick={loadRandomPassage}
-                            icon={<Shuffle className="h-4 w-4" />}
+                            icon={<Shuffle className="icon-control" />}
                           >
                             Random
                           </TextChoiceButton>
@@ -1539,7 +1539,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                             href={`/passages?language=${practiceLanguage}`}
                             className="inline-flex min-h-7 items-center gap-1 px-1.5 py-1 text-control text-paper/45 outline-none transition hover:text-paper/80 focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60"
                           >
-                            <BookOpenText className="h-3.5 w-3.5" aria-hidden="true" />
+                            <BookOpenText className="icon-inline" aria-hidden="true" />
                             Library
                           </Link>
                         </TextChoiceGroup>
@@ -1549,7 +1549,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                     {!trainingMode?.hidePracticeModeControls && (
                       <>
                         <PracticeControlSeparator />
-                        <TextChoiceGroup label="Practice duration" icon={<Clock3 className="h-4 w-4" />}>
+                        <TextChoiceGroup label="Practice duration" icon={<Clock3 className="icon-control" />}>
                           {PRACTICE_MODE_OPTIONS.map((mode) => (
                             <TextChoiceButton
                               key={mode.id}
@@ -1745,8 +1745,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         </div>
 
         {(status === "idle" || isFocusMode) && (
-          <div className={clsx("flex flex-wrap items-center font-mono text-paper/30", isCompactPractice ? "mt-2 gap-2 text-secondary" : "mt-3 gap-3 text-xs")}>
-            {isCompactPractice && <KeyboardIcon className="h-3.5 w-3.5 text-paper/25" aria-hidden="true" />}
+          <div className={clsx("flex flex-wrap items-center font-mono text-paper/30", isCompactPractice ? "mt-2 gap-2 text-secondary" : "mt-3 gap-3 text-utility")}>
+            {isCompactPractice && <KeyboardIcon className="icon-inline text-paper/25" aria-hidden="true" />}
             {status === "idle" || !shouldUseChineseImeSink ? (
               <>
                 <span className="sm:hidden">Tap to start</span>
@@ -2009,8 +2009,8 @@ function ResultsPanel({
     <section className={compact ? "mt-4 border-t border-paper/[0.08] pt-3" : "mt-6 rounded-lg bg-paper/[0.025] p-4 md:p-5"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className={clsx("font-mono uppercase text-brass", compact ? "text-secondary" : "text-xs")}>Result</p>
-          <h2 className={clsx("font-semibold text-paper", compact ? "mt-0.5 text-lg" : "mt-1 text-page")}>{getCompletionLabel(result.completionReason)}</h2>
+          <p className={clsx("font-mono uppercase text-brass", compact ? "text-secondary" : "text-utility")}>Result</p>
+          <h2 className={clsx("font-semibold text-paper", compact ? "mt-0.5 text-section" : "mt-1 text-page")}>{getCompletionLabel(result.completionReason)}</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -2019,7 +2019,7 @@ function ResultsPanel({
             onClick={onRestart}
             className={clsx("inline-flex items-center rounded-md font-mono text-control text-paper/65 transition hover:bg-paper/[0.06] hover:text-paper", compact ? "min-h-8 gap-1.5 px-2.5" : "gap-2 bg-paper/[0.045] px-3 py-2")}
           >
-            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            <RotateCcw className="icon-control" aria-hidden="true" />
             Restart
           </button>
           <button
@@ -2027,7 +2027,7 @@ function ResultsPanel({
             onClick={onNextPassage}
             className={clsx("inline-flex items-center rounded-md bg-brass/10 font-mono text-control text-brass transition hover:bg-brass/15", compact ? "min-h-8 gap-1.5 px-2.5" : "gap-2 px-3 py-2")}
           >
-            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            <RefreshCw className="icon-control" aria-hidden="true" />
             Next passage
           </button>
         </div>
@@ -2160,16 +2160,16 @@ export function ResultModal({
         <div className="sticky top-0 z-10 border-b border-paper/10 bg-ink-900/95 px-4 py-3 backdrop-blur md:px-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="font-mono text-xs uppercase text-brass">Result</p>
+              <p className="font-mono text-utility uppercase text-brass">Result</p>
               <h2 id="result-dialog-title" className="mt-0.5 text-page font-semibold leading-tight text-paper">{completionLabel}</h2>
-              <div id="result-dialog-description" className="mt-1.5 truncate font-mono text-xs text-paper/45 md:text-sm">
+              <div id="result-dialog-description" className="mt-1.5 truncate font-mono text-utility text-paper/45 md:text-body">
                 {formatPassageResultMetadata(passage)}
               </div>
               {cloudSaveState !== "idle" && (
                 <p
                   role={cloudSaveState === "failed" ? "alert" : "status"}
                   aria-live="polite"
-                  className={`mt-2 font-mono text-xs ${cloudSaveState === "failed" ? "text-ember" : cloudSaveState === "saved" ? "text-mint" : "text-paper/45"}`}
+                  className={`mt-2 font-mono text-utility ${cloudSaveState === "failed" ? "text-ember" : cloudSaveState === "saved" ? "text-mint" : "text-paper/45"}`}
                 >
                   {cloudSaveState === "saving"
                     ? "Saving result…"
@@ -2185,7 +2185,7 @@ export function ResultModal({
               aria-label="Close result"
               className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-800 text-paper/75 transition hover:border-brass/50 hover:text-paper"
             >
-              <X className="h-4 w-4" />
+              <X className="icon-control" />
             </button>
           </div>
         </div>
@@ -2227,7 +2227,7 @@ export function ResultModal({
           </div>
 
           {isSuspicious && (
-            <div className="mt-4 rounded-md bg-brass/10 px-3 py-2 font-mono text-xs text-brass/80">
+            <div className="mt-4 rounded-md bg-brass/10 px-3 py-2 font-mono text-utility text-brass/80">
               {SUSPICIOUS_RESULT_NOTE}
             </div>
           )}
@@ -2240,21 +2240,21 @@ export function ResultModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-1.5 font-mono text-sm text-paper/70 transition hover:border-brass/50 hover:text-paper"
+            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-1.5 font-mono text-control text-paper/70 transition hover:border-brass/50 hover:text-paper"
           >
             Close
           </button>
           <button
             type="button"
             onClick={onRestart}
-            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-1.5 font-mono text-sm text-paper/85 transition hover:border-brass/50"
+            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-1.5 font-mono text-control text-paper/85 transition hover:border-brass/50"
           >
             Restart same passage
           </button>
           <button
             type="button"
             onClick={onNextPassage}
-            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-1.5 font-mono text-sm text-brass transition hover:bg-brass/15"
+            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-1.5 font-mono text-control text-brass transition hover:bg-brass/15"
           >
             Next passage
           </button>
@@ -2407,8 +2407,8 @@ function CelebrationToast({ milestones }: { milestones: CelebrationMilestone[] }
           </>
         )}
         <p className="font-mono text-secondary uppercase tracking-[0.18em] text-brass">{activeMilestone.title}</p>
-        <p className="mt-1 font-mono text-sm font-semibold text-paper">{activeMilestone.value}</p>
-        {activeMilestone.subtitle && <p className="mt-1 font-mono text-xs leading-5 text-paper/55">{activeMilestone.subtitle}</p>}
+        <p className="mt-1 font-mono text-body font-semibold text-paper">{activeMilestone.value}</p>
+        {activeMilestone.subtitle && <p className="mt-1 font-mono text-utility leading-5 text-paper/55">{activeMilestone.subtitle}</p>}
       </div>
     </div>
   );
@@ -2545,9 +2545,9 @@ function ThisResultColumn({
 
   return (
     <section>
-      <p className="font-mono text-sm uppercase text-brass">This Result</p>
+      <p className="font-mono text-body uppercase text-brass">This Result</p>
       <div className="mt-3">
-        <p className="font-mono text-xs uppercase text-paper/45">{metricLabel}</p>
+        <p className="font-mono text-utility uppercase text-paper/45">{metricLabel}</p>
         <div className="mt-0.5 font-mono text-5xl font-semibold leading-none text-paper md:text-6xl">
           {result.rawWpm.toFixed(1)}
         </div>
@@ -2582,7 +2582,7 @@ function ResultMetricRow({
 }) {
   return (
     <div className="grid grid-cols-[minmax(5rem,1fr)_auto] items-baseline gap-3 border-b border-paper/10 py-2 font-mono last:border-b-0">
-      <span className="text-xs text-paper/50">
+      <span className="text-utility text-paper/50">
         {label}
         {helpText && (
           <span className="ml-1 cursor-help text-paper/30" title={helpText} aria-label={helpText}>
@@ -2600,7 +2600,7 @@ function HistoryStats({ points }: { points: Array<{ wpm: number }> }) {
 
   return (
     <section>
-      <p className="font-mono text-sm uppercase text-brass">History</p>
+      <p className="font-mono text-body uppercase text-brass">History</p>
       <div className="mt-3 space-y-2 font-mono">
         <HistoryRow label="Avg (last 10)" value={summary.averageWpm.toFixed(1)} />
         <HistoryRow label="Best (last 10)" value={summary.bestWpm.toFixed(1)} />
@@ -2613,7 +2613,7 @@ function HistoryStats({ points }: { points: Array<{ wpm: number }> }) {
 function HistoryRow({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex items-baseline justify-between gap-4 text-paper/65">
-      <span className="text-xs">{label}</span>
+      <span className="text-utility">{label}</span>
       <span className="text-lg text-paper">{value}</span>
     </div>
   );
@@ -2634,7 +2634,7 @@ function PreviousAttemptComparison({
 
   return (
     <section>
-      <p className="font-mono text-sm uppercase text-brass">Previous Attempt</p>
+      <p className="font-mono text-body uppercase text-brass">Previous Attempt</p>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 font-mono md:grid-cols-4">
         <PreviousComparisonStat
           label={metricLabel}
@@ -2653,9 +2653,9 @@ function PreviousAttemptComparison({
           previousValue={formatPercent(previousResult.accuracy)}
         />
         <div>
-          <p className="text-xs uppercase text-paper/40">Time</p>
-          <p className="mt-2 text-sm text-paper/45">-</p>
-          <p className="mt-1.5 text-xs text-paper/55">previous {formatTime(previousResult.elapsedSeconds)}</p>
+          <p className="text-utility uppercase text-paper/40">Time</p>
+          <p className="mt-2 text-body text-paper/45">-</p>
+          <p className="mt-1.5 text-utility text-paper/55">previous {formatTime(previousResult.elapsedSeconds)}</p>
         </div>
       </div>
     </section>
@@ -2677,16 +2677,16 @@ function PreviousComparisonStat({
 
   return (
     <div>
-      <p className="text-xs uppercase text-paper/40">{label}</p>
-      <p className={clsx("mt-2 text-sm", tone)}>{formatSigned(delta, suffix)}</p>
-      <p className="mt-1.5 text-xs text-paper/55">previous {previousValue}</p>
+      <p className="text-utility uppercase text-paper/40">{label}</p>
+      <p className={clsx("mt-2 text-body", tone)}>{formatSigned(delta, suffix)}</p>
+      <p className="mt-1.5 text-utility text-paper/55">previous {previousValue}</p>
     </div>
   );
 }
 
 function SignInResultCta() {
   return (
-    <div data-testid="result-sign-in-cta" className="mt-5 text-center font-mono text-sm text-paper/35">
+    <div data-testid="result-sign-in-cta" className="mt-5 text-center font-mono text-body text-paper/35">
       <Link href="/login" className="transition hover:text-brass">
         Sign in to save your result and see long-term progress.
       </Link>
@@ -2707,12 +2707,12 @@ function ResultImageCardAction({
     <div className="mt-4 flex items-center justify-between gap-2 border-t border-paper/10 pt-3 font-mono">
       <div className="flex min-w-0 items-center gap-2">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-brass/10 text-brass">
-          <ImageIcon className="h-4 w-4" />
+          <ImageIcon className="icon-control" />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-xs text-paper/85">Generate image card</p>
+          <p className="truncate text-utility text-paper/85">Generate image card</p>
           <p className="truncate text-secondary text-paper/40">Create a shareable result image.</p>
-          {error && <p className="mt-2 text-xs text-ember">{error}</p>}
+          {error && <p className="mt-2 text-utility text-ember">{error}</p>}
         </div>
       </div>
       <button
@@ -2720,7 +2720,7 @@ function ResultImageCardAction({
         aria-label="Generate image card"
         onClick={onGenerate}
         disabled={disabled}
-        className="shrink-0 rounded-md border border-paper/10 bg-transparent px-2.5 py-1.5 text-xs text-paper/60 transition hover:border-brass/40 hover:text-paper disabled:cursor-not-allowed disabled:opacity-55"
+        className="shrink-0 rounded-md border border-paper/10 bg-transparent px-2.5 py-1.5 text-control text-paper/60 transition hover:border-brass/40 hover:text-paper disabled:cursor-not-allowed disabled:opacity-55"
       >
         {disabled ? "Generating..." : "Generate"}
       </button>
@@ -2749,8 +2749,8 @@ function AttemptWpmGraph({
   return (
     <section>
       <div className="flex items-start justify-between gap-4">
-        <p className="font-mono text-sm uppercase text-brass">{metricLabel} Over Time</p>
-        <div className="hidden gap-5 font-mono text-xs uppercase text-paper/45 sm:flex">
+        <p className="font-mono text-body uppercase text-brass">{metricLabel} Over Time</p>
+        <div className="hidden gap-5 font-mono text-utility uppercase text-paper/45 sm:flex">
           <span className="inline-flex items-center gap-2">
             <span className="w-8 border-t-2 border-dotted opacity-70" style={{ borderColor: "rgb(var(--chart-line-secondary))" }} />
             Burst

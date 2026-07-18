@@ -83,12 +83,12 @@ export default function HandleOnboardingPage() {
       <section className="mx-auto max-w-xl rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow md:p-6">
         <div className="flex items-start gap-3">
           <div className="rounded-md border border-brass/25 bg-brass/10 p-2 text-brass">
-            <AtSign className="h-5 w-5" />
+            <AtSign className="icon-prominent" />
           </div>
           <div>
-            <p className="font-mono text-xs uppercase text-brass">Public handle</p>
+            <p className="font-mono text-utility uppercase text-brass">Public handle</p>
             <h1 className="mt-2 text-page font-semibold text-paper">Choose your handle</h1>
-            <p className="mt-3 text-sm leading-6 text-paper/60">
+            <p className="mt-3 text-body leading-6 text-paper/60">
               Your handle is your public identity for leaderboards, future friends, and profile URLs.
             </p>
           </div>
@@ -96,9 +96,9 @@ export default function HandleOnboardingPage() {
 
         <form onSubmit={saveHandle} className="mt-6 grid gap-4">
           <label className="block" htmlFor="handle">
-            <span className="font-mono text-xs uppercase text-paper/45">Handle</span>
+            <span className="font-mono text-utility uppercase text-paper/45">Handle</span>
             <div className="mt-2 flex rounded-md border border-paper/10 bg-ink-900 focus-within:border-brass/60">
-              <span className="grid place-items-center border-r border-paper/10 px-3 font-mono text-sm text-paper/35">@</span>
+              <span className="grid place-items-center border-r border-paper/10 px-3 font-mono text-body text-paper/35">@</span>
               <input
                 id="handle"
                 aria-label="Handle"
@@ -109,16 +109,16 @@ export default function HandleOnboardingPage() {
                 pattern="[a-z0-9_]+"
                 required
                 disabled={!isConfigured}
-                className="w-full bg-transparent px-3 py-3 font-mono text-sm text-paper outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full bg-transparent px-3 py-3 font-mono text-control text-paper outline-none disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="formal_typist"
               />
             </div>
           </label>
 
-          <p className="font-mono text-xs text-paper/40">3-20 characters. Lowercase letters, numbers, and underscores only.</p>
+          <p className="font-mono text-utility text-paper/40">3-20 characters. Lowercase letters, numbers, and underscores only.</p>
 
           {message && (
-            <div className="rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+            <div className="rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-body text-brass">
               {message}
             </div>
           )}
@@ -126,7 +126,7 @@ export default function HandleOnboardingPage() {
           <button
             type="submit"
             disabled={!isConfigured || isSaving}
-            className="inline-flex w-fit items-center gap-2 rounded-md bg-brass px-4 py-2.5 font-mono text-sm font-semibold text-ink-950 transition hover:bg-brass/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-fit items-center gap-2 rounded-md bg-brass px-4 py-2.5 font-mono text-control font-semibold text-ink-950 transition hover:bg-brass/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving ? "Saving..." : "Save handle"}
           </button>

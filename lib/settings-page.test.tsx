@@ -313,7 +313,7 @@ describe("SettingsPage", () => {
 
     const sections = [
       { label: "Behavior", id: "behavior" },
-      { label: "Personalization", id: "personalization" },
+      { label: "Appearance", id: "personalization" },
       { label: "Typing", id: "typing" },
       { label: "Sound", id: "sound" }
     ];
@@ -328,7 +328,7 @@ describe("SettingsPage", () => {
     expect(document.getElementById("personalization")?.className).toContain("order-2");
     expect(document.getElementById("typing")?.className).toContain("order-3");
     expect(document.getElementById("sound")?.className).toContain("order-4");
-    expect(screen.queryByRole("link", { name: "Appearance" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Personalization" })).toBeNull();
     expect(screen.queryByRole("link", { name: /account/i })).toBeNull();
     expect(screen.getByRole("navigation", { name: "Settings sections" }).querySelector('a[href="/privacy"]')).toBeNull();
 

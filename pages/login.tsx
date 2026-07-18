@@ -105,14 +105,14 @@ export default function LoginPage() {
       <section className="mx-auto max-w-xl rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow md:p-6">
         <div className="flex items-start gap-3">
           <div className="rounded-md border border-brass/25 bg-brass/10 p-2 text-brass">
-            <ShieldCheck className="h-5 w-5" />
+            <ShieldCheck className="icon-prominent" />
           </div>
           <div>
-            <p className="font-mono text-xs uppercase text-brass">Typing Station login</p>
+            <p className="font-mono text-utility uppercase text-brass">Typing Station login</p>
             <h1 className="mt-2 text-page font-semibold text-paper">
               {authMode === "login" ? "Log in" : authMode === "signup" ? "Create account" : "Reset password"}
             </h1>
-            <p className="mt-3 text-sm leading-6 text-paper/60">
+            <p className="mt-3 text-body leading-6 text-paper/60">
               {authMode === "recovery"
                 ? "Enter your account email and we will send a secure recovery link."
                 : "Practice stays public. Sign in to sync results and profile progress across devices."}
@@ -121,7 +121,7 @@ export default function LoginPage() {
         </div>
 
         {!isConfigured && (
-          <div className="mt-5 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 text-sm leading-6 text-ember">
+          <div className="mt-5 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 text-body leading-6 text-ember">
             Supabase is not configured yet. Add <span className="font-mono">NEXT_PUBLIC_SUPABASE_URL</span> and{" "}
             <span className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</span> to{" "}
             <span className="font-mono">.env.local</span>, then restart the app.
@@ -130,45 +130,45 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
           <label className="block">
-            <span className="font-mono text-xs uppercase text-paper/45">Email</span>
+            <span className="font-mono text-utility uppercase text-paper/45">Email</span>
             <input
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
-              className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-3 font-mono text-sm text-paper outline-none transition focus:border-brass/60"
+              className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-3 font-mono text-control text-paper outline-none transition focus:border-brass/60"
               placeholder="you@example.com"
             />
           </label>
 
           {authMode !== "recovery" && <label className="block">
-            <span className="font-mono text-xs uppercase text-paper/45">Password</span>
+            <span className="font-mono text-utility uppercase text-paper/45">Password</span>
             <input
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
               minLength={6}
-              className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-3 font-mono text-sm text-paper outline-none transition focus:border-brass/60"
+              className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-3 font-mono text-control text-paper outline-none transition focus:border-brass/60"
               placeholder="At least 6 characters"
             />
           </label>}
 
           {message && (
-            <div role={messageKind === "error" ? "alert" : "status"} className={`rounded-md border px-4 py-3 font-mono text-sm ${messageKind === "error" ? "border-ember/25 bg-ember/10 text-ember" : "border-brass/25 bg-brass/10 text-brass"}`}>
+            <div role={messageKind === "error" ? "alert" : "status"} className={`rounded-md border px-4 py-3 font-mono text-body ${messageKind === "error" ? "border-ember/25 bg-ember/10 text-ember" : "border-brass/25 bg-brass/10 text-brass"}`}>
               {message}
             </div>
           )}
 
-          {authMode === "signup" && <label className="flex items-start gap-3 rounded-md border border-paper/10 bg-paper/[0.025] px-3 py-3 text-sm leading-6 text-paper/55"><input type="checkbox" checked={acceptedLegal} onChange={(event) => setAcceptedLegal(event.target.checked)} required className="mt-1 accent-brass" /><span>I agree to the <Link href="/terms" className="text-brass hover:underline">Terms of Use</Link> and acknowledge the <Link href="/privacy" className="text-brass hover:underline">Privacy Policy</Link>.</span></label>}
+          {authMode === "signup" && <label className="flex items-start gap-3 rounded-md border border-paper/10 bg-paper/[0.025] px-3 py-3 text-body leading-6 text-paper/55"><input type="checkbox" checked={acceptedLegal} onChange={(event) => setAcceptedLegal(event.target.checked)} required className="mt-1 accent-brass" /><span>I agree to the <Link href="/terms" className="text-brass hover:underline">Terms of Use</Link> and acknowledge the <Link href="/privacy" className="text-brass hover:underline">Privacy Policy</Link>.</span></label>}
 
           <div className="flex flex-wrap gap-3">
             <button
               type="submit"
               disabled={!isConfigured || isSubmitting || (authMode === "signup" && !acceptedLegal)}
-              className="inline-flex items-center gap-2 rounded-md bg-brass px-4 py-2.5 font-mono text-sm font-semibold text-ink-950 transition hover:bg-brass/90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-md bg-brass px-4 py-2.5 font-mono text-control font-semibold text-ink-950 transition hover:bg-brass/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <LogIn className="h-4 w-4" />
+              <LogIn className="icon-control" />
               {isSubmitting ? "Working..." : authMode === "login" ? "Log in" : authMode === "signup" ? "Sign up" : "Send reset link"}
             </button>
             <button
@@ -178,7 +178,7 @@ export default function LoginPage() {
                 setMessage("");
                 setMessageKind("status");
               }}
-              className="rounded-md border border-paper/10 bg-ink-900 px-4 py-2.5 font-mono text-sm text-paper/70 transition hover:border-paper/25 hover:text-paper"
+              className="rounded-md border border-paper/10 bg-ink-900 px-4 py-2.5 font-mono text-control text-paper/70 transition hover:border-paper/25 hover:text-paper"
             >
               {authMode === "login" ? "Create account" : "Use existing account"}
             </button>
@@ -190,7 +190,7 @@ export default function LoginPage() {
                   setMessage("");
                   setMessageKind("status");
                 }}
-                className="px-2 py-2.5 font-mono text-sm text-paper/55 transition hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass/70"
+                className="px-2 py-2.5 font-mono text-control text-paper/55 transition hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass/70"
               >
                 Forgot password?
               </button>

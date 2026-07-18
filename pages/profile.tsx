@@ -4,10 +4,9 @@ import React, { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import { Activity, Award, Camera, Clock, Copy, ExternalLink, Flame, Lock, UserCircle } from "lucide-react";
+import { Activity, Award, CalendarDays, Camera, ChartNoAxesCombined, Clock, Copy, ExternalLink, Flame, Gauge, Lock, UserCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { ProfileSectionNav } from "@/components/ProfileSectionNav";
-import { ProfilePageHeader } from "@/components/ProfilePageHeader";
+import { FilterControl, SecondaryToolbar, ToolbarGroup } from "@/components/SecondaryNavigation";
 import { ProfilePageLayout } from "@/components/ProfilePageLayout";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
@@ -282,8 +281,8 @@ export default function ProfilePage() {
       <ProfilePageLayout>
 
         {!user && !isAuthLoading && (
-          <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
-            <p className="font-mono text-sm text-paper/55">
+          <section className="mt-8 rounded-lg border border-paper/[0.08] bg-ink-950/45 p-5">
+            <p className="font-mono text-body text-paper/55">
               <Link href="/login?redirectTo=/profile" className="text-brass hover:text-brass/80">
                 Log in
               </Link>{" "}
@@ -319,32 +318,32 @@ export default function ProfilePage() {
             />
 
             {resultsMessage && (
-              <div role="alert" className="rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
+              <div role="alert" className="rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-body text-ember">
                 {resultsMessage}
               </div>
             )}
 
-            <section className="flex flex-col gap-3 rounded-lg border border-paper/10 bg-ink-950/55 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+            <section className="flex flex-col gap-3 border-y border-paper/[0.07] py-2 lg:flex-row lg:items-center lg:justify-between">
               <AnalyticsDomainSelector value={analyticsDomain} onChange={setAnalyticsDomain} />
               <ProfileViewPreferences value={displaySettings} onChange={handleDisplaySettingsChange} />
             </section>
 
             {displaySettingsError && (
-              <p role="alert" className="font-mono text-sm text-ember">
+              <p role="alert" className="font-mono text-body text-ember">
                 {displaySettingsError}
               </p>
             )}
 
             {isLoadingResults && (
-              <div role="status" aria-live="polite" className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-sm text-paper/45">
+              <div role="status" aria-live="polite" className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-body text-paper/45">
                 Loading profile...
               </div>
             )}
 
             {!isLoadingResults && domainResults.length === 0 && !resultsMessage && (
               <>
-                <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
-                  <p className="font-mono text-sm text-paper/55">
+                <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-5">
+                  <p className="font-mono text-body text-paper/55">
                     {emptyState.title}{" "}
                     <Link href={analyticsDomain === "english" ? "/practice" : "/training"} className="text-brass hover:text-brass/80">
                       {analyticsDomain === "english" ? "Start a practice session" : "Open Training"}
@@ -405,33 +404,29 @@ function AnalyticsDomainSelector({
   onChange: (domain: AnalyticsDomain) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2" aria-label="Profile stats domain">
+    <SecondaryToolbar label="Profile stats filters">
+    <ToolbarGroup label="Profile stats domain" icon={ChartNoAxesCombined}>
       {ANALYTICS_DOMAIN_OPTIONS.map((option) => {
         const isSelected = option.id === value;
 
         return (
-          <button
+          <FilterControl
             key={option.id}
-            type="button"
-            aria-pressed={isSelected}
+            selected={isSelected}
             onClick={() => onChange(option.id)}
-            className={`rounded-md border px-3 py-2 font-mono text-xs transition ${
-              isSelected
-                ? "border-brass/60 bg-brass/15 text-brass"
-                : "border-paper/10 bg-ink-950 text-paper/55 hover:border-paper/25 hover:text-paper"
-            }`}
           >
             {option.label}
-          </button>
+          </FilterControl>
         );
       })}
-    </div>
+    </ToolbarGroup>
+    </SecondaryToolbar>
   );
 }
 
 function ProfileViewPreferences({ value, onChange }: { value: ProfileDisplaySettings; onChange: (value: ProfileDisplaySettings) => void }) {
-  return <div className="flex flex-wrap items-center justify-between gap-3"><div className="lg:hidden"><p className="font-mono text-xs uppercase text-paper/55">View preferences</p><p className="mt-1 text-xs text-paper/35">Saved on this device</p></div>
-      <div className="flex flex-wrap gap-4 font-mono text-xs">
+  return <div className="flex flex-wrap items-center justify-between gap-3"><div className="lg:hidden"><p className="font-mono text-utility uppercase text-paper/55">View preferences</p><p className="mt-1 text-utility text-paper/35">Saved on this device</p></div>
+      <div className="flex flex-wrap gap-4 font-mono text-control">
         <PreferenceButtons label="Speed unit" value={value.speedUnit} options={[{value:"wpm",label:"WPM"},{value:"cpm",label:"CPM"}]} onChange={(speedUnit) => onChange({...value,speedUnit: speedUnit as ProfileDisplaySettings["speedUnit"]})} />
         <PreferenceButtons label="Decimals" value={value.showDecimals ? "on" : "off"} options={[{value:"on",label:"On"},{value:"off",label:"Off"}]} onChange={(next) => onChange({...value,showDecimals:next === "on"})} />
         <PreferenceButtons label="Default range" value={value.defaultTrendRange} options={[{value:"30",label:"30"},{value:"90",label:"90"},{value:"all",label:"All"}]} onChange={(defaultTrendRange) => onChange({...value,defaultTrendRange: defaultTrendRange as TrendRange})} />
@@ -440,7 +435,7 @@ function ProfileViewPreferences({ value, onChange }: { value: ProfileDisplaySett
 }
 
 function PreferenceButtons({ label, value, options, onChange }: { label: string; value: string; options: {value:string;label:string}[]; onChange:(value:string)=>void }) {
-  return <div role="group" aria-label={label} className="flex items-center gap-1"><span className="mr-1 text-paper/30">{label}</span>{options.map((option)=><button key={option.value} type="button" aria-pressed={value===option.value} onClick={()=>onChange(option.value)} className={`rounded px-2 py-1 transition ${value===option.value?"bg-brass/15 text-brass":"text-paper/45 hover:bg-paper/5 hover:text-paper"}`}>{option.label}</button>)}</div>;
+  return <div role="group" aria-label={label} className="flex items-center gap-1"><span className="mr-1 text-paper/30">{label}</span>{options.map((option)=><FilterControl key={option.value} selected={value===option.value} onClick={()=>onChange(option.value)}>{option.label}</FilterControl>)}</div>;
 }
 
 function ProfileIdentityCard({
@@ -492,7 +487,7 @@ function ProfileIdentityCard({
   const publicProfileUrl = handle ? getPublicProfileUrl(handle) : "Set a handle to publish your profile.";
 
   return (
-    <section id="identity-settings" className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
+    <section id="identity-settings" className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-5">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex min-w-0 gap-4">
           <div className="space-y-2">
@@ -509,37 +504,37 @@ function ProfileIdentityCard({
                 aria-label="Remove avatar"
                 onClick={onRemoveAvatar}
                 disabled={isAvatarUploading}
-                className="block w-16 text-center font-mono text-secondary uppercase text-paper/35 transition hover:text-ember disabled:cursor-not-allowed disabled:opacity-50"
+                className="block w-16 text-center font-mono text-control uppercase text-paper/35 transition hover:text-ember disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Remove
               </button>
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-xs uppercase text-brass">Profile Identity</p>
+            <p className="font-mono text-utility uppercase text-brass">Profile Identity</p>
             <h2 className="mt-1 break-words font-mono text-page font-semibold text-paper">
               {handle ? `@${handle}` : "Handle not set"}
             </h2>
-            <p className="mt-2 font-mono text-xs uppercase text-paper/35">{formatJoinedDate(profile?.created_at)}</p>
-            {bio ? <p className="mt-3 max-w-2xl text-sm leading-6 text-paper/60">{bio}</p> : null}
-            <p className="mt-3 break-all font-mono text-xs text-paper/45">{publicProfileUrl}</p>
+            <p className="mt-2 font-mono text-utility uppercase text-paper/35">{formatJoinedDate(profile?.created_at)}</p>
+            {bio ? <p className="mt-3 max-w-2xl text-body leading-6 text-paper/60">{bio}</p> : null}
+            <p className="mt-3 break-all font-mono text-utility text-paper/45">{publicProfileUrl}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={onCopyPublicProfileUrl}
                 disabled={!handle}
                 aria-label="Copy public profile URL"
-                className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/40 hover:text-paper disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-control text-paper/65 transition hover:border-brass/40 hover:text-paper disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Copy className="h-4 w-4" />
+                <Copy className="icon-control" />
                 <span aria-live="polite">{copyMessage || "Copy URL"}</span>
               </button>
               {handle && (
                 <Link
                   href={`/u/${handle}`}
-                  className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:border-brass/60 hover:bg-brass/15"
+                  className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-3 py-2 font-mono text-control text-brass transition hover:border-brass/60 hover:bg-brass/15"
                 >
-                  <ExternalLink className="h-4 w-4" />
+                  <ExternalLink className="icon-control" />
                   View public profile
                 </Link>
               )}
@@ -547,27 +542,27 @@ function ProfileIdentityCard({
           </div>
         </div>
 
-        <div className="rounded-md border border-paper/10 bg-ink-900/60 p-4">
+        <div className="rounded-md bg-paper/[0.035] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-mono text-secondary uppercase text-paper/35">Level</p>
+              <p className="font-mono text-utility uppercase text-paper/35">Level</p>
               <p className="mt-2 font-mono text-3xl font-semibold text-paper">{analytics.progression.currentLevel}</p>
             </div>
             <div className="text-right">
-              <p className="font-mono text-secondary uppercase text-paper/35">Total XP</p>
+              <p className="font-mono text-utility uppercase text-paper/35">Total XP</p>
               <p className="mt-2 font-mono text-lg text-brass">{analytics.progression.totalXp}</p>
             </div>
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-paper/[0.06]">
             <div className="h-full rounded-full bg-brass" style={{ width: `${analytics.progression.progressPercent}%` }} />
           </div>
-          <p className="mt-2 text-right font-mono text-secondary uppercase text-paper/35">
+          <p className="mt-2 text-right font-mono text-utility uppercase text-paper/35">
             {analytics.progression.xpToNextLevel} XP to next
           </p>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid gap-3 border-t border-paper/[0.07] pt-3 sm:grid-cols-2 lg:grid-cols-4">
         <IdentityStat label="Total tests" value={analytics.summary.totalTests} />
         <IdentityStat label="Best WPM" value={formatNumber(analytics.summary.bestWpm)} />
         <IdentityStat label="Best accuracy" value={`${formatNumber(analytics.summary.bestAccuracy)}%`} />
@@ -575,25 +570,25 @@ function ProfileIdentityCard({
       </div>
 
       <details className="mt-5 rounded-md border border-paper/10 bg-ink-900/35">
-        <summary className="cursor-pointer px-4 py-3 font-mono text-xs uppercase text-paper/55 transition hover:text-paper">Edit identity and visibility</summary>
+        <summary className="cursor-pointer px-4 py-3 font-mono text-control uppercase text-paper/55 transition hover:text-paper">Edit identity and visibility</summary>
       <form onSubmit={onSaveIdentity} className="grid gap-4 border-t border-paper/10 p-4 lg:grid-cols-[minmax(0,1fr)_14rem_12rem]">
         <label className="block">
-          <span className="font-mono text-xs uppercase text-paper/45">Bio</span>
+          <span className="font-mono text-utility uppercase text-paper/45">Bio</span>
           <textarea
             value={bio}
             onChange={(event) => onBioChange(event.target.value)}
             maxLength={180}
             rows={3}
-            className="mt-2 w-full resize-none rounded-md border border-paper/10 bg-ink-900 px-3 py-2 text-sm leading-6 text-paper outline-none transition placeholder:text-paper/30 focus:border-brass"
+            className="mt-2 w-full resize-none rounded-md border border-paper/10 bg-ink-900 px-3 py-2 text-control leading-6 text-paper outline-none transition placeholder:text-paper/30 focus:border-brass"
             placeholder="A short public note for your Typing Station profile."
           />
         </label>
         <label className="block">
-          <span className="font-mono text-xs uppercase text-paper/45">Fallback avatar</span>
+          <span className="font-mono text-utility uppercase text-paper/45">Fallback avatar</span>
           <select
             value={avatarStyle}
             onChange={(event) => onAvatarStyleChange(event.target.value)}
-            className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-sm text-paper outline-none transition focus:border-brass"
+            className="mt-2 w-full rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-control text-paper outline-none transition focus:border-brass"
           >
             <option value="amber">amber</option>
             <option value="slate">slate</option>
@@ -601,7 +596,7 @@ function ProfileIdentityCard({
           </select>
         </label>
         <div className="space-y-3">
-          <label className="flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65">
+          <label className="flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-utility text-paper/65">
             <input
               type="checkbox"
               checked={isPublicProfileEnabled}
@@ -613,25 +608,25 @@ function ProfileIdentityCard({
           <button
             type="submit"
             disabled={isSavingIdentity}
-            className="w-full rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-55"
+            className="w-full rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-control uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-55"
           >
             {isSavingIdentity ? "Saving..." : "Save identity"}
           </button>
         </div>
       </form>
       {(avatarMessage || avatarError || isAvatarUploading) && (
-        <p role={avatarError ? "alert" : "status"} aria-live={avatarError ? "assertive" : "polite"} className={`mt-4 font-mono text-sm ${avatarError ? "text-ember" : "text-brass"}`}>
+        <p role={avatarError ? "alert" : "status"} aria-live={avatarError ? "assertive" : "polite"} className={`mt-4 font-mono text-body ${avatarError ? "text-ember" : "text-brass"}`}>
           {avatarError || (isAvatarUploading ? "Updating avatar..." : avatarMessage)}
         </p>
       )}
 
       {identityMessage && (
-        <div role="status" aria-live="polite" className="mt-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+        <div role="status" aria-live="polite" className="mt-4 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-body text-brass">
           {identityMessage}
         </div>
       )}
       {identityError && (
-        <div role="alert" className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-sm text-ember">
+        <div role="alert" className="mt-4 rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-body text-ember">
           {identityError}
         </div>
       )}
@@ -677,7 +672,7 @@ function ProfileAvatar({
         </span>
       )}
       <span className="absolute inset-0 flex items-center justify-center bg-ink-950/70 opacity-0 transition group-hover:opacity-100">
-        <Camera className="h-4 w-4 text-brass" />
+        <Camera className="icon-control text-brass" />
       </span>
       <input
         type="file"
@@ -696,8 +691,8 @@ function ProfileAvatar({
 
 function IdentityStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <article className="rounded-md border border-paper/10 bg-ink-900/60 px-4 py-3">
-      <p className="font-mono text-secondary uppercase text-paper/40">{label}</p>
+    <article className="px-1 py-2">
+      <p className="font-mono text-utility uppercase text-paper/40">{label}</p>
       <p className="mt-2 font-mono text-xl font-semibold text-paper">{value}</p>
     </article>
   );
@@ -714,17 +709,17 @@ function ChallengesSection({ analytics }: { analytics: ReturnType<typeof buildPr
 
 function ChallengeGroupSection({ group }: { group: ReturnType<typeof buildProgressAnalytics>["challenges"]["daily"] }) {
   return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
       <h2 className="font-mono text-section uppercase text-brass">{group.title}</h2>
       <div className="mt-4 space-y-3">
         {group.items.map((item) => (
-          <article key={item.id} className="rounded-md border border-paper/10 bg-ink-900/70 px-4 py-3">
+          <article key={item.id} className="rounded-md bg-paper/[0.035] px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-mono text-xs uppercase text-paper">{item.title}</h3>
-                <p className="mt-1 text-sm leading-6 text-paper/45">{item.description}</p>
+                <h3 className="font-mono text-utility uppercase text-paper">{item.title}</h3>
+                <p className="mt-1 text-body leading-6 text-paper/45">{item.description}</p>
               </div>
-              <span className={`font-mono text-xs uppercase ${item.isComplete ? "text-brass" : "text-paper/35"}`}>
+              <span className={`font-mono text-utility uppercase ${item.isComplete ? "text-brass" : "text-paper/35"}`}>
                 {item.isComplete ? "Done" : "Open"}
               </span>
             </div>
@@ -735,7 +730,7 @@ function ChallengeGroupSection({ group }: { group: ReturnType<typeof buildProgre
                   style={{ width: `${Math.min(100, Math.round((item.progress / item.target) * 100))}%` }}
                 />
               </div>
-              <p className="min-w-20 text-right font-mono text-xs text-paper/55">
+              <p className="min-w-20 text-right font-mono text-utility text-paper/55">
                 {formatChallengeProgress(item.progress, item.unit)} / {formatChallengeProgress(item.target, item.unit)}
               </p>
             </div>
@@ -748,18 +743,18 @@ function ChallengeGroupSection({ group }: { group: ReturnType<typeof buildProgre
 
 function AchievementsSection({ analytics }: { analytics: ReturnType<typeof buildProgressAnalytics> }) {
   return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-mono text-section uppercase text-brass">Achievements</h2>
-          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">
+          <p className="mt-1 font-mono text-utility uppercase text-paper/35">
             {analytics.achievements.unlockedCount} / {analytics.achievements.totalCount} unlocked
           </p>
         </div>
         <div className="flex items-center gap-3 rounded-md border border-brass/20 bg-brass/10 px-4 py-3">
-          <Flame className="h-4 w-4 text-brass" />
+          <Flame className="icon-inline text-brass" />
           <div>
-            <p className="font-mono text-secondary uppercase text-paper/40">Current streak</p>
+            <p className="font-mono text-utility uppercase text-paper/40">Current streak</p>
             <p className="font-mono text-xl text-paper">{analytics.activity.currentStreakDays} days</p>
           </div>
         </div>
@@ -776,8 +771,8 @@ function AchievementsSection({ analytics }: { analytics: ReturnType<typeof build
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-mono text-sm uppercase text-paper">{achievement.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-paper/50">{achievement.description}</p>
+                <h3 className="font-mono text-body uppercase text-paper">{achievement.title}</h3>
+                <p className="mt-2 text-body leading-6 text-paper/50">{achievement.description}</p>
               </div>
               <span
                 className={`rounded-full border p-2 ${
@@ -787,11 +782,11 @@ function AchievementsSection({ analytics }: { analytics: ReturnType<typeof build
                 }`}
                 aria-hidden="true"
               >
-                {achievement.isUnlocked ? <Award className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                {achievement.isUnlocked ? <Award className="icon-inline" /> : <Lock className="icon-inline" />}
               </span>
             </div>
             <p
-              className={`mt-4 font-mono text-secondary uppercase ${
+              className={`mt-4 font-mono text-utility uppercase ${
                 achievement.isUnlocked ? "text-brass" : "text-paper/35"
               }`}
             >
@@ -815,12 +810,12 @@ function MyResults({ results, domain }: { results: SupabaseAnalyticsTypingResult
   const title = domain === "chinese" ? "My Chinese Results" : domain === "code" ? "My Code Results" : "My Results";
 
   return (
-    <section className="overflow-hidden rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
+    <section className="overflow-hidden rounded-lg border border-paper/[0.08] bg-ink-950/45">
       <div className="border-b border-paper/10 px-4 py-4 md:px-5">
         <h2 className="font-mono text-section uppercase text-brass">{title}</h2>
-        <p className="mt-1 font-mono text-secondary uppercase text-paper/35">Recent attempts</p>
+        <p className="mt-1 font-mono text-utility uppercase text-paper/35">Recent attempts</p>
       </div>
-      <div className="grid grid-cols-[9rem_minmax(0,1fr)_7rem_6rem_7rem] border-b border-paper/10 px-4 py-3 font-mono text-xs uppercase text-paper/40 max-md:hidden md:px-5">
+      <div className="grid grid-cols-[9rem_minmax(0,1fr)_7rem_6rem_7rem] border-b border-paper/10 px-4 py-3 font-mono text-utility uppercase text-paper/40 max-md:hidden md:px-5">
         <span>Date</span>
         <span>Passage</span>
         <span>Duration</span>
@@ -834,10 +829,10 @@ function MyResults({ results, domain }: { results: SupabaseAnalyticsTypingResult
         >
           <ResultMetric label="Date" value={formatDate(result.created_at)} />
           <div>
-            <div className="font-mono text-secondary uppercase text-paper/35 md:hidden">Passage</div>
-            <div className="text-sm font-semibold text-paper">{result.passage_title}</div>
+            <div className="font-mono text-utility uppercase text-paper/35 md:hidden">Passage</div>
+            <div className="text-body font-semibold text-paper">{result.passage_title}</div>
             {result.passage_category && (
-              <div className="mt-1 font-mono text-secondary uppercase text-paper/35">{result.passage_category}</div>
+              <div className="mt-1 font-mono text-utility uppercase text-paper/35">{result.passage_category}</div>
             )}
           </div>
           <ResultMetric label="Duration" value={formatDuration(result.duration_seconds)} />
@@ -851,10 +846,10 @@ function MyResults({ results, domain }: { results: SupabaseAnalyticsTypingResult
 
 function ChineseMistakesSection({ statistics }: { statistics: TypingStatistics }) {
   return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
       <div>
         <h2 className="font-mono text-section uppercase text-brass">Chinese Mistakes</h2>
-        <p className="mt-1 font-mono text-secondary uppercase text-paper/35">
+        <p className="mt-1 font-mono text-utility uppercase text-paper/35">
           Chinese-only repeated mistake patterns
         </p>
       </div>
@@ -867,13 +862,13 @@ function ChineseMistakesSection({ statistics }: { statistics: TypingStatistics }
 
 function ProgressSummary({ analytics, displaySettings }: { analytics: ReturnType<typeof buildProgressAnalytics>; displaySettings: ProfileDisplaySettings }) {
   return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
       <h2 className="font-mono text-section uppercase text-brass">Summary Stats</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="Total practice time" value={formatPracticeTime(analytics.summary.totalPracticeSeconds)} icon={<Clock className="h-4 w-4" />} />
-        <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} all-time`} value={formatSpeed(analytics.summary.averageWpm, displaySettings)} icon={<Activity className="h-4 w-4" />} />
-        <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} last 10`} value={formatSpeed(analytics.summary.averageWpmLast10, displaySettings)} icon={<Activity className="h-4 w-4" />} />
-        <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} last 100`} value={formatSpeed(analytics.summary.averageWpmLast100, displaySettings)} icon={<Activity className="h-4 w-4" />} />
+        <SummaryCard label="Total practice time" value={formatPracticeTime(analytics.summary.totalPracticeSeconds)} icon={<Clock className="icon-inline" />} />
+        <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} all-time`} value={formatSpeed(analytics.summary.averageWpm, displaySettings)} icon={<Activity className="icon-inline" />} />
+        <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} last 10`} value={formatSpeed(analytics.summary.averageWpmLast10, displaySettings)} icon={<Activity className="icon-inline" />} />
+        <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} last 100`} value={formatSpeed(analytics.summary.averageWpmLast100, displaySettings)} icon={<Activity className="icon-inline" />} />
       </div>
     </section>
   );
@@ -889,9 +884,9 @@ function SummaryCard({
   icon: ReactNode;
 }) {
   return (
-    <article className="rounded-md border border-paper/10 bg-ink-900/80 px-4 py-4">
+    <article className="rounded-md bg-paper/[0.035] px-4 py-4">
       <div className="flex items-center justify-between gap-3 text-brass">
-        <p className="font-mono text-secondary uppercase text-paper/40">{label}</p>
+        <p className="font-mono text-utility uppercase text-paper/40">{label}</p>
         {icon}
       </div>
       <p className="mt-3 font-mono text-2xl font-semibold text-paper">{value}</p>
@@ -909,26 +904,25 @@ function Trends({
   onRangeChange: (range: TrendRange) => void;
 }) {
   return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-mono text-section uppercase text-brass">Trends</h2>
-          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">WPM and accuracy over time</p>
+          <p className="mt-1 font-mono text-utility uppercase text-paper/35">WPM and accuracy over time</p>
         </div>
-        <div className="flex rounded-full bg-paper/[0.035] p-1">
+        <SecondaryToolbar>
+          <ToolbarGroup label="Trend range" icon={CalendarDays}>
           {TREND_RANGES.map((option) => (
-            <button
+            <FilterControl
               key={option.id}
-              type="button"
+              selected={range === option.id}
               onClick={() => onRangeChange(option.id)}
-              className={`rounded-full px-3 py-1.5 font-mono text-xs transition ${
-                range === option.id ? "bg-brass/85 text-ink-950" : "text-paper/50 hover:bg-paper/5 hover:text-paper/80"
-              }`}
             >
               {option.label}
-            </button>
+            </FilterControl>
           ))}
-        </div>
+          </ToolbarGroup>
+        </SecondaryToolbar>
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <TrendChart
@@ -977,12 +971,12 @@ function TrendChart({
     <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="font-mono text-xs uppercase text-paper/70">{title}</h3>
-          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">{unit}</p>
+          <h3 className="font-mono text-utility uppercase text-paper/70">{title}</h3>
+          <p className="mt-1 font-mono text-utility uppercase text-paper/35">{unit}</p>
         </div>
         <div className="text-right font-mono">
           <p className="text-lg text-paper">{formatValue(latest)}</p>
-          <p className="text-secondary uppercase text-paper/35">Latest</p>
+          <p className="text-utility uppercase text-paper/35">Latest</p>
         </div>
       </div>
       <div className="mt-4 h-56 w-full overflow-hidden rounded-md bg-ink-950/70">
@@ -1017,7 +1011,7 @@ function TrendChart({
           ))}
         </svg>
       </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 font-mono text-secondary uppercase text-paper/35">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 font-mono text-utility uppercase text-paper/35">
         <span>{results[0] ? formatDate(results[0].created_at) : "No date"}</span>
         <span>Best {formatValue(best)}</span>
         <span>{results[results.length - 1] ? formatDate(results[results.length - 1].created_at) : "No date"}</span>
@@ -1051,38 +1045,37 @@ function TypingWeaknessesSection({
   const hasStatistics = statistics.keys.length > 0;
 
   return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-mono text-section uppercase text-brass">Typing Insights</h2>
-          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">
+          <p className="mt-1 font-mono text-utility uppercase text-paper/35">
             Private insights from completed attempts
           </p>
         </div>
-        <div className="flex rounded-full bg-paper/[0.035] p-1">
+        <SecondaryToolbar>
+          <ToolbarGroup label="Insight view" icon={Gauge}>
           {HEATMAP_MODES.map((mode) => (
-            <button
+            <FilterControl
               key={mode.id}
-              type="button"
+              selected={heatmapMode === mode.id}
               onClick={() => onHeatmapModeChange(mode.id)}
-              className={`rounded-full px-3 py-1.5 font-mono text-xs transition ${
-                heatmapMode === mode.id ? "bg-brass/85 text-ink-950" : "text-paper/50 hover:bg-paper/5 hover:text-paper/80"
-              }`}
             >
               {mode.label}
-            </button>
+            </FilterControl>
           ))}
-        </div>
+          </ToolbarGroup>
+        </SecondaryToolbar>
       </div>
 
       {!hasStatistics ? (
-        <p className="mt-4 text-sm leading-6 text-paper/50">
+        <p className="mt-4 text-body leading-6 text-paper/50">
           Complete a new typing attempt to start collecting key-level insights. Older saved results are ignored here.
         </p>
       ) : (
         <>
           <details className="mt-5 rounded-md border border-paper/10 bg-ink-900/35">
-            <summary className="flex cursor-pointer items-center justify-between px-4 py-3 font-mono text-xs uppercase text-paper/60 transition hover:text-paper">
+            <summary className="flex cursor-pointer items-center justify-between px-4 py-3 font-mono text-control uppercase text-paper/60 transition hover:text-paper">
               <span>Keyboard heatmap</span><span className="text-paper/30">Open detailed key map</span>
             </summary>
             <div className="border-t border-paper/10 p-3"><KeyboardHeatmap keysByCharacter={keysByCharacter} mode={heatmapMode} /></div>
@@ -1096,7 +1089,7 @@ function TypingWeaknessesSection({
               type="button"
               onClick={() => setIsAdvancedOpen((current) => !current)}
               aria-expanded={isAdvancedOpen}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-mono text-xs uppercase text-paper/60 transition hover:text-paper"
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-mono text-control uppercase text-paper/60 transition hover:text-paper"
             >
               <span>{isAdvancedOpen ? "Hide advanced insights" : "Show advanced insights"}</span>
               <span aria-hidden="true">{isAdvancedOpen ? "−" : "+"}</span>
@@ -1127,8 +1120,8 @@ function KeyboardHeatmap({
     <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="font-mono text-xs uppercase text-paper/70">Keyboard Heatmap</h3>
-          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">{getHeatmapModeLabel(mode)}</p>
+          <h3 className="font-mono text-utility uppercase text-paper/70">Keyboard Heatmap</h3>
+          <p className="mt-1 font-mono text-utility uppercase text-paper/35">{getHeatmapModeLabel(mode)}</p>
         </div>
       </div>
       <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_11rem] xl:items-center">
@@ -1147,7 +1140,7 @@ function KeyboardHeatmap({
                   key={key.key}
                   data-testid={`keyboard-key-${keyboardTestId(key.key)}`}
                   title={formatKeyStatisticTitle(keyStatistic)}
-                  className="flex h-11 items-center justify-center rounded-md border px-2 font-mono text-xs text-paper opacity-95 transition-[background-color,border-color,opacity,transform] duration-200 ease-out hover:-translate-y-0.5 hover:opacity-100"
+                  className="flex h-11 items-center justify-center rounded-md border px-2 font-mono text-utility text-paper opacity-95 transition-[background-color,border-color,opacity,transform] duration-200 ease-out hover:-translate-y-0.5 hover:opacity-100"
                   style={{
                     width: `${(key.width ?? 1) * 2.75}rem`,
                     ...style
@@ -1190,10 +1183,10 @@ function HeatmapLegend({ mode }: { mode: HeatmapMode }) {
 
   return (
     <div className="rounded-md border border-paper/10 bg-ink-950/45 p-3">
-      <p className="font-mono text-secondary uppercase text-paper/45">Legend</p>
+      <p className="font-mono text-utility uppercase text-paper/45">Legend</p>
       <div className="mt-3 space-y-2">
         {rows.map(([label, color, opacity]) => (
-          <div key={String(label)} className="flex items-center gap-2 font-mono text-secondary uppercase text-paper/40">
+          <div key={String(label)} className="flex items-center gap-2 font-mono text-utility uppercase text-paper/40">
             <span
               className="h-3 w-3 rounded-full"
               style={{ backgroundColor: `rgb(${color} / ${opacity})` }}
@@ -1211,13 +1204,13 @@ function WeakKeysPanel({ keys }: { keys: KeyStatistic[] }) {
   return (
     <section className="overflow-hidden rounded-md border border-paper/10 bg-ink-900/70">
       <div className="border-b border-paper/10 px-4 py-3">
-        <h3 className="font-mono text-xs uppercase text-paper/70">Weak Keys</h3>
+        <h3 className="font-mono text-utility uppercase text-paper/70">Weak Keys</h3>
       </div>
       {keys.length === 0 ? (
-        <p className="px-4 py-4 text-sm leading-6 text-paper/50">More samples needed before ranking weak keys.</p>
+        <p className="px-4 py-4 text-body leading-6 text-paper/50">More samples needed before ranking weak keys.</p>
       ) : (
         <div>
-          <div className="grid grid-cols-[2.5rem_1fr_4rem_4rem] gap-3 border-b border-paper/10 px-4 py-2 font-mono text-secondary uppercase text-paper/35">
+          <div className="grid grid-cols-[2.5rem_1fr_4rem_4rem] gap-3 border-b border-paper/10 px-4 py-2 font-mono text-utility uppercase text-paper/35">
             <span>Key</span>
             <span>Accuracy</span>
             <span>Mistakes</span>
@@ -1228,14 +1221,14 @@ function WeakKeysPanel({ keys }: { keys: KeyStatistic[] }) {
               key={keyStatistic.key}
               className="grid grid-cols-[2.5rem_1fr_4rem_4rem] items-center gap-3 border-b border-paper/10 px-4 py-3 last:border-b-0"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-md border border-ember/25 bg-ember/10 font-mono text-sm text-paper">
+              <span className="flex h-9 w-9 items-center justify-center rounded-md border border-ember/25 bg-ember/10 font-mono text-body text-paper">
                 {formatKeyLabel(keyStatistic.key)}
               </span>
               <div className="min-w-0">
-                <p className="font-mono text-xs text-paper">{formatNumber(keyStatistic.accuracy)}% accuracy</p>
+                <p className="font-mono text-utility text-paper">{formatNumber(keyStatistic.accuracy)}% accuracy</p>
               </div>
-              <p className="font-mono text-xs text-paper/65">{keyStatistic.mistakeCount}</p>
-              <p className="font-mono text-xs text-paper/65">{keyStatistic.hitCount}</p>
+              <p className="font-mono text-utility text-paper/65">{keyStatistic.mistakeCount}</p>
+              <p className="font-mono text-utility text-paper/65">{keyStatistic.hitCount}</p>
             </article>
           ))}
         </div>
@@ -1248,10 +1241,10 @@ function CommonMistakesPanel({ mistakes }: { mistakes: TypingStatistics["commonM
   return (
     <section className="overflow-hidden rounded-md border border-paper/10 bg-ink-900/70">
       <div className="border-b border-paper/10 px-4 py-3">
-        <h3 className="font-mono text-xs uppercase text-paper/70">Common Mistakes</h3>
+        <h3 className="font-mono text-utility uppercase text-paper/70">Common Mistakes</h3>
       </div>
       {mistakes.length === 0 ? (
-        <p className="px-4 py-4 text-sm leading-6 text-paper/50">No repeated mistake patterns yet.</p>
+        <p className="px-4 py-4 text-body leading-6 text-paper/50">No repeated mistake patterns yet.</p>
       ) : (
         <div>
           {mistakes.slice(0, 5).map((mistake) => (
@@ -1259,8 +1252,8 @@ function CommonMistakesPanel({ mistakes }: { mistakes: TypingStatistics["commonM
               key={mistake.id}
               className="grid grid-cols-[minmax(0,1fr)_4rem] items-center gap-3 border-b border-paper/10 px-4 py-3 last:border-b-0"
             >
-              <p className="min-w-0 text-sm text-paper/70">{formatMistakeLabel(mistake)}</p>
-              <span className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-secondary uppercase text-paper/45">
+              <p className="min-w-0 text-body text-paper/70">{formatMistakeLabel(mistake)}</p>
+              <span className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-utility uppercase text-paper/45">
                 {mistake.count}x
               </span>
             </article>
@@ -1310,8 +1303,8 @@ function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | nu
   if (!attempt || events.length === 0 || durationMs === 0) {
     return (
       <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
-        <h3 className="font-mono text-xs uppercase text-paper/70">Recent Error Replay</h3>
-        <p className="mt-3 text-sm leading-6 text-paper/50">Replay will appear after a completed attempt with timing data.</p>
+        <h3 className="font-mono text-utility uppercase text-paper/70">Recent Error Replay</h3>
+        <p className="mt-3 text-body leading-6 text-paper/50">Replay will appear after a completed attempt with timing data.</p>
       </section>
     );
   }
@@ -1320,10 +1313,10 @@ function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | nu
     <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="font-mono text-xs uppercase text-paper/70">Recent Error Replay</h3>
-          <p className="mt-1 text-sm leading-6 text-paper/45">Replay your latest attempt showing where mistakes happened.</p>
+          <h3 className="font-mono text-utility uppercase text-paper/70">Recent Error Replay</h3>
+          <p className="mt-1 text-body leading-6 text-paper/45">Replay your latest attempt showing where mistakes happened.</p>
         </div>
-        <label className="flex items-center gap-2 font-mono text-xs text-paper/55">
+        <label className="flex items-center gap-2 font-mono text-utility text-paper/55">
           <span>Show only mistakes</span>
           <input
             type="checkbox"
@@ -1347,7 +1340,7 @@ function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | nu
                 return (
                   <div
                     key={key.key}
-                    className={`flex h-8 items-center justify-center rounded border px-1.5 font-mono text-secondary transition ${
+                    className={`flex h-8 items-center justify-center rounded border px-1.5 font-mono text-utility transition ${
                       isMistake
                         ? "border-ember/50 bg-ember/70 text-ink-950"
                         : isActive
@@ -1369,7 +1362,7 @@ function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | nu
         <button
           type="button"
           onClick={() => setIsPlaying((current) => !current)}
-          className="rounded-md border border-paper/10 bg-paper/[0.04] px-3 py-2 font-mono text-xs text-paper/75 transition hover:border-brass/40 hover:text-paper"
+          className="rounded-md border border-paper/10 bg-paper/[0.04] px-3 py-2 font-mono text-control text-paper/75 transition hover:border-brass/40 hover:text-paper"
         >
           {isPlaying ? "Pause" : "Play"}
         </button>
@@ -1377,7 +1370,7 @@ function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | nu
           aria-label="Replay speed"
           value={speed}
           onChange={(event) => setSpeed(Number(event.target.value))}
-          className="rounded-md border border-paper/10 bg-ink-900 px-2 py-2 font-mono text-xs text-paper/75"
+          className="rounded-md border border-paper/10 bg-ink-900 px-2 py-2 font-mono text-control text-paper/75"
         >
           <option value={0.5}>0.5x</option>
           <option value={1}>1x</option>
@@ -1395,7 +1388,7 @@ function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | nu
           }}
           className="w-full accent-brass"
         />
-        <p className="text-right font-mono text-secondary text-paper/45">
+        <p className="text-right font-mono text-utility text-paper/45">
           {formatReplayTime(currentTimeMs)} / {formatReplayTime(durationMs)}
         </p>
       </div>
@@ -1403,7 +1396,7 @@ function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | nu
       {visibleMistakeEvents.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {visibleMistakeEvents.map((event, index) => (
-            <span key={event.id} className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-secondary text-paper/60">
+            <span key={event.id} className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-utility text-paper/60">
               {index + 1}. Expected: {formatKeyLabel(event.expected)} {"->"} Typed: {formatKeyLabel(event.actual)}
             </span>
           ))}
@@ -1436,16 +1429,16 @@ function FingerAnalysisPanel({ statistics }: { statistics: TypingStatistics }) {
 
   return (
     <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
-      <h3 className="font-mono text-xs uppercase text-paper/70">Finger Analysis</h3>
+      <h3 className="font-mono text-utility uppercase text-paper/70">Finger Analysis</h3>
       <div className="mt-3 space-y-2">
         {fingers.length === 0 ? (
-          <p className="text-sm leading-6 text-paper/50">More key data needed.</p>
+          <p className="text-body leading-6 text-paper/50">More key data needed.</p>
         ) : (
           fingers.map((finger) => (
             <div key={finger.finger} className="flex items-center justify-between gap-3">
               <div>
-                <p className="font-mono text-xs text-paper">{finger.finger}</p>
-                <p className="mt-0.5 font-mono text-secondary uppercase text-paper/35">
+                <p className="font-mono text-utility text-paper">{finger.finger}</p>
+                <p className="mt-0.5 font-mono text-utility uppercase text-paper/35">
                   {finger.hitCount} hits · {formatDelay(finger.averageDelayMs)}
                 </p>
               </div>
@@ -1461,7 +1454,7 @@ function FingerAnalysisPanel({ statistics }: { statistics: TypingStatistics }) {
 function ReactionTimePanel({ statistics }: { statistics: TypingStatistics }) {
   return (
     <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
-      <h3 className="font-mono text-xs uppercase text-paper/70">Reaction Time</h3>
+      <h3 className="font-mono text-utility uppercase text-paper/70">Reaction Time</h3>
       <div className="mt-3 grid grid-cols-3 gap-2">
         <CompactInsightMetric label="Average Keystroke" value={formatDelay(statistics.reactionTime.averageKeystrokeMs)} />
         <CompactInsightMetric label="Correct" value={formatDelay(statistics.reactionTime.correctKeystrokeMs)} />
@@ -1474,7 +1467,7 @@ function ReactionTimePanel({ statistics }: { statistics: TypingStatistics }) {
 function BurstSpeedPanel({ statistics }: { statistics: TypingStatistics }) {
   return (
     <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
-      <h3 className="font-mono text-xs uppercase text-paper/70">Burst Speed</h3>
+      <h3 className="font-mono text-utility uppercase text-paper/70">Burst Speed</h3>
       <div className="mt-3 grid grid-cols-3 gap-2">
         <CompactInsightMetric label="Peak 3s" value={formatNullableWpm(statistics.burstSpeed.peak3SecondWpm)} />
         <CompactInsightMetric label="Peak 5s" value={formatNullableWpm(statistics.burstSpeed.peak5SecondWpm)} />
@@ -1487,13 +1480,13 @@ function BurstSpeedPanel({ statistics }: { statistics: TypingStatistics }) {
 function SpeedDropPanel({ statistics }: { statistics: TypingStatistics }) {
   return (
     <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
-      <h3 className="font-mono text-xs uppercase text-paper/70">Speed Drop</h3>
+      <h3 className="font-mono text-utility uppercase text-paper/70">Speed Drop</h3>
       <div className="mt-3 grid grid-cols-3 gap-2">
         <CompactInsightMetric label="Start" value={formatNullableWpm(statistics.speedDrop.startWpm)} />
         <CompactInsightMetric label="Middle" value={formatNullableWpm(statistics.speedDrop.middleWpm)} />
         <CompactInsightMetric label="End" value={formatNullableWpm(statistics.speedDrop.endWpm)} />
       </div>
-      <p className="mt-3 font-mono text-secondary uppercase text-paper/35">
+      <p className="mt-3 font-mono text-utility uppercase text-paper/35">
         Avg slowdown {statistics.speedDrop.averageSlowdownPercent === null ? "n/a" : `${formatNumber(statistics.speedDrop.averageSlowdownPercent)}%`}
       </p>
     </section>
@@ -1503,8 +1496,8 @@ function SpeedDropPanel({ statistics }: { statistics: TypingStatistics }) {
 function CompactInsightMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-paper/[0.035] px-2 py-2">
-      <p className="font-mono text-secondary uppercase leading-4 text-paper/35">{label}</p>
-      <p className="mt-1 font-mono text-sm text-paper">{value}</p>
+      <p className="font-mono text-utility uppercase leading-4 text-paper/35">{label}</p>
+      <p className="mt-1 font-mono text-body text-paper">{value}</p>
     </div>
   );
 }
@@ -1513,12 +1506,12 @@ function ConsistencySection({ summary }: { summary: ReturnType<typeof buildAttem
   const path = getConsistencyScorePath(summary.points, 320, 96);
 
   return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
       <h2 className="font-mono text-section uppercase text-brass">Consistency</h2>
       {summary.latest === null ? (
         <>
-          <p className="mt-4 font-mono text-lg text-paper">Not enough data yet</p>
-          <p className="mt-2 text-sm leading-6 text-paper/50">Complete a test with at least three speed samples to measure typing stability.</p>
+          <p className="mt-4 font-mono text-body text-paper">Not enough data yet</p>
+          <p className="mt-2 text-body leading-6 text-paper/50">Complete a test with at least three speed samples to measure typing stability.</p>
         </>
       ) : (
         <>
@@ -1537,10 +1530,10 @@ function ConsistencySection({ summary }: { summary: ReturnType<typeof buildAttem
                 <path d={path} fill="none" stroke="currentColor" strokeWidth="2" className="text-brass" />
               </svg>
             ) : (
-              <p className="py-8 text-center font-mono text-xs text-paper/35">One measured attempt</p>
+              <p className="py-8 text-center font-mono text-utility text-paper/35">One measured attempt</p>
             )}
           </div>
-          <p className="mt-3 text-xs leading-5 text-paper/40">Based on variation in WPM throughout each attempt. Higher is steadier.</p>
+          <p className="mt-3 text-utility leading-5 text-paper/40">Based on variation in WPM throughout each attempt. Higher is steadier.</p>
         </>
       )}
     </section>
@@ -1549,14 +1542,14 @@ function ConsistencySection({ summary }: { summary: ReturnType<typeof buildAttem
 
 function CategoryBreakdown({ analytics }: { analytics: ReturnType<typeof buildProgressAnalytics> }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
+    <section className="overflow-hidden rounded-lg border border-paper/[0.08] bg-ink-950/45">
       <div className="border-b border-paper/10 px-4 py-4 md:px-5">
         <h2 className="font-mono text-section uppercase text-brass">Category Breakdown</h2>
         {analytics.weakestCategory && (
-          <p className="mt-2 font-mono text-xs text-paper/45">Weakest: {analytics.weakestCategory.category}</p>
+          <p className="mt-2 font-mono text-utility text-paper/45">Weakest: {analytics.weakestCategory.category}</p>
         )}
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_7rem_7rem_5rem] border-b border-paper/10 px-4 py-3 font-mono text-xs uppercase text-paper/40 max-sm:hidden md:px-5">
+      <div className="grid grid-cols-[minmax(0,1fr)_7rem_7rem_5rem] border-b border-paper/10 px-4 py-3 font-mono text-utility uppercase text-paper/40 max-sm:hidden md:px-5">
         <span>Category</span>
         <span>Avg WPM</span>
         <span>Avg Accuracy</span>
@@ -1595,11 +1588,11 @@ function ActivitySection({ analytics }: { analytics: ReturnType<typeof buildProg
   const recentDates = analytics.activity.activeDates.slice(-14);
 
   return (
-    <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
+    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
       <h2 className="font-mono text-section uppercase text-brass">Activity</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <SummaryCard label="Current streak" value={`${analytics.activity.currentStreakDays} days`} icon={<Activity className="h-4 w-4" />} />
-        <SummaryCard label="Active days" value={analytics.activity.activeDays} icon={<Clock className="h-4 w-4" />} />
+        <SummaryCard label="Current streak" value={`${analytics.activity.currentStreakDays} days`} icon={<Activity className="icon-inline" />} />
+        <SummaryCard label="Active days" value={analytics.activity.activeDays} icon={<Clock className="icon-inline" />} />
       </div>
       <div className="mt-4 flex flex-wrap gap-2" aria-label="Recent active days">
         {recentDates.map((date) => (
@@ -1613,8 +1606,8 @@ function ActivitySection({ analytics }: { analytics: ReturnType<typeof buildProg
 function ResultMetric({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
     <div>
-      <div className="font-mono text-secondary uppercase text-paper/35 md:hidden">{label}</div>
-      <div className={`font-mono text-sm ${strong ? "font-semibold text-paper" : "text-paper/65"}`}>{value}</div>
+      <div className="font-mono text-utility uppercase text-paper/35 md:hidden">{label}</div>
+      <div className={`font-mono text-body ${strong ? "font-semibold text-paper" : "text-paper/65"}`}>{value}</div>
     </div>
   );
 }
@@ -1622,8 +1615,8 @@ function ResultMetric({ label, value, strong = false }: { label: string; value: 
 function BreakdownMetric({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
-      <p className="font-mono text-secondary uppercase text-paper/35 sm:hidden">{label}</p>
-      <p className="font-mono text-sm text-paper/70">{value}</p>
+      <p className="font-mono text-utility uppercase text-paper/35 sm:hidden">{label}</p>
+      <p className="font-mono text-body text-paper/70">{value}</p>
     </div>
   );
 }

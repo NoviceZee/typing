@@ -21,12 +21,12 @@ export function PublicSiteHeader({ children }: { children: ReactNode }) {
 }
 
 export function ReturnToPracticeLink() {
-  return <Link href="/practice" className="font-mono text-xs text-paper/45 transition hover:text-brass">Return to practice</Link>;
+  return <Link href="/practice" className="font-mono text-control text-paper/45 transition hover:text-brass">Return to practice</Link>;
 }
 
 export function SiteFooter({ className = "" }: { className?: string }) {
   return (
-    <footer className={`flex flex-wrap items-center justify-between gap-4 border-t border-paper/10 py-6 font-mono text-secondary text-paper/30 ${className}`.trim()}>
+    <footer className={`flex flex-wrap items-center justify-between gap-4 border-t border-paper/10 py-6 font-mono text-utility text-paper/30 ${className}`.trim()}>
       <span>© {new Date().getFullYear()} Typing Station</span>
       <div aria-label="Footer links" className="flex flex-wrap gap-5">
         <Link href="/terms" className="transition hover:text-paper">Terms</Link>

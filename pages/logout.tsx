@@ -16,7 +16,7 @@ export default function LogoutPage() {
   return (
     <AppShell sideAd={false}>
       <section className="mx-auto max-w-xl rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow md:p-6">
-        <p className="font-mono text-sm text-paper/55">Logging out...</p>
+        <p className="font-mono text-body text-paper/55">Logging out...</p>
       </section>
     </AppShell>
   );

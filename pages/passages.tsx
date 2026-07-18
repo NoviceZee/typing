@@ -2,8 +2,10 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import { Check, FileText } from "lucide-react";
+import { BookOpen, Check, FileText, Languages, Tags } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
+import { FilterControl, SecondaryToolbar, ToolbarGroup } from "@/components/SecondaryNavigation";
 import {
   ALL_FILTER,
   CategoryFilter,
@@ -152,20 +154,19 @@ export default function PassagesPage() {
   }
 
   return (
-    <AppShell>
-      <section className="mx-auto max-w-6xl">
-        <p className="font-mono text-xs uppercase text-brass">Library</p>
-        <h1 className="mt-2 text-page font-semibold text-paper">Passage library</h1>
+    <AppShell sideAd={false}>
+      <PageContainer>
+        <PageHeader eyebrow="Library" title="Passage library" />
 
         {message && (
-          <div role="status" aria-live="polite" className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+          <div role="status" aria-live="polite" className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-body text-brass">
             {message}
           </div>
         )}
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
+        <div className={`${message ? "mt-5 " : ""}grid gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start`}>
           <aside className="space-y-5 lg:sticky lg:top-5" data-testid="passages-setup-panel">
-            <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow backdrop-blur">
+            <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4">
               <h2 className="font-mono text-section uppercase text-paper/65">Setup</h2>
               <div className="mt-4 space-y-5">
                 <ChoiceGroup
@@ -205,11 +206,11 @@ export default function PassagesPage() {
           </aside>
 
           <div className="space-y-5">
-            <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-6">
+            <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-section font-semibold text-paper">Available passages</h2>
-                  <p className="mt-1 font-mono text-sm text-paper/45">
+                  <p className="mt-1 font-mono text-body text-paper/45">
                     {filteredLibrary.length} shown / {activeLibrary.length} available · Selected: {activePassage?.title ?? "none"}
                   </p>
                 </div>
@@ -217,19 +218,19 @@ export default function PassagesPage() {
 
               <div className="mt-5 space-y-3">
                 {!hasLoadedLibrary && (
-                  <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-sm text-paper/45">
+                  <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-body text-paper/45">
                     Loading passages...
                   </div>
                 )}
 
                 {hasLoadedLibrary && library.length === 0 && (
-                  <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-sm text-paper/45">
+                  <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-body text-paper/45">
                     No passages are available yet.
                   </div>
                 )}
 
                 {hasLoadedLibrary && library.length > 0 && filteredLibrary.length === 0 && (
-                  <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-sm text-paper/45">
+                  <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-body text-paper/45">
                     No passages match this category/style. Please choose All or another filter.
                   </div>
                 )}
@@ -237,20 +238,24 @@ export default function PassagesPage() {
                 {filteredLibrary.map((passage) => (
                   <article
                     key={passage.id}
-                    className="rounded-md border border-paper/10 bg-ink-900 p-4 transition hover:border-brass/35"
+                    className={`rounded-md border p-4 transition ${
+                      passage.id === activePassageId
+                        ? "border-brass/45 bg-brass/[0.08]"
+                        : "border-transparent bg-paper/[0.035] hover:bg-paper/[0.055]"
+                    }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <FileText className="h-4 w-4 text-brass" />
+                          <FileText className="icon-prominent text-brass" />
                           <h3 className="font-semibold text-paper">{passage.title}</h3>
                           {passage.id === activePassageId && (
-                            <span className="rounded-sm border border-mint/30 bg-mint/10 px-2 py-0.5 font-mono text-secondary uppercase text-mint">
+                            <span className="rounded-sm border border-mint/30 bg-mint/10 px-2 py-0.5 font-mono text-utility uppercase text-mint">
                               Selected
                             </span>
                           )}
                         </div>
-                        <p className="mt-2 font-mono text-xs text-paper/45">
+                        <p className="mt-2 font-mono text-utility text-paper/45">
                           {passage.language === "chinese" ? "Chinese" : "English"} · {passage.category} · {passage.style} · {passage.source} · {passage.wordCount} words ·{" "}
                           {passage.characterCount} chars
                         </p>
@@ -260,21 +265,21 @@ export default function PassagesPage() {
                         <button
                           type="button"
                           onClick={() => startPractice(passage)}
-                          className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:bg-brass/15"
+                          className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-3 py-2 font-mono text-control text-brass transition hover:bg-brass/15"
                         >
-                          <Check className="h-4 w-4" />
+                          <Check className="icon-control" />
                           Practice this passage
                         </button>
                       </div>
                     </div>
-                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-paper/55">{passage.content}</p>
+                    <p className="mt-3 line-clamp-2 text-body leading-6 text-paper/55">{passage.content}</p>
                   </article>
                 ))}
               </div>
             </section>
           </div>
         </div>
-      </section>
+      </PageContainer>
     </AppShell>
   );
 }
@@ -294,33 +299,28 @@ function ChoiceGroup({
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string; disabled?: boolean }>;
 }) {
+  const Icon = label === "Language" ? Languages : label === "Style" ? BookOpen : Tags;
+
   return (
-    <fieldset>
-      <legend className="font-mono text-xs uppercase text-paper/45">{label}</legend>
-      <div className="mt-2 flex flex-wrap gap-2">
+    <SecondaryToolbar className="mt-1">
+      <ToolbarGroup label={label} icon={Icon}>
         {options.map((option) => {
           const isSelected = option.value === value;
 
           return (
-            <button
+            <FilterControl
               key={option.value}
-              type="button"
               aria-label={`${option.label} ${label.toLowerCase()}`}
-              aria-pressed={isSelected}
+              selected={isSelected}
               disabled={option.disabled}
               onClick={() => onChange(option.value)}
-              className={`rounded-full border px-3 py-1.5 font-mono text-utility transition disabled:cursor-not-allowed disabled:opacity-45 ${
-                isSelected
-                  ? "border-brass/70 bg-brass/15 text-brass"
-                  : "border-paper/10 bg-paper/[0.035] text-paper/55 hover:border-brass/35 hover:bg-paper/[0.055] hover:text-paper/80"
-              }`}
             >
               {option.label}
-            </button>
+            </FilterControl>
           );
         })}
-      </div>
-    </fieldset>
+      </ToolbarGroup>
+    </SecondaryToolbar>
   );
 }
 
@@ -337,7 +337,7 @@ function PassageChoiceList({
 }) {
   return (
     <fieldset>
-      <legend className="font-mono text-xs uppercase text-paper/45">{label}</legend>
+      <legend className="flex items-center gap-2 font-mono text-utility uppercase text-paper/45"><BookOpen className="icon-control" strokeWidth={1.75} aria-hidden="true" />{label}</legend>
       <div className="mt-2 max-h-72 space-y-2 overflow-y-auto pr-1">
         {options.map((option) => {
           const optionValue = Array.isArray(option) ? option[0] : option.value;
@@ -353,7 +353,7 @@ function PassageChoiceList({
               aria-pressed={isSelected}
               disabled={disabled}
               onClick={() => onChange(optionValue)}
-              className={`block w-full rounded-md border px-3 py-2 text-left font-mono text-xs transition disabled:cursor-not-allowed disabled:opacity-45 ${
+              className={`block w-full rounded-md border px-3 py-2 text-left font-mono text-control transition disabled:cursor-not-allowed disabled:opacity-45 ${
                 isSelected
                   ? "border-brass/70 bg-brass/15 text-brass"
                   : "border-paper/10 bg-paper/[0.035] text-paper/65 hover:border-brass/35 hover:bg-paper/[0.055] hover:text-paper/85"

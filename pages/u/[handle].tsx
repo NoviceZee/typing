@@ -200,7 +200,7 @@ export default function PublicUserProfilePage() {
 
   const blockControl = user && !isOwnProfile ? (
     isBlockStatusUnavailable ? (
-      <span className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/40">
+      <span className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-utility text-paper/40">
         Block unavailable
       </span>
     ) : (
@@ -208,9 +208,9 @@ export default function PublicUserProfilePage() {
         type="button"
         onClick={handleBlockAction}
         disabled={isBlockActionPending}
-        className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 font-mono text-xs transition disabled:cursor-wait disabled:opacity-55 ${isBlocked ? "border-paper/10 bg-ink-900 text-paper/60 hover:border-brass/35 hover:text-paper" : "border-ember/25 bg-ember/5 text-ember/75 hover:border-ember/45 hover:bg-ember/10"}`}
+        className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 font-mono text-control transition disabled:cursor-wait disabled:opacity-55 ${isBlocked ? "border-paper/10 bg-ink-900 text-paper/60 hover:border-brass/35 hover:text-paper" : "border-ember/25 bg-ember/5 text-ember/75 hover:border-ember/45 hover:bg-ember/10"}`}
       >
-        <Ban className="h-3.5 w-3.5" />
+        <Ban className="icon-control" />
         {isBlockActionPending ? "Updating..." : isBlocked ? "Unblock" : "Block user"}
       </button>
     )
@@ -220,22 +220,22 @@ export default function PublicUserProfilePage() {
     <AppShell sideAd={false}>
       <section className="mx-auto max-w-6xl">
         {loadState === "loading" && (
-          <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 font-mono text-sm text-paper/45 shadow-glow">
+          <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 font-mono text-body text-paper/45 shadow-glow">
             Loading public profile...
           </section>
         )}
 
         {loadState === "error" && (
-          <section className="rounded-lg border border-ember/25 bg-ember/10 p-5 font-mono text-sm text-ember shadow-glow">
+          <section className="rounded-lg border border-ember/25 bg-ember/10 p-5 font-mono text-body text-ember shadow-glow">
             Public profile could not be loaded.
           </section>
         )}
 
         {loadState === "not-found" && (
           <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
-            <p className="font-mono text-xs uppercase text-brass">Public profile</p>
+            <p className="font-mono text-utility uppercase text-brass">Public profile</p>
             <h1 className="mt-2 text-page font-semibold text-paper">Profile not found</h1>
-            <p className="mt-4 text-sm leading-6 text-paper/55">No Typing Station profile exists for that handle.</p>
+            <p className="mt-4 text-body leading-6 text-paper/55">No Typing Station profile exists for that handle.</p>
           </section>
         )}
 
@@ -317,18 +317,18 @@ function PrivateProfileCard({
         <PublicAvatar avatarUrl={avatarUrl} avatarStyle={avatarStyle} label={`@${profile.handle}`} />
       </div>
       <h1 className="mt-4 break-words font-mono text-page font-semibold text-paper">@{profile.handle}</h1>
-      <p className="mt-3 text-sm leading-6 text-paper/55">This profile is private.</p>
+      <p className="mt-3 text-body leading-6 text-paper/55">This profile is private.</p>
       {isOwnProfile && (
         <Link
           href="/profile"
-          className="mt-5 inline-flex items-center rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:border-brass/50 hover:bg-brass/15"
+          className="mt-5 inline-flex items-center rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-control text-brass transition hover:border-brass/50 hover:bg-brass/15"
         >
           Manage visibility
         </Link>
       )}
       {!isOwnProfile && blockAction && <div className="mt-5 flex justify-center">{blockAction}</div>}
       {actionMessage && (
-        <div role={isActionError ? "alert" : "status"} className={`mt-4 rounded-md border px-4 py-3 font-mono text-sm ${isActionError ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>
+        <div role={isActionError ? "alert" : "status"} className={`mt-4 rounded-md border px-4 py-3 font-mono text-body ${isActionError ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>
           {actionMessage}
         </div>
       )}
@@ -347,7 +347,7 @@ function FriendAction({
 }) {
   if (isUnavailable) {
     return (
-      <span className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/40">
+      <span className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-utility text-paper/40">
         Friend status unavailable
       </span>
     );
@@ -355,7 +355,7 @@ function FriendAction({
 
   if (friendship?.status === "accepted") {
     return (
-      <span className="inline-flex items-center rounded-md border border-brass/25 bg-brass/10 px-3 py-2 font-mono text-xs text-brass">
+      <span className="inline-flex items-center rounded-md border border-brass/25 bg-brass/10 px-3 py-2 font-mono text-utility text-brass">
         Friends
       </span>
     );
@@ -363,7 +363,7 @@ function FriendAction({
 
   if (friendship?.status === "pending") {
     return (
-      <span className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/55">
+      <span className="inline-flex items-center rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-utility text-paper/55">
         Request pending
       </span>
     );
@@ -373,7 +373,7 @@ function FriendAction({
     <button
       type="button"
       onClick={onAddFriend}
-      className="inline-flex items-center rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:border-brass/50 hover:bg-brass/15"
+      className="inline-flex items-center rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-control text-brass transition hover:border-brass/50 hover:bg-brass/15"
     >
       Add friend
     </button>
@@ -408,13 +408,13 @@ function ProfileCard({
         <div className="flex min-w-0 gap-4">
           <PublicAvatar avatarUrl={avatarUrl} avatarStyle={avatarStyle} label={`@${profile.handle}`} />
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-xs uppercase text-brass">Public typist</p>
+            <p className="font-mono text-utility uppercase text-brass">Public typist</p>
             <h1 className="mt-1 break-words font-mono text-page font-semibold text-paper">@{profile.handle}</h1>
-            <p className="mt-2 font-mono text-xs uppercase text-paper/35">{formatJoinedDate(profile.created_at)}</p>
+            <p className="mt-2 font-mono text-utility uppercase text-paper/35">{formatJoinedDate(profile.created_at)}</p>
             {profile.bio ? (
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/60">{profile.bio}</p>
+              <p className="mt-4 max-w-2xl text-body leading-6 text-paper/60">{profile.bio}</p>
             ) : isOwnProfile ? (
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/35">No bio yet.</p>
+              <p className="mt-4 max-w-2xl text-body leading-6 text-paper/35">No bio yet.</p>
             ) : null}
           </div>
         </div>
@@ -423,9 +423,9 @@ function ProfileCard({
           <button
             type="button"
             onClick={onCopyUrl}
-            className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/40 hover:text-paper"
+            className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-control text-paper/65 transition hover:border-brass/40 hover:text-paper"
           >
-            <Copy className="h-4 w-4" />
+            <Copy className="icon-control" />
             {copyMessage || "Copy URL"}
           </button>
           {friendAction}
@@ -433,7 +433,7 @@ function ProfileCard({
       </div>
 
       {friendActionMessage && (
-        <div role={isFriendActionError ? "alert" : "status"} className={`mt-4 rounded-md border px-4 py-3 font-mono text-sm ${isFriendActionError ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>
+        <div role={isFriendActionError ? "alert" : "status"} className={`mt-4 rounded-md border px-4 py-3 font-mono text-body ${isFriendActionError ? "border-ember/25 bg-ember/10 text-ember" : "border-mint/25 bg-mint/10 text-mint"}`}>
           {friendActionMessage}
         </div>
       )}
@@ -441,16 +441,16 @@ function ProfileCard({
       <div className="mt-6 rounded-md border border-paper/10 bg-ink-900/60 p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase text-paper/40">Level</p>
+            <p className="font-mono text-utility uppercase text-paper/40">Level</p>
             <p className="mt-1 font-mono text-3xl font-semibold text-paper">{analytics.progression.currentLevel}</p>
           </div>
           <div className="text-right">
-            <p className="font-mono text-xs uppercase text-paper/40">Total XP</p>
+            <p className="font-mono text-utility uppercase text-paper/40">Total XP</p>
             <p className="mt-1 font-mono text-lg text-brass">{analytics.progression.totalXp}</p>
           </div>
         </div>
         <div className="mt-4">
-          <div className="flex items-center justify-between font-mono text-secondary uppercase text-paper/35">
+          <div className="flex items-center justify-between font-mono text-utility uppercase text-paper/35">
             <span>XP progress</span>
             <span>{analytics.progression.xpToNextLevel} to next</span>
           </div>
@@ -541,7 +541,7 @@ function formatJoinedDate(createdAt?: string | null) {
 function SummaryStat({ label, value }: { label: string; value: string | number }) {
   return (
     <article className="rounded-md border border-paper/10 bg-ink-900/60 px-4 py-3">
-      <p className="font-mono text-secondary uppercase text-paper/40">{label}</p>
+      <p className="font-mono text-utility uppercase text-paper/40">{label}</p>
       <p className="mt-2 font-mono text-xl font-semibold text-paper">{value}</p>
     </article>
   );
@@ -559,7 +559,7 @@ function PublicStatsPanel({
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-mono text-section uppercase text-brass">Public Stats</h2>
-        <Trophy className="h-4 w-4 text-brass" />
+        <Trophy className="icon-prominent text-brass" />
       </div>
       {hasResults && (
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -568,15 +568,15 @@ function PublicStatsPanel({
               key={domain.id}
               label={`${domain.label} WPM`}
               value={formatNumber(domain.analytics.summary.bestWpm)}
-              icon={<Trophy className="h-4 w-4" />}
+              icon={<Trophy className="icon-inline" />}
             />
           ))}
         </div>
       )}
       {!hasResults && (
         <div className="mt-5 rounded-md border border-paper/10 bg-ink-900/60 px-4 py-5">
-          <p className="font-mono text-sm text-paper">No best result yet.</p>
-          <p className="mt-2 text-sm leading-6 text-paper/45">Best WPM and accuracy will fill in after public results.</p>
+          <p className="font-mono text-body text-paper">No best result yet.</p>
+          <p className="mt-2 text-body leading-6 text-paper/45">Best WPM and accuracy will fill in after public results.</p>
         </div>
       )}
     </section>
@@ -591,16 +591,16 @@ function AchievementsSummary({ analytics }: { analytics: ReturnType<typeof build
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-mono text-section uppercase text-brass">Achievements</h2>
-          <p className="mt-1 font-mono text-xs uppercase text-paper/35">
+          <p className="mt-1 font-mono text-utility uppercase text-paper/35">
             {analytics.achievements.unlockedCount} / {analytics.achievements.totalCount} unlocked
           </p>
         </div>
-        <Award className="h-4 w-4 text-brass" />
+        <Award className="icon-prominent text-brass" />
       </div>
       {analytics.achievements.unlockedCount === 0 ? (
         <div className="mt-5 rounded-md border border-paper/10 bg-ink-900/60 px-4 py-5">
-          <p className="font-mono text-sm text-paper">No achievements unlocked yet.</p>
-          <p className="mt-2 text-sm leading-6 text-paper/45">Milestones will appear here as public results build up.</p>
+          <p className="font-mono text-body text-paper">No achievements unlocked yet.</p>
+          <p className="mt-2 text-body leading-6 text-paper/45">Milestones will appear here as public results build up.</p>
         </div>
       ) : (
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-paper/[0.06]">
@@ -615,7 +615,7 @@ function FeaturedStat({ label, value, icon }: { label: string; value: string; ic
   return (
     <article className="rounded-md border border-brass/20 bg-brass/10 px-4 py-4">
       <div className="flex items-center justify-between gap-3 text-brass">
-        <p className="font-mono text-secondary uppercase text-paper/45">{label}</p>
+        <p className="font-mono text-utility uppercase text-paper/45">{label}</p>
         {icon}
       </div>
       <p className="mt-3 font-mono text-3xl font-semibold text-paper">{value}</p>

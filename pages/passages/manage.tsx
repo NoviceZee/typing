@@ -1,9 +1,10 @@
 "use client";
 
 import { ChangeEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Eye, FilePlus, Pencil, Search, Sparkles, Trash2, Upload } from "lucide-react";
+import { BookOpen, Download, Eye, Pencil, Plus, Search, Sparkles, Tags, Trash2, Upload } from "lucide-react";
 import { AdminOnly } from "@/components/AdminOnly";
 import { AppShell } from "@/components/AppShell";
+import { SecondaryToolbar, ToolbarGroup, ToolbarSeparator } from "@/components/SecondaryNavigation";
 import { useAuth } from "@/components/AuthProvider";
 import { PracticeCategory } from "@/lib/typing-engine";
 import { decodeUploadedTextFile, detectTextLanguage } from "@/lib/textFileImport";
@@ -358,17 +359,17 @@ function ManagePassages() {
   return (
     <>
       <section className="mx-auto max-w-6xl">
-        <p className="font-mono text-xs uppercase text-brass">Library admin</p>
+        <p className="font-mono text-utility uppercase text-brass">Library admin</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-page font-semibold text-paper">Manage library</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/55">
+            <p className="mt-2 max-w-2xl text-body leading-6 text-paper/55">
               Add, edit, import, export, and remove passages from {storageMode === "supabase" ? "Supabase" : "this browser's localStorage fallback"}.
             </p>
           </div>
           <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 text-right shadow-glow">
             <p className="font-mono text-2xl text-paper">{library.length}</p>
-            <p className="font-mono text-xs uppercase text-paper/45">passages</p>
+            <p className="font-mono text-utility uppercase text-paper/45">passages</p>
           </div>
         </div>
 
@@ -379,12 +380,12 @@ function ManagePassages() {
         </div>
 
         {message && (
-          <div role="status" aria-live="polite" className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
+          <div role="status" aria-live="polite" className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-body text-brass">
             {message}
           </div>
         )}
 
-        <div role="status" aria-live="polite" className="mt-5 rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 font-mono text-sm text-paper/55">
+        <div role="status" aria-live="polite" className="mt-5 rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3 font-mono text-body text-paper/55">
           Storage: {storageMode === "supabase" ? "Supabase" : "localStorage fallback"}
           {isLoadingLibrary ? " · Loading..." : ""}
         </div>
@@ -393,7 +394,7 @@ function ManagePassages() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-section font-semibold text-paper">Add passages</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/55">
+              <p className="mt-2 max-w-2xl text-body leading-6 text-paper/55">
                 Create a passage manually or upload one or more .txt files. Separators such as --- split long uploads
                 into multiple passages.
               </p>
@@ -401,9 +402,9 @@ function ManagePassages() {
             <button
               type="button"
               onClick={() => uploadInputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-4 py-2 font-mono text-sm text-paper/70 transition hover:border-brass/50 hover:text-paper"
+              className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-4 py-2 font-mono text-control text-paper/70 transition hover:border-brass/50 hover:text-paper"
             >
-              <Upload className="h-4 w-4" />
+              <Upload className="icon-control" />
               Upload .txt
             </button>
           </div>
@@ -429,12 +430,12 @@ function ManagePassages() {
           </div>
 
           <label className="mt-4 block">
-            <span className="font-mono text-xs uppercase text-paper/45">Content</span>
+            <span className="font-mono text-utility uppercase text-paper/45">Content</span>
             <textarea
               value={newPassageContent}
               onChange={(event) => setNewPassageContent(event.target.value)}
               rows={8}
-              className="mt-2 w-full resize-y rounded-md border border-paper/10 bg-ink-950 px-4 py-4 font-mono text-sm leading-6 text-paper/80 outline-none transition focus:border-brass"
+              className="mt-2 w-full resize-y rounded-md border border-paper/10 bg-ink-950 px-4 py-4 font-mono text-control leading-6 text-paper/80 outline-none transition focus:border-brass"
               placeholder="Paste passage content here"
             />
           </label>
@@ -443,9 +444,9 @@ function ManagePassages() {
             <button
               type="button"
               onClick={addManualPassages}
-              className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-sm text-brass transition hover:bg-brass/15"
+              className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-control text-brass transition hover:bg-brass/15"
             >
-              <FilePlus className="h-4 w-4" />
+              <Plus className="icon-control" />
               Add passage
             </button>
           </div>
@@ -455,7 +456,7 @@ function ManagePassages() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-section font-semibold text-paper">Library backup</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/55">
+              <p className="mt-2 max-w-2xl text-body leading-6 text-paper/55">
                 Export this browser&apos;s local passage library, then import it on another preview URL when localStorage
                 belongs to a different origin.
               </p>
@@ -464,17 +465,17 @@ function ManagePassages() {
               <button
                 type="button"
                 onClick={exportLibrary}
-                className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-sm text-brass transition hover:bg-brass/15"
+                className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-control text-brass transition hover:bg-brass/15"
               >
-                <Download className="h-4 w-4" />
+                <Download className="icon-control" />
                 Export library
               </button>
               <button
                 type="button"
                 onClick={() => importInputRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-4 py-2 font-mono text-sm text-paper/70 transition hover:border-brass/50 hover:text-paper"
+                className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-4 py-2 font-mono text-control text-paper/70 transition hover:border-brass/50 hover:text-paper"
               >
-                <Upload className="h-4 w-4" />
+                <Upload className="icon-control" />
                 Import library
               </button>
             </div>
@@ -488,7 +489,7 @@ function ManagePassages() {
               onChange={importLibrary}
               className="sr-only"
             />
-            <label className="flex items-center gap-2 font-mono text-sm text-paper/65">
+            <label className="flex items-center gap-2 font-mono text-body text-paper/65">
               <input
                 type="checkbox"
                 checked={replaceExistingLibrary}
@@ -496,28 +497,30 @@ function ManagePassages() {
               />
               Replace existing library
             </label>
-            <p className="font-mono text-xs text-paper/35">Import accepts Typing Station .json exports.</p>
+            <p className="font-mono text-utility text-paper/35">Import accepts Typing Station .json exports.</p>
           </div>
         </section>
 
-        <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem_12rem_10rem]">
-            <label className="block">
-              <span className="font-mono text-xs uppercase text-paper/45">Search title</span>
-              <div className="mt-2 flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2">
-                <Search className="h-4 w-4 text-paper/35" />
+        <section className="mt-8 border-y border-paper/[0.07] py-2">
+          <SecondaryToolbar label="Library management filters">
+            <ToolbarGroup label="Search title" icon={Search} className="min-w-[14rem] flex-1">
+              <div className="flex min-h-8 min-w-[12rem] flex-1 items-center px-1.5">
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  className="w-full bg-transparent font-mono text-sm text-paper/80 outline-none"
+                  className="w-full bg-transparent font-mono text-control text-paper/80 outline-none placeholder:text-paper/25"
                   placeholder="Find passage"
+                  aria-label="Search title"
                 />
               </div>
-            </label>
-            <Select label="Category" value={category} onChange={(value) => setCategory(value as CategoryFilter)} options={[ALL_FILTER, ...CATEGORIES]} />
-            <Select label="Style" value={style} onChange={setStyle} options={[ALL_FILTER, ...STYLES, "General"]} />
-            <Select label="Status" value={status} onChange={(value) => setStatus(value as StatusFilter)} options={["All", "Active", "Hidden"]} />
-          </div>
+            </ToolbarGroup>
+            <ToolbarSeparator />
+            <ToolbarGroup label="Category" icon={Tags}><Select compact label="Category" value={category} onChange={(value) => setCategory(value as CategoryFilter)} options={[ALL_FILTER, ...CATEGORIES]} /></ToolbarGroup>
+            <ToolbarSeparator />
+            <ToolbarGroup label="Style" icon={BookOpen}><Select compact label="Style" value={style} onChange={setStyle} options={[ALL_FILTER, ...STYLES, "General"]} /></ToolbarGroup>
+            <ToolbarSeparator />
+            <ToolbarGroup label="Status" icon={Eye}><Select compact label="Status" value={status} onChange={(value) => setStatus(value as StatusFilter)} options={["All", "Active", "Hidden"]} /></ToolbarGroup>
+          </SecondaryToolbar>
         </section>
 
         <section className="mt-5 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-6">
@@ -528,13 +531,13 @@ function ManagePassages() {
                 <button
                   type="button"
                   onClick={() => setIsNormalizeDialogOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/65 transition hover:border-brass/45 hover:text-paper"
+                  className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-control text-paper/65 transition hover:border-brass/45 hover:text-paper"
                 >
-                  <Sparkles className="h-3.5 w-3.5 text-brass" />
+                  <Sparkles className="icon-inline text-brass" />
                   Normalize punctuation
                 </button>
               )}
-              <p className="font-mono text-sm text-paper/45">
+              <p className="font-mono text-body text-paper/45">
                 {filteredLibrary.length} shown / {library.length} saved
               </p>
             </div>
@@ -542,7 +545,7 @@ function ManagePassages() {
 
           <div className="mt-5 space-y-3">
             {filteredLibrary.length === 0 && (
-              <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-sm text-paper/45">
+              <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-body text-paper/45">
                 No passages match these filters.
               </div>
             )}
@@ -554,7 +557,7 @@ function ManagePassages() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold text-paper">{passage.title}</h3>
                       <span
-                        className={`rounded-sm border px-2 py-0.5 font-mono text-secondary uppercase ${
+                        className={`rounded-sm border px-2 py-0.5 font-mono text-utility uppercase ${
                           passage.isActive
                             ? "border-mint/30 bg-mint/10 text-mint"
                             : "border-paper/10 bg-ink-800 text-paper/45"
@@ -563,7 +566,7 @@ function ManagePassages() {
                         {passage.isActive ? "Active" : "Hidden"}
                       </span>
                     </div>
-                    <p className="mt-2 font-mono text-xs text-paper/45">
+                    <p className="mt-2 font-mono text-utility text-paper/45">
                       {passage.category} · {passage.style} · {passage.source} · {passage.wordCount} words ·{" "}
                       {passage.characterCount} chars
                     </p>
@@ -572,30 +575,33 @@ function ManagePassages() {
                     <button
                       type="button"
                       onClick={() => setPreviewPassage(passage)}
-                      className="rounded-md border border-paper/10 bg-ink-800 p-2 text-paper/60 transition hover:border-brass/50 hover:text-paper"
+                      className="inline-flex min-h-8 items-center gap-1.5 rounded-md px-2 py-1 font-mono text-control text-paper/50 transition hover:bg-paper/[0.05] hover:text-paper"
                       aria-label={`Preview ${passage.title}`}
                     >
-                      <Eye className="h-4 w-4" />
+                      <Eye className="icon-control" />
+                      Preview
                     </button>
                     <button
                       type="button"
                       onClick={() => setEditingPassage(passage)}
-                      className="rounded-md border border-paper/10 bg-ink-800 p-2 text-paper/60 transition hover:border-brass/50 hover:text-paper"
+                      className="inline-flex min-h-8 items-center gap-1.5 rounded-md px-2 py-1 font-mono text-control text-paper/50 transition hover:bg-paper/[0.05] hover:text-paper"
                       aria-label={`Edit ${passage.title}`}
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Pencil className="icon-control" />
+                      Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => deletePassage(passage.id)}
-                      className="rounded-md border border-paper/10 bg-ink-800 p-2 text-paper/55 transition hover:border-ember/50 hover:text-ember"
+                      className="inline-flex min-h-8 items-center gap-1.5 rounded-md px-2 py-1 font-mono text-control text-ember/70 transition hover:bg-ember/10 hover:text-ember"
                       aria-label={`Delete ${passage.title}`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="icon-control" />
+                      Delete
                     </button>
                   </div>
                 </div>
-                <p className="mt-3 line-clamp-2 text-sm leading-6 text-paper/55">{passage.content}</p>
+                <p className="mt-3 line-clamp-2 text-body leading-6 text-paper/55">{passage.content}</p>
               </article>
             ))}
           </div>
@@ -645,21 +651,21 @@ function NormalizePunctuationModal({
         aria-labelledby="normalize-punctuation-title"
         className="w-full max-w-lg rounded-lg border border-brass/25 bg-ink-900 p-5 shadow-glow md:p-6"
       >
-        <p className="font-mono text-xs uppercase text-brass">Bulk edit</p>
+        <p className="font-mono text-utility uppercase text-brass">Bulk edit</p>
         <h2 id="normalize-punctuation-title" className="mt-1 text-page font-semibold text-paper">
           Normalize English punctuation?
         </h2>
-        <p className="mt-3 text-sm leading-6 text-paper/55">
+        <p className="mt-3 text-body leading-6 text-paper/55">
           Replace smart quotes, full-width punctuation, long dashes, ellipses and non-breaking spaces with keyboard-friendly ASCII in {passageCount} English passage{passageCount === 1 ? "" : "s"}. CJK punctuation inside passages containing Han characters is left unchanged.
         </p>
-        <p className="mt-3 font-mono text-xs text-paper/40">{replacementCount} character replacements</p>
+        <p className="mt-3 font-mono text-utility text-paper/40">{replacementCount} character replacements</p>
         <div className="mt-6 flex justify-end gap-2">
           <button
             ref={cancelButtonRef}
             type="button"
             onClick={onCancel}
             disabled={isSaving}
-            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/65 transition hover:border-paper/20 hover:text-paper disabled:opacity-50"
+            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-control text-paper/65 transition hover:border-paper/20 hover:text-paper disabled:opacity-50"
           >
             Cancel
           </button>
@@ -667,7 +673,7 @@ function NormalizePunctuationModal({
             type="button"
             onClick={onConfirm}
             disabled={isSaving}
-            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-sm text-brass transition hover:bg-brass/15 disabled:cursor-wait disabled:opacity-60"
+            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-control text-brass transition hover:bg-brass/15 disabled:cursor-wait disabled:opacity-60"
           >
             {isSaving ? "Updating..." : "Normalize all"}
           </button>
@@ -681,7 +687,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-3">
       <p className="font-mono text-2xl text-paper">{value}</p>
-      <p className="mt-1 font-mono text-xs uppercase text-paper/45">{label}</p>
+      <p className="mt-1 font-mono text-utility uppercase text-paper/45">{label}</p>
     </div>
   );
 }
@@ -790,10 +796,10 @@ function EditPassageModal({
       <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="edit-passage-title" className="max-h-[calc(100vh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg border border-brass/30 bg-ink-900 p-5 shadow-glow md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-paper/10 pb-4">
           <div>
-            <p className="font-mono text-xs uppercase text-brass">Edit</p>
+            <p className="font-mono text-utility uppercase text-brass">Edit</p>
             <h2 id="edit-passage-title" className="mt-1 text-page font-semibold text-paper">Passage details</h2>
           </div>
-          <label className="flex items-center gap-2 font-mono text-sm text-paper/70">
+          <label className="flex items-center gap-2 font-mono text-body text-paper/70">
             <input
               type="checkbox"
               checked={draft.isActive}
@@ -815,18 +821,18 @@ function EditPassageModal({
         </div>
 
         <label className="mt-4 block">
-          <span className="font-mono text-xs uppercase text-paper/45">Content</span>
+          <span className="font-mono text-utility uppercase text-paper/45">Content</span>
           <textarea
             value={draft.content}
             onChange={(event) => setDraft({ ...draft, content: event.target.value })}
             rows={12}
-            className="mt-2 w-full resize-y rounded-md border border-paper/10 bg-ink-950 px-4 py-4 font-mono text-sm leading-6 text-paper/80 outline-none transition focus:border-brass"
+            className="mt-2 w-full resize-y rounded-md border border-paper/10 bg-ink-950 px-4 py-4 font-mono text-control leading-6 text-paper/80 outline-none transition focus:border-brass"
           />
         </label>
 
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           {saveError && (
-            <p role="alert" className="mr-auto self-center font-mono text-sm text-ember">
+            <p role="alert" className="mr-auto self-center font-mono text-body text-ember">
               {saveError}
             </p>
           )}
@@ -835,7 +841,7 @@ function EditPassageModal({
             type="button"
             onClick={onCancel}
             disabled={isSaving}
-            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/70 transition hover:border-brass/50"
+            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-control text-paper/70 transition hover:border-brass/50"
           >
             Cancel
           </button>
@@ -843,7 +849,7 @@ function EditPassageModal({
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-sm text-brass transition hover:bg-brass/15 disabled:cursor-wait disabled:opacity-60"
+            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-control text-brass transition hover:bg-brass/15 disabled:cursor-wait disabled:opacity-60"
           >
             {isSaving ? "Saving..." : "Save changes"}
           </button>
@@ -861,12 +867,12 @@ function PreviewModal({ passage, onClose }: { passage: LibraryPassage; onClose: 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4 backdrop-blur">
       <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="preview-passage-title" className="max-h-[calc(100vh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg border border-paper/10 bg-ink-900 p-5 shadow-glow md:p-6">
-        <p className="font-mono text-xs uppercase text-brass">Preview</p>
+        <p className="font-mono text-utility uppercase text-brass">Preview</p>
         <h2 id="preview-passage-title" className="mt-1 text-page font-semibold text-paper">{passage.title}</h2>
-        <p className="mt-2 font-mono text-xs text-paper/45">
+        <p className="mt-2 font-mono text-utility text-paper/45">
           {passage.category} · {passage.style} · {passage.isActive ? "Active" : "Hidden"}
         </p>
-        <div className="mt-5 max-h-[55vh] overflow-y-auto rounded-md border border-paper/10 bg-ink-950 p-4 text-sm leading-7 text-paper/70">
+        <div className="mt-5 max-h-[55vh] overflow-y-auto rounded-md border border-paper/10 bg-ink-950 p-4 text-body leading-7 text-paper/70">
           <p className="whitespace-pre-wrap">{passage.content}</p>
         </div>
         <div className="mt-6 flex justify-end">
@@ -874,7 +880,7 @@ function PreviewModal({ passage, onClose }: { passage: LibraryPassage; onClose: 
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-sm text-paper/70 transition hover:border-brass/50"
+            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-control text-paper/70 transition hover:border-brass/50"
           >
             Close
           </button>
@@ -944,11 +950,11 @@ function useDialogFocusManagement(
 function TextInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
     <label className="block">
-      <span className="font-mono text-xs uppercase text-paper/45">{label}</span>
+      <span className="font-mono text-utility uppercase text-paper/45">{label}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-md border border-paper/10 bg-ink-950 px-3 py-2 font-mono text-sm text-paper/80 outline-none transition focus:border-brass"
+        className="mt-2 w-full rounded-md border border-paper/10 bg-ink-950 px-3 py-2 font-mono text-control text-paper/80 outline-none transition focus:border-brass"
       />
     </label>
   );
@@ -958,20 +964,22 @@ function Select({
   label,
   value,
   onChange,
-  options
+  options,
+  compact = false
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: string[];
+  compact?: boolean;
 }) {
   return (
-    <label className="block">
-      <span className="font-mono text-xs uppercase text-paper/45">{label}</span>
+    <label className={compact ? "block" : "block"}>
+      <span className={compact ? "sr-only" : "font-mono text-utility uppercase text-paper/45"}>{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-md border border-paper/10 bg-ink-950 px-3 py-2 font-mono text-sm text-paper/80 outline-none transition focus:border-brass"
+        className={compact ? "min-h-8 bg-transparent px-1.5 py-1 font-mono text-control text-paper/60 outline-none transition hover:text-paper focus:text-brass" : "mt-2 w-full rounded-md border border-paper/10 bg-ink-950 px-3 py-2 font-mono text-control text-paper/80 outline-none transition focus:border-brass"}
       >
         {options.map((option) => (
           <option key={option} value={option}>

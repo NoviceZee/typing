@@ -1,5 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { Gauge, Hash, Keyboard, Timer } from "lucide-react";
 import PracticePage, { PracticeTrainingMode } from "./practice";
+import { FilterControl, SecondaryToolbar, ToolbarGroup, ToolbarSeparator } from "@/components/SecondaryNavigation";
 import {
   TrainingContentType,
   TrainingMode,
@@ -57,60 +59,66 @@ export default function TrainingPage() {
     () => (
       <section
         data-testid="training-controls"
-        className="mx-auto mb-2 flex max-w-fit flex-wrap items-center justify-center gap-x-2 gap-y-1 px-1 font-mono text-xs lg:flex-nowrap"
+        className="mx-auto mb-2 flex max-w-fit justify-center px-1"
       >
-        <div role="group" aria-label="Content" className="flex items-center gap-2">
+        <SecondaryToolbar className="justify-center lg:flex-nowrap" label="Training controls">
+        <ToolbarGroup label="Content" icon={Keyboard} className="lg:flex-nowrap">
           {CONTENT_OPTIONS.map((option) => (
-            <ToggleButton
+            <FilterControl
               key={option.value}
-              label={option.label}
-              isSelected={contentTypes.includes(option.value)}
+              selected={contentTypes.includes(option.value)}
               onClick={() => toggleContentType(option.value)}
-            />
+            >
+              {option.label}
+            </FilterControl>
           ))}
-        </div>
+        </ToolbarGroup>
 
-        <Separator />
+        <ToolbarSeparator />
 
-        <div role="group" aria-label="Mode" className="flex items-center gap-2">
-          <ToggleButton label="Time" isSelected={activeMode === "time"} onClick={() => setMode("time")} />
-          {!isCodeActive && <ToggleButton label="Words" isSelected={activeMode === "words"} onClick={() => setMode("words")} />}
-        </div>
+        <ToolbarGroup label="Mode" icon={Timer} className="lg:flex-nowrap">
+          <FilterControl selected={activeMode === "time"} onClick={() => setMode("time")}>Time</FilterControl>
+          {!isCodeActive && <FilterControl selected={activeMode === "words"} onClick={() => setMode("words")}>Words</FilterControl>}
+        </ToolbarGroup>
 
-        <Separator />
+        <ToolbarSeparator />
 
-        <div role="group" aria-label="Length" className="flex items-center gap-2">
+        <ToolbarGroup label="Length" icon={Hash} className="lg:flex-nowrap">
           {activeMode === "time"
             ? TIME_OPTIONS.map((seconds) => (
-                <ToggleButton
+                <FilterControl
                   key={seconds}
-                  label={String(seconds)}
-                  isSelected={durationSeconds === seconds}
+                  selected={durationSeconds === seconds}
                   onClick={() => setDurationSeconds(seconds)}
-                />
+                >
+                  {seconds}
+                </FilterControl>
               ))
             : WORD_COUNT_OPTIONS.map((count) => (
-                <ToggleButton
+                <FilterControl
                   key={count}
-                  label={String(count)}
-                  isSelected={wordCount === count}
+                  selected={wordCount === count}
                   onClick={() => setWordCount(count)}
-                />
+                >
+                  {count}
+                </FilterControl>
               ))}
-        </div>
+        </ToolbarGroup>
 
-        <Separator />
+        <ToolbarSeparator />
 
-        <div role="group" aria-label="Difficulty" className="flex items-center gap-2">
+        <ToolbarGroup label="Difficulty" icon={Gauge} className="lg:flex-nowrap">
           {DIFFICULTY_OPTIONS.map((option) => (
-            <ToggleButton
+            <FilterControl
               key={option.value}
-              label={option.label}
-              isSelected={wordDifficulty === option.value}
+              selected={wordDifficulty === option.value}
               onClick={() => setWordDifficulty(option.value)}
-            />
+            >
+              {option.label}
+            </FilterControl>
           ))}
-        </div>
+        </ToolbarGroup>
+        </SecondaryToolbar>
       </section>
     ),
     [activeMode, contentTypes, durationSeconds, isCodeActive, toggleContentType, wordCount, wordDifficulty]
@@ -142,31 +150,4 @@ export default function TrainingPage() {
   );
 
   return <PracticePage trainingMode={trainingMode} />;
-}
-
-function Separator() {
-  return <span aria-hidden="true" className="h-4 w-px bg-paper/15" />;
-}
-
-function ToggleButton({
-  label,
-  isSelected,
-  onClick
-}: {
-  label: string;
-  isSelected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={isSelected}
-      onClick={onClick}
-      className={`min-h-8 px-0.5 font-mono text-xs leading-none transition focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brass ${
-        isSelected ? "text-brass" : "text-paper/45 hover:text-paper/75"
-      }`}
-    >
-      {label}
-    </button>
-  );
 }
