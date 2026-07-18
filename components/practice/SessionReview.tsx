@@ -24,7 +24,7 @@ export function SessionReview({ result }: { result: TypingResult }) {
 
       {mismatches.length > 0 && (
         <div className="mt-4 overflow-x-auto rounded-md bg-paper/[0.025]">
-          <div className="grid min-w-[64rem] grid-cols-[4rem_1fr_1fr_1fr_1fr_1fr_1.2fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-[0.68rem] uppercase text-paper/35">
+          <div className="grid min-w-[64rem] grid-cols-[4rem_1fr_1fr_1fr_1fr_1fr_1.2fr_1fr] border-b border-paper/5 px-3 py-2 font-mono text-secondary uppercase text-paper/35">
             <span>Pos</span><span>Expected</span><span>Typed</span><span>Finger</span>
             <span>Expected finger</span><span>Typed finger</span><span>Classification</span><span>Type</span>
           </div>
@@ -52,7 +52,7 @@ export function SessionReview({ result }: { result: TypingResult }) {
 function ReviewStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-md bg-paper/[0.03] px-3 py-3">
-      <div className="font-mono text-[0.68rem] uppercase text-paper/35">{label}</div>
+      <div className="font-mono text-secondary uppercase text-paper/35">{label}</div>
       <div className="mt-1 font-mono text-xl font-semibold text-paper/90">{value}</div>
     </div>
   );

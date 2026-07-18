@@ -509,7 +509,7 @@ function ProfileIdentityCard({
                 aria-label="Remove avatar"
                 onClick={onRemoveAvatar}
                 disabled={isAvatarUploading}
-                className="block w-16 text-center font-mono text-[0.65rem] uppercase text-paper/35 transition hover:text-ember disabled:cursor-not-allowed disabled:opacity-50"
+                className="block w-16 text-center font-mono text-secondary uppercase text-paper/35 transition hover:text-ember disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Remove
               </button>
@@ -517,7 +517,7 @@ function ProfileIdentityCard({
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-mono text-xs uppercase text-brass">Profile Identity</p>
-            <h2 className="mt-1 break-words font-mono text-3xl font-semibold text-paper">
+            <h2 className="mt-1 break-words font-mono text-page font-semibold text-paper">
               {handle ? `@${handle}` : "Handle not set"}
             </h2>
             <p className="mt-2 font-mono text-xs uppercase text-paper/35">{formatJoinedDate(profile?.created_at)}</p>
@@ -550,18 +550,18 @@ function ProfileIdentityCard({
         <div className="rounded-md border border-paper/10 bg-ink-900/60 p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-mono text-[0.68rem] uppercase text-paper/35">Level</p>
+              <p className="font-mono text-secondary uppercase text-paper/35">Level</p>
               <p className="mt-2 font-mono text-3xl font-semibold text-paper">{analytics.progression.currentLevel}</p>
             </div>
             <div className="text-right">
-              <p className="font-mono text-[0.68rem] uppercase text-paper/35">Total XP</p>
+              <p className="font-mono text-secondary uppercase text-paper/35">Total XP</p>
               <p className="mt-2 font-mono text-lg text-brass">{analytics.progression.totalXp}</p>
             </div>
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-paper/[0.06]">
             <div className="h-full rounded-full bg-brass" style={{ width: `${analytics.progression.progressPercent}%` }} />
           </div>
-          <p className="mt-2 text-right font-mono text-[0.68rem] uppercase text-paper/35">
+          <p className="mt-2 text-right font-mono text-secondary uppercase text-paper/35">
             {analytics.progression.xpToNextLevel} XP to next
           </p>
         </div>
@@ -697,7 +697,7 @@ function ProfileAvatar({
 function IdentityStat({ label, value }: { label: string; value: string | number }) {
   return (
     <article className="rounded-md border border-paper/10 bg-ink-900/60 px-4 py-3">
-      <p className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</p>
+      <p className="font-mono text-secondary uppercase text-paper/40">{label}</p>
       <p className="mt-2 font-mono text-xl font-semibold text-paper">{value}</p>
     </article>
   );
@@ -715,7 +715,7 @@ function ChallengesSection({ analytics }: { analytics: ReturnType<typeof buildPr
 function ChallengeGroupSection({ group }: { group: ReturnType<typeof buildProgressAnalytics>["challenges"]["daily"] }) {
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
-      <h2 className="font-mono text-sm uppercase text-brass">{group.title}</h2>
+      <h2 className="font-mono text-section uppercase text-brass">{group.title}</h2>
       <div className="mt-4 space-y-3">
         {group.items.map((item) => (
           <article key={item.id} className="rounded-md border border-paper/10 bg-ink-900/70 px-4 py-3">
@@ -751,15 +751,15 @@ function AchievementsSection({ analytics }: { analytics: ReturnType<typeof build
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-mono text-sm uppercase text-brass">Achievements</h2>
-          <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">
+          <h2 className="font-mono text-section uppercase text-brass">Achievements</h2>
+          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">
             {analytics.achievements.unlockedCount} / {analytics.achievements.totalCount} unlocked
           </p>
         </div>
         <div className="flex items-center gap-3 rounded-md border border-brass/20 bg-brass/10 px-4 py-3">
           <Flame className="h-4 w-4 text-brass" />
           <div>
-            <p className="font-mono text-[0.68rem] uppercase text-paper/40">Current streak</p>
+            <p className="font-mono text-secondary uppercase text-paper/40">Current streak</p>
             <p className="font-mono text-xl text-paper">{analytics.activity.currentStreakDays} days</p>
           </div>
         </div>
@@ -791,7 +791,7 @@ function AchievementsSection({ analytics }: { analytics: ReturnType<typeof build
               </span>
             </div>
             <p
-              className={`mt-4 font-mono text-[0.68rem] uppercase ${
+              className={`mt-4 font-mono text-secondary uppercase ${
                 achievement.isUnlocked ? "text-brass" : "text-paper/35"
               }`}
             >
@@ -817,8 +817,8 @@ function MyResults({ results, domain }: { results: SupabaseAnalyticsTypingResult
   return (
     <section className="overflow-hidden rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
       <div className="border-b border-paper/10 px-4 py-4 md:px-5">
-        <h2 className="font-mono text-sm uppercase text-brass">{title}</h2>
-        <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">Recent attempts</p>
+        <h2 className="font-mono text-section uppercase text-brass">{title}</h2>
+        <p className="mt-1 font-mono text-secondary uppercase text-paper/35">Recent attempts</p>
       </div>
       <div className="grid grid-cols-[9rem_minmax(0,1fr)_7rem_6rem_7rem] border-b border-paper/10 px-4 py-3 font-mono text-xs uppercase text-paper/40 max-md:hidden md:px-5">
         <span>Date</span>
@@ -834,10 +834,10 @@ function MyResults({ results, domain }: { results: SupabaseAnalyticsTypingResult
         >
           <ResultMetric label="Date" value={formatDate(result.created_at)} />
           <div>
-            <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">Passage</div>
+            <div className="font-mono text-secondary uppercase text-paper/35 md:hidden">Passage</div>
             <div className="text-sm font-semibold text-paper">{result.passage_title}</div>
             {result.passage_category && (
-              <div className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">{result.passage_category}</div>
+              <div className="mt-1 font-mono text-secondary uppercase text-paper/35">{result.passage_category}</div>
             )}
           </div>
           <ResultMetric label="Duration" value={formatDuration(result.duration_seconds)} />
@@ -853,8 +853,8 @@ function ChineseMistakesSection({ statistics }: { statistics: TypingStatistics }
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
       <div>
-        <h2 className="font-mono text-sm uppercase text-brass">Chinese Mistakes</h2>
-        <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">
+        <h2 className="font-mono text-section uppercase text-brass">Chinese Mistakes</h2>
+        <p className="mt-1 font-mono text-secondary uppercase text-paper/35">
           Chinese-only repeated mistake patterns
         </p>
       </div>
@@ -868,7 +868,7 @@ function ChineseMistakesSection({ statistics }: { statistics: TypingStatistics }
 function ProgressSummary({ analytics, displaySettings }: { analytics: ReturnType<typeof buildProgressAnalytics>; displaySettings: ProfileDisplaySettings }) {
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
-      <h2 className="font-mono text-sm uppercase text-brass">Summary Stats</h2>
+      <h2 className="font-mono text-section uppercase text-brass">Summary Stats</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label="Total practice time" value={formatPracticeTime(analytics.summary.totalPracticeSeconds)} icon={<Clock className="h-4 w-4" />} />
         <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} all-time`} value={formatSpeed(analytics.summary.averageWpm, displaySettings)} icon={<Activity className="h-4 w-4" />} />
@@ -891,7 +891,7 @@ function SummaryCard({
   return (
     <article className="rounded-md border border-paper/10 bg-ink-900/80 px-4 py-4">
       <div className="flex items-center justify-between gap-3 text-brass">
-        <p className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</p>
+        <p className="font-mono text-secondary uppercase text-paper/40">{label}</p>
         {icon}
       </div>
       <p className="mt-3 font-mono text-2xl font-semibold text-paper">{value}</p>
@@ -912,8 +912,8 @@ function Trends({
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-mono text-sm uppercase text-brass">Trends</h2>
-          <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">WPM and accuracy over time</p>
+          <h2 className="font-mono text-section uppercase text-brass">Trends</h2>
+          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">WPM and accuracy over time</p>
         </div>
         <div className="flex rounded-full bg-paper/[0.035] p-1">
           {TREND_RANGES.map((option) => (
@@ -978,11 +978,11 @@ function TrendChart({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="font-mono text-xs uppercase text-paper/70">{title}</h3>
-          <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">{unit}</p>
+          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">{unit}</p>
         </div>
         <div className="text-right font-mono">
           <p className="text-lg text-paper">{formatValue(latest)}</p>
-          <p className="text-[0.68rem] uppercase text-paper/35">Latest</p>
+          <p className="text-secondary uppercase text-paper/35">Latest</p>
         </div>
       </div>
       <div className="mt-4 h-56 w-full overflow-hidden rounded-md bg-ink-950/70">
@@ -1017,7 +1017,7 @@ function TrendChart({
           ))}
         </svg>
       </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 font-mono text-[0.68rem] uppercase text-paper/35">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 font-mono text-secondary uppercase text-paper/35">
         <span>{results[0] ? formatDate(results[0].created_at) : "No date"}</span>
         <span>Best {formatValue(best)}</span>
         <span>{results[results.length - 1] ? formatDate(results[results.length - 1].created_at) : "No date"}</span>
@@ -1054,8 +1054,8 @@ function TypingWeaknessesSection({
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-mono text-sm uppercase text-brass">Typing Insights</h2>
-          <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">
+          <h2 className="font-mono text-section uppercase text-brass">Typing Insights</h2>
+          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">
             Private insights from completed attempts
           </p>
         </div>
@@ -1128,7 +1128,7 @@ function KeyboardHeatmap({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="font-mono text-xs uppercase text-paper/70">Keyboard Heatmap</h3>
-          <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">{getHeatmapModeLabel(mode)}</p>
+          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">{getHeatmapModeLabel(mode)}</p>
         </div>
       </div>
       <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_11rem] xl:items-center">
@@ -1190,10 +1190,10 @@ function HeatmapLegend({ mode }: { mode: HeatmapMode }) {
 
   return (
     <div className="rounded-md border border-paper/10 bg-ink-950/45 p-3">
-      <p className="font-mono text-[0.68rem] uppercase text-paper/45">Legend</p>
+      <p className="font-mono text-secondary uppercase text-paper/45">Legend</p>
       <div className="mt-3 space-y-2">
         {rows.map(([label, color, opacity]) => (
-          <div key={String(label)} className="flex items-center gap-2 font-mono text-[0.68rem] uppercase text-paper/40">
+          <div key={String(label)} className="flex items-center gap-2 font-mono text-secondary uppercase text-paper/40">
             <span
               className="h-3 w-3 rounded-full"
               style={{ backgroundColor: `rgb(${color} / ${opacity})` }}
@@ -1217,7 +1217,7 @@ function WeakKeysPanel({ keys }: { keys: KeyStatistic[] }) {
         <p className="px-4 py-4 text-sm leading-6 text-paper/50">More samples needed before ranking weak keys.</p>
       ) : (
         <div>
-          <div className="grid grid-cols-[2.5rem_1fr_4rem_4rem] gap-3 border-b border-paper/10 px-4 py-2 font-mono text-[0.62rem] uppercase text-paper/35">
+          <div className="grid grid-cols-[2.5rem_1fr_4rem_4rem] gap-3 border-b border-paper/10 px-4 py-2 font-mono text-secondary uppercase text-paper/35">
             <span>Key</span>
             <span>Accuracy</span>
             <span>Mistakes</span>
@@ -1260,7 +1260,7 @@ function CommonMistakesPanel({ mistakes }: { mistakes: TypingStatistics["commonM
               className="grid grid-cols-[minmax(0,1fr)_4rem] items-center gap-3 border-b border-paper/10 px-4 py-3 last:border-b-0"
             >
               <p className="min-w-0 text-sm text-paper/70">{formatMistakeLabel(mistake)}</p>
-              <span className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-[0.68rem] uppercase text-paper/45">
+              <span className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-secondary uppercase text-paper/45">
                 {mistake.count}x
               </span>
             </article>
@@ -1347,7 +1347,7 @@ function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | nu
                 return (
                   <div
                     key={key.key}
-                    className={`flex h-8 items-center justify-center rounded border px-1.5 font-mono text-[0.62rem] transition ${
+                    className={`flex h-8 items-center justify-center rounded border px-1.5 font-mono text-secondary transition ${
                       isMistake
                         ? "border-ember/50 bg-ember/70 text-ink-950"
                         : isActive
@@ -1395,7 +1395,7 @@ function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | nu
           }}
           className="w-full accent-brass"
         />
-        <p className="text-right font-mono text-[0.68rem] text-paper/45">
+        <p className="text-right font-mono text-secondary text-paper/45">
           {formatReplayTime(currentTimeMs)} / {formatReplayTime(durationMs)}
         </p>
       </div>
@@ -1403,7 +1403,7 @@ function RecentErrorReplayPanel({ attempt }: { attempt: TypingAttemptDetail | nu
       {visibleMistakeEvents.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {visibleMistakeEvents.map((event, index) => (
-            <span key={event.id} className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-[0.68rem] text-paper/60">
+            <span key={event.id} className="rounded-full border border-paper/10 bg-paper/[0.035] px-2 py-1 font-mono text-secondary text-paper/60">
               {index + 1}. Expected: {formatKeyLabel(event.expected)} {"->"} Typed: {formatKeyLabel(event.actual)}
             </span>
           ))}
@@ -1445,7 +1445,7 @@ function FingerAnalysisPanel({ statistics }: { statistics: TypingStatistics }) {
             <div key={finger.finger} className="flex items-center justify-between gap-3">
               <div>
                 <p className="font-mono text-xs text-paper">{finger.finger}</p>
-                <p className="mt-0.5 font-mono text-[0.68rem] uppercase text-paper/35">
+                <p className="mt-0.5 font-mono text-secondary uppercase text-paper/35">
                   {finger.hitCount} hits · {formatDelay(finger.averageDelayMs)}
                 </p>
               </div>
@@ -1493,7 +1493,7 @@ function SpeedDropPanel({ statistics }: { statistics: TypingStatistics }) {
         <CompactInsightMetric label="Middle" value={formatNullableWpm(statistics.speedDrop.middleWpm)} />
         <CompactInsightMetric label="End" value={formatNullableWpm(statistics.speedDrop.endWpm)} />
       </div>
-      <p className="mt-3 font-mono text-[0.68rem] uppercase text-paper/35">
+      <p className="mt-3 font-mono text-secondary uppercase text-paper/35">
         Avg slowdown {statistics.speedDrop.averageSlowdownPercent === null ? "n/a" : `${formatNumber(statistics.speedDrop.averageSlowdownPercent)}%`}
       </p>
     </section>
@@ -1503,7 +1503,7 @@ function SpeedDropPanel({ statistics }: { statistics: TypingStatistics }) {
 function CompactInsightMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-paper/[0.035] px-2 py-2">
-      <p className="font-mono text-[0.62rem] uppercase leading-4 text-paper/35">{label}</p>
+      <p className="font-mono text-secondary uppercase leading-4 text-paper/35">{label}</p>
       <p className="mt-1 font-mono text-sm text-paper">{value}</p>
     </div>
   );
@@ -1514,7 +1514,7 @@ function ConsistencySection({ summary }: { summary: ReturnType<typeof buildAttem
 
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
-      <h2 className="font-mono text-sm uppercase text-brass">Consistency</h2>
+      <h2 className="font-mono text-section uppercase text-brass">Consistency</h2>
       {summary.latest === null ? (
         <>
           <p className="mt-4 font-mono text-lg text-paper">Not enough data yet</p>
@@ -1551,7 +1551,7 @@ function CategoryBreakdown({ analytics }: { analytics: ReturnType<typeof buildPr
   return (
     <section className="overflow-hidden rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
       <div className="border-b border-paper/10 px-4 py-4 md:px-5">
-        <h2 className="font-mono text-sm uppercase text-brass">Category Breakdown</h2>
+        <h2 className="font-mono text-section uppercase text-brass">Category Breakdown</h2>
         {analytics.weakestCategory && (
           <p className="mt-2 font-mono text-xs text-paper/45">Weakest: {analytics.weakestCategory.category}</p>
         )}
@@ -1596,7 +1596,7 @@ function ActivitySection({ analytics }: { analytics: ReturnType<typeof buildProg
 
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
-      <h2 className="font-mono text-sm uppercase text-brass">Activity</h2>
+      <h2 className="font-mono text-section uppercase text-brass">Activity</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <SummaryCard label="Current streak" value={`${analytics.activity.currentStreakDays} days`} icon={<Activity className="h-4 w-4" />} />
         <SummaryCard label="Active days" value={analytics.activity.activeDays} icon={<Clock className="h-4 w-4" />} />
@@ -1613,7 +1613,7 @@ function ActivitySection({ analytics }: { analytics: ReturnType<typeof buildProg
 function ResultMetric({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
     <div>
-      <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">{label}</div>
+      <div className="font-mono text-secondary uppercase text-paper/35 md:hidden">{label}</div>
       <div className={`font-mono text-sm ${strong ? "font-semibold text-paper" : "text-paper/65"}`}>{value}</div>
     </div>
   );
@@ -1622,7 +1622,7 @@ function ResultMetric({ label, value, strong = false }: { label: string; value: 
 function BreakdownMetric({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
-      <p className="font-mono text-[0.68rem] uppercase text-paper/35 sm:hidden">{label}</p>
+      <p className="font-mono text-secondary uppercase text-paper/35 sm:hidden">{label}</p>
       <p className="font-mono text-sm text-paper/70">{value}</p>
     </div>
   );

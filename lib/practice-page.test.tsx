@@ -174,7 +174,9 @@ describe("PracticePage passage loading", () => {
     expect(screen.getByRole("group", { name: "Practice passage source" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Chinese" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Random" })).toBeTruthy();
+    const randomButton = screen.getByRole("button", { name: "Random" });
+    expect(randomButton.querySelector("svg")).toBeTruthy();
+    expect(randomButton.textContent).toBe("Random");
     expect(screen.getByRole("link", { name: "Library" }).getAttribute("href")).toBe("/passages?language=english");
     expect(screen.getByRole("button", { name: "1m" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "5m" })).toBeTruthy();

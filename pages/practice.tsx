@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Fragment, KeyboardEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ImageIcon, RefreshCw, RotateCcw, X } from "lucide-react";
+import { BookOpenText, Clock3, ImageIcon, KeyboardIcon, Languages, RefreshCw, RotateCcw, Shuffle, X } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { AdPlaceholder, AppShell } from "@/components/AppShell";
@@ -1476,8 +1476,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     return filterLibraryByCategory(filterLibraryPassagesByLanguage(activeLibrary, practiceLanguage), selectedCategory);
   }
 
+  const isCompactPractice = !trainingMode;
+
   return (
-    <AppShell topAd={false} sideAd={false} focusMode={isFocusMode}>
+    <AppShell topAd={false} sideAd={false} focusMode={isFocusMode} compact={isCompactPractice}>
       <section className="mx-auto min-w-0 w-[calc(100vw-2.5rem)] max-w-6xl overflow-x-hidden sm:w-full">
         <h1 className="sr-only">{trainingMode?.pageTitle ?? "Practice"}</h1>
 
@@ -1491,7 +1493,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           <section
             data-testid="practice-header"
             className={clsx(
-              "mx-auto mb-3 grid max-w-5xl grid-cols-1 items-start gap-x-4 gap-y-1.5 text-center sm:grid-cols-[minmax(0,1fr)_auto]",
+              isCompactPractice
+                ? "mx-auto mb-2 grid max-w-5xl grid-cols-1 items-start gap-x-3 gap-y-1 text-center sm:grid-cols-[minmax(0,1fr)_auto]"
+                : "mx-auto mb-3 grid max-w-5xl grid-cols-1 items-start gap-x-4 gap-y-1.5 text-center sm:grid-cols-[minmax(0,1fr)_auto]",
               isFocusMode && "invisible pointer-events-none"
             )}
           >
@@ -1502,10 +1506,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                 <>
                   <div
                     data-testid="practice-controls"
-                    className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-3 gap-y-1.5 font-mono text-xs"
+                    className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-control"
                   >
                     {!trainingMode && (
-                      <TextChoiceGroup label="Practice language">
+                      <TextChoiceGroup label="Practice language" icon={<Languages className="h-4 w-4" />}>
                         {(["english", "chinese"] as const).map((language) => (
                           <TextChoiceButton
                             key={language}
@@ -1527,13 +1531,15 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                             selected={selectedPassageId === RANDOM_PASSAGE_ID}
                             disabled={isRunning || isPassageLoading}
                             onClick={loadRandomPassage}
+                            icon={<Shuffle className="h-4 w-4" />}
                           >
                             Random
                           </TextChoiceButton>
                           <Link
                             href={`/passages?language=${practiceLanguage}`}
-                            className="px-1.5 py-1 text-paper/50 outline-none transition hover:text-paper/80 focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60"
+                            className="inline-flex min-h-7 items-center gap-1 px-1.5 py-1 text-control text-paper/45 outline-none transition hover:text-paper/80 focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60"
                           >
+                            <BookOpenText className="h-3.5 w-3.5" aria-hidden="true" />
                             Library
                           </Link>
                         </TextChoiceGroup>
@@ -1543,7 +1549,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                     {!trainingMode?.hidePracticeModeControls && (
                       <>
                         <PracticeControlSeparator />
-                        <TextChoiceGroup label="Practice duration">
+                        <TextChoiceGroup label="Practice duration" icon={<Clock3 className="h-4 w-4" />}>
                           {PRACTICE_MODE_OPTIONS.map((mode) => (
                             <TextChoiceButton
                               key={mode.id}
@@ -1560,7 +1566,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                   </div>
 
                   {!trainingMode?.hideMetadata && (
-                    <p className="mx-auto mt-1.5 max-w-4xl truncate px-1 font-mono text-xs text-paper/55" data-testid="practice-passage-metadata">
+                    <p className="mx-auto mt-1 max-w-4xl truncate px-1 font-mono text-secondary text-paper/40" data-testid="practice-passage-metadata">
                       {passage ? `${formatPassageResultMetadata(passage)} · ${modeLabel}` : "Resolving passage..."}
                     </p>
                   )}
@@ -1587,16 +1593,21 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             }
           }}
           className={clsx(
-            "formaltype-practice-shell relative mx-auto flex w-full flex-col overflow-hidden rounded-lg outline-none transition-all duration-300 focus:ring-brass/30",
-            "h-[60vh] h-[60dvh] max-h-[60vh] max-h-[60dvh] max-w-5xl bg-paper/[0.025] p-3 md:h-[68vh] md:h-[68dvh] md:max-h-[72vh] md:max-h-[72dvh] md:p-5"
+            "formaltype-practice-shell relative mx-auto flex w-full flex-col overflow-hidden outline-none transition-all duration-300 focus:ring-brass/30",
+            isCompactPractice
+              ? "h-[64vh] h-[64dvh] max-h-[64vh] max-h-[64dvh] max-w-5xl p-2 md:h-[72vh] md:h-[72dvh] md:max-h-[76vh] md:max-h-[76dvh] md:p-3"
+              : "h-[60vh] h-[60dvh] max-h-[60vh] max-h-[60dvh] max-w-5xl rounded-lg bg-paper/[0.025] p-3 md:h-[68vh] md:h-[68dvh] md:max-h-[72vh] md:max-h-[72dvh] md:p-5"
           )}
           data-focus-mode={isFocusMode ? "true" : "false"}
         >
-          {isFocusMode && <div className="pointer-events-none absolute left-4 top-3 z-10"><TypingTimer value={formatTime(clockSeconds)} /></div>}
+          {isFocusMode && <div className={clsx("pointer-events-none absolute z-10", isCompactPractice ? "left-2 top-2" : "left-4 top-3")}><TypingTimer value={formatTime(clockSeconds)} compact={isCompactPractice} /></div>}
           <div
             ref={typingWindowRef}
             data-testid={shouldUseChineseImeSink ? "chinese-target-viewport" : "typing-viewport"}
-            className="typing-scrollbar mx-auto h-full min-h-0 w-full max-w-5xl flex-1 overflow-y-auto overscroll-contain rounded-md px-3 py-3 transition md:px-6 md:py-5"
+            className={clsx(
+              "typing-scrollbar mx-auto h-full min-h-0 w-full max-w-5xl flex-1 overflow-y-auto overscroll-contain transition",
+              isCompactPractice ? "px-2 py-2 md:px-4 md:py-4" : "rounded-md px-3 py-3 md:px-6 md:py-5"
+            )}
           >
             <div
               ref={typingTextRef}
@@ -1734,7 +1745,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         </div>
 
         {(status === "idle" || isFocusMode) && (
-          <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-xs text-paper/30">
+          <div className={clsx("flex flex-wrap items-center font-mono text-paper/30", isCompactPractice ? "mt-2 gap-2 text-secondary" : "mt-3 gap-3 text-xs")}>
+            {isCompactPractice && <KeyboardIcon className="h-3.5 w-3.5 text-paper/25" aria-hidden="true" />}
             {status === "idle" || !shouldUseChineseImeSink ? (
               <>
                 <span className="sm:hidden">Tap to start</span>
@@ -1748,7 +1760,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
         <div
           data-testid={trainingMode ? "training-ad-slot" : "practice-ad-slot"}
-          className={clsx("mt-6", isFocusMode && "invisible pointer-events-none")}
+          className={clsx(isCompactPractice ? "mt-4" : "mt-6", isFocusMode && "invisible pointer-events-none")}
         >
           <AdPlaceholder variant="banner" />
         </div>
@@ -1760,6 +1772,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             onRestart={resetSession}
             onNextPassage={loadNextPassage}
             restartButtonRef={resultPanelRestartButtonRef}
+            compact={isCompactPractice}
           />
         )}
         {lastResult && passage && isResultModalOpen && (
@@ -1802,9 +1815,10 @@ function PassageLoadingPlaceholder() {
   );
 }
 
-function TextChoiceGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function TextChoiceGroup({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div role="group" aria-label={label} className="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+    <div role="group" aria-label={label} className="inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+      {icon && <span className="grid h-5 w-5 place-items-center text-paper/25" aria-hidden="true">{icon}</span>}
       {children}
     </div>
   );
@@ -1814,11 +1828,13 @@ function TextChoiceButton({
   selected,
   disabled,
   onClick,
+  icon,
   children
 }: {
   selected: boolean;
   disabled?: boolean;
   onClick: () => void;
+  icon?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -1828,17 +1844,18 @@ function TextChoiceButton({
       disabled={disabled}
       onClick={onClick}
       className={clsx(
-        "px-1.5 py-1 text-xs outline-none transition disabled:cursor-not-allowed disabled:opacity-45 focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60",
+        "inline-flex min-h-7 items-center px-1.5 py-1 text-control outline-none transition disabled:cursor-not-allowed disabled:opacity-45 focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60",
         selected ? "text-brass" : "text-paper/45 hover:text-paper/75"
       )}
     >
+      {icon && <span className="mr-1 inline-grid place-items-center" aria-hidden="true">{icon}</span>}
       {children}
     </button>
   );
 }
 
 function PracticeControlSeparator() {
-  return <span className="text-paper/18" aria-hidden="true">|</span>;
+  return <span className="h-3 w-px bg-paper/10" aria-hidden="true" />;
 }
 
 function TrainingTokenCharacterLayer({
@@ -1930,11 +1947,11 @@ const PreviousPaceMarker = React.forwardRef<HTMLSpanElement>(function PreviousPa
   );
 });
 
-function Metric({ label, value }: { label: string; value: string | number }) {
+function Metric({ label, value, flat = false }: { label: string; value: string | number; flat?: boolean }) {
   return (
-    <div className="rounded-md bg-paper/[0.035] px-4 py-3">
-      <div className="font-mono text-[0.68rem] uppercase text-paper/45">{label}</div>
-      <div className="mt-1 font-mono text-2xl font-semibold text-paper md:text-3xl">{value}</div>
+    <div className={flat ? "border-t border-paper/10 px-1 py-2" : "rounded-md bg-paper/[0.035] px-4 py-3"}>
+      <div className={clsx("font-mono uppercase text-paper/40", flat ? "text-secondary" : "text-secondary")}>{label}</div>
+      <div className={clsx("font-mono font-semibold text-paper", flat ? "mt-0.5 text-xl md:text-2xl" : "mt-1 text-2xl md:text-3xl")}>{value}</div>
     </div>
   );
 }
@@ -1978,46 +1995,48 @@ function ResultsPanel({
   metricLabel,
   onRestart,
   onNextPassage,
-  restartButtonRef
+  restartButtonRef,
+  compact = false
 }: {
   result: TypingResult;
   metricLabel: string;
   onRestart: () => void;
   onNextPassage: () => void;
   restartButtonRef: React.RefObject<HTMLButtonElement>;
+  compact?: boolean;
 }) {
   return (
-    <section className="mt-6 rounded-lg bg-paper/[0.025] p-4 md:p-5">
+    <section className={compact ? "mt-4 border-t border-paper/[0.08] pt-3" : "mt-6 rounded-lg bg-paper/[0.025] p-4 md:p-5"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-xs uppercase text-brass">Result</p>
-          <h2 className="mt-1 text-2xl font-semibold text-paper">{getCompletionLabel(result.completionReason)}</h2>
+          <p className={clsx("font-mono uppercase text-brass", compact ? "text-secondary" : "text-xs")}>Result</p>
+          <h2 className={clsx("font-semibold text-paper", compact ? "mt-0.5 text-lg" : "mt-1 text-page")}>{getCompletionLabel(result.completionReason)}</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
             ref={restartButtonRef}
             type="button"
             onClick={onRestart}
-            className="inline-flex items-center gap-2 rounded-md bg-paper/[0.045] px-3 py-2 font-mono text-xs text-paper/70 transition hover:bg-paper/[0.075] hover:text-paper"
+            className={clsx("inline-flex items-center rounded-md font-mono text-control text-paper/65 transition hover:bg-paper/[0.06] hover:text-paper", compact ? "min-h-8 gap-1.5 px-2.5" : "gap-2 bg-paper/[0.045] px-3 py-2")}
           >
-            <RotateCcw className="h-4 w-4" />
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
             Restart
           </button>
           <button
             type="button"
             onClick={onNextPassage}
-            className="inline-flex items-center gap-2 rounded-md bg-brass/10 px-3 py-2 font-mono text-xs text-brass transition hover:bg-brass/15"
+            className={clsx("inline-flex items-center rounded-md bg-brass/10 font-mono text-control text-brass transition hover:bg-brass/15", compact ? "min-h-8 gap-1.5 px-2.5" : "gap-2 px-3 py-2")}
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Next passage
           </button>
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Metric label={metricLabel} value={result.wpm.toFixed(1)} />
-        <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-        <Metric label="Time" value={formatTime(result.timeUsedSeconds)} />
-        <Metric label="Mistakes" value={result.incorrectCharacters} />
+      <div className={clsx("grid grid-cols-2 md:grid-cols-4", compact ? "mt-3 gap-x-3" : "mt-4 gap-2")}>
+        <Metric label={metricLabel} value={result.wpm.toFixed(1)} flat={compact} />
+        <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} flat={compact} />
+        <Metric label="Time" value={formatTime(result.timeUsedSeconds)} flat={compact} />
+        <Metric label="Mistakes" value={result.incorrectCharacters} flat={compact} />
       </div>
     </section>
   );
@@ -2142,7 +2161,7 @@ export function ResultModal({
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="font-mono text-xs uppercase text-brass">Result</p>
-              <h2 id="result-dialog-title" className="mt-0.5 text-2xl font-semibold leading-tight text-paper">{completionLabel}</h2>
+              <h2 id="result-dialog-title" className="mt-0.5 text-page font-semibold leading-tight text-paper">{completionLabel}</h2>
               <div id="result-dialog-description" className="mt-1.5 truncate font-mono text-xs text-paper/45 md:text-sm">
                 {formatPassageResultMetadata(passage)}
               </div>
@@ -2387,7 +2406,7 @@ function CelebrationToast({ milestones }: { milestones: CelebrationMilestone[] }
             </span>
           </>
         )}
-        <p className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-brass">{activeMilestone.title}</p>
+        <p className="font-mono text-secondary uppercase tracking-[0.18em] text-brass">{activeMilestone.title}</p>
         <p className="mt-1 font-mono text-sm font-semibold text-paper">{activeMilestone.value}</p>
         {activeMilestone.subtitle && <p className="mt-1 font-mono text-xs leading-5 text-paper/55">{activeMilestone.subtitle}</p>}
       </div>
@@ -2692,7 +2711,7 @@ function ResultImageCardAction({
         </span>
         <div className="min-w-0">
           <p className="truncate text-xs text-paper/85">Generate image card</p>
-          <p className="truncate text-[0.68rem] text-paper/40">Create a shareable result image.</p>
+          <p className="truncate text-secondary text-paper/40">Create a shareable result image.</p>
           {error && <p className="mt-2 text-xs text-ember">{error}</p>}
         </div>
       </div>
@@ -2768,7 +2787,7 @@ function AttemptWpmGraph({
                   stroke="rgb(var(--chart-grid))"
                   strokeDasharray="4 6"
                 />
-                <text x={graph.left - 12} y={y + 4} textAnchor="end" className="formaltype-chart-muted-fill font-mono text-[12px]">
+                <text x={graph.left - 12} y={y + 4} textAnchor="end" className="formaltype-chart-muted-fill font-mono text-utility">
                   {formatGraphTick(tick)}
                 </text>
               </g>
@@ -2813,21 +2832,21 @@ function AttemptWpmGraph({
               x={getGraphX(tick, graph)}
               y={graph.bottom + 24}
               textAnchor="middle"
-              className="formaltype-chart-muted-fill font-mono text-[12px]"
+              className="formaltype-chart-muted-fill font-mono text-utility"
             >
               {formatGraphTick(tick)}
             </text>
           ))}
-          <text x={graph.left - 30} y={graph.top - 14} className="formaltype-chart-muted-fill font-mono text-[12px] uppercase">
+          <text x={graph.left - 30} y={graph.top - 14} className="formaltype-chart-muted-fill font-mono text-utility uppercase">
             {metricLabel}
           </text>
-          <text x={graph.right + 4} y={graph.top - 14} className="formaltype-chart-muted-fill font-mono text-[11px] uppercase">
+          <text x={graph.right + 4} y={graph.top - 14} className="formaltype-chart-muted-fill font-mono text-secondary uppercase">
             Errors
           </text>
           {errorTicks.map((tick) => {
             const y = getErrorGraphY(tick, maxErrorsPerSecond, graph);
             return (
-              <text key={tick} x={graph.right + 10} y={y + 4} className="formaltype-chart-muted-fill font-mono text-[10px]">
+              <text key={tick} x={graph.right + 10} y={y + 4} className="formaltype-chart-muted-fill font-mono text-secondary">
                 {tick}
               </text>
             );
@@ -2836,7 +2855,7 @@ function AttemptWpmGraph({
             x={(graph.left + graph.right) / 2}
             y={graph.height - 8}
             textAnchor="middle"
-            className="formaltype-chart-muted-fill font-mono text-[12px] uppercase"
+            className="formaltype-chart-muted-fill font-mono text-utility uppercase"
           >
             Time (seconds)
           </text>
@@ -2868,7 +2887,7 @@ function AttemptWpmGraph({
                 <line x1={x - 3.5} x2={x + 3.5} y1={y - 3.5} y2={y + 3.5} stroke="rgb(var(--chart-danger))" strokeWidth="2" />
                 <line x1={x + 3.5} x2={x - 3.5} y1={y - 3.5} y2={y + 3.5} stroke="rgb(var(--chart-danger))" strokeWidth="2" />
                 {error.count > 1 && (
-                  <text x={x + 5} y={y - 5} className="font-mono text-[9px]" fill="rgb(var(--chart-danger))">
+                  <text x={x + 5} y={y - 5} className="font-mono text-secondary" fill="rgb(var(--chart-danger))">
                     {error.count}
                   </text>
                 )}
@@ -2894,16 +2913,16 @@ function AttemptWpmGraph({
           {hoveredPoint && (
             <g transform={`translate(${getTooltipX(hoveredPoint.x, graph)} ${Math.max(graph.top + 6, hoveredPoint.y - 94)})`}>
               <rect width="154" height="86" rx="6" className="formaltype-chart-tooltip" />
-              <text x="12" y="18" className="formaltype-chart-tooltip-text-fill font-mono text-[11px]">
+              <text x="12" y="18" className="formaltype-chart-tooltip-text-fill font-mono text-secondary">
                 {hoveredPoint.timeSeconds}s
               </text>
-              <text x="12" y="38" className="formaltype-chart-line-fill font-mono text-[11px]">
+              <text x="12" y="38" className="formaltype-chart-line-fill font-mono text-secondary">
                 {metricLabel} {hoveredPoint.wpm.toFixed(1)}
               </text>
-              <text x="12" y="56" className="font-mono text-[11px]" fill="rgb(var(--chart-line-secondary))">
+              <text x="12" y="56" className="font-mono text-secondary" fill="rgb(var(--chart-line-secondary))">
                 Burst {typeof hoveredPoint.burstWpm === "number" ? hoveredPoint.burstWpm.toFixed(1) : "—"}
               </text>
-              <text x="12" y="74" className="font-mono text-[11px]" fill="rgb(var(--chart-danger))">
+              <text x="12" y="74" className="font-mono text-secondary" fill="rgb(var(--chart-danger))">
                 Errors {getAttemptErrorCountAtSecond(errorEvents, hoveredPoint.timeSeconds)}
               </text>
             </g>
@@ -3380,11 +3399,14 @@ function shouldShowLineBreakMarker(status: string, revealMistakes: boolean) {
   return status === "current" || ((status === "wrong" || status === "extra") && revealMistakes);
 }
 
-function TypingTimer({ value }: { value: string }) {
+function TypingTimer({ value, compact = false }: { value: string; compact?: boolean }) {
   return (
     <div
       data-testid="typing-timer-slot"
-      className="min-h-8 min-w-[5.5rem] justify-self-center text-center font-mono tabular-nums text-2xl leading-none text-paper/45 sm:justify-self-end sm:text-right md:text-[2rem]"
+      className={clsx(
+        "justify-self-center text-center font-mono tabular-nums leading-none text-paper/40 sm:justify-self-end sm:text-right",
+        compact ? "min-h-6 min-w-[4.5rem] text-lg md:text-xl" : "min-h-8 min-w-[5.5rem] text-2xl md:text-[2rem]"
+      )}
       aria-label={`Timer ${value}`}
     >
       <span data-testid="typing-timer">{value}</span>

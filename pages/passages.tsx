@@ -155,7 +155,7 @@ export default function PassagesPage() {
     <AppShell>
       <section className="mx-auto max-w-6xl">
         <p className="font-mono text-xs uppercase text-brass">Library</p>
-        <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Passage library</h1>
+        <h1 className="mt-2 text-page font-semibold text-paper">Passage library</h1>
 
         {message && (
           <div role="status" aria-live="polite" className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-sm text-brass">
@@ -166,7 +166,7 @@ export default function PassagesPage() {
         <div className="mt-8 grid gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
           <aside className="space-y-5 lg:sticky lg:top-5" data-testid="passages-setup-panel">
             <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow backdrop-blur">
-              <h2 className="font-mono text-sm uppercase text-paper/65">Setup</h2>
+              <h2 className="font-mono text-section uppercase text-paper/65">Setup</h2>
               <div className="mt-4 space-y-5">
                 <ChoiceGroup
                   label="Language"
@@ -208,7 +208,7 @@ export default function PassagesPage() {
             <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold text-paper">Available passages</h2>
+                  <h2 className="text-section font-semibold text-paper">Available passages</h2>
                   <p className="mt-1 font-mono text-sm text-paper/45">
                     {filteredLibrary.length} shown / {activeLibrary.length} available · Selected: {activePassage?.title ?? "none"}
                   </p>
@@ -245,7 +245,7 @@ export default function PassagesPage() {
                           <FileText className="h-4 w-4 text-brass" />
                           <h3 className="font-semibold text-paper">{passage.title}</h3>
                           {passage.id === activePassageId && (
-                            <span className="rounded-sm border border-mint/30 bg-mint/10 px-2 py-0.5 font-mono text-[0.68rem] uppercase text-mint">
+                            <span className="rounded-sm border border-mint/30 bg-mint/10 px-2 py-0.5 font-mono text-secondary uppercase text-mint">
                               Selected
                             </span>
                           )}
@@ -309,7 +309,7 @@ function ChoiceGroup({
               aria-pressed={isSelected}
               disabled={option.disabled}
               onClick={() => onChange(option.value)}
-              className={`rounded-full border px-3 py-1.5 font-mono text-[0.72rem] transition disabled:cursor-not-allowed disabled:opacity-45 ${
+              className={`rounded-full border px-3 py-1.5 font-mono text-utility transition disabled:cursor-not-allowed disabled:opacity-45 ${
                 isSelected
                   ? "border-brass/70 bg-brass/15 text-brass"
                   : "border-paper/10 bg-paper/[0.035] text-paper/55 hover:border-brass/35 hover:bg-paper/[0.055] hover:text-paper/80"

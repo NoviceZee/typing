@@ -361,7 +361,7 @@ function ManagePassages() {
         <p className="font-mono text-xs uppercase text-brass">Library admin</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold text-paper md:text-4xl">Manage library</h1>
+            <h1 className="text-page font-semibold text-paper">Manage library</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/55">
               Add, edit, import, export, and remove passages from {storageMode === "supabase" ? "Supabase" : "this browser's localStorage fallback"}.
             </p>
@@ -392,7 +392,7 @@ function ManagePassages() {
         <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-paper">Add passages</h2>
+              <h2 className="text-section font-semibold text-paper">Add passages</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/55">
                 Create a passage manually or upload one or more .txt files. Separators such as --- split long uploads
                 into multiple passages.
@@ -454,7 +454,7 @@ function ManagePassages() {
         <section className="mt-8 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-paper">Library backup</h2>
+              <h2 className="text-section font-semibold text-paper">Library backup</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-paper/55">
                 Export this browser&apos;s local passage library, then import it on another preview URL when localStorage
                 belongs to a different origin.
@@ -522,7 +522,7 @@ function ManagePassages() {
 
         <section className="mt-5 rounded-lg border border-paper/10 bg-ink-950/75 p-4 shadow-glow md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-paper">Saved passages</h2>
+            <h2 className="text-section font-semibold text-paper">Saved passages</h2>
             <div className="flex flex-wrap items-center justify-end gap-3">
               {punctuationNormalizationSummary.passages > 0 && (
                 <button
@@ -554,7 +554,7 @@ function ManagePassages() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold text-paper">{passage.title}</h3>
                       <span
-                        className={`rounded-sm border px-2 py-0.5 font-mono text-[0.68rem] uppercase ${
+                        className={`rounded-sm border px-2 py-0.5 font-mono text-secondary uppercase ${
                           passage.isActive
                             ? "border-mint/30 bg-mint/10 text-mint"
                             : "border-paper/10 bg-ink-800 text-paper/45"
@@ -646,7 +646,7 @@ function NormalizePunctuationModal({
         className="w-full max-w-lg rounded-lg border border-brass/25 bg-ink-900 p-5 shadow-glow md:p-6"
       >
         <p className="font-mono text-xs uppercase text-brass">Bulk edit</p>
-        <h2 id="normalize-punctuation-title" className="mt-1 text-2xl font-semibold text-paper">
+        <h2 id="normalize-punctuation-title" className="mt-1 text-page font-semibold text-paper">
           Normalize English punctuation?
         </h2>
         <p className="mt-3 text-sm leading-6 text-paper/55">
@@ -791,7 +791,7 @@ function EditPassageModal({
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-paper/10 pb-4">
           <div>
             <p className="font-mono text-xs uppercase text-brass">Edit</p>
-            <h2 id="edit-passage-title" className="mt-1 text-2xl font-semibold text-paper">Passage details</h2>
+            <h2 id="edit-passage-title" className="mt-1 text-page font-semibold text-paper">Passage details</h2>
           </div>
           <label className="flex items-center gap-2 font-mono text-sm text-paper/70">
             <input
@@ -862,7 +862,7 @@ function PreviewModal({ passage, onClose }: { passage: LibraryPassage; onClose: 
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4 backdrop-blur">
       <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="preview-passage-title" className="max-h-[calc(100vh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg border border-paper/10 bg-ink-900 p-5 shadow-glow md:p-6">
         <p className="font-mono text-xs uppercase text-brass">Preview</p>
-        <h2 id="preview-passage-title" className="mt-1 text-2xl font-semibold text-paper">{passage.title}</h2>
+        <h2 id="preview-passage-title" className="mt-1 text-page font-semibold text-paper">{passage.title}</h2>
         <p className="mt-2 font-mono text-xs text-paper/45">
           {passage.category} · {passage.style} · {passage.isActive ? "Active" : "Hidden"}
         </p>

@@ -87,7 +87,7 @@ export default function HandleOnboardingPage() {
           </div>
           <div>
             <p className="font-mono text-xs uppercase text-brass">Public handle</p>
-            <h1 className="mt-2 text-3xl font-semibold text-paper">Choose your handle</h1>
+            <h1 className="mt-2 text-page font-semibold text-paper">Choose your handle</h1>
             <p className="mt-3 text-sm leading-6 text-paper/60">
               Your handle is your public identity for leaderboards, future friends, and profile URLs.
             </p>

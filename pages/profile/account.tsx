@@ -161,7 +161,7 @@ export default function AccountPage() {
             <div className="rounded-md border border-brass/25 bg-brass/10 p-2 text-brass"><KeyRound className="h-5 w-5" /></div>
             <div>
               <p className="font-mono text-xs uppercase text-brass">Account recovery</p>
-              <h1 className="mt-2 text-3xl font-semibold text-paper">Set a new password</h1>
+              <h1 className="mt-2 text-page font-semibold text-paper">Set a new password</h1>
               <p className="mt-3 text-sm leading-6 text-paper/60">Choose a new password for this account. You will return to Login when it has been updated.</p>
             </div>
           </div>
@@ -207,12 +207,12 @@ export default function AccountPage() {
           </AccountSection>
 
           <section className="rounded-xl border border-ember/20 bg-ember/[0.035] p-5">
-            <div className="flex items-center gap-3"><DatabaseZap className="h-5 w-5 shrink-0 text-ember" /><div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-sm uppercase text-ember">Delete stats</h2><p className="text-sm text-paper/45">Clears results, analytics and attempt details without deleting your account.</p></div></div>
+            <div className="flex items-center gap-3"><DatabaseZap className="h-5 w-5 shrink-0 text-ember" /><div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-section uppercase text-ember">Delete stats</h2><p className="text-sm text-paper/45">Clears results, analytics and attempt details without deleting your account.</p></div></div>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label><span className="account-label">Type DELETE STATS to confirm</span><input aria-label="Delete stats confirmation" value={statsConfirmation} onChange={(e) => setStatsConfirmation(e.target.value)} className="formaltype-themed-input mt-2 px-3 py-2 font-mono" /></label><button type="button" onClick={deleteStats} disabled={statsConfirmation !== "DELETE STATS" || pendingAction === "stats"} className="rounded-md border border-ember/35 bg-ember/10 px-4 py-2.5 font-mono text-xs uppercase text-ember transition hover:bg-ember/20 disabled:cursor-not-allowed disabled:opacity-35">{pendingAction === "stats" ? "Deleting…" : "Delete stats"}</button></div>
           </section>
 
           <section className="rounded-xl border border-ember/20 bg-ember/[0.045] p-5">
-            <div className="flex items-center gap-3"><AlertTriangle className="h-5 w-5 shrink-0 text-ember" /><div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-sm uppercase text-ember">Delete account</h2><p className="text-sm text-paper/45">Permanently deletes your profile, friendships, saved results and authentication account. This cannot be undone.</p></div></div>
+            <div className="flex items-center gap-3"><AlertTriangle className="h-5 w-5 shrink-0 text-ember" /><div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-section uppercase text-ember">Delete account</h2><p className="text-sm text-paper/45">Permanently deletes your profile, friendships, saved results and authentication account. This cannot be undone.</p></div></div>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><label><span className="account-label">Type DELETE to confirm</span><input aria-label="Delete confirmation" value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} className="formaltype-themed-input mt-2 px-3 py-2 font-mono" /></label><button type="button" onClick={deleteAccount} disabled={deleteConfirmation !== "DELETE" || pendingAction === "delete"} className="rounded-md border border-ember/35 bg-ember/10 px-4 py-2.5 font-mono text-xs uppercase text-ember transition hover:bg-ember/20 disabled:cursor-not-allowed disabled:opacity-35">{pendingAction === "delete" ? "Deleting…" : "Delete permanently"}</button></div>
           </section>
 
@@ -320,7 +320,7 @@ function AccountDialog({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase text-brass">{eyebrow}</p>
-            <h2 id={`${id}-title`} className="mt-1 text-2xl font-semibold text-paper">{title}</h2>
+            <h2 id={`${id}-title`} className="mt-1 text-page font-semibold text-paper">{title}</h2>
             <p id={`${id}-description`} className="mt-2 text-sm leading-6 text-paper/50">{description}</p>
           </div>
           <button ref={closeButtonRef} type="button" onClick={onClose} disabled={isBusy} aria-label={`Close ${title}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-800 text-paper/65 transition hover:border-brass/45 hover:text-paper disabled:opacity-40"><X className="h-4 w-4" /></button>
@@ -357,7 +357,7 @@ function formatHandleAvailability(nextChangeAt: Date | null) {
 }
 
 function AccountSection({ icon, title, description, children }: React.PropsWithChildren<{ icon: React.ReactNode; title: string; description: string }>) {
-  return <section className="rounded-xl border border-paper/10 bg-ink-950/75 p-5 shadow-glow"><div className="flex items-center gap-3 text-brass">{icon}<div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-sm uppercase">{title}</h2><p className="text-sm text-paper/45">{description}</p></div></div><div className="mt-5 divide-y divide-paper/10">{children}</div></section>;
+  return <section className="rounded-xl border border-paper/10 bg-ink-950/75 p-5 shadow-glow"><div className="flex items-center gap-3 text-brass">{icon}<div className="flex flex-wrap items-baseline gap-x-3"><h2 className="font-mono text-section uppercase">{title}</h2><p className="text-sm text-paper/45">{description}</p></div></div><div className="mt-5 divide-y divide-paper/10">{children}</div></section>;
 }
 
 function NotificationRow({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: (checked: boolean) => void }) {

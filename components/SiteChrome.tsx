@@ -5,8 +5,15 @@ import { FeedbackButton } from "@/components/FeedbackButton";
 export const SITE_FRAME_CLASS = "mx-auto w-full max-w-7xl";
 export const SITE_PAGE_GUTTERS_CLASS = "px-5 md:px-8";
 
-export function SiteBrand({ href = "/" }: { href?: string }) {
-  return <Link href={href} className="shrink-0 font-mono text-lg font-semibold tracking-[0.18em] text-paper">Typing Station</Link>;
+export function SiteBrand({ href = "/", compact = false }: { href?: string; compact?: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`${compact ? "text-wordmark-compact tracking-[0.16em]" : "text-wordmark tracking-[0.18em]"} shrink-0 font-mono font-semibold text-paper`}
+    >
+      Typing Station
+    </Link>
+  );
 }
 
 export function PublicSiteHeader({ children }: { children: ReactNode }) {
@@ -19,7 +26,7 @@ export function ReturnToPracticeLink() {
 
 export function SiteFooter({ className = "" }: { className?: string }) {
   return (
-    <footer className={`flex flex-wrap items-center justify-between gap-4 border-t border-paper/10 py-6 font-mono text-[11px] text-paper/30 ${className}`.trim()}>
+    <footer className={`flex flex-wrap items-center justify-between gap-4 border-t border-paper/10 py-6 font-mono text-secondary text-paper/30 ${className}`.trim()}>
       <span>© {new Date().getFullYear()} Typing Station</span>
       <div aria-label="Footer links" className="flex flex-wrap gap-5">
         <Link href="/terms" className="transition hover:text-paper">Terms</Link>

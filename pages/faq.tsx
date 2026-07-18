@@ -113,8 +113,8 @@ export default function FaqPage() {
               <section id={id} key={id} className="scroll-mt-8 md:grid md:grid-cols-[15rem_minmax(0,1fr)] md:gap-12">
                 <div className="mb-7 md:mb-0">
                   <Icon className="h-5 w-5 text-brass" aria-hidden="true" />
-                  <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/30">Station {number}</p>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight">{title}</h2>
+                  <p className="mt-5 font-mono text-secondary uppercase tracking-[0.2em] text-paper/30">Station {number}</p>
+                  <h2 className="mt-2 text-section font-semibold tracking-tight">{title}</h2>
                   <p className="mt-3 text-sm leading-6 text-paper/45">{description}</p>
                 </div>
                 <div className="border-t border-paper/12">
@@ -133,7 +133,7 @@ export default function FaqPage() {
           </div>
 
           <section className="mb-16 grid gap-6 border border-brass/20 bg-brass/[0.045] p-6 shadow-glow sm:grid-cols-[1fr_auto] sm:items-center md:p-8">
-            <div><p className="font-mono text-[10px] uppercase tracking-[0.2em] text-brass">Still curious?</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">The fastest answer may be one session away.</h2></div>
+            <div><p className="font-mono text-secondary uppercase tracking-[0.2em] text-brass">Still curious?</p><h2 className="mt-2 text-section font-semibold tracking-tight">The fastest answer may be one session away.</h2></div>
             <Link href="/practice" className="inline-flex items-center justify-center gap-2 rounded-md bg-brass px-4 py-3 font-mono text-xs font-semibold uppercase tracking-wide text-ink-950 transition hover:bg-paper">Start practising <ArrowRight className="h-4 w-4" /></Link>
           </section>
           </div>

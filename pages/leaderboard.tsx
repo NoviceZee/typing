@@ -142,7 +142,7 @@ export default function LeaderboardPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase text-brass">Leaderboard</p>
-            <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">
+            <h1 className="mt-2 text-page font-semibold text-paper">
               {LEADERBOARD_HEADING_BY_RANGE[timeRange]}
             </h1>
           </div>
@@ -262,11 +262,11 @@ export default function LeaderboardPage() {
                 >
                   <div className="font-mono text-lg font-semibold text-brass md:text-base">#{index + 1}</div>
                   <div>
-                    <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">Name</div>
+                    <div className="font-mono text-secondary uppercase text-paper/35 md:hidden">Name</div>
                     <div className="flex flex-wrap items-center gap-2">
                       <LeaderboardName displayName={result.display_name} />
                       {isOwnResult && (
-                        <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-[0.65rem] font-semibold uppercase text-ink-950">
+                        <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-secondary font-semibold uppercase text-ink-950">
                           You
                         </span>
                       )}
@@ -355,7 +355,7 @@ function FilterSeparator() {
 function Metric({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
     <div>
-      <div className="font-mono text-[0.68rem] uppercase text-paper/35 md:hidden">{label}</div>
+      <div className="font-mono text-secondary uppercase text-paper/35 md:hidden">{label}</div>
       <div className={`font-mono text-sm ${strong ? "font-semibold text-paper" : "text-paper/65"}`}>{value}</div>
     </div>
   );

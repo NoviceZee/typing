@@ -1,6 +1,9 @@
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import React, { useEffect } from "react";
 import { ArrowRight, BarChart3, BookOpenText, Keyboard, Sparkles, Trophy } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 import { getSiteUrl } from "@/lib/siteMetadata";
 import { PublicSiteHeader, SITE_FRAME_CLASS, SITE_PAGE_GUTTERS_CLASS, SiteFooter } from "@/components/SiteChrome";
 
@@ -13,6 +16,22 @@ const FEATURES = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (isLoading || !user) return;
+    void router.replace("/practice");
+  }, [isLoading, router, user]);
+
+  if (user) {
+    return (
+      <main className="min-h-screen bg-ink-950 text-paper" aria-busy="true">
+        <span className="sr-only">Opening practice…</span>
+      </main>
+    );
+  }
+
   return (
     <>
       <Head>
@@ -45,12 +64,12 @@ export default function Home() {
               <Link href="/practice" className="landing-button-primary">Start a one-minute test <ArrowRight className="h-4 w-4" /></Link>
               <Link href="/training" className="landing-button-secondary"><BookOpenText className="h-4 w-4" /> Explore training</Link>
             </div>
-            <p className="landing-reveal landing-delay-3 mt-4 font-mono text-[11px] uppercase tracking-[0.15em] text-paper/30">No account required to begin</p>
+            <p className="landing-reveal landing-delay-3 mt-4 font-mono text-secondary uppercase tracking-[0.15em] text-paper/30">No account required to begin</p>
           </div>
 
           <div className="landing-reveal landing-delay-2 relative mx-auto w-full max-w-xl" aria-label="Typing Station practice preview">
             <div className="landing-practice-card">
-              <div className="flex items-center justify-between border-b border-paper/10 pb-4 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/35">
+              <div className="flex items-center justify-between border-b border-paper/10 pb-4 font-mono text-secondary uppercase tracking-[0.18em] text-paper/35">
                 <span>Business correspondence</span><span>01:00</span>
               </div>
               <p className="mt-8 font-mono text-xl leading-[2.15] tracking-wide sm:text-2xl">
@@ -69,8 +88,8 @@ export default function Home() {
             {FEATURES.map(({ icon: Icon, eyebrow, title, body }) => (
               <article key={title} className="group border-b border-paper/10 px-6 py-12 transition hover:bg-paper/[0.035] md:border-b-0 md:border-r md:last:border-r-0 lg:px-9">
                 <Icon className="h-5 w-5 text-brass transition-transform duration-300 group-hover:-translate-y-1" />
-                <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/35">{eyebrow}</p>
-                <h2 className="mt-3 text-xl font-semibold tracking-tight">{title}</h2>
+                <p className="mt-8 font-mono text-secondary uppercase tracking-[0.2em] text-paper/35">{eyebrow}</p>
+                <h2 className="mt-3 text-section font-semibold tracking-tight">{title}</h2>
                 <p className="mt-3 text-sm leading-6 text-paper/48">{body}</p>
               </article>
             ))}
@@ -91,5 +110,5 @@ export default function Home() {
 }
 
 function PreviewStat({ label, value }: { label: string; value: string }) {
-  return <div><p className="text-[9px] uppercase tracking-[0.16em] text-paper/28">{label}</p><p className="mt-2 text-xl text-paper/80">{value}</p></div>;
+  return <div><p className="text-secondary uppercase tracking-[0.16em] text-paper/28">{label}</p><p className="mt-2 text-xl text-paper/80">{value}</p></div>;
 }

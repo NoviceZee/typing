@@ -31,6 +31,20 @@ const config: Config = {
         serif: ["var(--font-app)"],
         mono: ["var(--font-interface)"]
       },
+      fontSize: {
+        secondary: ["var(--font-size-secondary)", { lineHeight: "1rem" }],
+        utility: ["var(--font-size-utility)", { lineHeight: "1.125rem" }],
+        control: ["var(--font-size-control)", { lineHeight: "1.25rem" }],
+        body: ["var(--font-size-body)", { lineHeight: "1.5rem" }],
+        lead: ["var(--font-size-lead)", { lineHeight: "1.625rem" }],
+        section: ["var(--font-size-section)", { lineHeight: "1.5rem" }],
+        page: ["var(--font-size-page)", { lineHeight: "2rem" }],
+        "wordmark-compact": ["var(--font-size-wordmark-compact)", { lineHeight: "1.5rem" }],
+        wordmark: ["var(--font-size-wordmark)", { lineHeight: "1.75rem" }],
+        xs: ["var(--font-size-utility)", { lineHeight: "1.125rem" }],
+        sm: ["var(--font-size-body)", { lineHeight: "1.5rem" }],
+        base: ["var(--font-size-lead)", { lineHeight: "1.625rem" }]
+      },
       boxShadow: {
         glow: "0 0 0 1px rgb(var(--color-accent) / 0.18), 0 24px 80px rgb(0 0 0 / 0.36)"
       }

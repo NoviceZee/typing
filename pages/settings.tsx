@@ -155,7 +155,7 @@ export default function SettingsPage() {
       <section className="mx-auto w-full max-w-6xl px-1">
         <div className="mb-6 rounded-xl border border-paper/10 bg-ink-900/45 p-5 shadow-glow backdrop-blur">
           <p className="font-mono text-xs uppercase text-brass">Preferences</p>
-          <h1 className="mt-2 text-3xl font-semibold text-paper md:text-4xl">Settings</h1>
+          <h1 className="mt-2 text-page font-semibold text-paper">Settings</h1>
           <div role="status" aria-live="polite" className="mt-2 min-h-5 font-mono text-xs text-mint">
             {showSavedFeedback ? "Saved automatically" : "Changes save automatically"}
           </div>
@@ -432,7 +432,7 @@ function ThemePreviewCard({
           boxShadow: `0 0 0 3px ${preset.preview.background}, 0 0 0 4px ${preset.preview.muted}`
         }}
       />
-      <span className="min-w-0 flex-1 truncate font-mono text-[0.68rem] font-semibold leading-none text-paper">
+      <span className="min-w-0 flex-1 truncate font-mono text-secondary font-semibold leading-none text-paper">
         {preset.label}
       </span>
       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isSelected ? "bg-brass" : "bg-paper/25"}`} />
@@ -537,13 +537,13 @@ function SettingsLivePreview({
           </span>
           <span className="formaltype-typed-pending">g station</span>
         </p>
-        <p className="mt-2 font-mono text-[0.68rem] uppercase text-paper/35">
+        <p className="mt-2 font-mono text-secondary uppercase text-paper/35">
           {themeSettings.caretStyle} caret / {themeSettings.typingColorStyle.replace("-", " ")}
         </p>
       </div>
 
       <div className="mt-4 rounded-lg border border-paper/10 bg-paper/[0.035] p-3">
-        <p className="font-mono text-[0.68rem] uppercase text-paper/35">Sound</p>
+        <p className="font-mono text-secondary uppercase text-paper/35">Sound</p>
         <div className="mt-2 flex items-center justify-between gap-3">
           <div>
             <p className="font-mono text-sm text-paper/80">{soundLabel}</p>
@@ -567,7 +567,7 @@ function SectionHeading({ eyebrow, title, description }: { eyebrow: string; titl
   return (
     <div>
       <p className="font-mono text-xs uppercase text-brass">{eyebrow}</p>
-      <h2 className="mt-1 text-xl font-semibold text-paper">{title}</h2>
+      <h2 className="mt-1 text-section font-semibold text-paper">{title}</h2>
       {description && <p className="mt-1 max-w-2xl text-sm text-paper/55">{description}</p>}
     </div>
   );
@@ -652,7 +652,7 @@ function SoundPackSelector({
       <div className="grid gap-4">
         {SOUND_PACK_GROUPS.map((group) => (
           <fieldset key={group.label} role="group" aria-label={`${group.label} sound packs`} className="grid gap-2">
-            <legend className="font-mono text-[0.68rem] uppercase text-paper/35">{group.label}</legend>
+            <legend className="font-mono text-secondary uppercase text-paper/35">{group.label}</legend>
             <div className="flex flex-wrap gap-2">
               {group.options.map((option) => {
                 const isSelected = option.value === value;

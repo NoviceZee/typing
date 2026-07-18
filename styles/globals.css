@@ -37,6 +37,15 @@
     "Avenir Next", Avenir, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-interface:
     SFMono-Regular, Menlo, Monaco, Consolas, ui-monospace, monospace;
+  --font-size-secondary: 0.75rem;
+  --font-size-utility: 0.8125rem;
+  --font-size-control: 0.875rem;
+  --font-size-body: 0.9375rem;
+  --font-size-lead: 1.0625rem;
+  --font-size-section: 1.125rem;
+  --font-size-page: 1.625rem;
+  --font-size-wordmark-compact: 1rem;
+  --font-size-wordmark: 1.125rem;
   color-scheme: dark;
   background: rgb(var(--color-ink-950));
 }
@@ -344,13 +353,15 @@ body {
   background: rgb(var(--color-ink-950));
   color: rgb(var(--color-paper));
   font-family: var(--font-app);
+  font-size: var(--font-size-body);
+  line-height: 1.5rem;
 }
 
 .profile-page-header { min-height: 5rem; }
 .account-setting-row { align-items: center; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) auto; padding-block: 1rem; }
-.account-label { color: rgb(var(--color-paper) / 0.82); display: block; font-family: var(--font-interface); font-size: 0.8rem; }
-.account-help { color: rgb(var(--color-paper) / 0.4); display: block; font-size: 0.8rem; line-height: 1.25rem; margin-top: 0.25rem; text-wrap: pretty; }
-.account-primary-button { align-items: center; background: rgb(var(--color-accent) / 0.14); border: 1px solid rgb(var(--color-accent) / 0.4); border-radius: 0.375rem; color: rgb(var(--color-accent)); display: inline-flex; font-family: var(--font-interface); font-size: 0.75rem; min-height: 2.5rem; padding: 0.55rem 0.8rem; transition: background-color 150ms ease, border-color 150ms ease; }
+.account-label { color: rgb(var(--color-paper) / 0.82); display: block; font-family: var(--font-interface); font-size: var(--font-size-utility); }
+.account-help { color: rgb(var(--color-paper) / 0.4); display: block; font-size: var(--font-size-utility); line-height: 1.25rem; margin-top: 0.25rem; text-wrap: pretty; }
+.account-primary-button { align-items: center; background: rgb(var(--color-accent) / 0.14); border: 1px solid rgb(var(--color-accent) / 0.4); border-radius: 0.375rem; color: rgb(var(--color-accent)); display: inline-flex; font-family: var(--font-interface); font-size: var(--font-size-control); min-height: 2.5rem; padding: 0.55rem 0.8rem; transition: background-color 150ms ease, border-color 150ms ease; }
 .account-primary-button:hover:not(:disabled) { background: rgb(var(--color-accent) / 0.22); border-color: rgb(var(--color-accent) / 0.65); }
 .account-primary-button:disabled { cursor: not-allowed; opacity: 0.4; }
 .legal-document p { text-wrap: pretty; }
@@ -361,6 +372,26 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+button[class],
+input[class],
+select[class],
+textarea[class]:not([aria-label="Typing input"]),
+nav a[class],
+nav button[class],
+[role="menuitem"],
+[role="option"],
+[role="tab"] {
+  font-size: var(--font-size-control);
+}
+
+table {
+  font-size: var(--font-size-body);
+}
+
+thead {
+  font-size: var(--font-size-utility);
 }
 
 ::selection {
@@ -391,7 +422,7 @@ textarea {
   border-radius: 0.375rem;
   display: inline-flex;
   font-family: var(--font-interface);
-  font-size: 0.75rem;
+  font-size: var(--font-size-control);
   gap: 0.55rem;
   justify-content: center;
   letter-spacing: 0.01em;

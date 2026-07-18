@@ -234,7 +234,7 @@ export default function PublicUserProfilePage() {
         {loadState === "not-found" && (
           <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
             <p className="font-mono text-xs uppercase text-brass">Public profile</p>
-            <h1 className="mt-2 text-3xl font-semibold text-paper">Profile not found</h1>
+            <h1 className="mt-2 text-page font-semibold text-paper">Profile not found</h1>
             <p className="mt-4 text-sm leading-6 text-paper/55">No Typing Station profile exists for that handle.</p>
           </section>
         )}
@@ -316,7 +316,7 @@ function PrivateProfileCard({
       <div className="flex justify-center">
         <PublicAvatar avatarUrl={avatarUrl} avatarStyle={avatarStyle} label={`@${profile.handle}`} />
       </div>
-      <h1 className="mt-4 break-words font-mono text-3xl font-semibold text-paper">@{profile.handle}</h1>
+      <h1 className="mt-4 break-words font-mono text-page font-semibold text-paper">@{profile.handle}</h1>
       <p className="mt-3 text-sm leading-6 text-paper/55">This profile is private.</p>
       {isOwnProfile && (
         <Link
@@ -409,7 +409,7 @@ function ProfileCard({
           <PublicAvatar avatarUrl={avatarUrl} avatarStyle={avatarStyle} label={`@${profile.handle}`} />
           <div className="min-w-0 flex-1">
             <p className="font-mono text-xs uppercase text-brass">Public typist</p>
-            <h1 className="mt-1 break-words font-mono text-4xl font-semibold text-paper">@{profile.handle}</h1>
+            <h1 className="mt-1 break-words font-mono text-page font-semibold text-paper">@{profile.handle}</h1>
             <p className="mt-2 font-mono text-xs uppercase text-paper/35">{formatJoinedDate(profile.created_at)}</p>
             {profile.bio ? (
               <p className="mt-4 max-w-2xl text-sm leading-6 text-paper/60">{profile.bio}</p>
@@ -450,7 +450,7 @@ function ProfileCard({
           </div>
         </div>
         <div className="mt-4">
-          <div className="flex items-center justify-between font-mono text-[0.68rem] uppercase text-paper/35">
+          <div className="flex items-center justify-between font-mono text-secondary uppercase text-paper/35">
             <span>XP progress</span>
             <span>{analytics.progression.xpToNextLevel} to next</span>
           </div>
@@ -541,7 +541,7 @@ function formatJoinedDate(createdAt?: string | null) {
 function SummaryStat({ label, value }: { label: string; value: string | number }) {
   return (
     <article className="rounded-md border border-paper/10 bg-ink-900/60 px-4 py-3">
-      <p className="font-mono text-[0.68rem] uppercase text-paper/40">{label}</p>
+      <p className="font-mono text-secondary uppercase text-paper/40">{label}</p>
       <p className="mt-2 font-mono text-xl font-semibold text-paper">{value}</p>
     </article>
   );
@@ -558,7 +558,7 @@ function PublicStatsPanel({
   return (
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-mono text-sm uppercase text-brass">Public Stats</h2>
+        <h2 className="font-mono text-section uppercase text-brass">Public Stats</h2>
         <Trophy className="h-4 w-4 text-brass" />
       </div>
       {hasResults && (
@@ -590,7 +590,7 @@ function AchievementsSummary({ analytics }: { analytics: ReturnType<typeof build
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 p-5 shadow-glow">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-mono text-sm uppercase text-brass">Achievements</h2>
+          <h2 className="font-mono text-section uppercase text-brass">Achievements</h2>
           <p className="mt-1 font-mono text-xs uppercase text-paper/35">
             {analytics.achievements.unlockedCount} / {analytics.achievements.totalCount} unlocked
           </p>
@@ -615,7 +615,7 @@ function FeaturedStat({ label, value, icon }: { label: string; value: string; ic
   return (
     <article className="rounded-md border border-brass/20 bg-brass/10 px-4 py-4">
       <div className="flex items-center justify-between gap-3 text-brass">
-        <p className="font-mono text-[0.68rem] uppercase text-paper/45">{label}</p>
+        <p className="font-mono text-secondary uppercase text-paper/45">{label}</p>
         {icon}
       </div>
       <p className="mt-3 font-mono text-3xl font-semibold text-paper">{value}</p>

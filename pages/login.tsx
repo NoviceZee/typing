@@ -109,7 +109,7 @@ export default function LoginPage() {
           </div>
           <div>
             <p className="font-mono text-xs uppercase text-brass">Typing Station login</p>
-            <h1 className="mt-2 text-3xl font-semibold text-paper">
+            <h1 className="mt-2 text-page font-semibold text-paper">
               {authMode === "login" ? "Log in" : authMode === "signup" ? "Create account" : "Reset password"}
             </h1>
             <p className="mt-3 text-sm leading-6 text-paper/60">

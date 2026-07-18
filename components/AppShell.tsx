@@ -2,30 +2,32 @@ import Link from "next/link";
 import Script from "next/script";
 import { useRouter } from "next/router";
 import React, { ReactNode, useEffect, useRef, useState } from "react";
-import { ChevronDown, LogIn, LogOut, Menu, UserCircle, X } from "lucide-react";
+import { BookOpenText, ChevronDown, GraduationCap, Keyboard, LogIn, LogOut, Menu, Settings, Trophy, UserCircle, X, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { SupabaseProfile, getProfileDisplayLabel, getSupabaseProfile } from "@/lib/profileStorage";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { SITE_FRAME_CLASS, SiteBrand, SiteFooter } from "@/components/SiteChrome";
 
 const NAV_ITEMS = [
-  { href: "/practice", label: "Practice" },
-  { href: "/training", label: "Training" },
-  { href: "/passages", label: "Library" },
-  { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/settings", label: "Settings" }
+  { href: "/practice", label: "Practice", icon: Keyboard },
+  { href: "/training", label: "Training", icon: GraduationCap },
+  { href: "/passages", label: "Library", icon: BookOpenText },
+  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  { href: "/settings", label: "Settings", icon: Settings }
 ];
 
 export function AppShell({
   children,
   sideAd = true,
   topAd = true,
-  focusMode = false
+  focusMode = false,
+  compact = false
 }: {
   children: ReactNode;
   sideAd?: boolean;
   topAd?: boolean;
   focusMode?: boolean;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -49,7 +51,7 @@ export function AppShell({
   }, [isMobileNavOpen]);
 
   return (
-    <div className="min-h-screen px-5 py-5 text-paper md:px-8">
+    <div className={compact ? "min-h-screen px-4 py-3 text-paper md:px-6 md:py-4" : "min-h-screen px-5 py-5 text-paper md:px-8"}>
       {process.env.NEXT_PUBLIC_ADSENSE_CLIENT && <Script async strategy="afterInteractive" crossOrigin="anonymous" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT}`} />}
       <a
         href="#main-content"
@@ -58,17 +60,17 @@ export function AppShell({
         Skip to main content
       </a>
       <div className={SITE_FRAME_CLASS}>
-        <header className={focusMode ? "invisible border-b border-paper/10 pb-4" : "border-b border-paper/10 pb-4"}>
-          <div className="flex h-10 items-center justify-between gap-3">
-            <SiteBrand />
+        <header className={`${focusMode ? "invisible " : ""}${compact ? "border-b border-paper/[0.07] pb-2" : "border-b border-paper/10 pb-4"}`}>
+          <div className={`flex items-center justify-between gap-3 ${compact ? "h-8" : "h-10"}`}>
+            <SiteBrand href="/practice" compact={compact} />
             <div className="flex min-w-0 items-center gap-2 md:gap-3">
-              <nav aria-label="Primary navigation" className="hidden gap-1 font-mono text-sm text-paper/60 lg:flex lg:gap-2">
+              <nav aria-label="Primary navigation" className={`hidden gap-1 font-mono text-control text-paper/60 lg:flex ${compact ? "" : "lg:gap-2"}`}>
                 {NAV_ITEMS.map((item) => (
-                  <NavLink key={item.href} href={item.href} label={item.label} />
+                  <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} compact={compact} />
                 ))}
               </nav>
-              <NotificationCenter />
-              <HeaderAuthAction />
+              <NotificationCenter compact={compact} />
+              <HeaderAuthAction compact={compact} />
               <button
                 ref={mobileNavButtonRef}
                 type="button"
@@ -76,9 +78,10 @@ export function AppShell({
                 aria-expanded={isMobileNavOpen}
                 aria-controls="mobile-navigation"
                 onClick={() => setIsMobileNavOpen((current) => !current)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-900 text-paper/70 transition hover:border-brass/40 hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass/70 lg:hidden"
+                title={isMobileNavOpen ? "Close navigation" : "Open navigation"}
+                className={compact ? "grid h-8 w-8 shrink-0 place-items-center rounded-md text-paper/55 transition hover:bg-paper/[0.06] hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass/70 lg:hidden" : "grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-900 text-paper/70 transition hover:border-brass/40 hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass/70 lg:hidden"}
               >
-                {isMobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                {isMobileNavOpen ? <X className="h-4 w-4" aria-hidden="true" /> : <Menu className="h-4 w-4" aria-hidden="true" />}
               </button>
             </div>
           </div>
@@ -86,10 +89,10 @@ export function AppShell({
             <nav
               id="mobile-navigation"
               aria-label="Mobile navigation"
-              className="mt-3 grid grid-cols-2 gap-2 border-t border-paper/10 pt-3 font-mono text-sm sm:grid-cols-3 lg:hidden"
+              className={`${compact ? "mt-2 gap-1 border-paper/[0.07] pt-2" : "mt-3 gap-2 border-paper/10 pt-3"} grid grid-cols-2 border-t font-mono text-control sm:grid-cols-3 lg:hidden`}
             >
               {NAV_ITEMS.map((item) => (
-                <NavLink key={item.href} href={item.href} label={item.label} onClick={() => setIsMobileNavOpen(false)} />
+                <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} compact={compact} onClick={() => setIsMobileNavOpen(false)} />
               ))}
             </nav>
           )}
@@ -101,7 +104,7 @@ export function AppShell({
           </div>
         )}
 
-        <div className={sideAd ? "mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]" : "mt-6"}>
+        <div className={sideAd ? `${compact ? "mt-4 gap-4" : "mt-6 gap-6"} grid xl:grid-cols-[minmax(0,1fr)_300px]` : compact ? "mt-4" : "mt-6"}>
           <main id="main-content" tabIndex={-1} className="min-w-0 outline-none">{children}</main>
           {sideAd && (
             <aside className="hidden xl:block">
@@ -121,7 +124,7 @@ export function AppShell({
   );
 }
 
-function HeaderAuthAction() {
+function HeaderAuthAction({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const { user, isLoading, isAdmin, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -200,7 +203,7 @@ function HeaderAuthAction() {
   }, [isOpen]);
 
   if (isLoading) {
-    return <span role="status" aria-label="Checking login" className="block h-9 w-9 animate-pulse rounded-md border border-paper/10 bg-paper/[0.06] sm:w-36" />;
+    return <span role="status" aria-label="Checking login" className={compact ? "block h-8 w-8 animate-pulse rounded-md bg-paper/[0.04] sm:w-32" : "block h-9 w-9 animate-pulse rounded-md border border-paper/10 bg-paper/[0.06] sm:w-36"} />;
   }
 
   if (!user) {
@@ -208,9 +211,9 @@ function HeaderAuthAction() {
     return (
       <Link
         href={`/login${redirectTo}`}
-        className="inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-xs text-paper/70 transition hover:border-brass/40 hover:text-paper"
+        className={compact ? "inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 font-mono text-control text-paper/55 transition hover:bg-paper/[0.06] hover:text-paper" : "inline-flex items-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-control text-paper/70 transition hover:border-brass/40 hover:text-paper"}
       >
-        <LogIn className="h-4 w-4" />
+        <LogIn className="h-4 w-4" aria-hidden="true" />
         Login
       </Link>
     );
@@ -251,14 +254,15 @@ function HeaderAuthAction() {
         ref={menuButtonRef}
         type="button"
         aria-label="Account menu"
+        title="Account menu"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((current) => !current)}
-        className="inline-flex h-9 w-9 items-center justify-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-2 font-mono text-xs text-paper/75 transition hover:border-brass/40 hover:text-paper sm:w-36 sm:px-3"
+        className={compact ? "inline-flex h-8 w-8 items-center justify-center gap-1.5 rounded-md px-1.5 font-mono text-control text-paper/60 transition hover:bg-paper/[0.06] hover:text-paper sm:w-32 sm:px-2.5" : "inline-flex h-9 w-9 items-center justify-center gap-2 rounded-md border border-paper/10 bg-ink-900 px-2 font-mono text-control text-paper/75 transition hover:border-brass/40 hover:text-paper sm:w-36 sm:px-3"}
       >
-        <UserCircle className="h-4 w-4 text-brass" />
+        <UserCircle className="h-4 w-4 text-brass" aria-hidden="true" />
         <span className="hidden min-w-0 flex-1 truncate text-left sm:inline">{accountLabel}</span>
-        <ChevronDown className={`h-3.5 w-3.5 transition ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3.5 w-3.5 transition ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
       {isOpen && (
         <div
@@ -281,7 +285,7 @@ function HeaderAuthAction() {
             role="menuitem"
             onClick={handleLogout}
             disabled={isSigningOut}
-            className="flex w-full items-center gap-2 border-t border-paper/10 px-3 py-2.5 text-left font-mono text-xs text-paper/65 transition hover:bg-paper/10 hover:text-paper"
+            className="flex w-full items-center gap-2 border-t border-paper/10 px-3 py-2.5 text-left font-mono text-control text-paper/65 transition hover:bg-paper/10 hover:text-paper"
           >
             <LogOut className="h-4 w-4" />
             {isSigningOut ? "Signing out..." : "Sign out"}
@@ -298,7 +302,7 @@ function AccountMenuLink({ href, label, onClick }: { href: string; label: string
       href={href}
       role="menuitem"
       onClick={onClick}
-      className="block px-3 py-2.5 font-mono text-xs text-paper/65 transition hover:bg-paper/10 hover:text-paper"
+      className="block px-3 py-2.5 font-mono text-control text-paper/65 transition hover:bg-paper/10 hover:text-paper"
     >
       {label}
     </Link>
@@ -335,7 +339,7 @@ export function AdPlaceholder({ variant }: { variant: "banner" | "sidebar" | "mo
   );
 }
 
-function NavLink({ href, label, onClick }: { href: string; label: string; onClick?: () => void }) {
+function NavLink({ href, label, icon: Icon, compact = false, onClick }: { href: string; label: string; icon: LucideIcon; compact?: boolean; onClick?: () => void }) {
   const router = useRouter();
   const active =
     router.pathname === href ||
@@ -348,10 +352,11 @@ function NavLink({ href, label, onClick }: { href: string; label: string; onClic
       href={href}
       aria-current={active ? "page" : undefined}
       onClick={onClick}
-      className={`flex min-h-10 items-center rounded-md px-3 py-2 outline-none transition focus-visible:ring-2 focus-visible:ring-brass/60 ${
-        active ? "bg-paper text-ink-950" : "text-paper/60 hover:bg-paper/10 hover:text-paper"
+      className={`flex items-center rounded-md outline-none transition focus-visible:ring-2 focus-visible:ring-brass/60 ${compact ? "min-h-8 gap-1.5 px-2 py-1" : "min-h-10 px-3 py-2"} ${
+        active ? compact ? "bg-paper/[0.07] text-brass" : "bg-paper text-ink-950" : compact ? "text-paper/45 hover:bg-paper/[0.05] hover:text-paper/80" : "text-paper/60 hover:bg-paper/10 hover:text-paper"
       }`}
     >
+      {compact && <Icon className="h-4 w-4" aria-hidden />}
       {label}
     </Link>
   );

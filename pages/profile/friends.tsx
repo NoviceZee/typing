@@ -460,10 +460,10 @@ function FriendsTable({
     <section className="overflow-x-auto rounded-lg border border-paper/10 bg-ink-950/75 shadow-glow">
       <div className="flex items-center justify-between border-b border-paper/10 px-4 py-3">
         <div><h2 className="font-mono text-sm text-paper">Compare results</h2><p className="mt-1 text-xs text-paper/40">Best scores by practice type</p></div>
-        <span className="rounded-full border border-brass/25 bg-brass/10 px-2.5 py-1 font-mono text-[0.65rem] uppercase tracking-wide text-brass">You + {rows.length}</span>
+        <span className="rounded-full border border-brass/25 bg-brass/10 px-2.5 py-1 font-mono text-secondary uppercase tracking-wide text-brass">You + {rows.length}</span>
       </div>
       <table aria-label="Friends stats" className="min-w-[64rem] w-full border-collapse text-left">
-        <thead className="border-b border-paper/10 font-mono text-[0.68rem] uppercase text-paper/35">
+        <thead className="border-b border-paper/10 font-mono text-secondary uppercase text-paper/35">
           <tr>
             <th className="px-4 py-3 font-normal">Friend</th>
             <th className="px-3 py-3 font-normal">Level</th>
@@ -521,8 +521,8 @@ function FriendTableRow({
             label={`@${friend.handle}`}
           />
           <div className="min-w-0">
-            <div className="flex items-center gap-2"><Link href={`/u/${friend.handle}`} className="font-mono text-sm text-paper transition hover:text-brass">@{friend.handle}</Link>{isSelf && <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-[0.62rem] font-semibold uppercase text-ink-950">You</span>}</div>
-            <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">
+            <div className="flex items-center gap-2"><Link href={`/u/${friend.handle}`} className="font-mono text-sm text-paper transition hover:text-brass">@{friend.handle}</Link>{isSelf && <span className="rounded bg-brass px-1.5 py-0.5 font-mono text-secondary font-semibold uppercase text-ink-950">You</span>}</div>
+            <p className="mt-1 font-mono text-secondary uppercase text-paper/35">
               {isSelf ? "Your benchmark" : stats.isPrivate ? "Private" : `Friends since ${formatShortDate(friend.updated_at || friend.created_at)}`}
             </p>
           </div>
@@ -587,8 +587,8 @@ function RequestsPanel({
     <section className="rounded-lg border border-paper/10 bg-ink-950/75 px-4 py-3 shadow-glow">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="font-mono text-sm uppercase text-brass">Requests</h2>
-          <p className="mt-1 font-mono text-[0.68rem] uppercase text-paper/35">
+          <h2 className="font-mono text-section uppercase text-brass">Requests</h2>
+          <p className="mt-1 font-mono text-secondary uppercase text-paper/35">
             {incomingRequests.length} incoming / {outgoingRequests.length} outgoing
           </p>
         </div>
@@ -648,7 +648,7 @@ function RequestRow({
         <Link href={`/u/${item.handle}`} className="font-mono text-sm text-paper transition hover:text-brass">
           @{item.handle}
         </Link>
-        <span className="font-mono text-[0.68rem] uppercase text-paper/35">{statusLabel}</span>
+        <span className="font-mono text-secondary uppercase text-paper/35">{statusLabel}</span>
       </div>
       <div className="flex gap-2">
         <button

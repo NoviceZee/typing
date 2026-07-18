@@ -93,6 +93,15 @@ describe("AppShell account dropdown", () => {
     expect(screen.getByRole("navigation").querySelector('a[href="/passages/manage"]')).toBeNull();
   });
 
+  it("links the authenticated app logo directly to Practice", async () => {
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /account menu/i }).textContent).toContain("@formal_typist");
+    });
+    expect(screen.getByRole("link", { name: "Typing Station" }).getAttribute("href")).toBe("/practice");
+  });
+
   it("keeps feedback with the footer links instead of overlaying page content", async () => {
     render(<AppShell sideAd={false}>Content</AppShell>);
 
