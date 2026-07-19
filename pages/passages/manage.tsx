@@ -18,6 +18,7 @@ import {
   createLibraryPassage,
   extractPassageTitle,
   filterLibraryPassages,
+  formatPassageLength,
   splitPastedPassages,
   splitTextIntoPassages
 } from "@/lib/app-storage";
@@ -567,8 +568,7 @@ function ManagePassages() {
                       </span>
                     </div>
                     <p className="mt-2 font-mono text-utility text-paper/45">
-                      {passage.category} · {passage.style} · {passage.source} · {passage.wordCount} words ·{" "}
-                      {passage.characterCount} chars
+                      {passage.category} · {passage.style} · {passage.source} · {formatPassageLength(passage)}
                     </p>
                   </div>
                   <div className="flex gap-2">

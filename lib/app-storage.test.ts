@@ -9,6 +9,7 @@ import {
   DEFAULT_THEME_SETTINGS,
   extractPassageTitle,
   filterLibraryPassages,
+  formatPassageLength,
   mergeImportedPassages,
   readPreviousResult,
   readThemeSettings,
@@ -135,7 +136,7 @@ describe("filterLibraryPassages", () => {
 });
 
 describe("toStoredPassage", () => {
-  it("keeps the selected passage unexpanded when single-passage text is requested", () => {
+  it("only combines very short compatible prose in timed practice", () => {
     const passage = makePassage("1", "Selected", "Business email", "Formal");
     const support = makePassage("2", "Support", "Business email", "Formal");
 
@@ -146,7 +147,7 @@ describe("toStoredPassage", () => {
     expect(singlePassage.text).toBe("Selected body text");
   });
 
-  it("sizes timed Chinese passages by characters instead of treating each passage as one word", () => {
+  it("keeps a sufficiently long Chinese passage by itself at every duration", () => {
     const base = {
       ...makePassage("zh-1", "中文一", "生活", "一般"),
       language: "chinese" as const,
@@ -162,11 +163,72 @@ describe("toStoredPassage", () => {
       characterCount: 120
     };
 
-    const timedPassage = toStoredPassage(base, 60, [base, support]);
-    const comparableCharacters = Array.from(timedPassage.text).filter((character) => !/\s/.test(character));
+    expect(toStoredPassage(base, 60, [base, support]).text).toBe(base.content);
+    expect(toStoredPassage(base, 600, [base, support]).text).toBe(base.content);
+  });
 
-    expect(comparableCharacters.length).toBeGreaterThanOrEqual(300);
-    expect(comparableCharacters.length).toBeLessThan(500);
+  it("never combines Classical Chinese with another passage", () => {
+    const classical = {
+      ...makePassage("classic", "短篇文言", "文言文", "Classical"),
+      language: "chinese" as const,
+      content: "學而時習之。",
+      characterCount: 7
+    };
+    const modern = {
+      ...makePassage("modern", "現代短文", "生活", "一般"),
+      language: "chinese" as const,
+      content: "現代生活短文。",
+      characterCount: 7
+    };
+
+    expect(toStoredPassage(classical, 600, [classical, modern]).text).toBe(classical.content);
+  });
+
+  it("keeps 青玉案‧元夕 and 聲聲慢 as separate poetry passages", () => {
+    const lanternFestival = {
+      ...makePassage("lantern", "青玉案‧元夕", "詩詞", "Poetry"),
+      language: "chinese" as const,
+      content: "東風夜放花千樹，更吹落、星如雨。",
+      characterCount: 18
+    };
+    const slowSlowSong = {
+      ...makePassage("slow", "聲聲慢", "詩詞", "Poetry"),
+      language: "chinese" as const,
+      content: "尋尋覓覓，冷冷清清，悽悽慘慘戚戚。",
+      characterCount: 19
+    };
+
+    expect(toStoredPassage(lanternFestival, 60, [lanternFestival, slowSlowSong]).text).toBe(lanternFestival.content);
+    expect(toStoredPassage(slowSlowSong, 600, [slowSlowSong, lanternFestival]).text).toBe(slowSlowSong.content);
+  });
+
+  it("does not combine short prose from different categories", () => {
+    const life = {
+      ...makePassage("life", "生活短文", "生活", "一般"),
+      language: "chinese" as const,
+      content: "生".repeat(30),
+      characterCount: 30
+    };
+    const work = {
+      ...makePassage("work", "工作短文", "工作", "一般"),
+      language: "chinese" as const,
+      content: "工".repeat(30),
+      characterCount: 30
+    };
+
+    expect(toStoredPassage(life, 60, [life, work]).text).toBe(life.content);
+  });
+
+  it("shows only character count for Chinese library passages", () => {
+    const chinese = {
+      ...makePassage("zh", "中文", "生活", "一般"),
+      language: "chinese" as const,
+      wordCount: 1,
+      characterCount: 93
+    };
+
+    expect(formatPassageLength(chinese)).toBe("93 chars");
+    expect(formatPassageLength(makePassage("en", "English", "Business email", "Formal"))).toBe("4 words · 20 chars");
   });
 });
 

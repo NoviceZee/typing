@@ -16,6 +16,7 @@ import {
   StyleFilter,
   filterLibraryPassages,
   filterLibraryPassagesByLanguage,
+  formatPassageLength,
   selectRandomLibraryPassage,
   toStoredPassage,
   withBuiltInSamplePassages,
@@ -256,8 +257,7 @@ export default function PassagesPage() {
                           )}
                         </div>
                         <p className="mt-2 font-mono text-utility text-paper/45">
-                          {passage.language === "chinese" ? "Chinese" : "English"} · {passage.category} · {passage.style} · {passage.source} · {passage.wordCount} words ·{" "}
-                          {passage.characterCount} chars
+                          {passage.language === "chinese" ? "Chinese" : "English"} · {passage.category} · {passage.style} · {passage.source} · {formatPassageLength(passage)}
                         </p>
                       </div>
 

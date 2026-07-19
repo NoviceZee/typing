@@ -495,8 +495,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       choosePracticePassage({
         library: activeLibrary,
         category: initialCategory,
-        duration: 60,
-        textMode: "timed",
+        duration: durationSeconds,
+        textMode: passageTextMode,
         language: initialLanguage,
         preferredPassageId: getPassageSelectionMode() === "random" ? RANDOM_PASSAGE_ID : getActivePassageId()
       });
@@ -512,7 +512,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     return () => {
       isMounted = false;
     };
-  }, [choosePracticePassage, durationSeconds, previousResultScope, resetActiveSessionState, trainingMode]);
+  }, [choosePracticePassage, durationSeconds, passageTextMode, previousResultScope, resetActiveSessionState, trainingMode]);
 
   useEffect(() => {
     typedTextRef.current = typedText;
@@ -712,6 +712,20 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     },
     [durationSeconds, isTimedMode, passage, practiceMode, previousResultScope, rules, sourceText, user]
   );
+
+  useEffect(() => {
+    if (
+      !isRunning ||
+      isFinished ||
+      trainingSession?.kind === "time" ||
+      !sourceText ||
+      !isTypedTextComplete(sourceText, typedText, rules)
+    ) {
+      return;
+    }
+
+    finishTest("text_completed");
+  }, [finishTest, isFinished, isRunning, rules, sourceText, trainingSession?.kind, typedText]);
 
   const startSession = useCallback(() => {
     if (!passage || !sourceText || isFinished) {
@@ -1031,9 +1045,6 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       recordAttemptTimelinePoint(elapsedSecondsRef.current, nextValue);
       if (didTypingChange) {
         playPendingKeyboardSound();
-      }
-      if (trainingSession?.kind === "words" && isTypedTextComplete(sourceText, nextValue, rules)) {
-        finishTest("text_completed");
       }
       return nextValue;
     });
@@ -3217,7 +3228,7 @@ function getWpmTicks(maxWpm: number) {
 }
 
 function getTimeTicks(maxTime: number) {
-  const divisions = maxTime < 15 ? Math.max(1, Math.round(maxTime)) : maxTime < 60 ? 15 : 20;
+  const divisions = maxTime < 15 ? Math.max(1, Math.round(maxTime)) : 10;
   return getEvenGraphTicks(maxTime, divisions);
 }
 
