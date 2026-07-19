@@ -146,6 +146,7 @@ const HAN_CHARACTER_PATTERN = /[\u3400-\u9fff\uf900-\ufaff]/;
 const CONSISTENCY_HELP_TEXT =
   "Consistency shows how steady your WPM stayed during the test. It is based on the coefficient of variation of your WPM timeline.";
 const ACHIEVEMENT_POP_DISMISS_MS = 5000;
+const TOUCH_FIRST_INPUT_MEDIA_QUERY = "(hover: none) and (pointer: coarse)";
 
 type CelebrationMilestone = {
   id: string;
@@ -157,8 +158,28 @@ type CelebrationMilestone = {
 
 const EMPTY_CELEBRATION_MILESTONES: CelebrationMilestone[] = [];
 
+function useTouchFirstInput() {
+  const [isTouchFirstInput, setIsTouchFirstInput] = useState(false);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(TOUCH_FIRST_INPUT_MEDIA_QUERY);
+    const updateInputCapability = () => setIsTouchFirstInput(mediaQuery.matches);
+
+    updateInputCapability();
+    mediaQuery.addEventListener("change", updateInputCapability);
+    return () => mediaQuery.removeEventListener("change", updateInputCapability);
+  }, []);
+
+  return isTouchFirstInput;
+}
+
 export default function PracticePage({ trainingMode }: { trainingMode?: PracticeTrainingMode } = {}) {
   const { user } = useAuth();
+  const isTouchFirstInput = useTouchFirstInput();
   const [rules, setRules] = useState<TypingRules>(DEFAULT_RULES);
   const [passage, setPassage] = useState<StoredPassage | null>(null);
   const [typedText, setTypedText] = useState("");
@@ -1748,13 +1769,16 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           <div className={clsx("flex flex-wrap items-center font-mono text-paper/30", isCompactPractice ? "mt-2 gap-2 text-secondary" : "mt-3 gap-3 text-utility")}>
             {isCompactPractice && <KeyboardIcon className="icon-inline text-paper/25" aria-hidden="true" />}
             {status === "idle" || !shouldUseChineseImeSink ? (
-              <>
-                <span className="sm:hidden">Tap to start</span>
-                <span className="hidden sm:inline">Tab = start</span>
-              </>
+              isTouchFirstInput ? (
+                <span>Tap to start</span>
+              ) : (
+                <>
+                  <span>Tab = start</span>
+                  <span>Tab + Enter = restart</span>
+                  <span>Esc = finish</span>
+                </>
+              )
             ) : <span>Timer running</span>}
-            <span className="hidden sm:inline">Tab + Enter = restart</span>
-            <span className="hidden sm:inline">Esc = finish</span>
           </div>
         )}
 

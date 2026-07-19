@@ -82,6 +82,7 @@ vi.mock("@/lib/typingAttemptStorage", () => ({
 
 const mockedGetSupabaseAnalyticsTypingResults = vi.mocked(getSupabaseAnalyticsTypingResults);
 const mockedSaveSupabaseTypingResult = vi.mocked(saveSupabaseTypingResult);
+const TOUCH_FIRST_INPUT_MEDIA_QUERY = "(hover: none) and (pointer: coarse)";
 const SOUND_PACKS = [
   "mechanical",
   "clicky",
@@ -99,6 +100,37 @@ const SOUND_PACKS = [
   "recorded-10"
 ];
 
+function mockTouchFirstInput(initialMatches: boolean) {
+  let matches = initialMatches;
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  const mediaQueryList = {
+    get matches() {
+      return matches;
+    },
+    media: TOUCH_FIRST_INPUT_MEDIA_QUERY,
+    onchange: null,
+    addEventListener: vi.fn((_type: string, listener: (event: MediaQueryListEvent) => void) => {
+      listeners.add(listener);
+    }),
+    removeEventListener: vi.fn((_type: string, listener: (event: MediaQueryListEvent) => void) => {
+      listeners.delete(listener);
+    }),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(() => true)
+  } as unknown as MediaQueryList;
+
+  vi.stubGlobal("matchMedia", vi.fn(() => mediaQueryList));
+
+  return {
+    setMatches(nextMatches: boolean) {
+      matches = nextMatches;
+      const event = { matches, media: TOUCH_FIRST_INPUT_MEDIA_QUERY } as MediaQueryListEvent;
+      listeners.forEach((listener) => listener(event));
+    }
+  };
+}
+
 describe("PracticePage passage loading", () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -111,6 +143,7 @@ describe("PracticePage passage loading", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -602,7 +635,60 @@ describe("PracticePage passage loading", () => {
     expect(screen.queryByText("No active saved passages found. Using a sample passage.")).toBeNull();
   });
 
+  it("shows only the touch hint for touch-first input capabilities", async () => {
+    mockTouchFirstInput(true);
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("passage-loading-placeholder")).toBeNull();
+    });
+
+    expect(window.matchMedia).toHaveBeenCalledWith(TOUCH_FIRST_INPUT_MEDIA_QUERY);
+    expect(screen.getByText("Tap to start")).toBeTruthy();
+    expect(screen.queryByText("Tab = start")).toBeNull();
+    expect(screen.queryByText("Tab + Enter = restart")).toBeNull();
+    expect(screen.queryByText("Esc = finish")).toBeNull();
+  });
+
+  it("shows only keyboard shortcuts for keyboard-first input capabilities", async () => {
+    mockTouchFirstInput(false);
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("passage-loading-placeholder")).toBeNull();
+    });
+
+    expect(screen.queryByText("Tap to start")).toBeNull();
+    expect(screen.getByText("Tab = start")).toBeTruthy();
+    expect(screen.getByText("Tab + Enter = restart")).toBeTruthy();
+    expect(screen.getByText("Esc = finish")).toBeTruthy();
+  });
+
+  it("updates the hint bar when the primary input capability changes", async () => {
+    const inputCapability = mockTouchFirstInput(false);
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("passage-loading-placeholder")).toBeNull();
+    });
+    expect(screen.getByText("Tab = start")).toBeTruthy();
+
+    act(() => {
+      inputCapability.setMatches(true);
+    });
+
+    expect(screen.getByText("Tap to start")).toBeTruthy();
+    expect(screen.queryByText("Tab = start")).toBeNull();
+  });
+
   it("switching Practice language resets the active session and loads that language only", async () => {
+    mockTouchFirstInput(false);
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
       JSON.stringify([
@@ -621,8 +707,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "English");
     expect(screen.getByText("Tab = start")).toBeTruthy();
-    expect(screen.getByText("Tab = start").className).toContain("hidden sm:inline");
-    expect(screen.getByText("Tap to start").className).toContain("sm:hidden");
+    expect(screen.queryByText("Tap to start")).toBeNull();
 
     fireEvent.keyDown(window, { key: "Enter" });
     fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
