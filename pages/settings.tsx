@@ -545,6 +545,11 @@ function SettingsLivePreview({
               themeSettings.caretBlink === "off" ? "formaltype-caret-static" : "formaltype-caret-animated"
             }`}
           >
+            <span
+              data-typing-caret-indicator="true"
+              aria-hidden="true"
+              className="formaltype-caret-indicator"
+            />
             n
           </span>
           <span className="formaltype-typed-pending">g station</span>

@@ -1235,6 +1235,9 @@ describe("PracticePage passage loading", () => {
     expect(justFinishedResult).toBeTruthy();
     expect(screen.queryByTestId("previous-pace-display")).toBeNull();
     expect(screen.queryByText(/Previous pace:/)).toBeNull();
+    const restartedCaret = screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret-indicator="true"]');
+    expect(restartedCaret).toBeTruthy();
+    expect(restartedCaret?.parentElement?.getAttribute("data-index")).toBe("0");
   });
 
   it("shows the restarted same-passage attempt as the previous comparison in the next result modal", async () => {
@@ -1391,6 +1394,7 @@ describe("PracticePage passage loading", () => {
 
     const englishInput = screen.getByLabelText("Typing input");
     expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll('[data-typing-caret-indicator="true"]')).toHaveLength(1);
     fireEvent.keyDown(window, { key: "Tab" });
     fireEvent.change(englishInput, { target: { value: "A" } });
     expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("1");

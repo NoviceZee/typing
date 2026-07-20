@@ -459,6 +459,15 @@ export function isTypedTextComplete(targetText: string, typedText: string, rules
   return getComparableTextLength(typedText, rules) >= getComparableTextLength(preparedTarget, rules);
 }
 
+export function shouldFinishCompletedText(
+  trainingSessionKind: "time" | "words" | undefined,
+  targetText: string,
+  typedText: string,
+  rules: TypingRules
+): boolean {
+  return trainingSessionKind !== "time" && isTypedTextComplete(targetText, typedText, rules);
+}
+
 function charactersEquivalent(expected: string, actual: string, rules: TypingRules): boolean {
   if (!rules.punctuationSensitive && (isPunctuation(expected) || isPunctuation(actual))) {
     return true;

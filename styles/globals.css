@@ -894,33 +894,33 @@ textarea {
   z-index: 1;
 }
 
-.formaltype-typed-current::after {
+.formaltype-caret-indicator {
   animation: none;
-  content: "";
+  display: block;
   opacity: 1;
   pointer-events: none;
   position: absolute;
   z-index: 2;
 }
 
-.formaltype-caret-bar::after {
+.formaltype-caret-bar > .formaltype-caret-indicator {
   background: rgb(var(--color-accent));
   border-radius: 999px;
   bottom: 0.12em;
-  left: -0.08em;
+  left: 0;
   box-shadow: 0 0 0.14em rgb(var(--color-accent) / 0.45);
   top: 0.12em;
   width: 0.12em;
 }
 
-.formaltype-caret-block::after {
+.formaltype-caret-block > .formaltype-caret-indicator {
   background: rgb(var(--typing-current-bg));
   border-radius: 0.14em;
   inset: 0.02em -0.04em 0.02em -0.04em;
   z-index: -1;
 }
 
-.formaltype-caret-underline::after {
+.formaltype-caret-underline > .formaltype-caret-indicator {
   background: rgb(var(--color-accent));
   border-radius: 999px;
   bottom: 0.05em;
@@ -930,11 +930,11 @@ textarea {
   box-shadow: 0 0 0.14em rgb(var(--color-accent) / 0.4);
 }
 
-.formaltype-caret-animated::after {
+.formaltype-caret-animated > .formaltype-caret-indicator {
   animation: formaltype-caret-blink 1.05s steps(2, start) infinite;
 }
 
-.formaltype-caret-static::after {
+.formaltype-caret-static > .formaltype-caret-indicator {
   animation: none;
 }
 
