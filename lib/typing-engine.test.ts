@@ -7,6 +7,7 @@ import {
   getRequiredWordCount,
   isTypedTextComplete,
   normalizeTargetForRules,
+  shouldFinishCompletedText,
   validateTypedText
 } from "./typing-engine";
 
@@ -252,6 +253,13 @@ describe("typing rule comparison", () => {
         punctuationSensitive: false
       })
     ).toBe(true);
+  });
+
+  it("finishes completed Practice and word drills at the input boundary, but not timed Training", () => {
+    expect(shouldFinishCompletedText(undefined, "客戶測試", "客戶測試", DEFAULT_RULES)).toBe(true);
+    expect(shouldFinishCompletedText("words", "Complete this", "Complete this", DEFAULT_RULES)).toBe(true);
+    expect(shouldFinishCompletedText("time", "12345", "12345", DEFAULT_RULES)).toBe(false);
+    expect(shouldFinishCompletedText(undefined, "客戶測試", "客戶測", DEFAULT_RULES)).toBe(false);
   });
 });
 

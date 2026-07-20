@@ -16,8 +16,8 @@ import {
   buildPracticePassage,
   calculateResult,
   enforceBackspacePolicy,
-  isTypedTextComplete,
   normalizeTargetForRules,
+  shouldFinishCompletedText,
   validateTypedText
 } from "@/lib/typing-engine";
 import {
@@ -714,20 +714,6 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     [durationSeconds, isTimedMode, passage, practiceMode, previousResultScope, rules, sourceText, user]
   );
 
-  useEffect(() => {
-    if (
-      !isRunning ||
-      isFinished ||
-      trainingSession?.kind === "time" ||
-      !sourceText ||
-      !isTypedTextComplete(sourceText, typedText, rules)
-    ) {
-      return;
-    }
-
-    finishTest("text_completed");
-  }, [finishTest, isFinished, isRunning, rules, sourceText, trainingSession?.kind, typedText]);
-
   const startSession = useCallback(() => {
     if (!passage || !sourceText || isFinished) {
       return;
@@ -1034,21 +1020,24 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setStatus("running");
     }
 
-    setTypedText((previous) => {
-      const nextValue = enforceBackspacePolicy(previous, value, rules.allowBackspace);
-      const didTypingChange = nextValue !== previous;
-      recordTypedCharacterDelays(previous, nextValue);
-      if (isSuspiciousInputChange(previous, nextValue, elapsedSecondsRef.current)) {
-        markAttemptSuspicious();
-      }
-      typedTextRef.current = nextValue;
-      recordHistoricalErrors(nextValue);
-      recordAttemptTimelinePoint(elapsedSecondsRef.current, nextValue);
-      if (didTypingChange) {
-        playPendingKeyboardSound();
-      }
-      return nextValue;
-    });
+    const previous = typedTextRef.current;
+    const nextValue = enforceBackspacePolicy(previous, value, rules.allowBackspace);
+    const didTypingChange = nextValue !== previous;
+    recordTypedCharacterDelays(previous, nextValue);
+    if (isSuspiciousInputChange(previous, nextValue, elapsedSecondsRef.current)) {
+      markAttemptSuspicious();
+    }
+    typedTextRef.current = nextValue;
+    recordHistoricalErrors(nextValue);
+    recordAttemptTimelinePoint(elapsedSecondsRef.current, nextValue);
+    if (didTypingChange) {
+      playPendingKeyboardSound();
+    }
+    setTypedText(nextValue);
+
+    if (shouldFinishCompletedText(trainingSession?.kind, sourceText, nextValue, rules)) {
+      finishTest("text_completed");
+    }
   }
 
   function recordHistoricalErrors(nextValue: string) {
@@ -1690,6 +1679,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                                 character.status === "untyped" && "text-paper/20"
                               )}
                             >
+                              <TypingCaretIndicator isCurrent={isCurrent} />
                               {shouldShowLineBreakMarker(character.status, rules.showMistakesImmediately || isFinished) ? "↵" : ""}
                             </span>
                             <br />
@@ -1705,6 +1695,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                           data-typing-caret={isCurrent ? "true" : undefined}
                           className={clsx(characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings))}
                         >
+                          <TypingCaretIndicator isCurrent={isCurrent} />
                           {character.actual || character.expected}
                         </span>
                       );
@@ -1931,6 +1922,7 @@ function TrainingTokenCharacterLayer({
               data-typing-caret={isCurrent ? "true" : undefined}
               className={clsx(characterClass(character.status, showMistakes, themeSettings))}
             >
+              <TypingCaretIndicator isCurrent={isCurrent} />
               {character.actual || character.expected}
             </span>
           );
@@ -1954,12 +1946,21 @@ function TrainingTokenCharacterLayer({
             data-typing-caret={character.status === "current" ? "true" : undefined}
             className={clsx(characterClass(character.status, showMistakes, themeSettings))}
           >
+            <TypingCaretIndicator isCurrent={character.status === "current"} />
             {character.actual || character.expected}
           </span>
         );
       })}
     </>
   );
+}
+
+function TypingCaretIndicator({ isCurrent }: { isCurrent: boolean }) {
+  if (!isCurrent) {
+    return null;
+  }
+
+  return <span data-typing-caret-indicator="true" aria-hidden="true" className="formaltype-caret-indicator" />;
 }
 
 const PreviousPaceMarker = React.forwardRef<HTMLSpanElement>(function PreviousPaceMarker(_, ref) {
