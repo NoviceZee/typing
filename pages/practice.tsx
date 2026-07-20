@@ -621,10 +621,11 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       const completedTimeline = upsertAttemptTimelinePoint(attemptTimelineRef.current, finalTimelinePoint);
       attemptTimelineRef.current = completedTimeline;
       const isSuspicious = suspiciousAttemptRef.current;
+      const shouldPersistResult = isPersistableCompletion(completionReason);
 
       const comparisonPreviousResult = readPreviousResult(passage.id, previousResultScope);
       let attemptDetail: TypingAttemptDetail | null = null;
-      if (!isSuspicious) {
+      if (shouldPersistResult && !isSuspicious) {
         writePreviousResult(
           passage,
           finalResult,
@@ -666,7 +667,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             console.warn("Supabase recent typing results load failed", error);
           });
 
-        if (!isSuspicious) {
+        if (shouldPersistResult && !isSuspicious) {
           setCloudSaveState("saving");
           void saveSupabaseTypingResult({
             userId: user.id,
@@ -1681,6 +1682,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                             <span
                               ref={setCharacterRef(index, isCurrent)}
                               data-index={index}
+                              data-typing-caret={isCurrent ? "true" : undefined}
                               aria-label={character.status === "wrong" ? "Missed line break" : "Line break"}
                               className={clsx(
                                 "inline-block min-w-[0.7em]",
@@ -1700,6 +1702,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                           key={`${character.index}-${index}-${character.expected}-${character.actual}`}
                           ref={setCharacterRef(index, isCurrent)}
                           data-index={index}
+                          data-typing-caret={isCurrent ? "true" : undefined}
                           className={clsx(characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings))}
                         >
                           {character.actual || character.expected}
@@ -1925,6 +1928,7 @@ function TrainingTokenCharacterLayer({
               key={`${character.index}-${comparisonIndex}-${character.expected}-${character.actual}`}
               ref={setCharacterRef(comparisonIndex, isCurrent)}
               data-index={comparisonIndex}
+              data-typing-caret={isCurrent ? "true" : undefined}
               className={clsx(characterClass(character.status, showMistakes, themeSettings))}
             >
               {character.actual || character.expected}
@@ -1947,6 +1951,7 @@ function TrainingTokenCharacterLayer({
             key={`${character.index}-${comparisonIndex}-${character.expected}-${character.actual}`}
             ref={setCharacterRef(comparisonIndex, character.status === "current")}
             data-index={comparisonIndex}
+            data-typing-caret={character.status === "current" ? "true" : undefined}
             className={clsx(characterClass(character.status, showMistakes, themeSettings))}
           >
             {character.actual || character.expected}
@@ -2200,6 +2205,9 @@ export function ResultModal({
               <div id="result-dialog-description" className="mt-1.5 truncate font-mono text-utility text-paper/45 md:text-body">
                 {formatPassageResultMetadata(passage)}
               </div>
+              {result.completionReason === "manual" && (
+                <p className="mt-1 font-mono text-secondary text-paper/45">Manual result — not saved.</p>
+              )}
               {cloudSaveState !== "idle" && (
                 <p
                   role={cloudSaveState === "failed" ? "alert" : "status"}
@@ -3272,6 +3280,10 @@ function getCompletionLabel(completionReason: CompletionReason) {
   }
 
   return "Session ended";
+}
+
+function isPersistableCompletion(completionReason: CompletionReason) {
+  return completionReason !== "manual";
 }
 
 export async function generateResultImageCard({ result, passage, modeLabel }: ResultImageCardInput) {

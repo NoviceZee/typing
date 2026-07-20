@@ -889,15 +889,18 @@ textarea {
 
 .formaltype-typed-current {
   color: rgb(var(--color-paper));
+  isolation: isolate;
   position: relative;
-  z-index: 0;
+  z-index: 1;
 }
 
 .formaltype-typed-current::after {
   animation: none;
   content: "";
+  opacity: 1;
   pointer-events: none;
   position: absolute;
+  z-index: 2;
 }
 
 .formaltype-caret-bar::after {
@@ -905,6 +908,7 @@ textarea {
   border-radius: 999px;
   bottom: 0.12em;
   left: -0.08em;
+  box-shadow: 0 0 0.14em rgb(var(--color-accent) / 0.45);
   top: 0.12em;
   width: 0.12em;
 }
@@ -923,6 +927,7 @@ textarea {
   height: 0.14em;
   left: 0;
   right: 0;
+  box-shadow: 0 0 0.14em rgb(var(--color-accent) / 0.4);
 }
 
 .formaltype-caret-animated::after {
@@ -935,7 +940,7 @@ textarea {
 
 @keyframes formaltype-caret-blink {
   50% {
-    opacity: 0.38;
+    opacity: 0.68;
   }
 }
 

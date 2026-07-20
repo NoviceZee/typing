@@ -425,6 +425,32 @@ describe("PracticePage passage loading", () => {
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
   });
 
+  it("shows an Escape result without saving or counting it", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: "user-1" };
+
+    const { container } = render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Local fallback body text.");
+    });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Local");
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(await screen.findByText("Manual result — not saved.")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expect(readPreviousResult("local", 60)).toBeNull();
+    expect(readTypingAttemptDetails("user-1")).toEqual([]);
+    expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
+    expect(mockedGetSupabaseAnalyticsTypingResults).not.toHaveBeenCalled();
+  });
+
   it("keeps the active Practice session usable when local result persistence hits quota", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
@@ -447,13 +473,8 @@ describe("PracticePage passage loading", () => {
         expect(container.textContent).toContain("Local fallback body text for quota failure.");
       });
 
-      fireEvent.keyDown(window, { key: "Tab" });
-      typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback");
-
-      expect(() => fireEvent.keyDown(window, { key: "Escape" })).not.toThrow();
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
-      });
+      await expect(finishTimedPractice("Local fallback")).resolves.toBeUndefined();
+      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
       expect(screen.getByText("Session review")).toBeTruthy();
     } finally {
       setItemSpy.mockRestore();
@@ -567,6 +588,70 @@ describe("PracticePage passage loading", () => {
     expect(screen.queryByText("Time up")).toBeNull();
     expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
     expect(screen.getByTestId("typing-timer").textContent).toBe("2:00");
+  });
+
+  it("finishes English Infinite Practice when the full target is typed", async () => {
+    const text = "Complete this infinite passage.";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("english", "English Infinite", text, "english")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: "user-1" };
+
+    const { container } = render(<PracticePage />);
+    await waitFor(() => expect(container.textContent).toContain(text));
+    const infiniteButton = screen.getByRole("button", { name: "Infinite" });
+    fireEvent.click(infiniteButton);
+    await waitFor(() => expect(infiniteButton.getAttribute("aria-pressed")).toBe("true"));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toBe(text));
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), text);
+
+    expect(await screen.findByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.completionReason).toBe("text_completed");
+  });
+
+  it("finishes Chinese Infinite Practice when the full target is typed", async () => {
+    const text = "客戶測試確認";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("english", "English active", "English body text.", "english"),
+        makePassage("chinese", "中文 Infinite", text, "chinese", "工作", "一般")
+      ])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: "user-1" };
+
+    render(<PracticePage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Chinese" }));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(text));
+    const infiniteButton = screen.getByRole("button", { name: "Infinite" });
+    fireEvent.click(infiniteButton);
+    await waitFor(() => expect(infiniteButton.getAttribute("aria-pressed")).toBe("true"));
+    await waitFor(() => {
+      const currentTarget = screen.getByTestId("typing-character-layer").textContent ?? "";
+      expect(currentTarget.length).toBeGreaterThan(0);
+      expect(currentTarget.length).toBeLessThan(200);
+    });
+    const currentTarget = screen.getByTestId("typing-character-layer").textContent ?? "";
+    fireEvent.keyDown(window, { key: "Tab" });
+    const input = screen.getByLabelText("Typing input");
+    let typedValue = "";
+    for (const character of currentTarget) {
+      typedValue += character;
+      fireEvent.input(input, {
+        target: { value: typedValue },
+        nativeEvent: { isComposing: false, data: character }
+      });
+    }
+
+    expect(await screen.findByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.completionReason).toBe("text_completed");
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].passage.language).toBe("chinese");
   });
 
   it("keeps the existing practice controls visible", async () => {
@@ -864,20 +949,14 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text for typing");
     });
 
-    fireEvent.keyDown(window, { key: "Tab" });
-    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
-    fireEvent.keyDown(window, { key: "Escape" });
+    await finishTimedPractice("L");
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
-    }, { timeout: 5_000 });
+    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
     const justFinishedResult = readPreviousResult("local", 60);
 
-    await waitFor(() => {
-      expect(justFinishedResult).toBeTruthy();
-    });
+    expect(justFinishedResult).toBeTruthy();
     expect(screen.queryByTestId("previous-pace-display")).toBeNull();
     expect(screen.queryByText(/Previous pace:/)).toBeNull();
     expect(screen.queryByText("WPM Over Time")).toBeNull();
@@ -897,20 +976,14 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text for typing");
     });
 
-    fireEvent.keyDown(window, { key: "Tab" });
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
-    fireEvent.keyDown(window, { key: "Escape" });
+    await finishTimedPractice("Local fallback body text");
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
-    });
+    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
     const justFinishedResult = readPreviousResult("local", 60);
 
-    await waitFor(() => {
-      expect(justFinishedResult).toBeTruthy();
-    });
+    expect(justFinishedResult).toBeTruthy();
     expect(screen.queryByTestId("previous-pace-display")).toBeNull();
 
     fireEvent.keyDown(window, { key: "Tab" });
@@ -1121,13 +1194,9 @@ describe("PracticePage passage loading", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "5m" }));
 
-    fireEvent.keyDown(window, { key: "Tab" });
-    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
-    fireEvent.keyDown(window, { key: "Escape" });
+    await finishTimedPractice("L", 300);
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
-    });
+    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
     const justFinishedResult = readPreviousResult("local", 300);
@@ -1153,24 +1222,17 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text for typing");
     });
 
-    fireEvent.keyDown(window, { key: "Tab" });
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
-    fireEvent.keyDown(window, { key: "Escape" });
+    await finishTimedPractice("Local fallback body text");
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
-    });
+    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
 
+    vi.useRealTimers();
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    await waitFor(() => {
-      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Restart" }));
-    });
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Restart" })));
     fireEvent.click(screen.getByRole("button", { name: "Restart" }));
     const justFinishedResult = readPreviousResult("local", 60);
 
-    await waitFor(() => {
-      expect(justFinishedResult).toBeTruthy();
-    });
+    expect(justFinishedResult).toBeTruthy();
     expect(screen.queryByTestId("previous-pace-display")).toBeNull();
     expect(screen.queryByText(/Previous pace:/)).toBeNull();
   });
@@ -1188,22 +1250,17 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text for typing");
     });
 
-    fireEvent.keyDown(window, { key: "Tab" });
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
-    fireEvent.keyDown(window, { key: "Escape" });
+    await finishTimedPractice("Local fallback body text");
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
-    });
+    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
     const firstResult = readPreviousResult("local", 60);
 
-    await waitFor(() => {
-      expect(firstResult).toBeTruthy();
-    });
+    expect(firstResult).toBeTruthy();
     expect(screen.queryByTestId("previous-pace-display")).toBeNull();
 
+    vi.useRealTimers();
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body");
     fireEvent.keyDown(window, { key: "Escape" });
@@ -1232,22 +1289,17 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text for typing");
     });
 
-    fireEvent.keyDown(window, { key: "Tab" });
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
-    fireEvent.keyDown(window, { key: "Escape" });
+    await finishTimedPractice("Local fallback body text");
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
-    });
+    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
     const localResult = readPreviousResult("local", 60);
 
-    await waitFor(() => {
-      expect(localResult).toBeTruthy();
-    });
+    expect(localResult).toBeTruthy();
     expect(screen.queryByTestId("previous-pace-display")).toBeNull();
 
+    vi.useRealTimers();
     fireEvent.click(screen.getByRole("button", { name: "Random" }));
 
     await waitFor(() => {
@@ -1322,6 +1374,32 @@ describe("PracticePage passage loading", () => {
     expect(container.querySelector(".formaltype-typing-font-serif")?.getAttribute("data-testid")).toBe(
       "typing-character-layer"
     );
+  });
+
+  it("marks the visible Practice caret across English spaces, line breaks, and Chinese text", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("english", "English caret", "A B\nC", "english"),
+        makePassage("chinese", "中文游標", "今天再見", "chinese", "生活", "一般")
+      ])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("A BC"));
+
+    const englishInput = screen.getByLabelText("Typing input");
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(englishInput, { target: { value: "A" } });
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("1");
+    fireEvent.change(englishInput, { target: { value: "A B" } });
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("3");
+
+    fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("今天再見"));
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");
   });
 
   it("shows passage metadata only once in the idle practice chrome", async () => {
@@ -1576,13 +1654,9 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text for typing");
     });
 
-    fireEvent.keyDown(window, { key: "Tab" });
-    typeIncrementally(screen.getByLabelText("Typing input"), "Local fallback body text");
-    fireEvent.keyDown(window, { key: "Escape" });
+    await finishTimedPractice("Local fallback body text");
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
-    });
+    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
 
     const details = readTypingAttemptDetails("user-1");
     expect(details).toHaveLength(1);
@@ -1603,13 +1677,12 @@ describe("PracticePage passage loading", () => {
     const { container } = render(<PracticePage />);
     await waitFor(() => expect(container.textContent).toContain("Local fallback body text for typing"));
 
-    fireEvent.keyDown(window, { key: "Tab" });
-    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
-    fireEvent.keyDown(window, { key: "Escape" });
-
-    await waitFor(() => {
-      expect(screen.getByRole("alert").textContent).toContain("Cloud save failed");
+    await finishTimedPractice("L");
+    await act(async () => {
+      await Promise.resolve();
     });
+
+    expect(screen.getByRole("alert").textContent).toContain("Cloud save failed");
     expect(screen.getByText("This Result")).toBeTruthy();
     expect(warnSpy).toHaveBeenCalledWith("Supabase typing result save failed", expect.any(Error));
     warnSpy.mockRestore();
@@ -1631,16 +1704,12 @@ describe("PracticePage passage loading", () => {
     const { container } = render(<PracticePage />);
     await waitFor(() => expect(container.textContent).toContain("Local fallback body text for typing"));
 
-    fireEvent.keyDown(window, { key: "Tab" });
-    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
-    fireEvent.keyDown(window, { key: "Escape" });
-    await waitFor(() => expect(screen.getByText("Saving result…")).toBeTruthy());
+    await finishTimedPractice("L");
+    expect(screen.getByText("Saving result…")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
-    fireEvent.keyDown(window, { key: "Tab" });
-    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "L" } });
-    fireEvent.keyDown(window, { key: "Escape" });
-    await waitFor(() => expect(screen.getByText("Saving result…")).toBeTruthy());
+    await finishTimedPractice("L");
+    expect(screen.getByText("Saving result…")).toBeTruthy();
 
     await act(async () => {
       resolveFirstSave({ id: "first-result", created_at: "2026-07-14T01:00:00.000Z" });
@@ -1654,7 +1723,7 @@ describe("PracticePage passage loading", () => {
       resolveSecondSave({ id: "second-result", created_at: "2026-07-14T01:01:00.000Z" });
       await Promise.resolve();
     });
-    await waitFor(() => expect(screen.getByText("Result saved to your account.")).toBeTruthy());
+    expect(screen.getByText("Result saved to your account.")).toBeTruthy();
   });
 
   it("flags suspicious bursts and does not save or update previous pace", async () => {
@@ -1745,6 +1814,17 @@ function typeIncrementally(input: HTMLElement, value: string) {
       target: { value: currentValue }
     });
   }
+}
+
+async function finishTimedPractice(value: string, durationSeconds = 60) {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-07-07T12:00:00.000Z"));
+  fireEvent.keyDown(window, { key: "Tab" });
+  typeIncrementally(screen.getByLabelText("Typing input"), value);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(durationSeconds * 1_000 + 250);
+  });
 }
 
 function makeRecentResult(id: string, passage_title: string, duration_seconds: number, wpm: number, passage_category = "Business email") {

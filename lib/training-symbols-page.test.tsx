@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TrainingSymbolsPage from "../pages/training/symbols";
@@ -71,21 +71,23 @@ describe("TrainingSymbolsPage", () => {
 
   it("saves completed symbols results with a safe symbols category", async () => {
     authState.user = { id: "user-1" };
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-20T12:00:00.000Z"));
     render(<TrainingSymbolsPage />);
 
     const targetText = screen.getByTestId("typing-character-layer").textContent ?? "";
 
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), targetText.slice(0, 12));
-    fireEvent.keyDown(window, { key: "Escape" });
-
-    await waitFor(() => {
-      expect(mockedSaveSupabaseTypingResult).toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_250);
     });
 
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalled();
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].passage.category).toBe("training_symbols");
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.category).toBe("training_symbols");
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].supabasePassageId).toBe("training-symbols");
+    vi.useRealTimers();
   });
 });
 
