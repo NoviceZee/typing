@@ -590,6 +590,70 @@ describe("PracticePage passage loading", () => {
     expect(screen.getByTestId("typing-timer").textContent).toBe("2:00");
   });
 
+  it("finishes English Infinite Practice when the full target is typed", async () => {
+    const text = "Complete this infinite passage.";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("english", "English Infinite", text, "english")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: "user-1" };
+
+    const { container } = render(<PracticePage />);
+    await waitFor(() => expect(container.textContent).toContain(text));
+    const infiniteButton = screen.getByRole("button", { name: "Infinite" });
+    fireEvent.click(infiniteButton);
+    await waitFor(() => expect(infiniteButton.getAttribute("aria-pressed")).toBe("true"));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toBe(text));
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), text);
+
+    expect(await screen.findByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.completionReason).toBe("text_completed");
+  });
+
+  it("finishes Chinese Infinite Practice when the full target is typed", async () => {
+    const text = "客戶測試確認";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("english", "English active", "English body text.", "english"),
+        makePassage("chinese", "中文 Infinite", text, "chinese", "工作", "一般")
+      ])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: "user-1" };
+
+    render(<PracticePage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Chinese" }));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(text));
+    const infiniteButton = screen.getByRole("button", { name: "Infinite" });
+    fireEvent.click(infiniteButton);
+    await waitFor(() => expect(infiniteButton.getAttribute("aria-pressed")).toBe("true"));
+    await waitFor(() => {
+      const currentTarget = screen.getByTestId("typing-character-layer").textContent ?? "";
+      expect(currentTarget.length).toBeGreaterThan(0);
+      expect(currentTarget.length).toBeLessThan(200);
+    });
+    const currentTarget = screen.getByTestId("typing-character-layer").textContent ?? "";
+    fireEvent.keyDown(window, { key: "Tab" });
+    const input = screen.getByLabelText("Typing input");
+    let typedValue = "";
+    for (const character of currentTarget) {
+      typedValue += character;
+      fireEvent.input(input, {
+        target: { value: typedValue },
+        nativeEvent: { isComposing: false, data: character }
+      });
+    }
+
+    expect(await screen.findByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.completionReason).toBe("text_completed");
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].passage.language).toBe("chinese");
+  });
+
   it("keeps the existing practice controls visible", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,

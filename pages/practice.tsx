@@ -495,8 +495,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       choosePracticePassage({
         library: activeLibrary,
         category: initialCategory,
-        duration: 60,
-        textMode: "timed",
+        duration: durationSeconds,
+        textMode: passageTextMode,
         language: initialLanguage,
         preferredPassageId: getPassageSelectionMode() === "random" ? RANDOM_PASSAGE_ID : getActivePassageId()
       });
@@ -512,7 +512,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     return () => {
       isMounted = false;
     };
-  }, [choosePracticePassage, durationSeconds, previousResultScope, resetActiveSessionState, trainingMode]);
+  }, [choosePracticePassage, durationSeconds, passageTextMode, previousResultScope, resetActiveSessionState, trainingMode]);
 
   useEffect(() => {
     typedTextRef.current = typedText;
@@ -1033,7 +1033,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       if (didTypingChange) {
         playPendingKeyboardSound();
       }
-      if (trainingSession?.kind === "words" && isTypedTextComplete(sourceText, nextValue, rules)) {
+      const shouldFinishCompletedText =
+        trainingSession?.kind === "words" || (!trainingMode && !isTimedMode);
+      if (shouldFinishCompletedText && isTypedTextComplete(sourceText, nextValue, rules)) {
         finishTest("text_completed");
       }
       return nextValue;
