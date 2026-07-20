@@ -14,3 +14,4 @@ Sound Pack/
 public/sounds/keyboard/candidates/
 .vercel
 .playwright-cli/
+.worktrees/
