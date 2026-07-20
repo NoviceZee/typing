@@ -648,25 +648,25 @@ describe("ResultModal", () => {
     expect(layout.maxTime).toBe(300);
     expect(layout.xTicks).toContain(0);
     expect(layout.xTicks).toContain(300);
-    expect(layout.xTicks).toHaveLength(21);
+    expect(layout.xTicks).toHaveLength(11);
     expect(layout.yTicks.every((tick) => tick % 15 === 0)).toBe(true);
     expect(layout.positionedPoints[0].timeSeconds).toBe(0);
     expect(layout.positionedPoints[layout.positionedPoints.length - 1].timeSeconds).toBe(300);
     expect(layout.positionedPoints[0].x).toBeLessThan(layout.positionedPoints[layout.positionedPoints.length - 1].x);
   });
 
-  it("uses 15 time divisions for seconds and 20 for minute-based attempts", () => {
+  it("caps longer attempt axes at 10 divisions so labels remain readable", () => {
     const layoutFor = (seconds: number) =>
       getAttemptGraphLayout([], { ...makeResult(), timeUsedSeconds: seconds, durationSeconds: seconds });
 
-    expect(layoutFor(15).xTicks).toHaveLength(16);
-    expect(layoutFor(15).xTicks[1]).toBe(1);
-    expect(layoutFor(30).xTicks).toHaveLength(16);
-    expect(layoutFor(30).xTicks[1]).toBe(2);
-    expect(layoutFor(60).xTicks).toHaveLength(21);
-    expect(layoutFor(60).xTicks[1]).toBe(3);
-    expect(layoutFor(300).xTicks).toHaveLength(21);
-    expect(layoutFor(300).xTicks[1]).toBe(15);
+    expect(layoutFor(15).xTicks).toHaveLength(11);
+    expect(layoutFor(15).xTicks[1]).toBe(1.5);
+    expect(layoutFor(30).xTicks).toHaveLength(11);
+    expect(layoutFor(30).xTicks[1]).toBe(3);
+    expect(layoutFor(60).xTicks).toHaveLength(11);
+    expect(layoutFor(60).xTicks[1]).toBe(6);
+    expect(layoutFor(300).xTicks).toHaveLength(11);
+    expect(layoutFor(300).xTicks[1]).toBe(30);
   });
 
   it("uses actual Training time instead of the normalized comparison duration", () => {
@@ -678,8 +678,8 @@ describe("ResultModal", () => {
     });
 
     expect(layout.maxTime).toBe(15);
-    expect(layout.xTicks).toHaveLength(16);
-    expect(layout.xTicks[1]).toBe(1);
+    expect(layout.xTicks).toHaveLength(11);
+    expect(layout.xTicks[1]).toBe(1.5);
     expect(layout.xTicks.at(-1)).toBe(15);
   });
 

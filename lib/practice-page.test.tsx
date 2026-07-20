@@ -779,10 +779,7 @@ describe("PracticePage passage loading", () => {
 
     fireEvent.keyDown(window, { key: "Tab" });
     fireEvent.input(input, { target: { value: "客戶測試" }, nativeEvent: { isComposing: false, data: "客戶測試" } });
-    await waitFor(() => {
-      expect(screen.getByText("Timer running")).toBeTruthy();
-    });
-    fireEvent.keyDown(window, { key: "Escape" });
+    expect(await screen.findByRole("dialog")).toBeTruthy();
 
     await waitFor(() => {
       expect(mockedSaveSupabaseTypingResult).toHaveBeenCalled();
@@ -791,6 +788,48 @@ describe("PracticePage passage loading", () => {
     expect(savedPayload.passage.language).toBe("chinese");
     expect(getResultAnalyticsDomain({ category: savedPayload.passage.category })).toBe("chinese");
     expect(savedPayload.result.wpm).toBeGreaterThanOrEqual(4);
+  });
+
+  it("opens the result immediately when an Infinite Chinese passage is completed", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("english", "English active", "English body text for typing.", "english"),
+        makePassage("chinese", "完整中文", "客戶測試", "chinese", "工作", "一般")
+      ])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Chinese" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toContain("客戶測試");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Infinite" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("practice-passage-metadata").textContent).toContain("Infinite");
+    });
+    const targetText = screen.getByTestId("typing-character-layer").textContent ?? "";
+    expect(targetText.length).toBeGreaterThan(0);
+
+    const input = screen.getByLabelText("Typing input");
+    fireEvent.keyDown(window, { key: "Tab" });
+    await waitFor(() => {
+      expect(screen.getByText("Timer running")).toBeTruthy();
+    });
+    fireEvent.compositionStart(input, { data: "" });
+    fireEvent.input(input, {
+      target: { value: "ke hu ce shi" },
+      nativeEvent: { isComposing: true, data: "ke hu ce shi" }
+    });
+    fireEvent.compositionEnd(input, { data: targetText });
+    fireEvent.input(input, {
+      target: { value: targetText },
+      nativeEvent: { isComposing: false, data: targetText }
+    });
+
+    const resultDialog = await screen.findByRole("dialog");
+    expect(resultDialog.textContent).toContain("Session ended");
   });
 
   it("uses one bottom ad only on the Practice typing page", async () => {

@@ -4,8 +4,7 @@ import {
   PracticeCategory,
   TypingResult,
   TypingRules,
-  buildPracticePassage,
-  getRequiredWordCount
+  buildPracticePassage
 } from "./typing-engine";
 import {
   installTypingStationStorageDebugHelper,
@@ -1042,6 +1041,14 @@ export function countWords(text: string): number {
   return words.length;
 }
 
+export function formatPassageLength(passage: Pick<LibraryPassage, "language" | "wordCount" | "characterCount">): string {
+  if (passage.language === "chinese") {
+    return `${passage.characterCount} chars`;
+  }
+
+  return `${passage.wordCount} words · ${passage.characterCount} chars`;
+}
+
 function preparePassageLibraryForStorage(passages: LibraryPassage[]): LibraryPassage[] {
   return passages
     .map((passage) => normaliseLibraryPassage(passage))
@@ -1118,34 +1125,45 @@ function makeStarterChinesePassage(
   };
 }
 
-function buildTimedPassageText(basePassage: LibraryPassage, library: LibraryPassage[], durationSeconds: number): string {
-  const requiredUnitCount = getRequiredWordCount(durationSeconds);
-  const selected: LibraryPassage[] = [basePassage];
-  const baseUnitCount = getTimedPassageUnitCount(basePassage);
-  let unitCount = baseUnitCount;
-
-  if (unitCount >= requiredUnitCount) {
+function buildTimedPassageText(basePassage: LibraryPassage, library: LibraryPassage[], _durationSeconds: number): string {
+  if (isLiteraryPassage(basePassage) || !isTooShortForStandalonePractice(basePassage)) {
     return basePassage.content;
   }
 
-  const otherPassages = library.filter(
-    (passage) => passage.id !== basePassage.id && getTimedPassageUnitCount(passage) > 0
+  const minimumUnitCount = getMinimumStandaloneUnitCount(basePassage);
+  const selected: LibraryPassage[] = [basePassage];
+  let unitCount = getTimedPassageUnitCount(basePassage);
+  const compatibleShortPassages = library.filter(
+    (passage) =>
+      passage.id !== basePassage.id &&
+      passage.language === basePassage.language &&
+      passage.category === basePassage.category &&
+      !isLiteraryPassage(passage) &&
+      isTooShortForStandalonePractice(passage) &&
+      getTimedPassageUnitCount(passage) > 0
   );
-  let index = 0;
 
-  while (unitCount < requiredUnitCount && otherPassages.length > 0) {
-    const nextPassage = otherPassages[index % otherPassages.length];
+  for (const nextPassage of compatibleShortPassages) {
+    if (unitCount >= minimumUnitCount) {
+      break;
+    }
     selected.push(nextPassage);
     unitCount += getTimedPassageUnitCount(nextPassage);
-    index += 1;
-  }
-
-  while (unitCount < requiredUnitCount && otherPassages.length === 0 && baseUnitCount > 0) {
-    selected.push(basePassage);
-    unitCount += baseUnitCount;
   }
 
   return selected.map((passage) => passage.content).join("\n\n");
+}
+
+function isLiteraryPassage(passage: LibraryPassage) {
+  return passage.category === "文言文" || passage.category === "詩詞" || passage.style === "Classical" || passage.style === "Poetry";
+}
+
+function getMinimumStandaloneUnitCount(passage: LibraryPassage) {
+  return passage.language === "chinese" ? 60 : 40;
+}
+
+function isTooShortForStandalonePractice(passage: LibraryPassage) {
+  return getTimedPassageUnitCount(passage) < getMinimumStandaloneUnitCount(passage);
 }
 
 function getTimedPassageUnitCount(passage: LibraryPassage) {

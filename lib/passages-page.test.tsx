@@ -132,6 +132,7 @@ describe("PassagesPage", () => {
 
     expect(screen.getAllByText("忙碌生活中的休息").length).toBeGreaterThan(0);
     expect(screen.queryByText("Email brief")).toBeNull();
+    expect(screen.getByText(/32 chars$/).textContent).not.toContain("words");
   });
 });
 

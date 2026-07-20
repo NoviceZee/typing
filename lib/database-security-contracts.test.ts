@@ -62,4 +62,22 @@ describe("database security migration contracts", () => {
     expect(sql).toContain("revoke insert on public.friendships from authenticated");
     expect(sql).toContain("revoke execute on function public.block_user_by_handle(text) from public, anon");
   });
+
+  it("restores the complete prescribed HKDSE Classical Chinese passages", () => {
+    const sql = readMigration("202607190001_restore_hkdse_classics.sql");
+
+    expect(sql).toContain("惠子謂莊子曰");
+    expect(sql).toContain("安所困苦哉");
+    expect(sql).toContain("為刎頸之交");
+    expect(sql).toContain("array['廉頗藺相如列傳（節錄）', '廉頗藺相如列傳 (節錄)', '廉頗藺相如列傳']");
+    expect(sql).toContain("作《師說》以貽之");
+    expect(sql).toContain("是歲元和四年也");
+    expect(sql).toContain("茍以天下之大，而從六國破亡之故事");
+    expect(sql).toContain("array['出師表', '出師表（節錄）']");
+    expect(sql).toContain("array['岳陽樓記', '岳陽樓記（節錄）']");
+    expect(sql).toContain("array['六國論', '六國論（節錄）']");
+    expect(sql).toContain("title in ('醉翁亭記（節錄）', '桃花源記（節錄）', '陋室銘', '愛蓮說', '蘭亭集序（節錄）')");
+    expect(sql).toContain("row_number() over");
+    expect(sql).toContain("and ranked.duplicate_rank > 1");
+  });
 });
