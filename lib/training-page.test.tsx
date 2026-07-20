@@ -157,6 +157,20 @@ describe("TrainingPage", () => {
     expect(within(contentGroup).getByRole("button", { name: "Chinese" }).getAttribute("aria-pressed")).toBe("false");
   });
 
+  it("marks the visible Training caret for both English and Chinese drills", async () => {
+    render(<TrainingPage />);
+
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent?.length).toBeGreaterThan(0));
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");
+
+    const contentGroup = screen.getByRole("group", { name: "Content" });
+    fireEvent.click(within(contentGroup).getByRole("button", { name: "Chinese" }));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent ?? "").toMatch(/[\u4e00-\u9fff]/));
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");
+  });
+
   it("shows Chinese Time and Words controls with word counts", () => {
     render(<TrainingPage />);
     const contentGroup = screen.getByRole("group", { name: "Content" });

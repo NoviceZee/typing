@@ -1673,6 +1673,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                             <span
                               ref={setCharacterRef(index, isCurrent)}
                               data-index={index}
+                              data-typing-caret={isCurrent ? "true" : undefined}
                               aria-label={character.status === "wrong" ? "Missed line break" : "Line break"}
                               className={clsx(
                                 "inline-block min-w-[0.7em]",
@@ -1692,6 +1693,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                           key={`${character.index}-${index}-${character.expected}-${character.actual}`}
                           ref={setCharacterRef(index, isCurrent)}
                           data-index={index}
+                          data-typing-caret={isCurrent ? "true" : undefined}
                           className={clsx(characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings))}
                         >
                           {character.actual || character.expected}
@@ -1917,6 +1919,7 @@ function TrainingTokenCharacterLayer({
               key={`${character.index}-${comparisonIndex}-${character.expected}-${character.actual}`}
               ref={setCharacterRef(comparisonIndex, isCurrent)}
               data-index={comparisonIndex}
+              data-typing-caret={isCurrent ? "true" : undefined}
               className={clsx(characterClass(character.status, showMistakes, themeSettings))}
             >
               {character.actual || character.expected}
@@ -1939,6 +1942,7 @@ function TrainingTokenCharacterLayer({
             key={`${character.index}-${comparisonIndex}-${character.expected}-${character.actual}`}
             ref={setCharacterRef(comparisonIndex, character.status === "current")}
             data-index={comparisonIndex}
+            data-typing-caret={character.status === "current" ? "true" : undefined}
             className={clsx(characterClass(character.status, showMistakes, themeSettings))}
           >
             {character.actual || character.expected}

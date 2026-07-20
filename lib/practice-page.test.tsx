@@ -1187,11 +1187,9 @@ describe("PracticePage passage loading", () => {
 
     expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
 
+    vi.useRealTimers();
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(20);
-    });
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Restart" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Restart" })));
     fireEvent.click(screen.getByRole("button", { name: "Restart" }));
     const justFinishedResult = readPreviousResult("local", 60);
 
@@ -1337,6 +1335,32 @@ describe("PracticePage passage loading", () => {
     expect(container.querySelector(".formaltype-typing-font-serif")?.getAttribute("data-testid")).toBe(
       "typing-character-layer"
     );
+  });
+
+  it("marks the visible Practice caret across English spaces, line breaks, and Chinese text", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("english", "English caret", "A B\nC", "english"),
+        makePassage("chinese", "中文游標", "今天再見", "chinese", "生活", "一般")
+      ])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("A BC"));
+
+    const englishInput = screen.getByLabelText("Typing input");
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(englishInput, { target: { value: "A" } });
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("1");
+    fireEvent.change(englishInput, { target: { value: "A B" } });
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("3");
+
+    fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("今天再見"));
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");
   });
 
   it("shows passage metadata only once in the idle practice chrome", async () => {
