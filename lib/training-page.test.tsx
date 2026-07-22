@@ -178,6 +178,46 @@ describe("TrainingPage", () => {
     expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");
   });
 
+  it("keeps exactly one terminal caret after an English Time drill target is fully typed", async () => {
+    render(<TrainingPage />);
+    const input = screen.getByLabelText("Typing input");
+
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent?.length).toBeGreaterThan(0));
+    const targetText = screen.getByTestId("typing-character-layer").textContent ?? "";
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(input, { target: { value: targetText } });
+
+    const characterLayer = screen.getByTestId("typing-character-layer");
+    expect(screen.queryByText("Session ended")).toBeNull();
+    expect(characterLayer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+    expect(characterLayer.querySelectorAll('[data-typing-caret-indicator="true"]')).toHaveLength(1);
+    expect(characterLayer.querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe(
+      String(Array.from(targetText).length)
+    );
+  });
+
+  it("keeps exactly one terminal caret after a Chinese Time drill target is fully committed", async () => {
+    render(<TrainingPage />);
+    const contentGroup = screen.getByRole("group", { name: "Content" });
+    fireEvent.click(within(contentGroup).getByRole("button", { name: "Chinese" }));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent ?? "").toMatch(/[\u4e00-\u9fff]/));
+
+    const input = screen.getByLabelText("Typing input");
+    const targetText = screen.getByTestId("typing-character-layer").textContent ?? "";
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.compositionStart(input);
+    fireEvent.compositionEnd(input, { data: targetText, target: { value: targetText } });
+    fireEvent.input(input, { data: targetText, inputType: "insertText", target: { value: targetText } });
+
+    const characterLayer = screen.getByTestId("typing-character-layer");
+    expect(screen.queryByText("Session ended")).toBeNull();
+    expect(characterLayer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+    expect(characterLayer.querySelectorAll('[data-typing-caret-indicator="true"]')).toHaveLength(1);
+    expect(characterLayer.querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe(
+      String(Array.from(targetText).length)
+    );
+  });
+
   it("shows Chinese Time and Words controls with word counts", () => {
     render(<TrainingPage />);
     const contentGroup = screen.getByRole("group", { name: "Content" });

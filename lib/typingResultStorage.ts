@@ -4,6 +4,7 @@ import { LeaderboardTimeRange, getLeaderboardDateRange } from "./leaderboardFilt
 import { normalizeHandle } from "./profileStorage";
 import { supabase } from "./supabaseClient";
 import type { TypingResult } from "./typing-engine";
+import { isProgressionEligibleResult } from "./resultEligibility";
 
 export type SupabaseTypingResultInsert = {
   user_id: string;
@@ -44,8 +45,13 @@ export type SupabaseOwnTypingResultRow = {
   passage_category?: string | null;
   metric_domain?: AnalyticsDomain;
   duration_seconds: number;
+  elapsed_seconds?: number;
+  completion_reason?: TypingResult["completionReason"] | "legacy";
+  is_rankable?: boolean;
   wpm: number;
   accuracy: number;
+  correct_chars?: number;
+  typed_chars?: number;
   created_at: string;
 };
 
@@ -53,6 +59,7 @@ export type SupabaseAnalyticsTypingResultRow = SupabaseOwnTypingResultRow & {
   passage_category: string | null;
   elapsed_seconds?: number;
   correct_chars: number;
+  typed_chars?: number;
 };
 
 export type SupabaseLeaderboardFilters = {
@@ -89,7 +96,7 @@ export function toSupabaseTypingResultInsert({
     duration_seconds: result.durationSeconds,
     elapsed_seconds: result.timeUsedSeconds,
     completion_reason: result.completionReason,
-    is_rankable: result.isRankable,
+    is_rankable: isProgressionEligibleResult(result),
     metric_domain: getResultAnalyticsDomain({
       category: result.category ?? passage.category,
       title: passage.title
@@ -221,7 +228,7 @@ export async function getSupabaseOwnTypingResults(
 
   const { data, error } = await supabase
     .from("typing_results")
-    .select("id,passage_title,metric_domain,duration_seconds,wpm,accuracy,created_at,passages(category)")
+    .select("id,passage_title,metric_domain,duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -230,7 +237,7 @@ export async function getSupabaseOwnTypingResults(
     throw error;
   }
 
-  return (data ?? []).map(toSupabaseOwnTypingResultRow);
+  return (data ?? []).map(toSupabaseOwnTypingResultRow).filter(isProgressionEligibleResult);
 }
 
 export async function getSupabaseAnalyticsTypingResults(
@@ -240,7 +247,7 @@ export async function getSupabaseAnalyticsTypingResults(
 ): Promise<SupabaseAnalyticsTypingResultRow[]> {
   const { data, error } = await client
     .from("typing_results")
-    .select("id,passage_title,metric_domain,duration_seconds,elapsed_seconds,wpm,accuracy,correct_chars,created_at,passages(category)")
+    .select("id,passage_title,metric_domain,duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -249,7 +256,7 @@ export async function getSupabaseAnalyticsTypingResults(
     throw error;
   }
 
-  return (data ?? []).map(toSupabaseAnalyticsTypingResultRow);
+  return (data ?? []).map(toSupabaseAnalyticsTypingResultRow).filter(isProgressionEligibleResult);
 }
 
 export async function getSupabasePublicTypingResultsByHandle(
@@ -295,9 +302,12 @@ function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingRe
     ...toMetricDomainField(row.metric_domain),
     duration_seconds: Number(row.duration_seconds),
     ...(row.elapsed_seconds == null ? {} : { elapsed_seconds: Number(row.elapsed_seconds) }),
+    ...(row.completion_reason == null ? {} : { completion_reason: row.completion_reason }),
+    ...(typeof row.is_rankable === "boolean" ? { is_rankable: row.is_rankable } : {}),
     wpm: Number(row.wpm),
     accuracy: Number(row.accuracy),
     correct_chars: Number(row.correct_chars ?? 0),
+    ...(row.typed_chars == null ? {} : { typed_chars: Number(row.typed_chars) }),
     created_at: row.created_at
   };
 }
@@ -311,8 +321,13 @@ function toSupabaseOwnTypingResultRow(row: any): SupabaseOwnTypingResultRow {
     passage_category: passage?.category ?? row.passage_category ?? null,
     ...toMetricDomainField(row.metric_domain),
     duration_seconds: Number(row.duration_seconds),
+    ...(row.elapsed_seconds == null ? {} : { elapsed_seconds: Number(row.elapsed_seconds) }),
+    ...(row.completion_reason == null ? {} : { completion_reason: row.completion_reason }),
+    ...(typeof row.is_rankable === "boolean" ? { is_rankable: row.is_rankable } : {}),
     wpm: Number(row.wpm),
     accuracy: Number(row.accuracy),
+    ...(row.correct_chars == null ? {} : { correct_chars: Number(row.correct_chars) }),
+    ...(row.typed_chars == null ? {} : { typed_chars: Number(row.typed_chars) }),
     created_at: row.created_at
   };
 }

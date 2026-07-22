@@ -1,5 +1,6 @@
 import type { SupabaseAnalyticsTypingResultRow } from "./typingResultStorage";
 import { AnalyticsDomain, getResultAnalyticsDomain } from "./analyticsDomain";
+import { isProgressionEligibleResult } from "./resultEligibility";
 
 export type ProgressAnalytics = {
   summary: {
@@ -97,6 +98,7 @@ export function buildProgressAnalytics(
   const now = options.now ?? new Date();
   const normalizedResults = results
     .filter(isValidAnalyticsResult)
+    .filter(isProgressionEligibleResult)
     .filter((result) => getResultAnalyticsDomain(result) === domain)
     .map((result) => ({
       ...result,

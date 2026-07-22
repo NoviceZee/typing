@@ -21,6 +21,7 @@ import {
   validateTypedText
 } from "@/lib/typing-engine";
 import { calculateTypingViewportScrollTop } from "@/lib/typingViewport";
+import { isProgressionEligibleResult } from "@/lib/resultEligibility";
 import {
   ALL_FILTER,
   CategoryFilter,
@@ -622,10 +623,11 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       attemptTimelineRef.current = completedTimeline;
       const isSuspicious = suspiciousAttemptRef.current;
       const shouldPersistResult = isPersistableCompletion(completionReason);
+      const isProgressionEligible = isProgressionEligibleResult(finalResult);
 
       const comparisonPreviousResult = readPreviousResult(passage.id, previousResultScope);
       let attemptDetail: TypingAttemptDetail | null = null;
-      if (shouldPersistResult && !isSuspicious) {
+      if (shouldPersistResult && isProgressionEligible && !isSuspicious) {
         writePreviousResult(
           passage,
           finalResult,
@@ -681,10 +683,13 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
               if (isCurrentCompletedSession()) {
                 setCloudSaveState("saved");
               }
-              if (attemptDetail) {
+              if (attemptDetail && isProgressionEligible) {
                 void saveSupabaseTypingAttemptDetail(attemptDetail, savedResult.id).catch((error) => {
                   console.warn("Supabase typing attempt detail save failed", error);
                 });
+              }
+              if (!isProgressionEligible) {
+                return;
               }
               void getSupabaseAnalyticsTypingResults(user.id)
                 .then((typingResults) => {
@@ -1707,6 +1712,22 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                         </span>
                       );
                     })}
+                    {!isFinished &&
+                      !isPassageLoading &&
+                      sourceText.length > 0 &&
+                      !comparison.characters.some((character) => character.status === "current") && (
+                        <span
+                          ref={setCharacterRef(comparison.characters.length, true)}
+                          data-index={comparison.characters.length}
+                          data-typing-caret="true"
+                          aria-label="Typing caret"
+                          className={clsx(
+                            characterClass("current", rules.showMistakesImmediately || isFinished, themeSettings)
+                          )}
+                        >
+                          <TypingCaretIndicator isCurrent />
+                        </span>
+                      )}
                   </>
                 )}
               </p>
@@ -2316,6 +2337,10 @@ function buildCelebrationMilestones(
   previousResult: PreviousTypingResult | null,
   progressMilestones: CelebrationMilestone[] = []
 ): CelebrationMilestone[] {
+  if (!isProgressionEligibleResult(result)) {
+    return [];
+  }
+
   const milestones: CelebrationMilestone[] = [];
 
   if (previousResult && result.wpm > previousResult.wpm) {
@@ -2550,6 +2575,7 @@ export function filterComparableRecentResults(
   const comparableDomain = getResultAnalyticsDomain({ passage_category: passage.category, passage_title: passage.title });
 
   return savedResults
+    .filter(isProgressionEligibleResult)
     .filter((savedResult) => savedResult.duration_seconds === result.durationSeconds)
     .filter((savedResult) => savedResult.passage_title === comparableTitle)
     .filter(

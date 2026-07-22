@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import type { TypingAttemptDetail } from "./typingStatistics";
+import { isProgressionEligibleResult } from "./resultEligibility";
 
 type TypingAttemptDetailRow = {
   id: string;
@@ -18,7 +19,7 @@ export async function saveSupabaseTypingAttemptDetail(
   typingResultId?: string | null,
   client: any = requireSupabaseClient()
 ): Promise<void> {
-  if (!detail.userId) return;
+  if (!detail.userId || !isProgressionEligibleResult(detail)) return;
 
   const { error } = await client.from("typing_attempt_details").upsert(toRow(detail, typingResultId));
 
@@ -54,14 +55,16 @@ export async function getSupabaseTypingAttemptDetails(
     .limit(limit);
 
   if (error) throw error;
-  return (data ?? []).map(fromRow);
+  return (data ?? []).map(fromRow).filter(isProgressionEligibleResult);
 }
 
 export async function syncLocalTypingAttemptDetails(
   details: TypingAttemptDetail[],
   client: any = requireSupabaseClient()
 ): Promise<void> {
-  const syncableDetails = details.filter((detail) => detail.userId).map((detail) => toRow(detail));
+  const syncableDetails = details
+    .filter((detail) => detail.userId && isProgressionEligibleResult(detail))
+    .map((detail) => toRow(detail));
   if (syncableDetails.length === 0) return;
 
   const { error } = await client.from("typing_attempt_details").upsert(syncableDetails, {

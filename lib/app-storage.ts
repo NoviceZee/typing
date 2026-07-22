@@ -6,6 +6,7 @@ import {
   TypingRules,
   buildPracticePassage
 } from "./typing-engine";
+import { isProgressionEligibleResult } from "./resultEligibility";
 import {
   installTypingStationStorageDebugHelper,
   runTypingStationStorageMigration,
@@ -934,7 +935,8 @@ export function readPreviousResult(passageId?: string, scope?: PreviousResultSco
 
   const previousResults = readPreviousResults();
   const scopedKey = getPreviousResultStorageKey(passageId, scope);
-  return previousResults[scopedKey] ?? previousResults[passageId] ?? null;
+  const previousResult = previousResults[scopedKey] ?? previousResults[passageId] ?? null;
+  return previousResult && isProgressionEligibleResult(previousResult) ? previousResult : null;
 }
 
 export function writePreviousResult(
@@ -944,7 +946,7 @@ export function writePreviousResult(
   scope?: PreviousResultScope,
   previousPaceTimeline?: PreviousPaceTimelinePoint[]
 ) {
-  if (!passage.id) {
+  if (!passage.id || !isProgressionEligibleResult(result)) {
     return;
   }
 
