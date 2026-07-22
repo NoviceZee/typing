@@ -959,6 +959,22 @@ textarea {
   background: transparent;
 }
 
+.formaltype-typing-timer-region {
+  align-items: flex-start;
+  display: flex;
+  flex: none;
+  justify-content: flex-start;
+  min-height: 2.5rem;
+}
+
+.formaltype-typing-timer {
+  font-size: 1.5rem;
+  line-height: 1;
+  min-height: 2rem;
+  min-width: 5.5rem;
+  text-align: left;
+}
+
 .formaltype-typing-surface {
   background: transparent;
   border: 0;
@@ -987,6 +1003,10 @@ textarea {
 }
 
 @media (min-width: 768px) {
+  .formaltype-typing-timer {
+    font-size: 2rem;
+  }
+
   .formaltype-typing-size-small {
     font-size: 1.85rem;
     line-height: 2.8rem;

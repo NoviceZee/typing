@@ -49,6 +49,7 @@ describe("TrainingPage", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("renders content toggles and keeps at least one content type selected", () => {
@@ -984,6 +985,7 @@ describe("TrainingPage", () => {
 
     const stage = document.querySelector(".formaltype-practice-shell");
     const viewport = screen.getByTestId("typing-viewport");
+    const timerRegion = screen.getByTestId("typing-timer-region");
 
     expect(stage?.className).toContain("mx-auto");
     expect(stage?.className).toContain("flex");
@@ -995,11 +997,16 @@ describe("TrainingPage", () => {
     expect(viewport.className).toContain("h-full");
     expect(viewport.className).toContain("flex-1");
     expect(viewport.className).not.toContain("h-[340px]");
+    expect(timerRegion.className).toContain("formaltype-typing-timer-region");
+    expect(timerRegion.compareDocumentPosition(viewport) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByTestId("typing-timer")).toBeNull();
     expect(screen.queryByTestId("typing-timer-overlay")).toBeNull();
 
     fireEvent.keyDown(stage as Element, { key: "Tab" });
     const timer = screen.getByTestId("typing-timer");
+    expect(timerRegion.contains(timer)).toBe(true);
+    expect(timer.parentElement?.className).toContain("formaltype-typing-timer");
+    expect(timer.parentElement?.className).not.toMatch(/text-lg|text-xl|text-2xl|text-\[/);
     expect(stage?.contains(timer)).toBe(true);
     expect(viewport.contains(timer)).toBe(false);
     expect(timer.textContent).toBe("1:00");
@@ -1011,6 +1018,98 @@ describe("TrainingPage", () => {
     });
     expect(screen.getByTestId("typing-viewport").className).toBe(viewport.className);
   });
+
+  it.each([
+    ["English", "small", 344, 370, 107],
+    ["English", "medium", 336, 370, 103],
+    ["English", "large", 324, 370, 97],
+    ["Chinese", "small", 342, 370, 106],
+    ["Chinese", "medium", 332, 370, 101],
+    ["Chinese", "large", 320, 370, 95]
+  ] as const)(
+    "scrolls %s Training across a wrapped %s visual line from rendered DOM bounds",
+    async (language, size, activeTop, activeBottom, expectedScrollTop) => {
+      window.localStorage.setItem(
+        "formaltype.theme.v1",
+        JSON.stringify({
+          mode: "dark",
+          accentColor: "amber",
+          appFont: "sans",
+          typingFont: "mono",
+          typingTextSize: size,
+          typingWidth: "wide",
+          caretStyle: "bar",
+          caretBlink: "on",
+          typingColorStyle: "standard"
+        })
+      );
+
+      const animationFrames: FrameRequestCallback[] = [];
+      vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+        animationFrames.push(callback);
+        return animationFrames.length;
+      });
+      vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+
+      render(<TrainingPage />);
+      if (language === "Chinese") {
+        fireEvent.click(within(screen.getByRole("group", { name: "Content" })).getByRole("button", { name: "Chinese" }));
+      }
+
+      await waitFor(() => {
+        const text = screen.getByTestId("typing-character-layer").textContent ?? "";
+        expect(text.length).toBeGreaterThan(2);
+        if (language === "Chinese") {
+          expect(text).toMatch(/[\u4e00-\u9fff]/);
+        }
+      });
+
+      const viewport = screen.getByTestId(language === "Chinese" ? "chinese-target-viewport" : "typing-viewport");
+      Object.defineProperties(viewport, {
+        clientHeight: { configurable: true, value: 300 },
+        scrollHeight: { configurable: true, value: 900 }
+      });
+      viewport.scrollTop = 0;
+
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+        if (this === viewport) {
+          return makeDomRect(100, 400);
+        }
+        if (this.getAttribute("data-typing-caret") === "true") {
+          return makeDomRect(activeTop, activeBottom);
+        }
+        return makeDomRect(0, 0);
+      });
+
+      const input = screen.getByLabelText("Typing input") as HTMLTextAreaElement;
+      fireEvent.keyDown(window, { key: "Tab" });
+      if (language === "Chinese") {
+        const commit = getTargetPrefix(2);
+        fireEvent.compositionStart(input);
+        fireEvent.compositionEnd(input, { data: commit, target: { value: commit } });
+        fireEvent.input(input, { target: { value: commit }, data: commit, inputType: "insertText" });
+      } else {
+        fireEvent.change(input, {
+          target: { value: (screen.getByTestId("typing-character-layer").textContent ?? "").slice(0, 2) }
+        });
+      }
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(animationFrames.length).toBeGreaterThan(0);
+      act(() => {
+        for (const callback of animationFrames.splice(0)) {
+          callback(0);
+        }
+      });
+
+      expect(screen.getByTestId("typing-character-layer").className).toContain(`formaltype-typing-size-${size}`);
+      expect(viewport.scrollTop).toBe(expectedScrollTop);
+      expect(activeTop - viewport.scrollTop).toBeGreaterThan(100);
+      expect(activeBottom - viewport.scrollTop).toBeLessThan(400);
+    }
+  );
 
   it("places one Training banner ad below the typing experience and shortcut hints", () => {
     const { container } = render(<TrainingPage />);
@@ -1095,4 +1194,18 @@ function makePreviousResult(overrides: Partial<PreviousTypingResult> = {}): Prev
     completionReason: "time_up",
     ...overrides
   };
+}
+
+function makeDomRect(top: number, bottom: number): DOMRect {
+  return {
+    x: 0,
+    y: top,
+    top,
+    bottom,
+    left: 0,
+    right: 100,
+    width: 100,
+    height: bottom - top,
+    toJSON: () => ({})
+  } as DOMRect;
 }

@@ -4,7 +4,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import PracticePage, { filterComparableRecentResults } from "../pages/practice";
+import PracticePage, { filterComparableRecentResults, PracticeTrainingMode } from "../pages/practice";
 import type { LibraryPassage } from "@/lib/app-storage";
 import {
   ACTIVE_PASSAGE_ID_STORAGE_KEY,
@@ -236,17 +236,92 @@ describe("PracticePage passage loading", () => {
 
     const shell = container.querySelector(".formaltype-practice-shell");
     const viewport = screen.getByTestId("typing-viewport");
+    const timerRegion = screen.getByTestId("typing-timer-region");
     expect(screen.queryByTestId("typing-timer")).toBeNull();
     expect(screen.queryByTestId("typing-timer-overlay")).toBeNull();
+    expect(shell?.contains(timerRegion)).toBe(true);
+    expect(timerRegion.compareDocumentPosition(viewport) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(timerRegion.className).toContain("formaltype-typing-timer-region");
 
     fireEvent.keyDown(window, { key: "Tab" });
     const timer = screen.getByTestId("typing-timer");
     expect(timer.textContent).toBe("1:00");
+    expect(timer.parentElement?.className).toContain("formaltype-typing-timer");
+    expect(timer.parentElement?.className).not.toMatch(/text-lg|text-xl|text-2xl|text-\[/);
     expect(shell?.contains(timer)).toBe(true);
+    expect(timerRegion.contains(timer)).toBe(true);
     expect(viewport.contains(timer)).toBe(false);
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
     expect(screen.getByTestId("typing-timer").textContent).toBe("1:00");
+  });
+
+  it.each([
+    ["paired", "「文字」", [0x300c, 0x6587, 0x5b57, 0x300d]],
+    ["nested", "「『文字』」", [0x300c, 0x300e, 0x6587, 0x5b57, 0x300f, 0x300d]]
+  ])("compares final committed Chinese %s quotation input character-for-character", async (_label, target, codePoints) => {
+    render(<PracticePage trainingMode={makeChineseQuoteTrainingMode(target as string)} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toBe(target);
+    });
+
+    const input = screen.getByLabelText("Typing input") as HTMLTextAreaElement;
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.compositionStart(input);
+    fireEvent.input(input, {
+      target: { value: "transient" },
+      nativeEvent: { isComposing: true, data: "transient" }
+    });
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-index="0"]')?.className).toContain(
+      "formaltype-typed-current"
+    );
+
+    fireEvent.compositionEnd(input, { data: target, target: { value: target } });
+    fireEvent.input(input, {
+      target: { value: target },
+      nativeEvent: { isComposing: false, data: target }
+    });
+    fireEvent.input(input, {
+      target: { value: target },
+      nativeEvent: { isComposing: false, data: target }
+    });
+
+    expect(input.value).toBe(target);
+    expect(Array.from(input.value, (character) => character.codePointAt(0))).toEqual(codePoints);
+    expect(Array.from(target as string, (character) => character.codePointAt(0))).toEqual(codePoints);
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll(".formaltype-typed-wrong")).toHaveLength(0);
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll(".formaltype-typed-correct")).toHaveLength(
+      Array.from(target as string).length
+    );
+  });
+
+  it("does not treat alternate Chinese quotation code points as equivalent", async () => {
+    const target = "「文字」";
+    const committed = "『文字』";
+    render(<PracticePage trainingMode={makeChineseQuoteTrainingMode(target)} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toBe(target);
+    });
+
+    const input = screen.getByLabelText("Typing input") as HTMLTextAreaElement;
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.compositionStart(input);
+    fireEvent.compositionEnd(input, { data: committed, target: { value: committed } });
+    fireEvent.input(input, {
+      target: { value: committed },
+      nativeEvent: { isComposing: false, data: committed }
+    });
+
+    expect(input.value).toBe(committed);
+    expect(Array.from(input.value, (character) => character.codePointAt(0))).toEqual([
+      0x300e,
+      0x6587,
+      0x5b57,
+      0x300f
+    ]);
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll(".formaltype-typed-wrong")).toHaveLength(2);
   });
 
   it("keeps the English Practice target layout stable when typing starts", async () => {
@@ -1806,6 +1881,30 @@ function makePassage(
     wordCount: content.split(/\s+/).filter(Boolean).length,
     characterCount: content.length,
     isActive: true
+  };
+}
+
+function makeChineseQuoteTrainingMode(text: string): PracticeTrainingMode {
+  return {
+    pageTitle: "Training",
+    passageId: "training-chinese-quotes",
+    configKey: `training-chinese-quotes-${text}`,
+    session: { kind: "time", seconds: 60 },
+    buildPassage: () => ({
+      id: "training-chinese-quotes",
+      title: "Chinese quotation diagnostic",
+      category: "training_chinese",
+      style: "60s",
+      source: "generated",
+      text,
+      comparableText: text,
+      displayTokens: [text],
+      metricUnit: "wpm",
+      updatedAt: "2026-07-22T00:00:00.000Z"
+    }),
+    hidePassageControls: true,
+    hidePracticeModeControls: true,
+    hideMetadata: true
   };
 }
 

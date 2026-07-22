@@ -20,6 +20,7 @@ import {
   shouldFinishCompletedText,
   validateTypedText
 } from "@/lib/typing-engine";
+import { calculateTypingViewportScrollTop } from "@/lib/typingViewport";
 import {
   ALL_FILTER,
   CategoryFilter,
@@ -142,7 +143,6 @@ const RANDOM_PASSAGE_ID = "__random__";
 const SUSPICIOUS_RESULT_NOTE = "This result was not saved because suspicious input was detected.";
 const MAX_CHARACTERS_PER_INPUT_EVENT = 5;
 const SUSPICIOUS_WPM_THRESHOLD = 250;
-const HAN_CHARACTER_PATTERN = /[\u3400-\u9fff\uf900-\ufaff]/;
 const CONSISTENCY_HELP_TEXT =
   "Consistency shows how steady your WPM stayed during the test. It is based on the coefficient of variation of your WPM timeline.";
 const ACHIEVEMENT_POP_DISMISS_MS = 5000;
@@ -956,23 +956,16 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         return;
       }
 
-      const containerHeight = scrollContainer.clientHeight;
-      if (scrollContainer.scrollHeight <= containerHeight) {
-        return;
-      }
-
       const containerBounds = scrollContainer.getBoundingClientRect();
       const characterBounds = activeCharacter.getBoundingClientRect();
-      const characterBottom = scrollContainer.scrollTop + characterBounds.bottom - containerBounds.top;
-      const triggerLine = scrollContainer.scrollTop + containerHeight * 0.68;
-
-      if (characterBottom <= triggerLine) {
-        return;
-      }
-
-      const targetLine = scrollContainer.scrollTop + containerHeight * 0.48;
-      const scrollAmount = Math.ceil(characterBottom - targetLine);
-      scrollContainer.scrollTop += scrollAmount;
+      scrollContainer.scrollTop = calculateTypingViewportScrollTop({
+        scrollTop: scrollContainer.scrollTop,
+        scrollHeight: scrollContainer.scrollHeight,
+        clientHeight: scrollContainer.clientHeight,
+        viewportTop: containerBounds.top,
+        activeTop: characterBounds.top,
+        activeBottom: characterBounds.bottom
+      });
     });
 
     return () => {
@@ -1064,7 +1057,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
   function syncChineseTextareaValue(source: "input" | "compositionend-fallback") {
     const textareaValue = chineseImeInputRef.current?.value ?? "";
-    const nextValue = getChineseComparableInput(textareaValue, passage);
+    const nextValue = getChineseComparableInput(textareaValue);
 
     if (
       !passage ||
@@ -1077,6 +1070,15 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
     if (!isRunning && nextValue.length === 0) {
       logImeAction("sync-skip-no-accepted-text", {
+        source,
+        processed: false,
+        textareaValue
+      });
+      return;
+    }
+
+    if (nextValue === typedTextRef.current) {
+      logImeAction("sync-skip-duplicate-value", {
         source,
         processed: false,
         textareaValue
@@ -1622,7 +1624,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           )}
           data-focus-mode={isFocusMode ? "true" : "false"}
         >
-          {isFocusMode && <div className={clsx("pointer-events-none absolute z-10", isCompactPractice ? "left-2 top-2" : "left-4 top-3")}><TypingTimer value={formatTime(clockSeconds)} compact={isCompactPractice} /></div>}
+          <div
+            data-testid="typing-timer-region"
+            className="formaltype-typing-timer-region mx-auto w-full max-w-5xl"
+          >
+            {isFocusMode && <TypingTimer value={formatTime(clockSeconds)} />}
+          </div>
           <div
             ref={typingWindowRef}
             data-testid={shouldUseChineseImeSink ? "chinese-target-viewport" : "typing-viewport"}
@@ -2087,11 +2094,7 @@ function getMetricLabel(passage: StoredPassage | null | undefined) {
   return "WPM";
 }
 
-function getChineseComparableInput(value: string, passage: StoredPassage | null) {
-  if (passage?.category === "training_chinese") {
-    return Array.from(value).filter((character) => HAN_CHARACTER_PATTERN.test(character)).join("");
-  }
-
+function getChineseComparableInput(value: string) {
   return value.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
@@ -3447,14 +3450,11 @@ function shouldShowLineBreakMarker(status: string, revealMistakes: boolean) {
   return status === "current" || ((status === "wrong" || status === "extra") && revealMistakes);
 }
 
-function TypingTimer({ value, compact = false }: { value: string; compact?: boolean }) {
+function TypingTimer({ value }: { value: string }) {
   return (
     <div
       data-testid="typing-timer-slot"
-      className={clsx(
-        "justify-self-center text-center font-mono tabular-nums leading-none text-paper/40 sm:justify-self-end sm:text-right",
-        compact ? "min-h-6 min-w-[4.5rem] text-lg md:text-xl" : "min-h-8 min-w-[5.5rem] text-2xl md:text-[2rem]"
-      )}
+      className="formaltype-typing-timer font-mono tabular-nums text-paper/40"
       aria-label={`Timer ${value}`}
     >
       <span data-testid="typing-timer">{value}</span>
