@@ -1159,6 +1159,7 @@ describe("PracticePage passage loading", () => {
     expect(marker.hasAttribute("data-typing-caret")).toBe(false);
     expect(marker.querySelector('[data-typing-caret-indicator="true"]')).toBeNull();
     expect(characterLayer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+    expect(characterLayer.querySelector('[aria-label="Typing caret"]')).toBeNull();
     expect(marker.textContent).toBe("");
     expect(marker.style.height).toBe("0.95em");
 
@@ -1489,7 +1490,7 @@ describe("PracticePage passage loading", () => {
     expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");
   });
 
-  it("does not render a terminal caret for an incomplete target whose alignment has no current character", async () => {
+  it("retains one active Practice caret when an unfinished alignment temporarily has no exact current character", async () => {
     const text = "Local fallback body text for typing.";
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
@@ -1502,11 +1503,107 @@ describe("PracticePage passage loading", () => {
 
     fireEvent.keyDown(window, { key: "Tab" });
     fireEvent.change(screen.getByLabelText("Typing input"), {
+      target: { value: text.slice(0, 2) }
+    });
+    fireEvent.change(screen.getByLabelText("Typing input"), {
       target: { value: `${text.slice(0, 1)}${text.slice(2)}` }
     });
 
     const characterLayer = screen.getByTestId("typing-character-layer");
     expect(characterLayer.querySelector('[aria-label="Typing caret"]')).toBeNull();
+    expect(characterLayer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+    expect(characterLayer.querySelector('[data-typing-caret="true"]')?.getAttribute("data-target-index")).toBe("2");
+  });
+
+  it.each([
+    ["one extra space", (text: string) => [text.slice(0, 6), `${text.slice(0, 6)} `]],
+    ["a wrong key", (text: string) => [text.slice(0, 6), `${text.slice(0, 6)}#`]],
+    ["an omitted character followed by more input", (text: string) => [text.slice(0, 7), `${text.slice(0, 7)}${text.slice(8, 11)}`]]
+  ])("keeps the Practice viewport local and one active caret after %s", async (_label, getValues) => {
+    const text = "Local fallback body text for typing across several visual lines.";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", text)])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    const animationFrames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(text));
+
+    const viewport = screen.getByTestId("typing-viewport");
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 1_200 }
+    });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this === viewport) return makePracticeDomRect(100, 400);
+      if (this.getAttribute("data-typing-caret") === "true") {
+        const targetIndex = Number(this.getAttribute("data-target-index"));
+        return targetIndex > 30 ? makePracticeDomRect(800, 830) : makePracticeDomRect(230, 260);
+      }
+      return makePracticeDomRect(0, 0);
+    });
+
+    const input = screen.getByLabelText("Typing input");
+    const [beforeValue, mismatchValue] = getValues(text);
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(input, { target: { value: beforeValue } });
+    await act(async () => Promise.resolve());
+    act(() => {
+      for (const callback of animationFrames.splice(0)) callback(0);
+    });
+    viewport.scrollTop = 120;
+
+    fireEvent.change(input, { target: { value: mismatchValue } });
+    await act(async () => Promise.resolve());
+    act(() => {
+      for (const callback of animationFrames.splice(0)) callback(0);
+    });
+
+    const characterLayer = screen.getByTestId("typing-character-layer");
+    const activeCaret = characterLayer.querySelector('[data-typing-caret="true"]');
+    expect(characterLayer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+    expect(Number(activeCaret?.getAttribute("data-target-index"))).toBeLessThan(30);
+    expect(characterLayer.querySelector('[aria-label="Typing caret"]')).toBeNull();
+    expect(viewport.scrollTop).toBe(120);
+  });
+
+  it("preserves the Practice scroll position when the active caret element is unavailable for one frame", async () => {
+    const text = "Local fallback body text for typing.";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", text)])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    const animationFrames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(text));
+
+    const viewport = screen.getByTestId("typing-viewport");
+    viewport.scrollTop = 120;
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: text.slice(0, 4) } });
+    await act(async () => Promise.resolve());
+
+    screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.remove();
+    act(() => {
+      for (const callback of animationFrames.splice(0)) callback(0);
+    });
+
+    expect(viewport.scrollTop).toBe(120);
+    expect(screen.getByTestId("typing-character-layer").querySelector('[aria-label="Typing caret"]')).toBeNull();
   });
 
   it("shows passage metadata only once in the idle practice chrome", async () => {
@@ -1934,6 +2031,20 @@ function makeChineseQuoteTrainingMode(text: string): PracticeTrainingMode {
     hidePracticeModeControls: true,
     hideMetadata: true
   };
+}
+
+function makePracticeDomRect(top: number, bottom: number): DOMRect {
+  return {
+    x: 0,
+    y: top,
+    top,
+    bottom,
+    left: 0,
+    right: 100,
+    width: 100,
+    height: bottom - top,
+    toJSON: () => ({})
+  } as DOMRect;
 }
 
 function typeIncrementally(input: HTMLElement, value: string) {

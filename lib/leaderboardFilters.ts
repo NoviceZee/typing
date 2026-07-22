@@ -6,7 +6,7 @@ export const LEADERBOARD_TIME_RANGE_OPTIONS: Array<{ label: string; value: Leade
   { label: "Week", value: "this_week" },
   { label: "Month", value: "this_month" },
   { label: "Year", value: "this_year" },
-  { label: "All-time", value: "all_time" }
+  { label: "All Time", value: "all_time" }
 ];
 
 export const DEFAULT_LEADERBOARD_TIME_RANGE: LeaderboardTimeRange = "today";
@@ -17,7 +17,7 @@ export const LEADERBOARD_HEADING_BY_RANGE: Record<LeaderboardTimeRange, string> 
   this_week: "Weekly Leaderboard",
   this_month: "Monthly Leaderboard",
   this_year: "Yearly Leaderboard",
-  all_time: "All-time Leaderboard"
+  all_time: "All Time Leaderboard"
 };
 
 export function getLeaderboardDateRange(range: LeaderboardTimeRange, now = new Date()) {

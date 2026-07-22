@@ -214,6 +214,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
   const terminalCaretRef = useRef<HTMLSpanElement | null>(null);
   const previousPaceMarkerRef = useRef<HTMLSpanElement | null>(null);
+  const lastValidActiveTargetIndexRef = useRef<number | null>(null);
+  const activeTargetSourceRef = useRef("");
   const characterRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const finishedRef = useRef(false);
   const statusRef = useRef<SessionStatus>("idle");
@@ -298,10 +300,35 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     () => validateTypedText({ targetText: sourceText, typedText, rules }),
     [sourceText, typedText, rules]
   );
-  const activeCharacterIndex = comparison.characters.findIndex((character) => character.status === "current");
   const isTargetActuallyComplete =
     comparison.comparableTargetLength > 0 &&
-    comparison.comparableTypedLength >= comparison.comparableTargetLength;
+    comparison.comparableTypedLength >= comparison.comparableTargetLength &&
+    comparison.activeTargetIndex == null;
+  if (activeTargetSourceRef.current !== targetText) {
+    activeTargetSourceRef.current = targetText;
+    lastValidActiveTargetIndexRef.current = null;
+  }
+  const exactActiveTargetIndex = typeof comparison.activeTargetIndex === "number"
+    ? comparison.activeTargetIndex
+    : null;
+  const retainedActiveTargetIndex = lastValidActiveTargetIndexRef.current;
+  const activeTargetIndex = isTargetActuallyComplete
+    ? null
+    : exactActiveTargetIndex !== null
+      ? exactActiveTargetIndex
+      : retainedActiveTargetIndex !== null &&
+          retainedActiveTargetIndex >= 0 &&
+          retainedActiveTargetIndex < comparison.totalCharacters
+        ? retainedActiveTargetIndex
+        : null;
+  if (activeTargetIndex !== null) {
+    lastValidActiveTargetIndexRef.current = activeTargetIndex;
+  }
+  const activeCharacterIndex = activeTargetIndex === null
+    ? -1
+    : comparison.characters.findIndex(
+        (character) => character.expected !== "" && character.index === activeTargetIndex
+      );
   const previousComparisonMatches = Boolean(
     passage?.id &&
       previousResult &&
@@ -312,11 +339,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     previousComparisonMatches && isRunning && !isResultModalOpen && previousResult?.previousPaceTimeline?.length
   );
   const setCharacterRef = useCallback(
-    (index: number, isCurrent: boolean) => (node: HTMLSpanElement | null) => {
+    (index: number) => (node: HTMLSpanElement | null) => {
       characterRefs.current[index] = node;
-      if (isCurrent) {
-        currentCharRef.current = node;
-      }
     },
     []
   );
@@ -1675,25 +1699,28 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                       <TrainingTokenCharacterLayer
                         characters={comparison.characters}
                         tokens={passage.displayTokens}
+                        activeCharacterIndex={activeCharacterIndex}
                         setCharacterRef={setCharacterRef}
                         showMistakes={rules.showMistakesImmediately || isFinished}
                         themeSettings={themeSettings}
                       />
                     ) : comparison.characters.map((character, index) => {
-                      const isCurrent = character.status === "current";
+                      const isCurrent = index === activeCharacterIndex;
                       const isLineBreak = character.expected === "\n" || character.actual === "\n";
 
                       if (isLineBreak) {
                         return (
                           <Fragment key={`${character.index}-${index}-${character.expected}-${character.actual}`}>
                             <span
-                              ref={setCharacterRef(index, isCurrent)}
+                              ref={setCharacterRef(index)}
                               data-index={index}
+                              data-target-index={character.index}
                               data-typing-caret={isCurrent ? "true" : undefined}
                               aria-label={character.status === "wrong" ? "Missed line break" : "Line break"}
                               className={clsx(
                                 "inline-block min-w-[0.7em]",
                                 characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings),
+                                isCurrent && activeCaretClass(themeSettings),
                                 character.status === "untyped" && "text-paper/20"
                               )}
                             >
@@ -1708,10 +1735,14 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                       return (
                         <span
                           key={`${character.index}-${index}-${character.expected}-${character.actual}`}
-                          ref={setCharacterRef(index, isCurrent)}
+                          ref={setCharacterRef(index)}
                           data-index={index}
+                          data-target-index={character.index}
                           data-typing-caret={isCurrent ? "true" : undefined}
-                          className={clsx(characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings))}
+                          className={clsx(
+                            characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings),
+                            isCurrent && activeCaretClass(themeSettings)
+                          )}
                         >
                           <TypingCaretIndicator isCurrent={isCurrent} />
                           {character.actual || character.expected}
@@ -1924,13 +1955,15 @@ function PracticeControlSeparator() {
 function TrainingTokenCharacterLayer({
   characters,
   tokens,
+  activeCharacterIndex,
   setCharacterRef,
   showMistakes,
   themeSettings
 }: {
   characters: CharacterComparison[];
   tokens: string[];
-  setCharacterRef: (index: number, isCurrent: boolean) => (node: HTMLSpanElement | null) => void;
+  activeCharacterIndex: number;
+  setCharacterRef: (index: number) => (node: HTMLSpanElement | null) => void;
   showMistakes: boolean;
   themeSettings: ThemeSettings;
 }) {
@@ -1942,7 +1975,7 @@ function TrainingTokenCharacterLayer({
         const tokenCharacters = Array.from(token).map((_, offset) => {
           const comparisonIndex = characterIndex + offset;
           const character = characters[comparisonIndex];
-          const isCurrent = character?.status === "current";
+          const isCurrent = comparisonIndex === activeCharacterIndex;
 
           if (!character) {
             return null;
@@ -1951,10 +1984,14 @@ function TrainingTokenCharacterLayer({
           return (
             <span
               key={`${character.index}-${comparisonIndex}-${character.expected}-${character.actual}`}
-              ref={setCharacterRef(comparisonIndex, isCurrent)}
+              ref={setCharacterRef(comparisonIndex)}
               data-index={comparisonIndex}
+              data-target-index={character.index}
               data-typing-caret={isCurrent ? "true" : undefined}
-              className={clsx(characterClass(character.status, showMistakes, themeSettings))}
+              className={clsx(
+                characterClass(character.status, showMistakes, themeSettings),
+                isCurrent && activeCaretClass(themeSettings)
+              )}
             >
               <TypingCaretIndicator isCurrent={isCurrent} />
               {character.actual || character.expected}
@@ -1971,16 +2008,21 @@ function TrainingTokenCharacterLayer({
       })}
       {characters.slice(characterIndex).map((character, offset) => {
         const comparisonIndex = characterIndex + offset;
+        const isCurrent = comparisonIndex === activeCharacterIndex;
 
         return (
           <span
             key={`${character.index}-${comparisonIndex}-${character.expected}-${character.actual}`}
-            ref={setCharacterRef(comparisonIndex, character.status === "current")}
+            ref={setCharacterRef(comparisonIndex)}
             data-index={comparisonIndex}
-            data-typing-caret={character.status === "current" ? "true" : undefined}
-            className={clsx(characterClass(character.status, showMistakes, themeSettings))}
+            data-target-index={character.index}
+            data-typing-caret={isCurrent ? "true" : undefined}
+            className={clsx(
+              characterClass(character.status, showMistakes, themeSettings),
+              isCurrent && activeCaretClass(themeSettings)
+            )}
           >
-            <TypingCaretIndicator isCurrent={character.status === "current"} />
+            <TypingCaretIndicator isCurrent={isCurrent} />
             {character.actual || character.expected}
           </span>
         );
@@ -3467,15 +3509,19 @@ function characterClass(status: string, revealMistakes: boolean, themeSettings?:
     return revealMistakes ? "formaltype-typed-wrong" : "formaltype-typed-hidden-mistake";
   }
   if (status === "current") {
-    return clsx(
-      "formaltype-typed-current",
-      `formaltype-caret-${themeSettings?.caretStyle ?? DEFAULT_THEME_SETTINGS.caretStyle}`,
-      (themeSettings?.caretBlink ?? DEFAULT_THEME_SETTINGS.caretBlink) === "off"
-        ? "formaltype-caret-static"
-        : "formaltype-caret-animated"
-    );
+    return activeCaretClass(themeSettings);
   }
   return "formaltype-typed-pending";
+}
+
+function activeCaretClass(themeSettings?: ThemeSettings) {
+  return clsx(
+    "formaltype-typed-current",
+    `formaltype-caret-${themeSettings?.caretStyle ?? DEFAULT_THEME_SETTINGS.caretStyle}`,
+    (themeSettings?.caretBlink ?? DEFAULT_THEME_SETTINGS.caretBlink) === "off"
+      ? "formaltype-caret-static"
+      : "formaltype-caret-animated"
+  );
 }
 
 function shouldShowLineBreakMarker(status: string, revealMistakes: boolean) {

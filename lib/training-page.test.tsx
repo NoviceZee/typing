@@ -232,6 +232,94 @@ describe("TrainingPage", () => {
     expect(viewport.scrollTop).toBe(0);
   });
 
+  it.each(["extra space", "wrong key", "omitted character"])(
+    "keeps the Training viewport local and one active caret after an %s mismatch",
+    async (mismatchKind) => {
+      const animationFrames: FrameRequestCallback[] = [];
+      vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+        animationFrames.push(callback);
+        return animationFrames.length;
+      });
+      vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+
+      render(<TrainingPage />);
+      await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent?.length).toBeGreaterThan(30));
+
+      const targetText = screen.getByTestId("typing-character-layer").textContent ?? "";
+      const runStart = targetText.search(/[A-Za-z]{6}/);
+      expect(runStart).toBeGreaterThanOrEqual(0);
+      const pivot = runStart + 2;
+      const beforeValue = targetText.slice(0, pivot);
+      const mismatchValue = mismatchKind === "extra space"
+        ? `${beforeValue} `
+        : mismatchKind === "wrong key"
+          ? `${beforeValue}#`
+          : `${beforeValue}${targetText.slice(pivot + 1, pivot + 4)}`;
+      const viewport = screen.getByTestId("typing-viewport");
+      Object.defineProperties(viewport, {
+        clientHeight: { configurable: true, value: 300 },
+        scrollHeight: { configurable: true, value: 1_200 }
+      });
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+        if (this === viewport) return makeDomRect(100, 400);
+        if (this.getAttribute("data-typing-caret") === "true") {
+          const targetIndex = Number(this.getAttribute("data-target-index"));
+          return targetIndex > pivot + 10 ? makeDomRect(800, 830) : makeDomRect(230, 260);
+        }
+        return makeDomRect(0, 0);
+      });
+
+      const input = screen.getByLabelText("Typing input");
+      fireEvent.keyDown(window, { key: "Tab" });
+      fireEvent.change(input, { target: { value: beforeValue } });
+      await act(async () => Promise.resolve());
+      act(() => {
+        for (const callback of animationFrames.splice(0)) callback(0);
+      });
+      viewport.scrollTop = 120;
+
+      fireEvent.change(input, { target: { value: mismatchValue } });
+      await act(async () => Promise.resolve());
+      act(() => {
+        for (const callback of animationFrames.splice(0)) callback(0);
+      });
+
+      const characterLayer = screen.getByTestId("typing-character-layer");
+      const activeCaret = characterLayer.querySelector('[data-typing-caret="true"]');
+      expect(characterLayer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+      expect(Number(activeCaret?.getAttribute("data-target-index"))).toBeLessThanOrEqual(pivot + 10);
+      expect(characterLayer.querySelector('[aria-label="Typing caret"]')).toBeNull();
+      expect(viewport.scrollTop).toBe(120);
+    }
+  );
+
+  it("preserves the Training scroll position when the active caret element is unavailable for one frame", async () => {
+    const animationFrames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+
+    render(<TrainingPage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent?.length).toBeGreaterThan(10));
+
+    const targetText = screen.getByTestId("typing-character-layer").textContent ?? "";
+    const viewport = screen.getByTestId("typing-viewport");
+    viewport.scrollTop = 120;
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: targetText.slice(0, 4) } });
+    await act(async () => Promise.resolve());
+
+    screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.remove();
+    act(() => {
+      for (const callback of animationFrames.splice(0)) callback(0);
+    });
+
+    expect(viewport.scrollTop).toBe(120);
+    expect(screen.getByTestId("typing-character-layer").querySelector('[aria-label="Typing caret"]')).toBeNull();
+  });
+
   it("keeps exactly one terminal caret after a Chinese Time drill target is fully committed", async () => {
     render(<TrainingPage />);
     const contentGroup = screen.getByRole("group", { name: "Content" });

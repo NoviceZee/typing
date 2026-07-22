@@ -1,4 +1,5 @@
 import { normalizeEquivalentTypingPunctuation } from "./passageTextNormalization";
+import { isProgressionEligibleResult } from "./resultEligibility";
 
 export type PracticeCategory =
   | "Business email"
@@ -66,6 +67,7 @@ export type CharacterComparison = {
 export type TypingComparison = {
   characters: CharacterComparison[];
   characterStatuses: CharacterComparison[];
+  activeTargetIndex?: number | null;
   correctCharacters: number;
   incorrectCharacters: number;
   missedCharacters: number;
@@ -255,6 +257,7 @@ export function normalizeComparableUnicode(value: string): string {
 
 export function compareTyping(target: string, typed: string, rules: TypingRules): TypingComparison {
   const characters: CharacterComparison[] = [];
+  let activeTargetIndex: number | null = null;
   let correctCharacters = 0;
   let incorrectCharacters = 0;
   let missedCharacters = 0;
@@ -279,7 +282,10 @@ export function compareTyping(target: string, typed: string, rules: TypingRules)
     }
 
     if (actual === "") {
-      const isCurrent = typedIndex === typed.length && targetIndex === typed.length;
+      const isCurrent = activeTargetIndex === null;
+      if (isCurrent) {
+        activeTargetIndex = targetIndex;
+      }
       characters.push({ expected, actual: "", index: targetIndex, status: isCurrent ? "current" : "untyped" });
       targetIndex += 1;
       continue;
@@ -380,6 +386,7 @@ export function compareTyping(target: string, typed: string, rules: TypingRules)
   return {
     characters,
     characterStatuses: characters,
+    activeTargetIndex,
     correctCharacters,
     incorrectCharacters,
     missedCharacters,
@@ -399,20 +406,30 @@ export function calculateResult(input: ResultInput): TypingResult {
   });
   const minutes = Math.max(input.elapsedSeconds, 1) / 60;
   const usesCharacterPace = input.language === "chinese" || input.category === "training_chinese" || isChinesePracticeCategory(input.category);
-  const grossWpm = usesCharacterPace ? comparison.correctCharacters / minutes : comparison.correctCharacters / 5 / minutes;
+  const effectiveWpm = usesCharacterPace ? comparison.correctCharacters / minutes : comparison.correctCharacters / 5 / minutes;
   const rawWpm = usesCharacterPace ? input.typed.length / minutes : input.typed.length / 5 / minutes;
+  const wpm = roundOne(effectiveWpm);
+  const completionReason = input.completionReason ?? "manual";
 
   return {
     ...comparison,
-    wpm: roundOne(grossWpm),
+    wpm,
     rawWpm: roundOne(rawWpm),
     timeUsedSeconds: Math.round(input.elapsedSeconds),
     durationSeconds: input.durationSeconds,
     category: input.category,
     presetName: input.presetName ?? "Custom rules",
-    completionReason: input.completionReason ?? "manual",
+    completionReason,
     completedAt: new Date().toISOString(),
-    isRankable: comparison.accuracy >= 70 && input.elapsedSeconds >= 15
+    isRankable: isProgressionEligibleResult({
+      accuracy: comparison.accuracy,
+      wpm,
+      timeUsedSeconds: input.elapsedSeconds,
+      completionReason,
+      correctCharacters: comparison.correctCharacters,
+      typedCharacters: input.typed.length,
+      category: input.category
+    })
   };
 }
 

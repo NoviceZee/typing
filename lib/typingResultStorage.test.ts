@@ -67,6 +67,25 @@ describe("typingResultStorage", () => {
     });
   });
 
+  it("persists effective speed rather than raw speed and marks manual/invalid attempts ineligible", () => {
+    const input = makeSaveInput();
+    const payload = toSupabaseTypingResultInsert({
+      ...input,
+      result: {
+        ...input.result,
+        wpm: 35,
+        rawWpm: 200,
+        accuracy: 5,
+        completionReason: "manual",
+        isRankable: true
+      }
+    });
+
+    expect(payload.wpm).toBe(35);
+    expect(payload.wpm).not.toBe(200);
+    expect(payload.is_rankable).toBe(false);
+  });
+
   it("stores ten-minute result durations as 600 seconds", () => {
     const passage: StoredPassage = {
       id: "default-generated",
@@ -259,9 +278,12 @@ describe("typingResultStorage", () => {
           passage_title: "Board memo",
           duration_seconds: 60,
           elapsed_seconds: 20,
+          completion_reason: "text_completed",
+          is_rankable: true,
           wpm: 72,
           accuracy: 98.5,
           correct_chars: 360,
+          typed_chars: 365,
           created_at: "2026-06-19T00:00:00.000Z",
           passages: { category: "Business email" }
         },
@@ -274,6 +296,34 @@ describe("typingResultStorage", () => {
           correct_chars: 1525,
           created_at: "2026-06-18T00:00:00.000Z",
           passages: null
+        },
+        {
+          id: "invalid-random",
+          passage_title: "Random input",
+          duration_seconds: 60,
+          elapsed_seconds: 60,
+          completion_reason: "time_up",
+          is_rankable: false,
+          wpm: 200,
+          accuracy: 5,
+          correct_chars: 200,
+          typed_chars: 4000,
+          created_at: "2026-06-19T01:00:00.000Z",
+          passages: { category: "Business email" }
+        },
+        {
+          id: "manual",
+          passage_title: "Manual attempt",
+          duration_seconds: 60,
+          elapsed_seconds: 20,
+          completion_reason: "manual",
+          is_rankable: false,
+          wpm: 90,
+          accuracy: 100,
+          correct_chars: 150,
+          typed_chars: 150,
+          created_at: "2026-06-19T02:00:00.000Z",
+          passages: { category: "Business email" }
         }
       ],
       error: null
@@ -290,9 +340,12 @@ describe("typingResultStorage", () => {
         passage_category: "Business email",
         duration_seconds: 60,
         elapsed_seconds: 20,
+        completion_reason: "text_completed",
+        is_rankable: true,
         wpm: 72,
         accuracy: 98.5,
         correct_chars: 360,
+        typed_chars: 365,
         created_at: "2026-06-19T00:00:00.000Z"
       },
       {
@@ -308,7 +361,7 @@ describe("typingResultStorage", () => {
     ]);
     expect(from).toHaveBeenCalledWith("typing_results");
     expect(select).toHaveBeenCalledWith(
-      "id,passage_title,metric_domain,duration_seconds,elapsed_seconds,wpm,accuracy,correct_chars,created_at,passages(category)"
+      "id,passage_title,metric_domain,duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)"
     );
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
     expect(order).toHaveBeenCalledWith("created_at", { ascending: false });
@@ -344,6 +397,24 @@ describe("typingResultStorage", () => {
     expect(eq).toHaveBeenCalledWith("passage_category", "Business email");
     expect(gte).toHaveBeenCalledWith("created_at", start.toISOString());
     expect(lt).toHaveBeenCalledWith("created_at", end.toISOString());
+    expect(limit).toHaveBeenCalledWith(25);
+  });
+
+  it("leaves the leaderboard date range unbounded for All Time", async () => {
+    const query: any = {};
+    const limit = vi.fn().mockResolvedValue({ data: [], error: null });
+    const lt = vi.fn(() => query);
+    const gte = vi.fn(() => query);
+    const eq = vi.fn(() => query);
+    const order = vi.fn(() => query);
+    Object.assign(query, { order, limit, eq, gte, lt });
+    const select = vi.fn(() => query);
+    const from = vi.fn(() => ({ select }));
+
+    await getSupabaseLeaderboardResults({ timeRange: "all_time" }, { from } as any);
+
+    expect(gte).not.toHaveBeenCalled();
+    expect(lt).not.toHaveBeenCalled();
     expect(limit).toHaveBeenCalledWith(25);
   });
 

@@ -196,6 +196,45 @@ describe("typing rule comparison", () => {
     expect(comparison.incorrectCharacters).toBe(0);
   });
 
+  it("keeps a bounded active target index after an extra space", () => {
+    const comparison = validateTypedText({
+      targetText: "alpha beta",
+      typedText: "alpha  ",
+      rules: DEFAULT_RULES
+    });
+
+    expect(comparison.activeTargetIndex).toBe(6);
+    expect(comparison.characters.find((character) => character.status === "current")).toMatchObject({
+      expected: "b",
+      index: 6
+    });
+  });
+
+  it("keeps a local active target index after a wrong key", () => {
+    const comparison = validateTypedText({
+      targetText: "alpha beta",
+      typedText: "alpha x",
+      rules: DEFAULT_RULES
+    });
+
+    expect(comparison.activeTargetIndex).toBe(7);
+    expect(comparison.activeTargetIndex).toBeLessThan(comparison.comparableTargetLength - 1);
+  });
+
+  it("tracks target progress rather than raw input length after an omitted character", () => {
+    const comparison = validateTypedText({
+      targetText: "alpha beta",
+      typedText: "alpha et",
+      rules: DEFAULT_RULES
+    });
+
+    expect(comparison.activeTargetIndex).toBe(9);
+    expect(comparison.characters.find((character) => character.status === "current")).toMatchObject({
+      expected: "a",
+      index: 9
+    });
+  });
+
   it("counts missing spaces only when that rule is enabled", () => {
     const enforced = validateTypedText({
       targetText: "Kind regards",

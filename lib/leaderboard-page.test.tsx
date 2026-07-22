@@ -115,7 +115,7 @@ describe("LeaderboardPage", () => {
       ["Week", "Weekly Leaderboard", "this_week"],
       ["Month", "Monthly Leaderboard", "this_month"],
       ["Year", "Yearly Leaderboard", "this_year"],
-      ["All-time", "All-time Leaderboard", "all_time"],
+      ["All Time", "All Time Leaderboard", "all_time"],
       ["Today", "Daily Leaderboard", "today"]
     ] as const;
 
