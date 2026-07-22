@@ -196,6 +196,42 @@ describe("TrainingPage", () => {
     );
   });
 
+  it("never uses the terminal caret as the Training viewport scroll target", async () => {
+    const animationFrames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+
+    render(<TrainingPage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent?.length).toBeGreaterThan(0));
+
+    const viewport = screen.getByTestId("typing-viewport");
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 900 }
+    });
+    viewport.scrollTop = 0;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this === viewport) return makeDomRect(100, 400);
+      if (this.getAttribute("aria-label") === "Typing caret") return makeDomRect(520, 560);
+      return makeDomRect(0, 0);
+    });
+
+    const targetText = screen.getByTestId("typing-character-layer").textContent ?? "";
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: targetText } });
+
+    await act(async () => Promise.resolve());
+    act(() => {
+      for (const callback of animationFrames.splice(0)) callback(0);
+    });
+
+    expect(screen.getByTestId("typing-character-layer").querySelector('[aria-label="Typing caret"]')).toBeTruthy();
+    expect(viewport.scrollTop).toBe(0);
+  });
+
   it("keeps exactly one terminal caret after a Chinese Time drill target is fully committed", async () => {
     render(<TrainingPage />);
     const contentGroup = screen.getByRole("group", { name: "Content" });

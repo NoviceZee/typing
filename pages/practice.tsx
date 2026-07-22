@@ -212,6 +212,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const typingTextRef = useRef<HTMLDivElement>(null);
   const resultPanelRestartButtonRef = useRef<HTMLButtonElement>(null);
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
+  const terminalCaretRef = useRef<HTMLSpanElement | null>(null);
   const previousPaceMarkerRef = useRef<HTMLSpanElement | null>(null);
   const characterRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const finishedRef = useRef(false);
@@ -297,6 +298,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     () => validateTypedText({ targetText: sourceText, typedText, rules }),
     [sourceText, typedText, rules]
   );
+  const activeCharacterIndex = comparison.characters.findIndex((character) => character.status === "current");
+  const isTargetActuallyComplete =
+    comparison.comparableTargetLength > 0 &&
+    comparison.comparableTypedLength >= comparison.comparableTargetLength;
   const previousComparisonMatches = Boolean(
     passage?.id &&
       previousResult &&
@@ -929,7 +934,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   ]);
 
   useEffect(() => {
-    const currentCharacter = currentCharRef.current;
+    const currentCharacter = activeCharacterIndex >= 0 ? characterRefs.current[activeCharacterIndex] ?? null : null;
+    currentCharRef.current = currentCharacter;
 
     if (scrollFrameRef.current !== null) {
       window.cancelAnimationFrame(scrollFrameRef.current);
@@ -979,7 +985,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         scrollFrameRef.current = null;
       }
     };
-  }, [isRunning, typedText.length]);
+  }, [activeCharacterIndex, isRunning, typedText.length]);
 
   function handleTyping(value: string) {
     if (
@@ -1714,10 +1720,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                     })}
                     {!isFinished &&
                       !isPassageLoading &&
-                      sourceText.length > 0 &&
-                      !comparison.characters.some((character) => character.status === "current") && (
+                      isTargetActuallyComplete &&
+                      activeCharacterIndex < 0 && (
                         <span
-                          ref={setCharacterRef(comparison.characters.length, true)}
+                          ref={terminalCaretRef}
                           data-index={comparison.characters.length}
                           data-typing-caret="true"
                           aria-label="Typing caret"

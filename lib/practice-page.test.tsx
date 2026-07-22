@@ -1131,6 +1131,11 @@ describe("PracticePage passage loading", () => {
 
     expect(justFinishedResult).toBeTruthy();
     expect(justFinishedResult?.previousPaceTimeline?.some((point) => point.timeSeconds === 10)).toBe(true);
+    expect(screen.queryByTestId("previous-pace-marker")).toBeNull();
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+    expect(
+      screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")
+    ).toBe("0");
 
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
@@ -1151,6 +1156,9 @@ describe("PracticePage passage loading", () => {
     expect(marker.style.willChange).toBe("transform");
     expect(marker.style.transition).toBe("opacity 120ms ease");
     expect(characterLayer.contains(marker)).toBe(false);
+    expect(marker.hasAttribute("data-typing-caret")).toBe(false);
+    expect(marker.querySelector('[data-typing-caret-indicator="true"]')).toBeNull();
+    expect(characterLayer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
     expect(marker.textContent).toBe("");
     expect(marker.style.height).toBe("0.95em");
 
@@ -1479,6 +1487,26 @@ describe("PracticePage passage loading", () => {
     fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
     await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("今天再見"));
     expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");
+  });
+
+  it("does not render a terminal caret for an incomplete target whose alignment has no current character", async () => {
+    const text = "Local fallback body text for typing.";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", text)])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    const { container } = render(<PracticePage />);
+    await waitFor(() => expect(container.textContent).toContain(text));
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(screen.getByLabelText("Typing input"), {
+      target: { value: `${text.slice(0, 1)}${text.slice(2)}` }
+    });
+
+    const characterLayer = screen.getByTestId("typing-character-layer");
+    expect(characterLayer.querySelector('[aria-label="Typing caret"]')).toBeNull();
   });
 
   it("shows passage metadata only once in the idle practice chrome", async () => {
