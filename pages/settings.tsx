@@ -9,11 +9,13 @@ import {
   ACCENT_COLOR_OPTIONS,
   APP_FONT_OPTIONS,
   CARET_BLINK_OPTIONS,
+  CARET_SMOOTH_OPTIONS,
   CARET_STYLE_OPTIONS,
   DEFAULT_THEME_SETTINGS,
   THEME_MODE_OPTIONS,
   THEME_PRESET_OPTIONS,
   ThemePresetOption,
+  PREVIOUS_PACE_ENABLED_OPTIONS,
   TYPING_COLOR_STYLE_OPTIONS,
   TYPING_FONT_OPTIONS,
   TYPING_TEXT_SIZE_OPTIONS,
@@ -123,25 +125,21 @@ export default function SettingsPage() {
 
   function handleThemeSetting<Key extends keyof ThemeSettings>(key: Key, value: ThemeSettings[Key]) {
     announceSaved();
-    setThemeSettings((current) => {
-      const nextSettings = { ...current, [key]: value };
-      writeThemeSettings(nextSettings);
-      return nextSettings;
-    });
+    const nextSettings = { ...themeSettings, [key]: value };
+    setThemeSettings(nextSettings);
+    writeThemeSettings(nextSettings);
   }
 
   function handleThemePreset(preset: ThemePresetOption) {
     announceSaved();
-    setThemeSettings((current) => {
-      const nextSettings: ThemeSettings = {
-        ...current,
-        themePreset: preset.value,
-        mode: preset.mode,
-        accentColor: preset.accentColor
-      };
-      writeThemeSettings(nextSettings);
-      return nextSettings;
-    });
+    const nextSettings: ThemeSettings = {
+      ...themeSettings,
+      themePreset: preset.value,
+      mode: preset.mode,
+      accentColor: preset.accentColor
+    };
+    setThemeSettings(nextSettings);
+    writeThemeSettings(nextSettings);
   }
 
   function handleRuleSetting<Key extends keyof TypingRules>(key: Key, value: TypingRules[Key]) {
@@ -261,21 +259,59 @@ export default function SettingsPage() {
                   onChange={(value) => handleThemeSetting("typingWidth", value as ThemeSettings["typingWidth"])}
                 />
 
-                <ButtonGroup
-                  label="Caret style"
-                  options={CARET_STYLE_OPTIONS}
-                  value={themeSettings.caretStyle}
-                  getAriaLabel={(option) => `${option.label} caret style`}
-                  onChange={(value) => handleThemeSetting("caretStyle", value as ThemeSettings["caretStyle"])}
-                />
+                <div className="grid gap-5 rounded-lg border border-paper/[0.07] bg-paper/[0.025] p-4">
+                  <div>
+                    <h3 className="text-body font-semibold text-paper/85">Caret</h3>
+                    <p className="mt-1 text-body text-paper/45">
+                      Keep the active typing position and your previous attempt visually independent.
+                    </p>
+                  </div>
 
-                <ButtonGroup
-                  label="Blink"
-                  options={CARET_BLINK_OPTIONS}
-                  value={themeSettings.caretBlink}
-                  getAriaLabel={(option) => `${option.label} blink`}
-                  onChange={(value) => handleThemeSetting("caretBlink", value as ThemeSettings["caretBlink"])}
-                />
+                  <ButtonGroup
+                    label="Active caret style"
+                    options={CARET_STYLE_OPTIONS}
+                    value={themeSettings.caretStyle}
+                    getAriaLabel={(option) => `${option.label} active caret style`}
+                    onChange={(value) => handleThemeSetting("caretStyle", value as ThemeSettings["caretStyle"])}
+                  />
+
+                  <ButtonGroup
+                    label="Smooth caret"
+                    options={CARET_SMOOTH_OPTIONS}
+                    value={themeSettings.caretSmooth}
+                    getAriaLabel={(option) => `${option.label} smooth caret`}
+                    onChange={(value) => handleThemeSetting("caretSmooth", value as ThemeSettings["caretSmooth"])}
+                  />
+
+                  <ButtonGroup
+                    label="Blink"
+                    options={CARET_BLINK_OPTIONS}
+                    value={themeSettings.caretBlink}
+                    getAriaLabel={(option) => `${option.label} blink`}
+                    onChange={(value) => handleThemeSetting("caretBlink", value as ThemeSettings["caretBlink"])}
+                  />
+
+                  <ButtonGroup
+                    label="Previous Pace"
+                    description="Show your previous attempt as a second caret when restarting the same test."
+                    options={PREVIOUS_PACE_ENABLED_OPTIONS}
+                    value={themeSettings.previousPaceEnabled}
+                    getAriaLabel={(option) => `${option.label} Previous Pace`}
+                    onChange={(value) =>
+                      handleThemeSetting("previousPaceEnabled", value as ThemeSettings["previousPaceEnabled"])
+                    }
+                  />
+
+                  <ButtonGroup
+                    label="Previous Pace style"
+                    options={CARET_STYLE_OPTIONS}
+                    value={themeSettings.previousPaceStyle}
+                    getAriaLabel={(option) => `${option.label} Previous Pace style`}
+                    onChange={(value) =>
+                      handleThemeSetting("previousPaceStyle", value as ThemeSettings["previousPaceStyle"])
+                    }
+                  />
+                </div>
 
                 <ButtonGroup
                   label="Typing colors"
@@ -540,16 +576,16 @@ function SettingsLivePreview({
         >
           <span className="formaltype-typed-correct">typ</span>
           <span className="formaltype-typed-wrong">i</span>
-          <span
-            className={`formaltype-typed-current formaltype-caret-${themeSettings.caretStyle} ${
-              themeSettings.caretBlink === "off" ? "formaltype-caret-static" : "formaltype-caret-animated"
-            }`}
-          >
-            <span
-              data-typing-caret-indicator="true"
-              aria-hidden="true"
-              className="formaltype-caret-indicator"
-            />
+          <span className={themeSettings.caretStyle === "off" ? "formaltype-typed-pending" : `formaltype-typed-current formaltype-caret-${themeSettings.caretStyle} ${
+            themeSettings.caretBlink === "off" ? "formaltype-caret-static" : "formaltype-caret-animated"
+          } formaltype-caret-smooth-${themeSettings.caretSmooth}`}>
+            {themeSettings.caretStyle !== "off" && (
+              <span
+                data-typing-caret-indicator="true"
+                aria-hidden="true"
+                className="formaltype-caret-indicator"
+              />
+            )}
             n
           </span>
           <span className="formaltype-typed-pending">g station</span>

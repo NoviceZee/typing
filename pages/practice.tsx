@@ -201,6 +201,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const [isAttemptSuspicious, setIsAttemptSuspicious] = useState(false);
   const [isInputActivated, setIsInputActivated] = useState(false);
   const [previousResult, setPreviousResult] = useState<PreviousTypingResult | null>(null);
+  const [isInfinitePreviousPaceRepeat, setIsInfinitePreviousPaceRepeat] = useState(false);
   const [availableLibrary, setAvailableLibrary] = useState<LibraryPassage[]>([]);
   const [practiceLanguage, setPracticeLanguage] = useState<PassageLanguage>("english");
   const [selectedCategory, setSelectedCategoryState] = useState<CategoryFilter>(ALL_FILTER);
@@ -212,6 +213,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const typingTextRef = useRef<HTMLDivElement>(null);
   const resultPanelRestartButtonRef = useRef<HTMLButtonElement>(null);
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
+  const previousActiveCaretRectRef = useRef<DOMRect | null>(null);
   const terminalCaretRef = useRef<HTMLSpanElement | null>(null);
   const previousPaceMarkerRef = useRef<HTMLSpanElement | null>(null);
   const lastValidActiveTargetIndexRef = useRef<number | null>(null);
@@ -333,10 +335,19 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     passage?.id &&
       previousResult &&
       previousResult.passageId === passage.id &&
-      (!previousResult.durationSeconds || previousResult.durationSeconds === durationSeconds)
+      (previousResultScope !== "infinite" ||
+        (isInfinitePreviousPaceRepeat && previousResult.targetSnapshot === sourceText)) &&
+      (previousResultScope === "infinite" ||
+        !previousResult.durationSeconds ||
+        previousResult.durationSeconds === durationSeconds)
   );
   const shouldShowPreviousPaceMarker = Boolean(
-    previousComparisonMatches && isRunning && !isResultModalOpen && previousResult?.previousPaceTimeline?.length
+    themeSettings.previousPaceEnabled === "on" &&
+      themeSettings.previousPaceStyle !== "off" &&
+      previousComparisonMatches &&
+      isRunning &&
+      !isResultModalOpen &&
+      previousResult?.previousPaceTimeline?.length
   );
   const setCharacterRef = useCallback(
     (index: number) => (node: HTMLSpanElement | null) => {
@@ -664,6 +675,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           previousResultScope,
           completedTimeline.map(toPreviousPaceTimelinePoint)
         );
+        if (previousResultScope === "infinite") {
+          setIsInfinitePreviousPaceRepeat(true);
+        }
         if (user) {
           attemptDetail = buildTypingAttemptDetail({
             userId: user.id,
@@ -1011,6 +1025,31 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     };
   }, [activeCharacterIndex, isRunning, typedText.length]);
 
+  useEffect(() => {
+    const activeCharacter = activeCharacterIndex >= 0 ? characterRefs.current[activeCharacterIndex] ?? null : null;
+    if (!activeCharacter) {
+      return;
+    }
+
+    const nextRect = activeCharacter.getBoundingClientRect();
+    const previousRect = previousActiveCaretRectRef.current;
+    previousActiveCaretRectRef.current = nextRect;
+    const indicator = activeCharacter.querySelector<HTMLElement>('[data-typing-caret-indicator="true"]');
+    const duration = caretSmoothDuration(themeSettings.caretSmooth);
+
+    if (!indicator || !previousRect || duration === 0 || typeof indicator.animate !== "function") {
+      return;
+    }
+
+    indicator.animate(
+      [
+        { transform: `translate(${previousRect.left - nextRect.left}px, ${previousRect.top - nextRect.top}px)` },
+        { transform: "translate(0, 0)" }
+      ],
+      { duration, easing: "ease-out" }
+    );
+  }, [activeCharacterIndex, themeSettings.caretSmooth]);
+
   function handleTyping(value: string) {
     if (
       !passage ||
@@ -1320,6 +1359,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     const nextDurationSeconds = nextIsTimedMode ? nextMode.seconds : 60;
     const nextTextMode: StoredPassageTextMode = nextIsTimedMode ? "timed" : "single";
 
+    setIsInfinitePreviousPaceRepeat(false);
     resetSession();
     setPracticeModeId(modeId);
     setRemainingSeconds(nextIsTimedMode ? nextMode.seconds : 0);
@@ -1349,6 +1389,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
+    setIsInfinitePreviousPaceRepeat(false);
     resetSession();
     setPracticeLanguage(language);
     setSelectedLanguage(language);
@@ -1370,6 +1411,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }
 
   function handleCategorySelection(category: CategoryFilter) {
+    setIsInfinitePreviousPaceRepeat(false);
     resetSession();
     setSelectedCategoryState(category);
     setSelectedCategory(category);
@@ -1384,6 +1426,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }
 
   function handlePassageSelection(passageId: string) {
+    setIsInfinitePreviousPaceRepeat(false);
     resetSession();
     choosePracticePassage({
       library: availableLibrary,
@@ -1400,6 +1443,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
+    setIsInfinitePreviousPaceRepeat(false);
     resetSession();
     if (trainingMode) {
       const nextPassage = buildTrainingModePassage(trainingMode, durationSeconds);
@@ -1462,6 +1506,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
+    setIsInfinitePreviousPaceRepeat(false);
     resetSession();
     setPassageSelectionMode("random");
     const library = getFilteredLibrary();
@@ -1706,6 +1751,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                       />
                     ) : comparison.characters.map((character, index) => {
                       const isCurrent = index === activeCharacterIndex;
+                      const showActiveCaret = isCurrent && themeSettings.caretStyle !== "off";
                       const isLineBreak = character.expected === "\n" || character.actual === "\n";
 
                       if (isLineBreak) {
@@ -1715,16 +1761,17 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                               ref={setCharacterRef(index)}
                               data-index={index}
                               data-target-index={character.index}
-                              data-typing-caret={isCurrent ? "true" : undefined}
+                              data-active-target={isCurrent ? "true" : undefined}
+                              data-typing-caret={showActiveCaret ? "true" : undefined}
                               aria-label={character.status === "wrong" ? "Missed line break" : "Line break"}
                               className={clsx(
                                 "inline-block min-w-[0.7em]",
                                 characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings),
-                                isCurrent && activeCaretClass(themeSettings),
+                                showActiveCaret && activeCaretClass(themeSettings),
                                 character.status === "untyped" && "text-paper/20"
                               )}
                             >
-                              <TypingCaretIndicator isCurrent={isCurrent} />
+                              <TypingCaretIndicator isCurrent={showActiveCaret} />
                               {shouldShowLineBreakMarker(character.status, rules.showMistakesImmediately || isFinished) ? "↵" : ""}
                             </span>
                             <br />
@@ -1738,13 +1785,14 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                           ref={setCharacterRef(index)}
                           data-index={index}
                           data-target-index={character.index}
-                          data-typing-caret={isCurrent ? "true" : undefined}
+                          data-active-target={isCurrent ? "true" : undefined}
+                          data-typing-caret={showActiveCaret ? "true" : undefined}
                           className={clsx(
                             characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings),
-                            isCurrent && activeCaretClass(themeSettings)
+                            showActiveCaret && activeCaretClass(themeSettings)
                           )}
                         >
-                          <TypingCaretIndicator isCurrent={isCurrent} />
+                          <TypingCaretIndicator isCurrent={showActiveCaret} />
                           {character.actual || character.expected}
                         </span>
                       );
@@ -1752,14 +1800,16 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                     {!isFinished &&
                       !isPassageLoading &&
                       isTargetActuallyComplete &&
-                      activeCharacterIndex < 0 && (
+                      activeCharacterIndex < 0 &&
+                      themeSettings.caretStyle !== "off" && (
                         <span
                           ref={terminalCaretRef}
                           data-index={comparison.characters.length}
                           data-typing-caret="true"
                           aria-label="Typing caret"
                           className={clsx(
-                            characterClass("current", rules.showMistakesImmediately || isFinished, themeSettings)
+                            characterClass("current", rules.showMistakesImmediately || isFinished, themeSettings),
+                            activeCaretClass(themeSettings)
                           )}
                         >
                           <TypingCaretIndicator isCurrent />
@@ -1768,7 +1818,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                   </>
                 )}
               </p>
-              {shouldShowPreviousPaceMarker && <PreviousPaceMarker ref={previousPaceMarkerRef} />}
+              {shouldShowPreviousPaceMarker && (
+                <PreviousPaceMarker ref={previousPaceMarkerRef} style={themeSettings.previousPaceStyle} />
+              )}
             </div>
           </div>
 
@@ -1967,19 +2019,38 @@ function TrainingTokenCharacterLayer({
   showMistakes: boolean;
   themeSettings: ThemeSettings;
 }) {
-  let characterIndex = 0;
+  let targetOffset = 0;
+  const tokenRanges = tokens.map((token) => {
+    const start = targetOffset;
+    targetOffset += token.length;
+    return { start, end: targetOffset };
+  });
+  const tokenEntries = tokens.map(() => [] as Array<{ character: CharacterComparison; comparisonIndex: number }>);
+  const trailingEntries: Array<{ character: CharacterComparison; comparisonIndex: number }> = [];
+  let tokenIndex = 0;
+
+  characters.forEach((character, comparisonIndex) => {
+    while (tokenIndex < tokenRanges.length && character.index >= tokenRanges[tokenIndex].end) {
+      tokenIndex += 1;
+    }
+
+    if (
+      tokenIndex < tokenRanges.length &&
+      character.index >= tokenRanges[tokenIndex].start &&
+      character.index < tokenRanges[tokenIndex].end
+    ) {
+      tokenEntries[tokenIndex].push({ character, comparisonIndex });
+    } else {
+      trailingEntries.push({ character, comparisonIndex });
+    }
+  });
 
   return (
     <>
       {tokens.map((token, tokenIndex) => {
-        const tokenCharacters = Array.from(token).map((_, offset) => {
-          const comparisonIndex = characterIndex + offset;
-          const character = characters[comparisonIndex];
+        const tokenCharacters = tokenEntries[tokenIndex].map(({ character, comparisonIndex }) => {
           const isCurrent = comparisonIndex === activeCharacterIndex;
-
-          if (!character) {
-            return null;
-          }
+          const showActiveCaret = isCurrent && themeSettings.caretStyle !== "off";
 
           return (
             <span
@@ -1987,18 +2058,18 @@ function TrainingTokenCharacterLayer({
               ref={setCharacterRef(comparisonIndex)}
               data-index={comparisonIndex}
               data-target-index={character.index}
-              data-typing-caret={isCurrent ? "true" : undefined}
+              data-active-target={isCurrent ? "true" : undefined}
+              data-typing-caret={showActiveCaret ? "true" : undefined}
               className={clsx(
                 characterClass(character.status, showMistakes, themeSettings),
-                isCurrent && activeCaretClass(themeSettings)
+                showActiveCaret && activeCaretClass(themeSettings)
               )}
             >
-              <TypingCaretIndicator isCurrent={isCurrent} />
+              <TypingCaretIndicator isCurrent={showActiveCaret} />
               {character.actual || character.expected}
             </span>
           );
         });
-        characterIndex += token.length;
 
         return (
           <span key={`${token}-${tokenIndex}`} data-testid="training-token" className="mr-[0.9em] inline-block">
@@ -2006,9 +2077,9 @@ function TrainingTokenCharacterLayer({
           </span>
         );
       })}
-      {characters.slice(characterIndex).map((character, offset) => {
-        const comparisonIndex = characterIndex + offset;
+      {trailingEntries.map(({ character, comparisonIndex }) => {
         const isCurrent = comparisonIndex === activeCharacterIndex;
+        const showActiveCaret = isCurrent && themeSettings.caretStyle !== "off";
 
         return (
           <span
@@ -2016,13 +2087,14 @@ function TrainingTokenCharacterLayer({
             ref={setCharacterRef(comparisonIndex)}
             data-index={comparisonIndex}
             data-target-index={character.index}
-            data-typing-caret={isCurrent ? "true" : undefined}
+            data-active-target={isCurrent ? "true" : undefined}
+            data-typing-caret={showActiveCaret ? "true" : undefined}
             className={clsx(
               characterClass(character.status, showMistakes, themeSettings),
-              isCurrent && activeCaretClass(themeSettings)
+              showActiveCaret && activeCaretClass(themeSettings)
             )}
           >
-            <TypingCaretIndicator isCurrent={isCurrent} />
+            <TypingCaretIndicator isCurrent={showActiveCaret} />
             {character.actual || character.expected}
           </span>
         );
@@ -2039,30 +2111,33 @@ function TypingCaretIndicator({ isCurrent }: { isCurrent: boolean }) {
   return <span data-typing-caret-indicator="true" aria-hidden="true" className="formaltype-caret-indicator" />;
 }
 
-const PreviousPaceMarker = React.forwardRef<HTMLSpanElement>(function PreviousPaceMarker(_, ref) {
-  return (
-    <span
-      data-testid="previous-pace-marker"
-      data-character-index="0"
-      aria-hidden="true"
-      ref={ref}
-      className="formaltype-previous-pace-marker"
-      style={{
-        position: "absolute",
-        left: 0,
-        top: 0,
-        display: "block",
-        width: 2,
-        height: "0.95em",
-        transform: "translate3d(0px, 0px, 0)",
-        transition: "opacity 120ms ease",
-        opacity: 0,
-        pointerEvents: "none",
-        willChange: "transform"
-      }}
-    />
-  );
-});
+const PreviousPaceMarker = React.forwardRef<HTMLSpanElement, { style: ThemeSettings["previousPaceStyle"] }>(
+  function PreviousPaceMarker({ style }, ref) {
+    return (
+      <span
+        data-testid="previous-pace-marker"
+        data-character-index="0"
+        aria-hidden="true"
+        ref={ref}
+        className={`formaltype-previous-pace-marker formaltype-previous-pace-${style}`}
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          display: "block",
+          width: style === "line" ? 2 : "0.62em",
+          height: style === "underline" ? "0.14em" : "0.95em",
+          marginTop: style === "underline" ? "0.82em" : undefined,
+          transform: "translate3d(0px, 0px, 0)",
+          transition: "opacity 120ms ease",
+          opacity: 0,
+          pointerEvents: "none",
+          willChange: "transform"
+        }}
+      />
+    );
+  }
+);
 
 function Metric({ label, value, flat = false }: { label: string; value: string | number; flat?: boolean }) {
   return (
@@ -3509,19 +3584,32 @@ function characterClass(status: string, revealMistakes: boolean, themeSettings?:
     return revealMistakes ? "formaltype-typed-wrong" : "formaltype-typed-hidden-mistake";
   }
   if (status === "current") {
-    return activeCaretClass(themeSettings);
+    if ((themeSettings?.caretStyle ?? DEFAULT_THEME_SETTINGS.caretStyle) === "off") {
+      return "formaltype-typed-pending";
+    }
+    return "formaltype-typed-current";
   }
   return "formaltype-typed-pending";
 }
 
 function activeCaretClass(themeSettings?: ThemeSettings) {
+  if ((themeSettings?.caretStyle ?? DEFAULT_THEME_SETTINGS.caretStyle) === "off") {
+    return "";
+  }
   return clsx(
-    "formaltype-typed-current",
     `formaltype-caret-${themeSettings?.caretStyle ?? DEFAULT_THEME_SETTINGS.caretStyle}`,
+    `formaltype-caret-smooth-${themeSettings?.caretSmooth ?? DEFAULT_THEME_SETTINGS.caretSmooth}`,
     (themeSettings?.caretBlink ?? DEFAULT_THEME_SETTINGS.caretBlink) === "off"
       ? "formaltype-caret-static"
       : "formaltype-caret-animated"
   );
+}
+
+function caretSmoothDuration(setting: ThemeSettings["caretSmooth"]) {
+  if (setting === "slow") return 220;
+  if (setting === "medium") return 140;
+  if (setting === "fast") return 80;
+  return 0;
 }
 
 function shouldShowLineBreakMarker(status: string, revealMistakes: boolean) {

@@ -165,6 +165,7 @@ export type PreviousTypingResult = {
   typedCharacters: number;
   elapsedSeconds: number;
   durationSeconds?: number;
+  targetSnapshot?: string;
   previousPaceTimeline?: PreviousPaceTimelinePoint[];
   completedAt: string;
   completionReason: CompletionReason;
@@ -220,8 +221,10 @@ export type ThemePreset =
   | "serika"
   | "copper"
   | "iceberg";
-export type CaretStyle = "bar" | "block" | "underline";
+export type CaretStyle = "off" | "line" | "block" | "outline-block" | "underline";
 export type CaretBlink = "on" | "off";
+export type CaretSmooth = "off" | "slow" | "medium" | "fast";
+export type PreviousPaceEnabled = "on" | "off";
 export type TypingColorStyle = "theme-default" | "high-contrast" | "soft";
 
 export type ThemeSettings = {
@@ -234,6 +237,9 @@ export type ThemeSettings = {
   typingWidth: TypingWidth;
   caretStyle: CaretStyle;
   caretBlink: CaretBlink;
+  caretSmooth: CaretSmooth;
+  previousPaceEnabled: PreviousPaceEnabled;
+  previousPaceStyle: CaretStyle;
   typingColorStyle: TypingColorStyle;
 };
 
@@ -245,8 +251,11 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   typingFont: "system-mono",
   typingTextSize: "medium",
   typingWidth: "comfortable",
-  caretStyle: "bar",
+  caretStyle: "line",
   caretBlink: "on",
+  caretSmooth: "off",
+  previousPaceEnabled: "on",
+  previousPaceStyle: "line",
   typingColorStyle: "theme-default"
 };
 
@@ -503,14 +512,28 @@ export const TYPING_WIDTH_OPTIONS: Array<{ value: TypingWidth; label: string }> 
 ];
 
 export const CARET_STYLE_OPTIONS: Array<{ value: CaretStyle; label: string }> = [
-  { value: "bar", label: "Bar" },
-  { value: "block", label: "Block" },
-  { value: "underline", label: "Underline" }
+  { value: "off", label: "Off" },
+  { value: "line", label: "Line: |" },
+  { value: "block", label: "Block: ■" },
+  { value: "outline-block", label: "Outline block: □" },
+  { value: "underline", label: "Underline: _" }
 ];
 
 export const CARET_BLINK_OPTIONS: Array<{ value: CaretBlink; label: string }> = [
   { value: "on", label: "On" },
   { value: "off", label: "Off" }
+];
+
+export const CARET_SMOOTH_OPTIONS: Array<{ value: CaretSmooth; label: string }> = [
+  { value: "off", label: "Off" },
+  { value: "slow", label: "Slow" },
+  { value: "medium", label: "Medium" },
+  { value: "fast", label: "Fast" }
+];
+
+export const PREVIOUS_PACE_ENABLED_OPTIONS: Array<{ value: PreviousPaceEnabled; label: string }> = [
+  { value: "off", label: "Off" },
+  { value: "on", label: "On" }
 ];
 
 export const TYPING_COLOR_STYLE_OPTIONS: Array<{ value: TypingColorStyle; label: string }> = [
@@ -962,6 +985,7 @@ export function writePreviousResult(
     typedCharacters,
     elapsedSeconds: result.timeUsedSeconds,
     durationSeconds: result.durationSeconds,
+    targetSnapshot: (passage.comparableText ?? passage.text).trim(),
     previousPaceTimeline: downsamplePreviousPaceTimeline(previousPaceTimeline),
     completedAt: result.completedAt,
     completionReason: result.completionReason
@@ -1245,8 +1269,13 @@ function normaliseThemeSettings(settings: unknown): ThemeSettings {
       ? settings.typingTextSize
       : DEFAULT_THEME_SETTINGS.typingTextSize,
     typingWidth: isTypingWidth(settings.typingWidth) ? settings.typingWidth : DEFAULT_THEME_SETTINGS.typingWidth,
-    caretStyle: isCaretStyle(settings.caretStyle) ? settings.caretStyle : DEFAULT_THEME_SETTINGS.caretStyle,
+    caretStyle: normaliseCaretStyle(settings.caretStyle, DEFAULT_THEME_SETTINGS.caretStyle),
     caretBlink: isCaretBlink(settings.caretBlink) ? settings.caretBlink : DEFAULT_THEME_SETTINGS.caretBlink,
+    caretSmooth: isCaretSmooth(settings.caretSmooth) ? settings.caretSmooth : DEFAULT_THEME_SETTINGS.caretSmooth,
+    previousPaceEnabled: isPreviousPaceEnabled(settings.previousPaceEnabled)
+      ? settings.previousPaceEnabled
+      : DEFAULT_THEME_SETTINGS.previousPaceEnabled,
+    previousPaceStyle: normaliseCaretStyle(settings.previousPaceStyle, DEFAULT_THEME_SETTINGS.previousPaceStyle),
     typingColorStyle: isTypingColorStyle(settings.typingColorStyle)
       ? settings.typingColorStyle
       : DEFAULT_THEME_SETTINGS.typingColorStyle
@@ -1312,10 +1341,25 @@ function isTypingWidth(value: unknown): value is TypingWidth {
 }
 
 function isCaretStyle(value: unknown): value is CaretStyle {
-  return value === "bar" || value === "block" || value === "underline";
+  return value === "off" || value === "line" || value === "block" || value === "outline-block" || value === "underline";
+}
+
+function normaliseCaretStyle(value: unknown, fallback: CaretStyle): CaretStyle {
+  if (value === "bar") {
+    return "line";
+  }
+  return isCaretStyle(value) ? value : fallback;
 }
 
 function isCaretBlink(value: unknown): value is CaretBlink {
+  return value === "on" || value === "off";
+}
+
+function isCaretSmooth(value: unknown): value is CaretSmooth {
+  return value === "off" || value === "slow" || value === "medium" || value === "fast";
+}
+
+function isPreviousPaceEnabled(value: unknown): value is PreviousPaceEnabled {
   return value === "on" || value === "off";
 }
 

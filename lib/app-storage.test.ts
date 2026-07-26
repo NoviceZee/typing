@@ -290,6 +290,33 @@ describe("previous result storage", () => {
     expect(readPreviousResult("passage-1", 600)?.wpm).toBe(61);
   });
 
+  it("does not write an invalid result as previous pace or PB and filters historical invalid rows", () => {
+    const passage = makeStoredPassage("passage-1");
+    writePreviousResult(
+      passage,
+      {
+        ...makeResult({ durationSeconds: 60, wpm: 200 }),
+        accuracy: 5,
+        rawWpm: 4000,
+        isRankable: false
+      },
+      4000
+    );
+    expect(readPreviousResult("passage-1", 60)).toBeNull();
+
+    storage.set(
+      PREVIOUS_RESULTS_STORAGE_KEY,
+      JSON.stringify({
+        "passage-1::60s": {
+          ...makePreviousResult({ wpm: 200 }),
+          accuracy: 5,
+          rawWpm: 4000
+        }
+      })
+    );
+    expect(readPreviousResult("passage-1", 60)).toBeNull();
+  });
+
   it("bounds previous result history and down-samples stored pace timelines", () => {
     const longTimeline = Array.from({ length: 200 }, (_, index) => ({
       timeSeconds: index,
@@ -344,6 +371,23 @@ describe("theme settings storage", () => {
     expect(readThemeSettings()).toEqual(DEFAULT_THEME_SETTINGS);
   });
 
+  it("normalises legacy caret values and supplies backward-compatible pace defaults", () => {
+    storage.set(
+      THEME_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_THEME_SETTINGS,
+        caretStyle: "bar"
+      })
+    );
+
+    expect(readThemeSettings()).toMatchObject({
+      caretStyle: "line",
+      caretSmooth: "off",
+      previousPaceEnabled: "on",
+      previousPaceStyle: "line"
+    });
+  });
+
   it("persists valid theme settings without affecting other settings", () => {
     storage.set("formaltype.keyboard_sound.v1", "mechanical");
 
@@ -357,6 +401,9 @@ describe("theme settings storage", () => {
       typingWidth: "wide",
       caretStyle: "underline",
       caretBlink: "off",
+      caretSmooth: "fast",
+      previousPaceEnabled: "off",
+      previousPaceStyle: "outline-block",
       typingColorStyle: "high-contrast"
     });
 
@@ -371,6 +418,9 @@ describe("theme settings storage", () => {
         typingWidth: "wide",
         caretStyle: "underline",
         caretBlink: "off",
+        caretSmooth: "fast",
+        previousPaceEnabled: "off",
+        previousPaceStyle: "outline-block",
         typingColorStyle: "high-contrast"
       })
     );
@@ -385,6 +435,9 @@ describe("theme settings storage", () => {
       typingWidth: "wide",
       caretStyle: "underline",
       caretBlink: "off",
+      caretSmooth: "fast",
+      previousPaceEnabled: "off",
+      previousPaceStyle: "outline-block",
       typingColorStyle: "high-contrast"
     });
   });

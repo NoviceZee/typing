@@ -686,8 +686,37 @@ textarea {
 }
 
 .formaltype-previous-pace-marker {
-  background: rgb(var(--color-accent) / 0.82);
+  color: rgb(var(--color-accent) / 0.82);
   box-shadow: 0 0 7px rgb(var(--color-accent) / 0.28);
+}
+
+.formaltype-previous-pace-line {
+  background: currentColor;
+  border-radius: 999px;
+  height: 0.95em;
+  width: 2px;
+}
+
+.formaltype-previous-pace-block {
+  background: rgb(var(--color-accent) / 0.32);
+  border-radius: 0.14em;
+  height: 0.95em;
+  width: 0.62em;
+}
+
+.formaltype-previous-pace-outline-block {
+  border: 2px solid currentColor;
+  border-radius: 0.14em;
+  height: 0.95em;
+  width: 0.62em;
+}
+
+.formaltype-previous-pace-underline {
+  background: currentColor;
+  border-radius: 999px;
+  height: 0.14em;
+  margin-top: 0.82em;
+  width: 0.62em;
 }
 
 .formaltype-celebration-stack {
@@ -903,6 +932,7 @@ textarea {
   z-index: 2;
 }
 
+.formaltype-caret-line > .formaltype-caret-indicator,
 .formaltype-caret-bar > .formaltype-caret-indicator {
   background: rgb(var(--color-accent));
   border-radius: 999px;
@@ -918,6 +948,12 @@ textarea {
   border-radius: 0.14em;
   inset: 0.02em -0.04em 0.02em -0.04em;
   z-index: -1;
+}
+
+.formaltype-caret-outline-block > .formaltype-caret-indicator {
+  border: 0.1em solid rgb(var(--color-accent));
+  border-radius: 0.14em;
+  inset: 0.02em -0.04em;
 }
 
 .formaltype-caret-underline > .formaltype-caret-indicator {

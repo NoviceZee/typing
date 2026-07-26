@@ -91,6 +91,24 @@ describe("TrainingPage", () => {
     }
   });
 
+  it("keeps a Training active target when the visible caret is Off", async () => {
+    window.localStorage.setItem("formaltype.theme.v1", JSON.stringify({ caretStyle: "off" }));
+
+    render(<TrainingPage />);
+    await waitFor(() => expect((screen.getByTestId("typing-character-layer").textContent ?? "").length).toBeGreaterThan(3));
+
+    const layer = screen.getByTestId("typing-character-layer");
+    expect(layer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
+    expect(layer.querySelectorAll('[data-active-target="true"]')).toHaveLength(1);
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    const target = layer.textContent ?? "";
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: target.slice(0, 2) } });
+
+    expect(layer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
+    expect(layer.querySelector('[data-active-target="true"]')?.getAttribute("data-target-index")).toBe("2");
+  });
+
   it("allows multiple content types to be selected", async () => {
     render(<TrainingPage />);
     const contentGroup = screen.getByRole("group", { name: "Content" });

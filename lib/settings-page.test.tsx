@@ -159,7 +159,7 @@ describe("SettingsPage", () => {
     expect(screen.getByTestId("settings-typing-preview-frame").className).toContain(
       "formaltype-settings-preview-width-wide"
     );
-    expect(screen.getByRole("button", { name: "Block caret style" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Block: ■ active caret style" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Off blink" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Soft typing colors" }).getAttribute("aria-pressed")).toBe("true");
   });
@@ -175,7 +175,7 @@ describe("SettingsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Serif font" }));
     fireEvent.click(screen.getByRole("button", { name: "Small text size" }));
     fireEvent.click(screen.getByRole("button", { name: "Compact typing width" }));
-    fireEvent.click(screen.getByRole("button", { name: "Underline caret style" }));
+    fireEvent.click(screen.getByRole("button", { name: "Underline: _ active caret style" }));
     fireEvent.click(screen.getByRole("button", { name: "Off blink" }));
     fireEvent.click(screen.getByRole("button", { name: "High contrast typing colors" }));
 
@@ -190,7 +190,34 @@ describe("SettingsPage", () => {
       typingWidth: "compact",
       caretStyle: "underline",
       caretBlink: "off",
+      caretSmooth: "off",
+      previousPaceEnabled: "on",
+      previousPaceStyle: "line",
       typingColorStyle: "high-contrast"
+    });
+  });
+
+  it("renders and persists independent active-caret and Previous Pace controls", () => {
+    render(<SettingsPage />);
+
+    expect(screen.getByRole("heading", { name: "Caret" })).toBeTruthy();
+    expect(screen.getByText("Show your previous attempt as a second caret when restarting the same test.")).toBeTruthy();
+
+    expect(screen.getByRole("button", { name: "Line: | active caret style" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Off smooth caret" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "On Previous Pace" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Line: | Previous Pace style" }).getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Outline block: □ active caret style" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fast smooth caret" }));
+    fireEvent.click(screen.getByRole("button", { name: "Off Previous Pace" }));
+    fireEvent.click(screen.getByRole("button", { name: "Underline: _ Previous Pace style" }));
+
+    expect(JSON.parse(window.localStorage.getItem("formaltype.theme.v1") ?? "{}")).toMatchObject({
+      caretStyle: "outline-block",
+      caretSmooth: "fast",
+      previousPaceEnabled: "off",
+      previousPaceStyle: "underline"
     });
   });
 
@@ -297,7 +324,7 @@ describe("SettingsPage", () => {
     expect(screen.getByTestId("settings-live-preview")).toBeTruthy();
     expect(screen.getByRole("group", { name: "Mode" })).toBeTruthy();
     expect(screen.getByRole("group", { name: "App font" })).toBeTruthy();
-    expect(screen.getByRole("group", { name: "Caret style" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Active caret style" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "System Mono font" }).closest("fieldset")?.className).toContain(
       "formaltype-setting-row"
     );

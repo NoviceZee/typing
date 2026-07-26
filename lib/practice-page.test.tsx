@@ -10,6 +10,7 @@ import {
   ACTIVE_PASSAGE_ID_STORAGE_KEY,
   PASSAGE_LIBRARY_STORAGE_KEY,
   PASSAGE_SELECTION_MODE_STORAGE_KEY,
+  readPreviousResults,
   readPreviousResult
 } from "@/lib/app-storage";
 import { getSupabasePassageLibrary } from "@/lib/passageStorage";
@@ -729,6 +730,159 @@ describe("PracticePage passage loading", () => {
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].passage.language).toBe("chinese");
   });
 
+  it.each([
+    {
+      language: "english" as const,
+      target: "Complete this eligible Infinite passage.",
+      passage: makePassage(
+        "infinite-english-pace",
+        "English Infinite Pace",
+        "Complete this eligible Infinite passage.",
+        "english"
+      )
+    },
+    {
+      language: "chinese" as const,
+      target: "完成這次無限模式測試",
+      passage: makePassage(
+        "infinite-chinese-pace",
+        "中文 Infinite Pace",
+        "完成這次無限模式測試",
+        "chinese",
+        "工作",
+        "一般"
+      )
+    }
+  ])("restores Previous Pace and the exact $language Infinite target after Restart", async ({ language, target, passage }) => {
+    const library = language === "chinese"
+      ? [makePassage("english-placeholder", "English", "English placeholder.", "english"), passage]
+      : [passage];
+    window.localStorage.setItem(PASSAGE_LIBRARY_STORAGE_KEY, JSON.stringify(library));
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: `infinite-${language}-user` };
+
+    render(<PracticePage />);
+    if (language === "chinese") {
+      fireEvent.click(await screen.findByRole("button", { name: "Chinese" }));
+    }
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(target));
+    fireEvent.click(screen.getByRole("button", { name: "Infinite" }));
+    await waitFor(() => expect((screen.getByTestId("typing-character-layer").textContent ?? "").length).toBeGreaterThan(0));
+    const completedTargetSnapshot = screen.getByTestId("typing-character-layer").textContent;
+    const infiniteTarget = completedTargetSnapshot ?? "";
+
+    vi.useFakeTimers();
+    const startedAt = new Date("2026-07-26T12:00:00.000Z");
+    vi.setSystemTime(startedAt);
+    fireEvent.keyDown(window, { key: "Tab" });
+    const midpoint = Math.max(1, Math.floor(infiniteTarget.length / 2));
+    const input = screen.getByLabelText("Typing input");
+    enterPracticeText(input, infiniteTarget.slice(0, 1), language);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+    enterPracticeText(input, infiniteTarget.slice(0, midpoint), language, infiniteTarget.slice(0, 1));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+    enterPracticeText(input, infiniteTarget, language, infiniteTarget.slice(0, midpoint));
+
+    expect(screen.getByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    const storedInfiniteResult = Object.values(readPreviousResults()).find(
+      (result) => result.targetSnapshot === infiniteTarget
+    ) ?? null;
+    expect(storedInfiniteResult).toBeTruthy();
+    expect(storedInfiniteResult?.targetSnapshot).toBe(infiniteTarget);
+    expect(storedInfiniteResult?.previousPaceTimeline?.length).toBeGreaterThan(0);
+    if (language === "english") {
+      expect(mockedSaveSupabaseTypingResult).toHaveBeenCalled();
+      expect(mockedSaveSupabaseTypingResult.mock.calls.at(-1)?.[0].result).toMatchObject({
+        accuracy: 100,
+        completionReason: "text_completed",
+        isRankable: true,
+        timeUsedSeconds: 16
+      });
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    expect(screen.getByTestId("typing-character-layer").textContent).toBe(completedTargetSnapshot);
+    expect(screen.queryByTestId("previous-pace-marker")).toBeNull();
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    enterPracticeText(screen.getByLabelText("Typing input"), infiniteTarget.slice(0, 1), language);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+
+    const marker = screen.getByTestId("previous-pace-marker");
+    const characterLayer = screen.getByTestId("typing-character-layer");
+    expect(marker.hasAttribute("data-typing-caret")).toBe(false);
+    expect(characterLayer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+    expect(characterLayer.contains(marker)).toBe(false);
+  }, 10_000);
+
+  it("clears Infinite Previous Pace for a newly selected unrelated target", async () => {
+    const first = makePassage("infinite-first", "First Infinite", "Complete the first Infinite target.", "english");
+    const second = makePassage("infinite-second", "Second Infinite", "Type a completely unrelated Infinite target.", "english");
+    window.localStorage.setItem(PASSAGE_LIBRARY_STORAGE_KEY, JSON.stringify([first, second]));
+    window.localStorage.setItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, "specific");
+    window.localStorage.setItem(ACTIVE_PASSAGE_ID_STORAGE_KEY, first.id);
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(first.content));
+    fireEvent.click(screen.getByRole("button", { name: "Infinite" }));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toBe(first.content));
+
+    vi.useFakeTimers();
+    const startedAt = new Date("2026-07-26T12:00:00.000Z");
+    vi.setSystemTime(startedAt);
+    fireEvent.keyDown(window, { key: "Tab" });
+    const input = screen.getByLabelText("Typing input");
+    enterPracticeText(input, first.content.slice(0, 1), "english");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+    const midpoint = Math.floor(first.content.length / 2);
+    enterPracticeText(input, first.content.slice(0, midpoint), "english", first.content.slice(0, 1));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+    enterPracticeText(input, first.content, "english", first.content.slice(0, midpoint));
+    fireEvent.click(screen.getAllByRole("button", { name: "Next passage" }).at(-1)!);
+
+    expect(screen.getByTestId("typing-character-layer").textContent).toBe(second.content);
+    fireEvent.keyDown(window, { key: "Tab" });
+    enterPracticeText(screen.getByLabelText("Typing input"), "T", "english");
+    expect(screen.queryByTestId("previous-pace-marker")).toBeNull();
+  }, 10_000);
+
+  it("does not create Infinite Previous Pace from an Escape result", async () => {
+    const passage = makePassage("infinite-manual", "Manual Infinite", "Manual Infinite target text.", "english");
+    window.localStorage.setItem(PASSAGE_LIBRARY_STORAGE_KEY, JSON.stringify([passage]));
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(passage.content));
+    fireEvent.click(screen.getByRole("button", { name: "Infinite" }));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toBe(passage.content));
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-26T12:00:00.000Z"));
+    fireEvent.keyDown(window, { key: "Tab" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16_000);
+    });
+    enterPracticeText(screen.getByLabelText("Typing input"), "Manual", "english");
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByText("Manual result — not saved.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    fireEvent.keyDown(window, { key: "Tab" });
+    enterPracticeText(screen.getByLabelText("Typing input"), "M", "english");
+    expect(screen.queryByTestId("previous-pace-marker")).toBeNull();
+    expect(readPreviousResult(passage.id, "infinite")).toBeNull();
+  }, 10_000);
+
   it("keeps the existing practice controls visible", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
@@ -1150,6 +1304,7 @@ describe("PracticePage passage loading", () => {
     expect(marker).toBeTruthy();
     expect(marker.getAttribute("data-character-index")).toBe(String("Local fallback body text".length));
     expect(marker.className).toContain("formaltype-previous-pace-marker");
+    expect(marker.className).toContain("formaltype-previous-pace-line");
     expect(marker.style.position).toBe("absolute");
     expect(marker.style.pointerEvents).toBe("none");
     expect(marker.style.transform).toContain("translate3d(");
@@ -1167,6 +1322,47 @@ describe("PracticePage passage loading", () => {
 
     expect(screen.getByTestId("previous-pace-marker")).toBeTruthy();
   }, 10_000);
+
+  it.each([
+    { previousPaceEnabled: "off", previousPaceStyle: "line" },
+    { previousPaceEnabled: "on", previousPaceStyle: "off" }
+  ] as const)(
+    "keeps Previous Pace hidden without changing the active caret for $previousPaceEnabled/$previousPaceStyle",
+    async ({ previousPaceEnabled, previousPaceStyle }) => {
+    window.localStorage.setItem(
+      "formaltype.theme.v1",
+      JSON.stringify({ caretStyle: "line", previousPaceEnabled, previousPaceStyle })
+    );
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("pace-off", "Pace off", "Previous pace disabled target text.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("Previous pace"));
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-26T12:00:00.000Z"));
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "Previous pace disabled");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_250);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    fireEvent.keyDown(window, { key: "Tab" });
+    typeIncrementally(screen.getByLabelText("Typing input"), "P");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    const layer = screen.getByTestId("typing-character-layer");
+    expect(screen.queryByTestId("previous-pace-marker")).toBeNull();
+    expect(layer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
+    expect(layer.querySelectorAll('[data-active-target="true"]')).toHaveLength(1);
+    },
+    10_000
+  );
 
   it("keeps character text unchanged when the previous pace marker is visible", async () => {
     window.localStorage.setItem(
@@ -1429,6 +1625,7 @@ describe("PracticePage passage loading", () => {
         typingWidth: "compact",
         caretStyle: "underline",
         caretBlink: "off",
+        caretSmooth: "fast",
         typingColorStyle: "high-contrast"
       })
     );
@@ -1456,11 +1653,34 @@ describe("PracticePage passage loading", () => {
     const currentCharacter = characterLayer.querySelector('[data-index="0"]');
     expect(currentCharacter?.className).toContain("formaltype-caret-underline");
     expect(currentCharacter?.className).toContain("formaltype-caret-static");
+    expect(currentCharacter?.className).toContain("formaltype-caret-smooth-fast");
     expect(currentCharacter?.className).not.toContain("px-0.5");
     expect(currentCharacter?.className).not.toContain("rounded-sm");
     expect(container.querySelector(".formaltype-typing-font-serif")?.getAttribute("data-testid")).toBe(
       "typing-character-layer"
     );
+  });
+
+  it("keeps a scrollable Practice active target when the visible caret is Off", async () => {
+    window.localStorage.setItem("formaltype.theme.v1", JSON.stringify({ caretStyle: "off" }));
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("caret-off", "Caret off", "Local caret target text.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("Local caret"));
+
+    const layer = screen.getByTestId("typing-character-layer");
+    expect(layer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
+    expect(layer.querySelectorAll('[data-active-target="true"]')).toHaveLength(1);
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.change(screen.getByLabelText("Typing input"), { target: { value: "Lo" } });
+
+    expect(layer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
+    expect(layer.querySelector('[data-active-target="true"]')?.getAttribute("data-target-index")).toBe("2");
   });
 
   it("marks the visible Practice caret across English spaces, line breaks, and Chinese text", async () => {
@@ -1604,6 +1824,60 @@ describe("PracticePage passage loading", () => {
 
     expect(viewport.scrollTop).toBe(120);
     expect(screen.getByTestId("typing-character-layer").querySelector('[aria-label="Typing caret"]')).toBeNull();
+  });
+
+  it("keeps an inserted space and active Practice caret inside establish", async () => {
+    const text = "establish parties";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local-establish", "Local establish", text)])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(text));
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    const input = screen.getByLabelText("Typing input");
+    fireEvent.change(input, { target: { value: "esta blis" } });
+
+    const characterLayer = screen.getByTestId("typing-character-layer");
+    const activeCaret = characterLayer.querySelector('[data-typing-caret="true"]');
+    const insertionEntries = Array.from(characterLayer.querySelectorAll('[data-target-index="4"]'));
+    expect(activeCaret?.getAttribute("data-target-index")).toBe("8");
+    expect(Number(activeCaret?.getAttribute("data-target-index"))).toBeLessThan(text.indexOf("parties"));
+    expect(insertionEntries.map((entry) => entry.textContent)).toEqual([" ", "b"]);
+
+    fireEvent.change(input, { target: { value: "esta blish" } });
+    expect(
+      characterLayer.querySelector('[data-typing-caret="true"]')?.getAttribute("data-target-index")
+    ).toBe(String(text.indexOf("parties") - 1));
+  });
+
+  it("keeps an inserted character in its target token instead of shifting the Training caret to the next token", async () => {
+    render(<PracticePage trainingMode={makeInsertionTrainingMode()} />);
+    await waitFor(() => expect(screen.getAllByTestId("training-token")).toHaveLength(2));
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    const input = screen.getByLabelText("Typing input");
+    fireEvent.change(input, { target: { value: "esta blis" } });
+
+    const tokens = screen.getAllByTestId("training-token");
+    const activeCaret = screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]');
+    const localExtra = Array.from(tokens[0].querySelectorAll('[data-target-index="4"]'))
+      .find((entry) => entry.textContent === " ");
+    expect(activeCaret?.getAttribute("data-target-index")).toBe("8");
+    expect(activeCaret?.getAttribute("data-index")).toBe("9");
+    expect(tokens[0].contains(activeCaret)).toBe(true);
+    expect(tokens[1].contains(activeCaret)).toBe(false);
+    expect(localExtra).toBeTruthy();
+    expect(tokens[0].textContent).toBe("esta blish");
+    expect(tokens[1].querySelector('[data-target-index="9"]')?.getAttribute("data-index")).toBe("10");
+
+    fireEvent.change(input, { target: { value: "esta blish" } });
+    const recoveredCaret = screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]');
+    expect(recoveredCaret?.getAttribute("data-target-index")).toBe("9");
+    expect(tokens[1].contains(recoveredCaret)).toBe(true);
   });
 
   it("shows passage metadata only once in the idle practice chrome", async () => {
@@ -2033,6 +2307,32 @@ function makeChineseQuoteTrainingMode(text: string): PracticeTrainingMode {
   };
 }
 
+function makeInsertionTrainingMode(): PracticeTrainingMode {
+  const text = "establishparties";
+
+  return {
+    pageTitle: "Training",
+    passageId: "training-insertion-alignment",
+    configKey: "training-insertion-alignment",
+    session: { kind: "time", seconds: 60 },
+    buildPassage: () => ({
+      id: "training-insertion-alignment",
+      title: "Insertion alignment diagnostic",
+      category: "training_words",
+      style: "60s",
+      source: "generated",
+      text,
+      comparableText: text,
+      displayTokens: ["establish", "parties"],
+      metricUnit: "wpm",
+      updatedAt: "2026-07-26T00:00:00.000Z"
+    }),
+    hidePassageControls: true,
+    hidePracticeModeControls: true,
+    hideMetadata: true
+  };
+}
+
 function makePracticeDomRect(top: number, bottom: number): DOMRect {
   return {
     x: 0,
@@ -2055,6 +2355,26 @@ function typeIncrementally(input: HTMLElement, value: string) {
     fireEvent.change(input, {
       target: { value: currentValue }
     });
+  }
+}
+
+function enterPracticeText(
+  input: HTMLElement,
+  value: string,
+  language: "english" | "chinese",
+  initialValue = ""
+) {
+  let currentValue = initialValue;
+  for (const character of value.slice(initialValue.length)) {
+    currentValue += character;
+    if (language === "chinese") {
+      fireEvent.input(input, {
+        target: { value: currentValue },
+        nativeEvent: { isComposing: false, data: character }
+      });
+    } else {
+      fireEvent.change(input, { target: { value: currentValue } });
+    }
   }
 }
 
