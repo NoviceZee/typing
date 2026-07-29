@@ -192,7 +192,6 @@ describe("SettingsPage", () => {
       caretBlink: "off",
       caretSmooth: "off",
       previousPaceEnabled: "on",
-      previousPaceStyle: "line",
       typingColorStyle: "high-contrast"
     });
   });
@@ -206,19 +205,30 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("button", { name: "Line: | active caret style" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Off smooth caret" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "On Previous Pace" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Line: | Previous Pace style" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByRole("button", { name: /Previous Pace style/ })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Outline block: □ active caret style" }));
     fireEvent.click(screen.getByRole("button", { name: "Fast smooth caret" }));
     fireEvent.click(screen.getByRole("button", { name: "Off Previous Pace" }));
-    fireEvent.click(screen.getByRole("button", { name: "Underline: _ Previous Pace style" }));
 
     expect(JSON.parse(window.localStorage.getItem("formaltype.theme.v1") ?? "{}")).toMatchObject({
       caretStyle: "outline-block",
       caretSmooth: "fast",
-      previousPaceEnabled: "off",
-      previousPaceStyle: "underline"
+      previousPaceEnabled: "off"
     });
+    expect(JSON.parse(window.localStorage.getItem("formaltype.theme.v1") ?? "{}")).not.toHaveProperty(
+      "previousPaceStyle"
+    );
+  });
+
+  it("renders Caret as an unboxed subsection", () => {
+    render(<SettingsPage />);
+
+    const heading = screen.getByRole("heading", { name: "Caret" });
+    const section = heading.parentElement?.parentElement;
+
+    expect(section?.className).not.toContain("border");
+    expect(section?.className).not.toContain("rounded-lg");
   });
 
   it("renders and persists typing behavior rules separately from personalization", () => {

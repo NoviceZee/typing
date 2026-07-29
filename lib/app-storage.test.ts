@@ -383,9 +383,9 @@ describe("theme settings storage", () => {
     expect(readThemeSettings()).toMatchObject({
       caretStyle: "line",
       caretSmooth: "off",
-      previousPaceEnabled: "on",
-      previousPaceStyle: "line"
+      previousPaceEnabled: "on"
     });
+    expect(readThemeSettings()).not.toHaveProperty("previousPaceStyle");
   });
 
   it("persists valid theme settings without affecting other settings", () => {
@@ -403,7 +403,6 @@ describe("theme settings storage", () => {
       caretBlink: "off",
       caretSmooth: "fast",
       previousPaceEnabled: "off",
-      previousPaceStyle: "outline-block",
       typingColorStyle: "high-contrast"
     });
 
@@ -420,7 +419,6 @@ describe("theme settings storage", () => {
         caretBlink: "off",
         caretSmooth: "fast",
         previousPaceEnabled: "off",
-        previousPaceStyle: "outline-block",
         typingColorStyle: "high-contrast"
       })
     );
@@ -437,7 +435,6 @@ describe("theme settings storage", () => {
       caretBlink: "off",
       caretSmooth: "fast",
       previousPaceEnabled: "off",
-      previousPaceStyle: "outline-block",
       typingColorStyle: "high-contrast"
     });
   });

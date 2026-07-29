@@ -9,7 +9,8 @@ import Home from "@/pages/index";
 const mockState = vi.hoisted(() => ({
   user: null as { id: string } | null,
   isLoading: false,
-  routerReplace: vi.fn()
+  routerReplace: vi.fn(),
+  routerPush: vi.fn()
 }));
 
 vi.mock("@/components/AuthProvider", () => ({
@@ -17,7 +18,7 @@ vi.mock("@/components/AuthProvider", () => ({
 }));
 
 vi.mock("next/router", () => ({
-  useRouter: () => ({ replace: mockState.routerReplace })
+  useRouter: () => ({ replace: mockState.routerReplace, push: mockState.routerPush })
 }));
 
 describe("Home authentication routing", () => {
@@ -25,6 +26,7 @@ describe("Home authentication routing", () => {
     mockState.user = null;
     mockState.isLoading = false;
     mockState.routerReplace.mockReset();
+    mockState.routerPush.mockReset();
   });
 
   it("keeps the landing page at the root for logged-out visitors", () => {
@@ -35,11 +37,21 @@ describe("Home authentication routing", () => {
     expect(mockState.routerReplace).not.toHaveBeenCalled();
   });
 
-  it("redirects logged-in visitors from the root to Practice", async () => {
-    mockState.user = { id: "user-1" };
-    render(<Home />);
+  it("keeps the landing page at the root when an authenticated session resolves", async () => {
+    mockState.isLoading = true;
+    const { rerender } = render(<Home />);
 
-    await waitFor(() => expect(mockState.routerReplace).toHaveBeenCalledWith("/practice"));
-    expect(screen.queryByRole("heading", { name: /Type with purpose/i })).toBeNull();
+    mockState.user = { id: "user-1" };
+    mockState.isLoading = false;
+    rerender(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /Type with purpose/i })).toBeTruthy();
+    });
+    expect(mockState.routerReplace).not.toHaveBeenCalled();
+    expect(mockState.routerPush).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: "Log in" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Profile" }).getAttribute("href")).toBe("/profile");
+    expect(screen.getByRole("link", { name: /Continue practising/i }).getAttribute("href")).toBe("/practice");
   });
 });

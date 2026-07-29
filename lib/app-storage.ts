@@ -13,6 +13,7 @@ import {
   safeSetJsonStorageItem,
   safeSetStorageItem
 } from "./storageSafety";
+import { dispatchLocalAccountSettingsMutation } from "./settingsEvents";
 
 export const RULES_STORAGE_KEY = "formaltype.rules.v1";
 export const PASSAGE_STORAGE_KEY = "formaltype.passage.v1";
@@ -239,7 +240,6 @@ export type ThemeSettings = {
   caretBlink: CaretBlink;
   caretSmooth: CaretSmooth;
   previousPaceEnabled: PreviousPaceEnabled;
-  previousPaceStyle: CaretStyle;
   typingColorStyle: TypingColorStyle;
 };
 
@@ -255,7 +255,6 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   caretBlink: "on",
   caretSmooth: "off",
   previousPaceEnabled: "on",
-  previousPaceStyle: "line",
   typingColorStyle: "theme-default"
 };
 
@@ -559,6 +558,7 @@ export function readStoredRules(): TypingRules {
 
 export function writeStoredRules(rules: TypingRules) {
   safeSetJsonStorageItem(RULES_STORAGE_KEY, rules, { context: "writeStoredRules" });
+  dispatchLocalAccountSettingsMutation();
 }
 
 export function readThemeSettings(): ThemeSettings {
@@ -581,6 +581,7 @@ export function writeThemeSettings(settings: ThemeSettings) {
   if (typeof window.dispatchEvent === "function" && typeof CustomEvent !== "undefined") {
     window.dispatchEvent(new CustomEvent(THEME_SETTING_CHANGE_EVENT, { detail: settings }));
   }
+  dispatchLocalAccountSettingsMutation();
 }
 
 export function getDefaultPassage(durationSeconds = 60): StoredPassage {
@@ -756,6 +757,7 @@ export function readSelectedCategory(): CategoryFilter {
 
 export function writeSelectedCategory(category: CategoryFilter) {
   safeSetStorageItem(SELECTED_CATEGORY_STORAGE_KEY, category, { context: "writeSelectedCategory" });
+  dispatchLocalAccountSettingsMutation();
 }
 
 export function readSelectedStyle(): StyleFilter {
@@ -768,6 +770,7 @@ export function readSelectedStyle(): StyleFilter {
 
 export function writeSelectedStyle(style: StyleFilter) {
   safeSetStorageItem(SELECTED_STYLE_STORAGE_KEY, style, { context: "writeSelectedStyle" });
+  dispatchLocalAccountSettingsMutation();
 }
 
 export function readSelectedLanguage(): PassageLanguage {
@@ -780,6 +783,7 @@ export function readSelectedLanguage(): PassageLanguage {
 
 export function writeSelectedLanguage(language: PassageLanguage) {
   safeSetStorageItem(SELECTED_LANGUAGE_STORAGE_KEY, language, { context: "writeSelectedLanguage" });
+  dispatchLocalAccountSettingsMutation();
 }
 
 export function createLibraryPassage({
@@ -974,8 +978,25 @@ export function writePreviousResult(
   }
 
   const previousResults = prunePreviousResults(readPreviousResults());
-  previousResults[getPreviousResultStorageKey(passage.id, scope ?? result.durationSeconds)] = {
-    passageId: passage.id,
+  previousResults[getPreviousResultStorageKey(passage.id, scope ?? result.durationSeconds)] = createPreviousTypingResult(
+    passage,
+    result,
+    typedCharacters,
+    previousPaceTimeline
+  );
+  safeSetJsonStorageItem(PREVIOUS_RESULTS_STORAGE_KEY, prunePreviousResults(previousResults), {
+    context: "writePreviousResult"
+  });
+}
+
+export function createPreviousTypingResult(
+  passage: StoredPassage,
+  result: TypingResult,
+  typedCharacters: number,
+  previousPaceTimeline?: PreviousPaceTimelinePoint[]
+): PreviousTypingResult {
+  return {
+    passageId: passage.id ?? "",
     passageTitle: passage.title ?? "Untitled passage",
     wpm: result.wpm,
     rawWpm: result.rawWpm,
@@ -990,9 +1011,6 @@ export function writePreviousResult(
     completedAt: result.completedAt,
     completionReason: result.completionReason
   };
-  safeSetJsonStorageItem(PREVIOUS_RESULTS_STORAGE_KEY, prunePreviousResults(previousResults), {
-    context: "writePreviousResult"
-  });
 }
 
 export function updateLibraryPassage(updatedPassage: LibraryPassage) {
@@ -1254,7 +1272,7 @@ function restoreImportedSettings(settings: unknown, library: LibraryPassage[]) {
   }
 }
 
-function normaliseThemeSettings(settings: unknown): ThemeSettings {
+export function normaliseThemeSettings(settings: unknown): ThemeSettings {
   if (!isRecord(settings)) {
     return DEFAULT_THEME_SETTINGS;
   }
@@ -1275,7 +1293,6 @@ function normaliseThemeSettings(settings: unknown): ThemeSettings {
     previousPaceEnabled: isPreviousPaceEnabled(settings.previousPaceEnabled)
       ? settings.previousPaceEnabled
       : DEFAULT_THEME_SETTINGS.previousPaceEnabled,
-    previousPaceStyle: normaliseCaretStyle(settings.previousPaceStyle, DEFAULT_THEME_SETTINGS.previousPaceStyle),
     typingColorStyle: isTypingColorStyle(settings.typingColorStyle)
       ? settings.typingColorStyle
       : DEFAULT_THEME_SETTINGS.typingColorStyle

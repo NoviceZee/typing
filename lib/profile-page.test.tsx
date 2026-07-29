@@ -229,6 +229,30 @@ describe("ProfilePage", () => {
     );
   });
 
+  it("filters historical low-accuracy and manual attempts before rendering Profile summary stats", async () => {
+    mockedGetSupabaseAnalyticsTypingResults.mockResolvedValueOnce([
+      makeResult("valid", 60, 50, 98, "News article", "2026-06-21T00:02:00.000Z"),
+      {
+        ...makeResult("invalid", 60, 200, 5, "News article", "2026-06-21T00:03:00.000Z"),
+        is_rankable: false
+      },
+      {
+        ...makeResult("manual", 60, 180, 100, "News article", "2026-06-21T00:04:00.000Z"),
+        completion_reason: "manual"
+      }
+    ] as any);
+
+    render(<ProfilePage />);
+
+    const label = await screen.findByText("Average WPM all-time");
+    const summaryCard = label.closest("article");
+    expect(summaryCard?.textContent).toContain("50.0");
+    expect(summaryCard?.textContent).not.toContain("143.3");
+    expect(screen.getByText("Passage valid")).toBeTruthy();
+    expect(screen.queryByText("Passage invalid")).toBeNull();
+    expect(screen.queryByText("Passage manual")).toBeNull();
+  });
+
   it("keeps keyboard key elements stable when switching heatmap modes", async () => {
     window.localStorage.setItem(
       TYPING_ATTEMPT_DETAILS_STORAGE_KEY,

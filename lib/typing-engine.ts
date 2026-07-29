@@ -252,7 +252,11 @@ export function validateTypedText({
 export function normalizeComparableUnicode(value: string): string {
   // Canonical composition removes visually irrelevant encoding differences
   // without compatibility-folding authored full-width Chinese punctuation.
-  return value.normalize("NFC").replace(/[\uFE00-\uFE0F]|\uDB40[\uDD00-\uDDEF]/g, "");
+  return value
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .normalize("NFC")
+    .replace(/[\uFE00-\uFE0F]|\uDB40[\uDD00-\uDDEF]/g, "");
 }
 
 export function compareTyping(target: string, typed: string, rules: TypingRules): TypingComparison {
@@ -270,6 +274,20 @@ export function compareTyping(target: string, typed: string, rules: TypingRules)
     const expected = target[targetIndex] ?? "";
     const actual = typed[typedIndex] ?? "";
 
+    if (expected === "\n") {
+      characters.push({
+        expected,
+        actual: actual === "\n" ? actual : "",
+        index: targetIndex,
+        status: "correct"
+      });
+      targetIndex += 1;
+      if (actual === "\n") {
+        typedIndex += 1;
+      }
+      continue;
+    }
+
     if (expected === "" && actual !== "") {
       const countsAsError = shouldCountExtraCharacter(actual, rules);
       if (countsAsError) {
@@ -278,6 +296,12 @@ export function compareTyping(target: string, typed: string, rules: TypingRules)
       }
       characters.push({ expected: "", actual, index: targetIndex, status: countsAsError ? "extra" : "correct" });
       typedIndex += 1;
+      continue;
+    }
+
+    if (!rules.punctuationSensitive && isPunctuation(expected) && actual === "") {
+      characters.push({ expected, actual: "", index: targetIndex, status: "correct" });
+      targetIndex += 1;
       continue;
     }
 
@@ -300,14 +324,6 @@ export function compareTyping(target: string, typed: string, rules: TypingRules)
     if (!rules.punctuationSensitive && isPunctuation(actual) && expected !== actual) {
       characters.push({ expected: "", actual, index: targetIndex, status: "correct" });
       typedIndex += 1;
-      continue;
-    }
-
-    if (expected === "\n" && actual !== "\n") {
-      incorrectCharacters += 1;
-      missedCharacters += 1;
-      characters.push({ expected, actual: "", index: targetIndex, status: "wrong" });
-      targetIndex += 1;
       continue;
     }
 
@@ -471,9 +487,26 @@ export function buildPracticePassage(category: PracticeCategory, durationSeconds
 }
 
 export function isTypedTextComplete(targetText: string, typedText: string, rules: TypingRules): boolean {
-  const preparedTarget = normalizeTargetForRules(targetText, rules);
+  const comparison = validateTypedText({ targetText, typedText, rules });
+  return isTypingComparisonComplete(comparison);
+}
 
-  return getComparableTextLength(typedText, rules) >= getComparableTextLength(preparedTarget, rules);
+export function isTypingComparisonComplete(comparison: TypingComparison): boolean {
+  if (comparison.comparableTargetLength <= 0) {
+    return false;
+  }
+
+  return comparison.characters.every((character) => {
+    if (character.expected === "" || character.expected === "\n") {
+      return true;
+    }
+
+    if (character.actual !== "") {
+      return true;
+    }
+
+    return character.status === "correct";
+  });
 }
 
 export function shouldFinishCompletedText(
@@ -520,11 +553,12 @@ function shouldCountExtraCharacter(character: string, rules: TypingRules): boole
 }
 
 function getComparableTextLength(text: string, rules: TypingRules): number {
-  if (rules.punctuationSensitive) {
-    return text.length;
-  }
-
-  return Array.from(text).filter((character) => !isPunctuation(character)).length;
+  return Array.from(text).filter((character) => {
+    if (character === "\n" || character === "\r") {
+      return false;
+    }
+    return rules.punctuationSensitive || !isPunctuation(character);
+  }).length;
 }
 
 function isPunctuation(character: string): boolean {

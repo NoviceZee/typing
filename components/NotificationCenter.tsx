@@ -1,9 +1,18 @@
 import Link from "next/link";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Bell, Megaphone, UserPlus } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { FriendListItem, listIncomingFriendRequests } from "@/lib/friendStorage";
-import { AppAnnouncement, listActiveAnnouncements, markAnnouncementsRead, readAnnouncementIds } from "@/lib/announcementStorage";
+import {
+  AnnouncementReadState,
+  AppAnnouncement,
+  createOptimisticAnnouncementReadState,
+  getUnreadAnnouncements,
+  listActiveAnnouncements,
+  loadAnnouncementReadState,
+  migrateLocalAnnouncementReadStateToAccount,
+  persistVisibleAnnouncementsRead
+} from "@/lib/announcementStorage";
 import { readNotificationSettings } from "@/lib/notificationSettings";
 
 export function NotificationCenter() {
@@ -12,29 +21,75 @@ export function NotificationCenter() {
   const [requests, setRequests] = useState<FriendListItem[]>([]);
   const [announcements, setAnnouncements] = useState<AppAnnouncement[]>([]);
   const [openAnnouncements, setOpenAnnouncements] = useState<AppAnnouncement[]>([]);
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [readState, setReadState] = useState<AnnouncementReadState | null>(null);
+  const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
+  const [readSyncState, setReadSyncState] = useState<"loading" | "saved" | "failed">("loading");
+  const [readHydrationError, setReadHydrationError] = useState<string | null>(null);
+  const [readSyncError, setReadSyncError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const markVisibleAnnouncementsRead = useCallback(() => {
-    const ids = announcements.filter((item) => !readIds.has(item.id)).map((item) => item.id);
-    if (!ids.length) return true;
-
-    const writeResult = markAnnouncementsRead(ids, user?.id);
-    if (!writeResult.ok) return false;
-
-    setReadIds((current) => new Set([...Array.from(current), ...ids]));
-    return true;
-  }, [announcements, readIds, user?.id]);
-
   useEffect(() => {
-    if (!user) { setRequests([]); setAnnouncements([]); setOpenAnnouncements([]); setOpen(false); return; }
+    if (!user) {
+      setRequests([]);
+      setAnnouncements([]);
+      setOpenAnnouncements([]);
+      setReadState(null);
+      setHydratedUserId(null);
+      setReadSyncState("loading");
+      setReadHydrationError(null);
+      setReadSyncError(null);
+      setOpen(false);
+      return;
+    }
     let mounted = true;
+    setReadState(null);
+    setHydratedUserId(null);
+    setReadSyncState("loading");
+    setReadHydrationError(null);
+    setReadSyncError(null);
     const preferences = readNotificationSettings();
-    Promise.all([
-      preferences.friendRequests ? Promise.resolve().then(() => listIncomingFriendRequests()).catch(() => []) : Promise.resolve([]),
-      listActiveAnnouncements().catch(() => [])
-    ]).then(([nextRequests, nextAnnouncements]) => { if (!mounted) return; setRequests(nextRequests); setAnnouncements(nextAnnouncements); setReadIds(readAnnouncementIds(user.id)); });
+    void Promise.allSettled([
+      preferences.friendRequests ? Promise.resolve().then(() => listIncomingFriendRequests()) : Promise.resolve([]),
+      listActiveAnnouncements(),
+      loadAnnouncementReadState({ userId: user.id })
+    ]).then(async ([requestsResult, announcementsResult, readStateResult]) => {
+      if (!mounted) return;
+      const nextRequests = requestsResult.status === "fulfilled" ? requestsResult.value : [];
+      const nextAnnouncements =
+        announcementsResult.status === "fulfilled" ? announcementsResult.value : [];
+      let nextReadState: AnnouncementReadState = {
+        source: "account",
+        lastSeenAnnouncementAt: null
+      };
+      let syncError: Error | null = null;
+
+      if (readStateResult.status === "fulfilled") {
+        nextReadState = readStateResult.value;
+        try {
+          nextReadState = await migrateLocalAnnouncementReadStateToAccount({
+            userId: user.id,
+            announcements: nextAnnouncements,
+            accountState: nextReadState
+          });
+        } catch (error) {
+          syncError = toError(error);
+        }
+      } else {
+        syncError = toError(readStateResult.reason);
+      }
+
+      if (!mounted) return;
+      setRequests(nextRequests);
+      setAnnouncements(nextAnnouncements);
+      setReadState(nextReadState);
+      setHydratedUserId(user.id);
+      setReadSyncState(syncError ? "failed" : "saved");
+      setReadHydrationError(syncError?.message ?? null);
+      if (syncError) {
+        console.error("Announcement read state could not hydrate. The account migration may be missing.", syncError);
+      }
+    });
     return () => { mounted = false; };
   }, [user]);
 
@@ -46,7 +101,7 @@ export function NotificationCenter() {
       setOpenAnnouncements([]);
     };
     document.addEventListener("mousedown", close); return () => document.removeEventListener("mousedown", close);
-  }, [markVisibleAnnouncementsRead, open]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -59,10 +114,14 @@ export function NotificationCenter() {
     }
     document.addEventListener("keydown", closeWithEscape);
     return () => document.removeEventListener("keydown", closeWithEscape);
-  }, [markVisibleAnnouncementsRead, open]);
+  }, [open]);
 
   if (!user) return null;
-  const unreadAnnouncements = announcements.filter((item) => !readIds.has(item.id));
+  const userId = user.id;
+  const hasHydratedCurrentAccount = hydratedUserId === user.id && readState !== null;
+  const unreadAnnouncements = hasHydratedCurrentAccount
+    ? getUnreadAnnouncements(announcements, readState)
+    : [];
   const unreadCount = requests.length + unreadAnnouncements.length;
 
   function toggle() {
@@ -73,7 +132,32 @@ export function NotificationCenter() {
     }
 
     setOpenAnnouncements(unreadAnnouncements);
-    markVisibleAnnouncementsRead();
+    if (unreadAnnouncements.length > 0) {
+      const visibleAnnouncements = [...unreadAnnouncements];
+      setReadState((currentState) =>
+        createOptimisticAnnouncementReadState({
+          currentState: currentState ?? { source: "account", lastSeenAnnouncementAt: null },
+          announcements: visibleAnnouncements,
+          userId
+        })
+      );
+      setReadSyncState("loading");
+      setReadSyncError(null);
+      void persistVisibleAnnouncementsRead({
+        userId,
+        announcements: visibleAnnouncements
+      })
+        .then((nextState) => {
+          setReadState(nextState);
+          setReadSyncState("saved");
+        })
+        .catch((error) => {
+          const syncError = toError(error);
+          setReadSyncState("failed");
+          setReadSyncError(syncError.message);
+          console.error("Announcement read state could not sync.", syncError);
+        });
+    }
     setOpen(true);
   }
 
@@ -83,6 +167,12 @@ export function NotificationCenter() {
     </button>
     {open && <section id="notification-area" role="dialog" aria-label="Notification area" className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2.5rem))] overflow-hidden rounded-lg border border-paper/10 bg-ink-950 shadow-2xl">
       <div className="flex items-center justify-between border-b border-paper/10 px-4 py-3"><h2 className="font-mono text-control uppercase tracking-wider text-paper">Notifications</h2><span className="font-mono text-utility text-paper/35">{unreadCount ? `${unreadCount} new` : "Up to date"}</span></div>
+      {(readSyncState === "failed" || readHydrationError) && (
+        <p role="status" className="border-b border-red-400/20 bg-red-400/10 px-4 py-2 font-mono text-utility text-red-200">
+          Notification read state could not sync. Account persistence requires the latest database migration.
+          {readHydrationError || readSyncError ? ` ${readHydrationError ?? readSyncError}` : ""}
+        </p>
+      )}
       <div className="max-h-96 overflow-y-auto">
         {requests.map((request) => <Link key={request.id} href="/profile/friends" onClick={() => { setOpen(false); setOpenAnnouncements([]); }} className="flex gap-3 border-b border-paper/10 px-4 py-3 transition hover:bg-paper/[0.04]"><UserPlus className="icon-inline mt-0.5 text-brass" /><span><strong className="block font-mono text-control font-normal text-paper">New friend request</strong><span className="mt-1 block text-utility text-paper/45">@{request.handle} wants to compare results.</span></span></Link>)}
         {openAnnouncements.map((item) => <article key={item.id} className="flex gap-3 border-b border-paper/10 px-4 py-3 last:border-b-0"><Megaphone className="icon-inline mt-0.5 text-brass" /><div><h3 className="font-mono text-control text-paper">{item.title}</h3><p className="mt-1 text-utility leading-5 text-paper/45">{item.body}</p></div></article>)}
@@ -90,4 +180,8 @@ export function NotificationCenter() {
       </div>
     </section>}
   </div>;
+}
+
+function toError(error: unknown) {
+  return error instanceof Error ? error : new Error(String(error));
 }

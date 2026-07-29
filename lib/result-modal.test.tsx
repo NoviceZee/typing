@@ -350,6 +350,40 @@ describe("ResultModal", () => {
     expect(screen.getByText("42.4 -> 48.0 WPM")).toBeTruthy();
   });
 
+  it("keeps an Escape/manual result display-only without PB, accuracy, or supplied progression unlocks", () => {
+    render(
+      <ResultModal
+        result={{ ...makeResult(), completionReason: "manual", wpm: 200, rawWpm: 250, accuracy: 100, isRankable: false }}
+        passage={makePassage()}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={{
+          passageId: "passage-1",
+          passageTitle: "Previous",
+          wpm: 35,
+          rawWpm: 36,
+          accuracy: 95,
+          errors: 2,
+          correctCharacters: 175,
+          typedCharacters: 180,
+          elapsedSeconds: 60,
+          completedAt: "2026-06-18T00:00:00.000Z",
+          completionReason: "time_up"
+        }}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+        progressMilestones={[{ id: "achievement", title: "Achievement Unlocked", value: "Speed 50", effect: "quiet" }]}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Manual result — not saved.")).toBeTruthy();
+    expect(screen.queryByText("New Personal Best")).toBeNull();
+    expect(screen.queryByText("New Best Accuracy")).toBeNull();
+    expect(screen.queryByText("Achievement Unlocked")).toBeNull();
+  });
+
   it("keeps the personal-best celebration readable before auto-dismissing", () => {
     vi.useFakeTimers();
 

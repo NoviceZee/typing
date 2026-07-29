@@ -1,36 +1,34 @@
 "use client";
 
 import React, { ReactNode, useEffect, useState } from "react";
+import { useOptionalAccountSettings } from "@/components/AccountSettingsProvider";
 import {
   THEME_SETTING_CHANGE_EVENT,
-  ThemeSettings,
+  type ThemeSettings,
   readThemeSettings
 } from "@/lib/app-storage";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<ThemeSettings | null>(null);
+  const accountContext = useOptionalAccountSettings();
+  const [fallbackSettings, setFallbackSettings] = useState<ThemeSettings | null>(null);
+  const settings = accountContext?.settings.appearance ?? fallbackSettings;
 
   useEffect(() => {
-    setSettings(readThemeSettings());
-
-    function handleThemeSettingsChange(event: Event) {
-      setSettings((event as CustomEvent<ThemeSettings>).detail ?? readThemeSettings());
-    }
-
-    window.addEventListener(THEME_SETTING_CHANGE_EVENT, handleThemeSettingsChange);
-    window.addEventListener("storage", handleThemeSettingsChange);
-
-    return () => {
-      window.removeEventListener(THEME_SETTING_CHANGE_EVENT, handleThemeSettingsChange);
-      window.removeEventListener("storage", handleThemeSettingsChange);
+    if (accountContext) return;
+    setFallbackSettings(readThemeSettings());
+    const handleChange = (event: Event) => {
+      setFallbackSettings((event as CustomEvent<ThemeSettings>).detail ?? readThemeSettings());
     };
-  }, []);
+    window.addEventListener(THEME_SETTING_CHANGE_EVENT, handleChange);
+    window.addEventListener("storage", handleChange);
+    return () => {
+      window.removeEventListener(THEME_SETTING_CHANGE_EVENT, handleChange);
+      window.removeEventListener("storage", handleChange);
+    };
+  }, [accountContext]);
 
   useEffect(() => {
-    if (!settings) {
-      return;
-    }
-
+    if (!settings) return;
     const currentSettings = settings;
     const mediaQuery = window.matchMedia?.("(prefers-color-scheme: light)") ?? null;
 

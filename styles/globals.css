@@ -690,33 +690,12 @@ textarea {
   box-shadow: 0 0 7px rgb(var(--color-accent) / 0.28);
 }
 
-.formaltype-previous-pace-line {
+.formaltype-previous-pace-fixed {
   background: currentColor;
   border-radius: 999px;
-  height: 0.95em;
+  height: 0.58em;
+  margin-top: 0.19em;
   width: 2px;
-}
-
-.formaltype-previous-pace-block {
-  background: rgb(var(--color-accent) / 0.32);
-  border-radius: 0.14em;
-  height: 0.95em;
-  width: 0.62em;
-}
-
-.formaltype-previous-pace-outline-block {
-  border: 2px solid currentColor;
-  border-radius: 0.14em;
-  height: 0.95em;
-  width: 0.62em;
-}
-
-.formaltype-previous-pace-underline {
-  background: currentColor;
-  border-radius: 999px;
-  height: 0.14em;
-  margin-top: 0.82em;
-  width: 0.62em;
 }
 
 .formaltype-celebration-stack {

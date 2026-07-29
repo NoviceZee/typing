@@ -25,11 +25,18 @@ describe("typingAttemptStorage", () => {
 
   it("loads and maps cloud details for the current user", async () => {
     const limit = vi.fn().mockResolvedValue({
-      data: [{
-        id: "attempt-1", user_id: "user-1", completed_at: "2026-07-11T00:00:00.000Z",
-        duration_seconds: 60, category: "Business email", wpm: "72", accuracy: "98.5",
-        characters: [{ expected: "a", actual: "a", index: 0, status: "correct" }], timeline: []
-      }],
+      data: [
+        {
+          id: "attempt-1", user_id: "user-1", completed_at: "2026-07-11T00:00:00.000Z",
+          duration_seconds: 60, category: "Business email", wpm: "72", accuracy: "98.5",
+          characters: [{ expected: "a", actual: "a", index: 0, status: "correct" }], timeline: []
+        },
+        {
+          id: "invalid-random", user_id: "user-1", completed_at: "2026-07-11T00:01:00.000Z",
+          duration_seconds: 60, category: "Business email", wpm: "200", accuracy: "5",
+          characters: [{ expected: "a", actual: "z", index: 0, status: "wrong" }], timeline: []
+        }
+      ],
       error: null
     });
     const order = vi.fn(() => ({ limit }));
@@ -47,7 +54,11 @@ describe("typingAttemptStorage", () => {
     const upsert = vi.fn().mockResolvedValue({ error: null });
     const from = vi.fn(() => ({ upsert }));
 
-    await syncLocalTypingAttemptDetails([makeDetail(), { ...makeDetail(), id: "attempt-2" }], { from });
+    await syncLocalTypingAttemptDetails([
+      makeDetail(),
+      { ...makeDetail(), id: "attempt-2" },
+      { ...makeDetail(), id: "invalid-random", wpm: 200, accuracy: 5 }
+    ], { from });
 
     expect(upsert).toHaveBeenCalledWith(
       expect.arrayContaining([
@@ -56,6 +67,7 @@ describe("typingAttemptStorage", () => {
       ]),
       { onConflict: "id", ignoreDuplicates: true }
     );
+    expect(upsert.mock.calls[0][0]).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: "invalid-random" })]));
   });
 });
 

@@ -1,6 +1,7 @@
 import type { AppProps } from "next/app";
 import Head from "next/head";
 import { AuthProvider } from "@/components/AuthProvider";
+import { AccountSettingsProvider } from "@/components/AccountSettingsProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { SiteTelemetry } from "@/components/SiteTelemetry";
@@ -35,11 +36,13 @@ export default function App({ Component, pageProps }: AppProps) {
         <link rel="icon" href="/favicon.svg" />
       </Head>
       <SiteTelemetry />
-      <ThemeProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <AccountSettingsProvider>
+          <ThemeProvider>
           <AppErrorBoundary><Component {...pageProps} /></AppErrorBoundary>
-        </AuthProvider>
-      </ThemeProvider>
+          </ThemeProvider>
+        </AccountSettingsProvider>
+      </AuthProvider>
     </>
   );
 }

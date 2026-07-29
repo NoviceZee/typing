@@ -46,6 +46,33 @@ describe("database security migration contracts", () => {
     expect(sql).toContain("validate constraint typing_results_metric_domain_check");
   });
 
+  it("keeps manual results outside the same server eligibility boundary used by leaderboards", () => {
+    const sql = readMigration("202607220001_unify_result_progression_eligibility.sql");
+
+    expect(sql).toContain("p_completion_reason in ('time_up', 'text_completed', 'legacy')");
+    expect(sql).toContain("p_accuracy between 70 and 100");
+    expect(sql).toContain("set is_rankable = public.typing_result_is_coherent");
+    expect(sql).toContain("where typing_results.is_rankable = true");
+  });
+
+  it("stores versioned account settings and durable announcement read state behind owner RLS", () => {
+    const sql = readMigration("202607260001_create_user_settings_and_notification_read_state.sql");
+
+    expect(sql).toContain("create table if not exists public.user_settings");
+    expect(sql).toContain("settings jsonb not null");
+    expect(sql).toContain("settings_version integer not null");
+    expect(sql).toContain("user_id = auth.uid()");
+    expect(sql).toContain("add column if not exists last_seen_announcement_at timestamptz");
+    expect(sql).toContain("alter table public.user_settings enable row level security");
+    expect(sql).toContain("grant select, insert, update, delete on public.user_settings to authenticated");
+    expect(sql).toContain("create or replace function public.mark_announcements_seen");
+    expect(sql).toContain("greatest(");
+    expect(sql).toContain("where user_id = auth.uid()");
+    expect(sql).toContain("raise exception 'Profile row not found for announcement read state'");
+    expect(sql).toContain("security invoker");
+    expect(sql).toContain("grant execute on function public.mark_announcements_seen(timestamptz) to authenticated");
+  });
+
   it("enforces handle cooldowns and blocking below the client layer", () => {
     const sql = readMigration("202607140005_profile_handle_cooldown_and_user_blocks.sql");
 

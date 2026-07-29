@@ -1,7 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
-import { useRouter } from "next/router";
-import React, { useEffect } from "react";
+import React from "react";
 import { ArrowRight, BarChart3, BookOpenText, Keyboard, Sparkles, Trophy } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { getSiteUrl } from "@/lib/siteMetadata";
@@ -16,21 +15,7 @@ const FEATURES = [
 ];
 
 export default function Home() {
-  const router = useRouter();
-  const { user, isLoading } = useAuth();
-
-  useEffect(() => {
-    if (isLoading || !user) return;
-    void router.replace("/practice");
-  }, [isLoading, router, user]);
-
-  if (user) {
-    return (
-      <main className="min-h-screen bg-ink-950 text-paper" aria-busy="true">
-        <span className="sr-only">Opening practice…</span>
-      </main>
-    );
-  }
+  const { user } = useAuth();
 
   return (
     <>
@@ -44,7 +29,11 @@ export default function Home() {
           <div className={SITE_FRAME_CLASS}>
           <PublicSiteHeader>
           <nav aria-label="Landing navigation" className="flex items-center gap-2">
-            <Link href="/login" className="hidden rounded-md px-3 py-2 font-mono text-control text-paper/60 transition hover:bg-paper/10 hover:text-paper sm:block">Log in</Link>
+            {user ? (
+              <Link href="/profile" className="hidden rounded-md px-3 py-2 font-mono text-control text-paper/60 transition hover:bg-paper/10 hover:text-paper sm:block">Profile</Link>
+            ) : (
+              <Link href="/login" className="hidden rounded-md px-3 py-2 font-mono text-control text-paper/60 transition hover:bg-paper/10 hover:text-paper sm:block">Log in</Link>
+            )}
             <Link href="/practice" className="landing-button-secondary">Open practice <ArrowRight className="icon-control" /></Link>
           </nav>
           </PublicSiteHeader>
@@ -61,7 +50,7 @@ export default function Home() {
               A deliberate practice room for the words, formats and rhythms that show up in real work.
             </p>
             <div className="landing-reveal landing-delay-3 mt-9 flex flex-wrap gap-3">
-              <Link href="/practice" className="landing-button-primary">Start a one-minute test <ArrowRight className="icon-control" /></Link>
+              <Link href="/practice" className="landing-button-primary">{user ? "Continue practising" : "Start a one-minute test"} <ArrowRight className="icon-control" /></Link>
               <Link href="/training" className="landing-button-secondary"><BookOpenText className="icon-control" /> Explore training</Link>
             </div>
             <p className="landing-reveal landing-delay-3 mt-4 font-mono text-utility uppercase tracking-[0.15em] text-paper/30">No account required to begin</p>

@@ -1,4 +1,5 @@
 import { safeSetStorageItem } from "./storageSafety";
+import { dispatchLocalAccountSettingsMutation } from "./settingsEvents";
 
 export type KeyboardSoundSetting =
   | "off"
@@ -197,6 +198,7 @@ export function readKeyboardSoundSetting(): KeyboardSoundSetting {
 
 export function writeKeyboardSoundSetting(setting: KeyboardSoundSetting) {
   safeSetStorageItem(KEYBOARD_SOUND_STORAGE_KEY, setting, { context: "writeKeyboardSoundSetting" });
+  dispatchLocalAccountSettingsMutation();
 }
 
 export function readKeyboardSoundVolume(): number {
@@ -211,6 +213,7 @@ export function writeKeyboardSoundVolume(volume: number) {
   safeSetStorageItem(KEYBOARD_SOUND_VOLUME_STORAGE_KEY, String(normalizeKeyboardSoundVolume(volume)), {
     context: "writeKeyboardSoundVolume"
   });
+  dispatchLocalAccountSettingsMutation();
 }
 
 export function normalizeKeyboardSoundVolume(value: unknown): number {

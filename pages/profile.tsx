@@ -40,6 +40,7 @@ import type { KeyStatistic, TypingAttemptDetail, TypingReplayEvent, TypingStatis
 import { buildAttemptConsistencySummary, getConsistencyScorePath } from "@/lib/practiceConsistency";
 import { DEFAULT_PROFILE_DISPLAY_SETTINGS, ProfileDisplaySettings, readProfileDisplaySettings, writeProfileDisplaySettings } from "@/lib/profileDisplaySettings";
 import { getSiteUrl } from "@/lib/siteMetadata";
+import { isProgressionEligibleResult } from "@/lib/resultEligibility";
 
 type TrendRange = "30" | "90" | "all";
 type HeatmapMode = "accuracy" | "speed" | "mistakes";
@@ -79,20 +80,28 @@ export default function ProfilePage() {
   const [analyticsDomain, setAnalyticsDomain] = useState<AnalyticsDomain>("english");
   const [displaySettings, setDisplaySettings] = useState<ProfileDisplaySettings>(DEFAULT_PROFILE_DISPLAY_SETTINGS);
   const [displaySettingsError, setDisplaySettingsError] = useState("");
+  const eligibleResults = useMemo(() => results.filter(isProgressionEligibleResult), [results]);
   const domainResults = useMemo(
-    () => results.filter((result) => getResultAnalyticsDomain(result) === analyticsDomain),
-    [analyticsDomain, results]
+    () => eligibleResults.filter((result) => getResultAnalyticsDomain(result) === analyticsDomain),
+    [analyticsDomain, eligibleResults]
   );
-  const analytics = useMemo(() => buildProgressAnalytics(results, { domain: analyticsDomain }), [analyticsDomain, results]);
+  const analytics = useMemo(
+    () => buildProgressAnalytics(eligibleResults, { domain: analyticsDomain }),
+    [analyticsDomain, eligibleResults]
+  );
   const trendResults = useMemo(() => getTrendResults(domainResults, trendRange), [domainResults, trendRange]);
   const [typingAttemptDetails, setTypingAttemptDetails] = useState<TypingAttemptDetail[]>([]);
+  const eligibleAttemptDetails = useMemo(
+    () => typingAttemptDetails.filter(isProgressionEligibleResult),
+    [typingAttemptDetails]
+  );
   const typingStatistics = useMemo(
-    () => aggregateTypingStatistics(typingAttemptDetails, { domain: analyticsDomain }),
-    [analyticsDomain, typingAttemptDetails]
+    () => aggregateTypingStatistics(eligibleAttemptDetails, { domain: analyticsDomain }),
+    [analyticsDomain, eligibleAttemptDetails]
   );
   const consistency = useMemo(
-    () => buildAttemptConsistencySummary(typingAttemptDetails, (category) => getCategoryAnalyticsDomain(category) === analyticsDomain),
-    [analyticsDomain, typingAttemptDetails]
+    () => buildAttemptConsistencySummary(eligibleAttemptDetails, (category) => getCategoryAnalyticsDomain(category) === analyticsDomain),
+    [analyticsDomain, eligibleAttemptDetails]
   );
   const emptyState = getDomainEmptyState(analyticsDomain);
 

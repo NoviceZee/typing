@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Palette, SlidersHorizontal, Volume2, type LucideIcon } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useOptionalAccountSettings } from "@/components/AccountSettingsProvider";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { FilterControl, SecondaryToolbar } from "@/components/SecondaryNavigation";
 import {
@@ -39,6 +40,7 @@ import {
 } from "@/lib/keyboardSound";
 
 export default function SettingsPage() {
+  const accountSettingsContext = useOptionalAccountSettings();
   const [keyboardSoundSetting, setKeyboardSoundSetting] = useState<KeyboardSoundSetting>("off");
   const [keyboardSoundVolume, setKeyboardSoundVolume] = useState(0.5);
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(DEFAULT_THEME_SETTINGS);
@@ -53,13 +55,22 @@ export default function SettingsPage() {
   );
 
   useEffect(() => {
+    if (accountSettingsContext) {
+      const accountSettings = accountSettingsContext.settings;
+      setKeyboardSoundSetting(accountSettings.sound.keyboard);
+      setKeyboardSoundVolume(accountSettings.sound.volume);
+      setThemeSettings(accountSettings.appearance);
+      setRules(accountSettings.behavior);
+      soundPlayer.current.preload(accountSettings.sound.keyboard);
+      return;
+    }
     const savedSoundSetting = readKeyboardSoundSetting();
     setKeyboardSoundSetting(savedSoundSetting);
     setKeyboardSoundVolume(readKeyboardSoundVolume());
     setThemeSettings(readThemeSettings());
     setRules(readStoredRules());
     soundPlayer.current.preload(savedSoundSetting);
-  }, []);
+  }, [accountSettingsContext]);
 
   useEffect(() => () => {
     if (savedFeedbackTimerRef.current !== null) window.clearTimeout(savedFeedbackTimerRef.current);
@@ -99,8 +110,15 @@ export default function SettingsPage() {
 
   function handleKeyboardSoundSetting(nextSetting: KeyboardSoundSetting) {
     setKeyboardSoundSetting(nextSetting);
-    writeKeyboardSoundSetting(nextSetting);
-    announceSaved();
+    if (accountSettingsContext) {
+      void accountSettingsContext.updateSettings((current) => ({
+        ...current,
+        sound: { ...current.sound, keyboard: nextSetting }
+      }));
+    } else {
+      writeKeyboardSoundSetting(nextSetting);
+      announceSaved();
+    }
     if (isRecordedKeyboardSoundSetting(nextSetting)) {
       void soundPlayer.current.reload(nextSetting).then(() => {
         soundPlayer.current.play(nextSetting, "normal", keyboardSoundVolume);
@@ -116,22 +134,35 @@ export default function SettingsPage() {
 
   function handleKeyboardSoundVolume(nextVolume: number) {
     setKeyboardSoundVolume(nextVolume);
-    writeKeyboardSoundVolume(nextVolume);
-    announceSaved();
+    if (accountSettingsContext) {
+      void accountSettingsContext.updateSettings((current) => ({
+        ...current,
+        sound: { ...current.sound, volume: nextVolume }
+      }));
+    } else {
+      writeKeyboardSoundVolume(nextVolume);
+      announceSaved();
+    }
     if (keyboardSoundSetting !== "off") {
       soundPlayer.current.play(keyboardSoundSetting, "normal", nextVolume);
     }
   }
 
   function handleThemeSetting<Key extends keyof ThemeSettings>(key: Key, value: ThemeSettings[Key]) {
-    announceSaved();
     const nextSettings = { ...themeSettings, [key]: value };
     setThemeSettings(nextSettings);
-    writeThemeSettings(nextSettings);
+    if (accountSettingsContext) {
+      void accountSettingsContext.updateSettings((current) => ({
+        ...current,
+        appearance: nextSettings
+      }));
+    } else {
+      writeThemeSettings(nextSettings);
+      announceSaved();
+    }
   }
 
   function handleThemePreset(preset: ThemePresetOption) {
-    announceSaved();
     const nextSettings: ThemeSettings = {
       ...themeSettings,
       themePreset: preset.value,
@@ -139,17 +170,42 @@ export default function SettingsPage() {
       accentColor: preset.accentColor
     };
     setThemeSettings(nextSettings);
-    writeThemeSettings(nextSettings);
+    if (accountSettingsContext) {
+      void accountSettingsContext.updateSettings((current) => ({
+        ...current,
+        appearance: nextSettings
+      }));
+    } else {
+      writeThemeSettings(nextSettings);
+      announceSaved();
+    }
   }
 
   function handleRuleSetting<Key extends keyof TypingRules>(key: Key, value: TypingRules[Key]) {
-    announceSaved();
-    setRules((current) => {
-      const nextRules = { ...current, [key]: value };
+    const nextRules = { ...rules, [key]: value };
+    setRules(nextRules);
+    if (accountSettingsContext) {
+      void accountSettingsContext.updateSettings((current) => ({
+        ...current,
+        behavior: nextRules
+      }));
+    } else {
       writeStoredRules(nextRules);
-      return nextRules;
-    });
+      announceSaved();
+    }
   }
+
+  const persistenceMessage = accountSettingsContext
+    ? accountSettingsContext.syncState === "loading"
+      ? "Saving to your account…"
+      : accountSettingsContext.syncState === "save_failed"
+        ? "Save failed — changes are kept on this device"
+        : accountSettingsContext.syncState === "local_fallback"
+          ? "Saved on this device"
+          : "Saved to your account"
+    : showSavedFeedback
+      ? "Saved automatically"
+      : "Changes save automatically";
 
   return (
     <AppShell sideAd={false}>
@@ -159,7 +215,7 @@ export default function SettingsPage() {
           title="Settings"
           description={
             <div role="status" aria-live="polite" className="min-h-5 font-mono text-utility text-mint">
-              {showSavedFeedback ? "Saved automatically" : "Changes save automatically"}
+              {persistenceMessage}
             </div>
           }
         />
@@ -259,7 +315,7 @@ export default function SettingsPage() {
                   onChange={(value) => handleThemeSetting("typingWidth", value as ThemeSettings["typingWidth"])}
                 />
 
-                <div className="grid gap-5 rounded-lg border border-paper/[0.07] bg-paper/[0.025] p-4">
+                <div className="grid gap-5">
                   <div>
                     <h3 className="text-body font-semibold text-paper/85">Caret</h3>
                     <p className="mt-1 text-body text-paper/45">
@@ -302,15 +358,6 @@ export default function SettingsPage() {
                     }
                   />
 
-                  <ButtonGroup
-                    label="Previous Pace style"
-                    options={CARET_STYLE_OPTIONS}
-                    value={themeSettings.previousPaceStyle}
-                    getAriaLabel={(option) => `${option.label} Previous Pace style`}
-                    onChange={(value) =>
-                      handleThemeSetting("previousPaceStyle", value as ThemeSettings["previousPaceStyle"])
-                    }
-                  />
                 </div>
 
                 <ButtonGroup

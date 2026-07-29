@@ -1,4 +1,5 @@
 import { safeSetJsonStorageItem } from "@/lib/storageSafety";
+import { dispatchLocalAccountSettingsMutation } from "@/lib/settingsEvents";
 
 export type NotificationSettings = { achievements: boolean; friendRequests: boolean; weeklySummary: boolean };
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = { achievements: true, friendRequests: true, weeklySummary: false };
@@ -8,5 +9,7 @@ export function readNotificationSettings(): NotificationSettings {
   try { return { ...DEFAULT_NOTIFICATION_SETTINGS, ...JSON.parse(window.localStorage.getItem(KEY) || "{}") }; } catch { return DEFAULT_NOTIFICATION_SETTINGS; }
 }
 export function writeNotificationSettings(value: NotificationSettings) {
-  return safeSetJsonStorageItem(KEY, value, { context: "writeNotificationSettings" });
+  const result = safeSetJsonStorageItem(KEY, value, { context: "writeNotificationSettings" });
+  dispatchLocalAccountSettingsMutation();
+  return result;
 }

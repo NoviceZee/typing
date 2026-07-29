@@ -235,6 +235,43 @@ describe("typing rule comparison", () => {
     });
   });
 
+  it("keeps an inserted space inside establish on the local target coordinate", () => {
+    const targetText = "We establish parties";
+    const comparison = validateTypedText({
+      targetText,
+      typedText: "We esta bl",
+      rules: DEFAULT_RULES
+    });
+
+    expect(comparison.activeTargetIndex).toBe(targetText.indexOf("i"));
+    expect(comparison.characters.find((character) => character.status === "extra")).toMatchObject({
+      expected: "",
+      actual: " ",
+      index: targetText.indexOf("b")
+    });
+    expect(comparison.characters.find((character) => character.status === "current")).toMatchObject({
+      expected: "i",
+      index: targetText.indexOf("i")
+    });
+    expect(comparison.activeTargetIndex).toBeLessThan(targetText.indexOf("parties"));
+  });
+
+  it("recovers locally after completing establish with an inserted space", () => {
+    const targetText = "We establish parties";
+    const comparison = validateTypedText({
+      targetText,
+      typedText: "We esta blish",
+      rules: DEFAULT_RULES
+    });
+
+    expect(comparison.activeTargetIndex).toBe(targetText.indexOf("parties") - 1);
+    expect(comparison.characters.find((character) => character.status === "current")).toMatchObject({
+      expected: " ",
+      index: targetText.indexOf("parties") - 1
+    });
+    expect(comparison.characters.filter((character) => character.status === "extra")).toHaveLength(1);
+  });
+
   it("counts missing spaces only when that rule is enabled", () => {
     const enforced = validateTypedText({
       targetText: "Kind regards",
@@ -253,23 +290,23 @@ describe("typing rule comparison", () => {
     expect(tolerated.incorrectCharacters).toBe(0);
   });
 
-  it("counts missed paragraph breaks without consuming the next paragraph text", () => {
+  it("treats paragraph breaks as layout-only without consuming the next paragraph text", () => {
     const comparison = validateTypedText({
       targetText: "First paragraph.\n\nSecond paragraph.",
       typedText: "First paragraph.Second paragraph.",
       rules: DEFAULT_RULES
     });
 
-    const missedBreaks = comparison.characterStatuses.filter(
-      (character) => character.expected === "\n" && character.status === "wrong"
+    const layoutBreaks = comparison.characterStatuses.filter(
+      (character) => character.expected === "\n" && character.status === "correct"
     );
     const secondParagraphStart = comparison.characterStatuses.find(
       (character) => character.expected === "S" && character.actual === "S"
     );
 
-    expect(missedBreaks).toHaveLength(2);
-    expect(comparison.missedCharacters).toBe(2);
-    expect(comparison.incorrectCharacters).toBe(2);
+    expect(layoutBreaks).toHaveLength(2);
+    expect(comparison.missedCharacters).toBe(0);
+    expect(comparison.incorrectCharacters).toBe(0);
     expect(secondParagraphStart).toMatchObject({ status: "correct" });
   });
 
@@ -292,6 +329,25 @@ describe("typing rule comparison", () => {
         punctuationSensitive: false
       })
     ).toBe(true);
+  });
+
+  it("resolves multiline Chinese poetry by comparison coordinates without requiring layout newlines", () => {
+    const target = "枯藤老樹昏鴉，\n小橋流水人家。\n古道西風瘦馬，\n夕陽西下，斷腸人在天涯。";
+    const typed = target.replace(/\n/g, "");
+    const comparison = validateTypedText({ targetText: target, typedText: typed, rules: DEFAULT_RULES });
+
+    expect(comparison.activeTargetIndex).toBeNull();
+    expect(comparison.comparableTargetLength).toBe(Array.from(target).filter((character) => character !== "\n").length);
+    expect(isTypedTextComplete(target, typed, DEFAULT_RULES)).toBe(true);
+  });
+
+  it("does not leave a trailing stored newline as an unreachable active target", () => {
+    const target = "海內存知己，\n天涯若比鄰。\n";
+    const typed = "海內存知己，天涯若比鄰。";
+    const comparison = validateTypedText({ targetText: target, typedText: typed, rules: DEFAULT_RULES });
+
+    expect(comparison.activeTargetIndex).toBeNull();
+    expect(isTypedTextComplete(target, typed, DEFAULT_RULES)).toBe(true);
   });
 
   it("finishes completed Practice and word drills at the input boundary, but not timed Training", () => {

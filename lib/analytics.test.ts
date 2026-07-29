@@ -330,6 +330,59 @@ describe("buildProgressAnalytics", () => {
     expect(analytics.summary.totalPracticeSeconds).toBe(20);
     expect(analytics.records.fastestOneMinute?.id).toBe("manual-finish");
   });
+
+  it("filters historical low-accuracy and manual rows out of every profile progression surface", () => {
+    const valid = makeResult("valid", 60, 52, 98, "Business email", "2026-06-21T10:00:00.000Z", 260);
+    const lowAccuracy = {
+      ...makeResult("invalid-random", 60, 200, 5, "Business email", "2026-06-21T11:00:00.000Z", 200),
+      completion_reason: "time_up" as const,
+      elapsed_seconds: 60,
+      is_rankable: false
+    };
+    const manual = {
+      ...makeResult("manual", 60, 250, 100, "Business email", "2026-06-21T12:00:00.000Z", 250),
+      completion_reason: "manual" as const,
+      elapsed_seconds: 60,
+      is_rankable: false
+    };
+
+    const baseline = buildProgressAnalytics([valid], { now: new Date("2026-06-21T13:00:00.000Z") });
+    const polluted = buildProgressAnalytics([manual, lowAccuracy, valid], {
+      now: new Date("2026-06-21T13:00:00.000Z")
+    });
+
+    expect(polluted.summary).toEqual(baseline.summary);
+    expect(polluted.recentTrend.map((result) => result.id)).toEqual(["valid"]);
+    expect(polluted.records).toEqual(baseline.records);
+    expect(polluted.activity).toEqual(baseline.activity);
+    expect(polluted.progression).toEqual(baseline.progression);
+    expect(polluted.achievements).toEqual(baseline.achievements);
+    expect(polluted.challenges).toEqual(baseline.challenges);
+  });
+
+  it("preserves legitimate 35 and 42 CPM Chinese results in profile statistics", () => {
+    const analytics = buildProgressAnalytics(
+      [
+        {
+          ...makeResult("chinese-35", 60, 35, 100, "training_chinese", "2026-06-20T10:00:00.000Z", 35),
+          completion_reason: "time_up" as const,
+          elapsed_seconds: 60,
+          is_rankable: true
+        },
+        {
+          ...makeResult("chinese-42", 60, 42, 100, "training_chinese", "2026-06-21T10:00:00.000Z", 42),
+          completion_reason: "time_up" as const,
+          elapsed_seconds: 60,
+          is_rankable: true
+        }
+      ],
+      { domain: "chinese" }
+    );
+
+    expect(analytics.summary.totalTests).toBe(2);
+    expect(analytics.summary.bestWpm).toBe(42);
+    expect(analytics.summary.averageWpm).toBe(38.5);
+  });
 });
 
 function makeResult(

@@ -18,6 +18,7 @@ import {
   enforceBackspacePolicy,
   normalizeTargetForRules,
   shouldFinishCompletedText,
+  isTypingComparisonComplete,
   validateTypedText
 } from "@/lib/typing-engine";
 import { calculateTypingViewportScrollTop } from "@/lib/typingViewport";
@@ -46,8 +47,13 @@ import {
   toStoredPassage,
   withBuiltInSamplePassages,
   writePreviousResult,
+  createPreviousTypingResult,
   writeStoredPassage
 } from "@/lib/app-storage";
+import {
+  createTypingSessionCoordinator,
+  type TypingSessionCoordinator
+} from "@/lib/typingSessionLifecycle";
 import {
   getActivePassageId,
   getActivePassageLibrary,
@@ -123,6 +129,12 @@ export type PracticeTrainingMode = {
 type SessionStatus = "idle" | "running" | "finished";
 type CloudSaveState = "idle" | "saving" | "saved" | "failed";
 
+type CompletedAttemptSnapshot = {
+  readonly passage: Readonly<StoredPassage>;
+  readonly previousResult: Readonly<PreviousTypingResult>;
+  readonly targetIdentity: string;
+};
+
 export type AttemptTimelinePoint = {
   timeSeconds: number;
   characterIndex?: number;
@@ -191,6 +203,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [lastResult, setLastResult] = useState<TypingResult | null>(null);
+  const [lastResultPassage, setLastResultPassage] = useState<StoredPassage | null>(null);
   const [attemptTimeline, setAttemptTimeline] = useState<AttemptTimelinePoint[]>([]);
   const [attemptErrorEvents, setAttemptErrorEvents] = useState<AttemptErrorEvent[]>([]);
   const [recentResults, setRecentResults] = useState<SupabaseOwnTypingResultRow[]>([]);
@@ -201,7 +214,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const [isAttemptSuspicious, setIsAttemptSuspicious] = useState(false);
   const [isInputActivated, setIsInputActivated] = useState(false);
   const [previousResult, setPreviousResult] = useState<PreviousTypingResult | null>(null);
-  const [isInfinitePreviousPaceRepeat, setIsInfinitePreviousPaceRepeat] = useState(false);
+  const [repeatedTargetIdentity, setRepeatedTargetIdentity] = useState<string | null>(null);
+  const repeatedTargetIdentityRef = useRef<string | null>(null);
   const [availableLibrary, setAvailableLibrary] = useState<LibraryPassage[]>([]);
   const [practiceLanguage, setPracticeLanguage] = useState<PassageLanguage>("english");
   const [selectedCategory, setSelectedCategoryState] = useState<CategoryFilter>(ALL_FILTER);
@@ -256,6 +270,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const typedCharacterDelaysRef = useRef<number[]>([]);
   const lastTypedCharacterAtRef = useRef<number | null>(null);
   const activeAttemptIdRef = useRef(createClientAttemptId());
+  const sessionCoordinatorRef = useRef<TypingSessionCoordinator | null>(null);
+  const completedAttemptSnapshotRef = useRef<CompletedAttemptSnapshot | null>(null);
+  const repeatedAttemptSnapshotRef = useRef<CompletedAttemptSnapshot | null>(null);
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
@@ -302,10 +319,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     () => validateTypedText({ targetText: sourceText, typedText, rules }),
     [sourceText, typedText, rules]
   );
-  const isTargetActuallyComplete =
-    comparison.comparableTargetLength > 0 &&
-    comparison.comparableTypedLength >= comparison.comparableTargetLength &&
-    comparison.activeTargetIndex == null;
+  const isTargetActuallyComplete = isTypingComparisonComplete(comparison);
   if (activeTargetSourceRef.current !== targetText) {
     activeTargetSourceRef.current = targetText;
     lastValidActiveTargetIndexRef.current = null;
@@ -335,15 +349,11 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     passage?.id &&
       previousResult &&
       previousResult.passageId === passage.id &&
-      (previousResultScope !== "infinite" ||
-        (isInfinitePreviousPaceRepeat && previousResult.targetSnapshot === sourceText)) &&
-      (previousResultScope === "infinite" ||
-        !previousResult.durationSeconds ||
-        previousResult.durationSeconds === durationSeconds)
+      repeatedTargetIdentity === getTargetIdentity(passage) &&
+      previousResult.targetSnapshot === sourceText
   );
   const shouldShowPreviousPaceMarker = Boolean(
     themeSettings.previousPaceEnabled === "on" &&
-      themeSettings.previousPaceStyle !== "off" &&
       previousComparisonMatches &&
       isRunning &&
       !isResultModalOpen &&
@@ -428,10 +438,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const resetActiveSessionState = useCallback(
     ({
       nextPassage,
-      nextPreviousResultScope
+      nextPreviousResultScope,
+      previousResultOverride
     }: {
       nextPassage?: StoredPassage | null;
       nextPreviousResultScope?: PreviousResultScope;
+      previousResultOverride?: PreviousTypingResult | null;
     } = {}) => {
       const resetPassage = nextPassage === undefined ? passageRef.current : nextPassage;
       const resetPreviousResultScope =
@@ -440,6 +452,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       const resetIsTimedMode = isTimedModeRef.current;
 
       activeSessionGenerationRef.current += 1;
+      sessionCoordinatorRef.current = null;
       chineseCompositionSequenceRef.current += 1;
       cancelPendingChineseImeFallback();
       isComposingRef.current = false;
@@ -470,11 +483,18 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setStartedAt(null);
       setFinishedAt(null);
       setLastResult(null);
+      setLastResultPassage(null);
       setProgressMilestones([]);
       setCloudSaveState("idle");
       isResultModalOpenRef.current = false;
       setIsResultModalOpen(false);
-      setPreviousResult(resetPassage ? readPreviousResult(resetPassage.id, resetPreviousResultScope) : null);
+      setPreviousResult(
+        previousResultOverride !== undefined
+          ? previousResultOverride
+          : resetPassage
+            ? readPreviousResult(resetPassage.id, resetPreviousResultScope)
+            : null
+      );
       setStatus("idle");
       if (typingWindowRef.current) {
         typingWindowRef.current.scrollTop = 0;
@@ -495,6 +515,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     let isMounted = true;
 
     async function loadInitialPracticeState() {
+      if (completedAttemptSnapshotRef.current && statusRef.current === "finished") {
+        return;
+      }
       if (trainingMode) {
         const trainingPassage = buildTrainingModePassage(trainingMode, durationSeconds);
         const nextConfigKey = trainingMode.configKey ?? trainingMode.passageId;
@@ -514,6 +537,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         setPassage(trainingPassage);
         setPreviousResult(readPreviousResult(trainingPassage.id, previousResultScope));
         if (didTrainingConfigChange) {
+          completedAttemptSnapshotRef.current = null;
+          repeatedAttemptSnapshotRef.current = null;
+          repeatedTargetIdentityRef.current = null;
+          setRepeatedTargetIdentity(null);
           resetActiveSessionState({
             nextPassage: trainingPassage,
             nextPreviousResultScope: previousResultScope
@@ -604,6 +631,32 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   );
 
   const resetSession = useCallback(() => {
+    const completedAttempt = completedAttemptSnapshotRef.current;
+    if (completedAttempt) {
+      const repeatedPassage = { ...completedAttempt.passage };
+      completedAttemptSnapshotRef.current = null;
+      repeatedAttemptSnapshotRef.current = completedAttempt;
+      setPassage(repeatedPassage);
+      repeatedTargetIdentityRef.current = completedAttempt.targetIdentity;
+      setRepeatedTargetIdentity(completedAttempt.targetIdentity);
+      resetActiveSessionState({
+        nextPassage: repeatedPassage,
+        previousResultOverride: copyPreviousTypingResult(completedAttempt.previousResult)
+      });
+      return;
+    }
+
+    repeatedTargetIdentityRef.current = null;
+    repeatedAttemptSnapshotRef.current = null;
+    setRepeatedTargetIdentity(null);
+    resetActiveSessionState();
+  }, [resetActiveSessionState]);
+
+  const resetForUnrelatedTarget = useCallback(() => {
+    completedAttemptSnapshotRef.current = null;
+    repeatedAttemptSnapshotRef.current = null;
+    repeatedTargetIdentityRef.current = null;
+    setRepeatedTargetIdentity(null);
     resetActiveSessionState();
   }, [resetActiveSessionState]);
 
@@ -613,18 +666,75 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     window.requestAnimationFrame(() => resultPanelRestartButtonRef.current?.focus());
   }, []);
 
-  const finishTest = useCallback(
-    (completionReason: CompletionReason) => {
-      const sessionStartedAt = startedAtRef.current;
+  const beginSessionTransaction = useCallback((sessionStartedAt: number, sessionId: string) => {
+    if (!passage) return null;
+    const modeKind = isTimedMode
+      ? "timed" as const
+      : trainingSession?.kind === "words"
+        ? "finite" as const
+        : "infinite" as const;
+    const coordinator = createTypingSessionCoordinator({
+      id: sessionId,
+      startedAt: sessionStartedAt,
+      target: {
+        passageId: passage.id ?? null,
+        title: passage.title ?? "Untitled passage",
+        category: passage.category,
+        language: passage.language ?? (passage.category === "training_chinese" ? "chinese" : practiceLanguage),
+        style: passage.style,
+        source: passage.source,
+        displayTokens: passage.displayTokens,
+        metricUnit: passage.metricUnit,
+        displayText: passage.text.trim(),
+        comparableText: (passage.comparableText ?? passage.text).trim()
+      },
+      mode: {
+        kind: modeKind,
+        durationSeconds: modeKind === "timed" ? durationSeconds : null
+      },
+      rules: { ...rules }
+    });
+    sessionCoordinatorRef.current = coordinator;
+    return coordinator;
+  }, [durationSeconds, isTimedMode, passage, practiceLanguage, rules, trainingSession?.kind]);
 
-      if (finishedRef.current || statusRef.current !== "running" || sessionStartedAt === null || !passage) {
+  const finishSession = useCallback(
+    (completionReason: CompletionReason, expectedSessionId = activeAttemptIdRef.current) => {
+      const coordinator = sessionCoordinatorRef.current;
+      if (!coordinator || statusRef.current !== "running") {
         return;
       }
 
       const finishedTime = Date.now();
-      const measuredElapsed = Math.max(1, Math.floor((finishedTime - sessionStartedAt) / 1000));
+      const completedSession = coordinator.finish({
+        sessionId: expectedSessionId,
+        reason: completionReason,
+        finishedAt: finishedTime,
+        input: typedTextRef.current,
+        timeline: attemptTimelineRef.current,
+        errorEvents: attemptErrorEventsRef.current
+      });
+      if (!completedSession) return;
+
+      const measuredElapsed = completedSession.elapsedSeconds;
       const finalElapsed = completionReason === "time_up" && isTimedMode ? durationSeconds : measuredElapsed;
       const resultDurationSeconds = getComparableDurationSeconds(practiceMode, finalElapsed);
+      const sessionPassage: StoredPassage = {
+        id: completedSession.target.passageId ?? undefined,
+        title: completedSession.target.title,
+        category: completedSession.target.category,
+        style: completedSession.target.style ?? "Formal",
+        language: completedSession.target.language,
+        source: completedSession.target.source,
+        text: completedSession.target.displayText,
+        comparableText: completedSession.target.comparableText,
+        displayTokens: completedSession.target.displayTokens
+          ? [...completedSession.target.displayTokens]
+          : undefined,
+        metricUnit: completedSession.target.metricUnit,
+        updatedAt: new Date(completedSession.startedAt).toISOString()
+      };
+      const sessionRules = completedSession.rules ?? rules;
 
       finishedRef.current = true;
       statusRef.current = "finished";
@@ -635,49 +745,80 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setStatus("finished");
       isResultModalOpenRef.current = true;
       setIsResultModalOpen(true);
-      // Blur immediately; the disabled prop is applied on the next render and
-      // a held key could otherwise race the result modal.
+      cancelPendingChineseImeFallback();
+      isComposingRef.current = false;
+      explicitCompositionActiveRef.current = false;
+      awaitingChineseFinalCommitRef.current = false;
+      isInputActivatedRef.current = false;
+      setIsInputActivated(false);
+      if (scrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollFrameRef.current);
+        scrollFrameRef.current = null;
+      }
+      if (previousPaceAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(previousPaceAnimationFrameRef.current);
+        previousPaceAnimationFrameRef.current = null;
+      }
+      if (previousPaceMarkerRef.current) {
+        previousPaceMarkerRef.current.style.opacity = "0";
+      }
+      currentCharRef.current = null;
+      terminalCaretRef.current = null;
+      // Blur immediately; disabled props are applied on the next render and a
+      // held key or late IME event could otherwise race the frozen Result.
       pendingSoundKeyTypeRef.current = null;
       inputRef.current?.blur();
+      chineseImeInputRef.current?.blur();
       setRecentResults([]);
       setProgressMilestones([]);
       const finalResult = calculateResult({
-        target: sourceText,
-        typed: typedTextRef.current,
+        target: completedSession.target.comparableText,
+        typed: completedSession.input,
         elapsedSeconds: Math.max(finalElapsed, 1),
         durationSeconds: resultDurationSeconds,
-        category: passage.category,
-        language: passage.language,
-        rules,
+        category: sessionPassage.category,
+        language: sessionPassage.language,
+        rules: sessionRules,
         completionReason
       });
       const finalTimelinePoint: AttemptTimelinePoint = {
         timeSeconds: finalResult.timeUsedSeconds,
-        characterIndex: typedTextRef.current.length,
+        characterIndex: completedSession.input.length,
         wpm: finalResult.wpm,
         accuracy: finalResult.accuracy,
-        burstWpm: getBurstWpm(typedCharacterDelaysRef.current, passage.language === "chinese" || passage.category === "training_chinese"),
-        errorCount: attemptErrorEventsRef.current.length
+        burstWpm: getBurstWpm(
+          typedCharacterDelaysRef.current,
+          sessionPassage.language === "chinese" || sessionPassage.category === "training_chinese"
+        ),
+        errorCount: completedSession.errorEvents.length
       };
-      const completedTimeline = upsertAttemptTimelinePoint(attemptTimelineRef.current, finalTimelinePoint);
+      const completedTimeline = upsertAttemptTimelinePoint([...completedSession.timeline], finalTimelinePoint);
       attemptTimelineRef.current = completedTimeline;
       const isSuspicious = suspiciousAttemptRef.current;
       const shouldPersistResult = isPersistableCompletion(completionReason);
       const isProgressionEligible = isProgressionEligibleResult(finalResult);
 
-      const comparisonPreviousResult = readPreviousResult(passage.id, previousResultScope);
+      const comparisonPreviousResult = readPreviousResult(sessionPassage.id, previousResultScope);
       let attemptDetail: TypingAttemptDetail | null = null;
       if (shouldPersistResult && isProgressionEligible && !isSuspicious) {
+        const paceTimeline = completedTimeline.map(toPreviousPaceTimelinePoint);
         writePreviousResult(
-          passage,
+          sessionPassage,
           finalResult,
-          typedTextRef.current.length,
+          completedSession.input.length,
           previousResultScope,
-          completedTimeline.map(toPreviousPaceTimelinePoint)
+          paceTimeline
         );
-        if (previousResultScope === "infinite") {
-          setIsInfinitePreviousPaceRepeat(true);
-        }
+        completedAttemptSnapshotRef.current = createCompletedAttemptSnapshot({
+          passage: sessionPassage,
+          previousResult: createPreviousTypingResult(
+            sessionPassage,
+            finalResult,
+            completedSession.input.length,
+            paceTimeline
+          ),
+          targetIdentity: getTargetIdentity(sessionPassage)
+        });
         if (user) {
           attemptDetail = buildTypingAttemptDetail({
             userId: user.id,
@@ -690,8 +831,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       }
       setPreviousResult(comparisonPreviousResult);
       setLastResult(finalResult);
+      setLastResultPassage(sessionPassage);
       setAttemptTimeline(completedTimeline);
-      setAttemptErrorEvents([...attemptErrorEventsRef.current]);
+      setAttemptErrorEvents([...completedSession.errorEvents]);
       setIsAttemptSuspicious(isSuspicious);
 
       const completedSessionGeneration = activeSessionGenerationRef.current;
@@ -705,7 +847,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         void getSupabaseOwnTypingResults(user.id, 50)
           .then((typingResults) => {
             if (isCurrentCompletedSession()) {
-              setRecentResults(filterComparableRecentResults(typingResults, passage, finalResult));
+              setRecentResults(filterComparableRecentResults(typingResults, sessionPassage, finalResult));
             }
           })
           .catch((error) => {
@@ -717,10 +859,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           void saveSupabaseTypingResult({
             userId: user.id,
             attemptId: completedAttemptId,
-            passage,
+            passage: sessionPassage,
             result: finalResult,
-            typedCharacters: typedTextRef.current.length,
-            supabasePassageId: passage.id ?? null
+            typedCharacters: completedSession.input.length,
+            supabasePassageId: sessionPassage.id ?? null
           })
             .then((savedResult) => {
               if (isCurrentCompletedSession()) {
@@ -740,7 +882,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                     setProgressMilestones(
                       buildProgressCelebrationMilestones(
                         typingResults.filter((typingResult) => typingResult.id !== savedResult.id),
-                        passage,
+                        sessionPassage,
                         { ...finalResult, completedAt: savedResult.created_at }
                       )
                     );
@@ -759,7 +901,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         }
       }
     },
-    [durationSeconds, isTimedMode, passage, practiceMode, previousResultScope, rules, sourceText, user]
+    [cancelPendingChineseImeFallback, durationSeconds, isTimedMode, practiceMode, previousResultScope, rules, user]
   );
 
   const startSession = useCallback(() => {
@@ -770,6 +912,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     finishedRef.current = false;
     activeAttemptIdRef.current = createClientAttemptId();
     const now = Date.now();
+    beginSessionTransaction(now, activeAttemptIdRef.current);
     statusRef.current = "running";
     startedAtRef.current = now;
     typedTextRef.current = "";
@@ -789,19 +932,36 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     setStartedAt(now);
     setFinishedAt(null);
     setLastResult(null);
+    setLastResultPassage(null);
     isResultModalOpenRef.current = false;
     setProgressMilestones([]);
-    setPreviousResult(readPreviousResult(passage.id, previousResultScope));
+    const completedAttempt = repeatedAttemptSnapshotRef.current;
+    const repeatedPreviousResult =
+      completedAttempt &&
+      repeatedTargetIdentityRef.current === completedAttempt.targetIdentity &&
+      getTargetIdentity(passage) === completedAttempt.targetIdentity
+        ? copyPreviousTypingResult(completedAttempt.previousResult)
+        : readPreviousResult(passage.id, previousResultScope);
+    setPreviousResult(repeatedPreviousResult);
     isInputActivatedRef.current = true;
     setIsInputActivated(true);
     setStatus("running");
-  }, [durationSeconds, isFinished, isTimedMode, passage, previousResultScope, sourceText]);
+  }, [
+    beginSessionTransaction,
+    durationSeconds,
+    isFinished,
+    isTimedMode,
+    passage,
+    previousResultScope,
+    sourceText
+  ]);
 
   useEffect(() => {
     if (!isRunning || isFinished || !startedAt) {
       return;
     }
 
+    const timerSessionId = activeAttemptIdRef.current;
     const timer = window.setInterval(() => {
       const elapsed = Math.floor((Date.now() - startedAt) / 1000);
       const remaining = isTimedMode ? Math.max(0, durationSeconds - elapsed) : 0;
@@ -813,12 +973,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
       if (isTimedMode && remaining <= 0) {
         window.clearInterval(timer);
-        finishTest("time_up");
+        finishSession("time_up", timerSessionId);
       }
     }, 250);
 
     return () => window.clearInterval(timer);
-  }, [durationSeconds, finishTest, isFinished, isRunning, isTimedMode, recordAttemptTimelinePoint, startedAt]);
+  }, [durationSeconds, finishSession, isFinished, isRunning, isTimedMode, recordAttemptTimelinePoint, startedAt]);
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -856,7 +1016,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
       if (isRunning && isManualFinishShortcut(event.key)) {
         event.preventDefault();
-        finishTest("manual");
+        finishSession("manual");
       }
     };
 
@@ -878,7 +1038,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", resetTabState);
     };
-  }, [finishTest, isRunning, resetSession, rules.requireTabToStart, shouldUseChineseImeSink, startSession, status]);
+  }, [finishSession, isRunning, resetSession, rules.requireTabToStart, shouldUseChineseImeSink, startSession, status]);
 
   useEffect(() => {
     if (isRunning) {
@@ -1066,6 +1226,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       activeAttemptIdRef.current = createClientAttemptId();
       statusRef.current = "running";
       startedAtRef.current = now;
+      beginSessionTransaction(now, activeAttemptIdRef.current);
       attemptTimelineRef.current = [];
       attemptErrorEventsRef.current = [];
       activeErrorIndexesRef.current = new Set();
@@ -1080,6 +1241,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setFinishedAt(null);
       setRemainingSeconds(isTimedMode ? durationSeconds : 0);
       setLastResult(null);
+      setLastResultPassage(null);
       isResultModalOpenRef.current = false;
       setIsResultModalOpen(false);
       isInputActivatedRef.current = true;
@@ -1103,7 +1265,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     setTypedText(nextValue);
 
     if (shouldFinishCompletedText(trainingSession?.kind, sourceText, nextValue, rules)) {
-      finishTest("text_completed");
+      finishSession("text_completed");
     }
   }
 
@@ -1359,8 +1521,12 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     const nextDurationSeconds = nextIsTimedMode ? nextMode.seconds : 60;
     const nextTextMode: StoredPassageTextMode = nextIsTimedMode ? "timed" : "single";
 
-    setIsInfinitePreviousPaceRepeat(false);
-    resetSession();
+    if (completedAttemptSnapshotRef.current && statusRef.current === "finished") {
+      setPracticeModeId(modeId);
+      setRemainingSeconds(nextIsTimedMode ? nextMode.seconds : 0);
+      return;
+    }
+    resetForUnrelatedTarget();
     setPracticeModeId(modeId);
     setRemainingSeconds(nextIsTimedMode ? nextMode.seconds : 0);
     if (trainingMode) {
@@ -1372,6 +1538,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
+    // Do not allow a new session to freeze the previous mode's passage while
+    // the single/timed target snapshot is being rebuilt.
+    setPassage(null);
     const activeLibrary = libraryRef.current.length > 0 ? libraryRef.current : await loadActivePassageLibrary();
     setAvailableLibrary(activeLibrary);
     choosePracticePassage({
@@ -1389,8 +1558,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
-    setIsInfinitePreviousPaceRepeat(false);
-    resetSession();
+    resetForUnrelatedTarget();
     setPracticeLanguage(language);
     setSelectedLanguage(language);
     setSelectedCategoryState(ALL_FILTER);
@@ -1398,6 +1566,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     setSelectedPassageId(RANDOM_PASSAGE_ID);
     setPassageSelectionMode("random");
 
+    setPassage(null);
     const activeLibrary = libraryRef.current.length > 0 ? libraryRef.current : await loadActivePassageLibrary();
     setAvailableLibrary(activeLibrary);
     choosePracticePassage({
@@ -1411,8 +1580,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }
 
   function handleCategorySelection(category: CategoryFilter) {
-    setIsInfinitePreviousPaceRepeat(false);
-    resetSession();
+    resetForUnrelatedTarget();
     setSelectedCategoryState(category);
     setSelectedCategory(category);
     choosePracticePassage({
@@ -1426,8 +1594,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }
 
   function handlePassageSelection(passageId: string) {
-    setIsInfinitePreviousPaceRepeat(false);
-    resetSession();
+    resetForUnrelatedTarget();
     choosePracticePassage({
       library: availableLibrary,
       category: selectedCategory,
@@ -1443,8 +1610,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
-    setIsInfinitePreviousPaceRepeat(false);
-    resetSession();
+    resetForUnrelatedTarget();
     if (trainingMode) {
       const nextPassage = buildTrainingModePassage(trainingMode, durationSeconds);
       setPassage(nextPassage);
@@ -1506,8 +1672,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
-    setIsInfinitePreviousPaceRepeat(false);
-    resetSession();
+    resetForUnrelatedTarget();
     setPassageSelectionMode("random");
     const library = getFilteredLibrary();
     setSelectedPassageId(RANDOM_PASSAGE_ID);
@@ -1744,13 +1909,13 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                       <TrainingTokenCharacterLayer
                         characters={comparison.characters}
                         tokens={passage.displayTokens}
-                        activeCharacterIndex={activeCharacterIndex}
+                        activeCharacterIndex={isFinished ? -1 : activeCharacterIndex}
                         setCharacterRef={setCharacterRef}
                         showMistakes={rules.showMistakesImmediately || isFinished}
                         themeSettings={themeSettings}
                       />
                     ) : comparison.characters.map((character, index) => {
-                      const isCurrent = index === activeCharacterIndex;
+                      const isCurrent = !isFinished && index === activeCharacterIndex;
                       const showActiveCaret = isCurrent && themeSettings.caretStyle !== "off";
                       const isLineBreak = character.expected === "\n" || character.actual === "\n";
 
@@ -1761,16 +1926,17 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                               ref={setCharacterRef(index)}
                               data-index={index}
                               data-target-index={character.index}
-                              data-active-target={isCurrent ? "true" : undefined}
                               data-typing-caret={showActiveCaret ? "true" : undefined}
                               aria-label={character.status === "wrong" ? "Missed line break" : "Line break"}
                               className={clsx(
                                 "inline-block min-w-[0.7em]",
+                                isCurrent && "relative",
                                 characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings),
                                 showActiveCaret && activeCaretClass(themeSettings),
                                 character.status === "untyped" && "text-paper/20"
                               )}
                             >
+                              <ActiveTargetAnchor isCurrent={isCurrent} targetIndex={character.index} />
                               <TypingCaretIndicator isCurrent={showActiveCaret} />
                               {shouldShowLineBreakMarker(character.status, rules.showMistakesImmediately || isFinished) ? "↵" : ""}
                             </span>
@@ -1785,13 +1951,14 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                           ref={setCharacterRef(index)}
                           data-index={index}
                           data-target-index={character.index}
-                          data-active-target={isCurrent ? "true" : undefined}
                           data-typing-caret={showActiveCaret ? "true" : undefined}
                           className={clsx(
                             characterClass(character.status, rules.showMistakesImmediately || isFinished, themeSettings),
+                            isCurrent && "relative",
                             showActiveCaret && activeCaretClass(themeSettings)
                           )}
                         >
+                          <ActiveTargetAnchor isCurrent={isCurrent} targetIndex={character.index} />
                           <TypingCaretIndicator isCurrent={showActiveCaret} />
                           {character.actual || character.expected}
                         </span>
@@ -1819,7 +1986,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                 )}
               </p>
               {shouldShowPreviousPaceMarker && (
-                <PreviousPaceMarker ref={previousPaceMarkerRef} style={themeSettings.previousPaceStyle} />
+                <PreviousPaceMarker ref={previousPaceMarkerRef} />
               )}
             </div>
           </div>
@@ -1911,20 +2078,20 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           <AdPlaceholder variant="banner" />
         </div>
 
-        {lastResult && passage && (
+        {lastResult && lastResultPassage && (
           <ResultsPanel
             result={lastResult}
-            metricLabel={getMetricLabel(passage)}
+            metricLabel={getMetricLabel(lastResultPassage)}
             onRestart={resetSession}
             onNextPassage={loadNextPassage}
             restartButtonRef={resultPanelRestartButtonRef}
             compact={isCompactPractice}
           />
         )}
-        {lastResult && passage && isResultModalOpen && (
+        {lastResult && lastResultPassage && isResultModalOpen && (
           <ResultModal
             result={lastResult}
-            passage={passage}
+            passage={lastResultPassage}
             onRestart={resetSession}
             onNextPassage={loadNextPassage}
             previousResult={previousResult}
@@ -2058,13 +2225,14 @@ function TrainingTokenCharacterLayer({
               ref={setCharacterRef(comparisonIndex)}
               data-index={comparisonIndex}
               data-target-index={character.index}
-              data-active-target={isCurrent ? "true" : undefined}
               data-typing-caret={showActiveCaret ? "true" : undefined}
               className={clsx(
                 characterClass(character.status, showMistakes, themeSettings),
+                isCurrent && "relative",
                 showActiveCaret && activeCaretClass(themeSettings)
               )}
             >
+              <ActiveTargetAnchor isCurrent={isCurrent} targetIndex={character.index} />
               <TypingCaretIndicator isCurrent={showActiveCaret} />
               {character.actual || character.expected}
             </span>
@@ -2087,13 +2255,14 @@ function TrainingTokenCharacterLayer({
             ref={setCharacterRef(comparisonIndex)}
             data-index={comparisonIndex}
             data-target-index={character.index}
-            data-active-target={isCurrent ? "true" : undefined}
             data-typing-caret={showActiveCaret ? "true" : undefined}
             className={clsx(
               characterClass(character.status, showMistakes, themeSettings),
+              isCurrent && "relative",
               showActiveCaret && activeCaretClass(themeSettings)
             )}
           >
+            <ActiveTargetAnchor isCurrent={isCurrent} targetIndex={character.index} />
             <TypingCaretIndicator isCurrent={showActiveCaret} />
             {character.actual || character.expected}
           </span>
@@ -2111,23 +2280,35 @@ function TypingCaretIndicator({ isCurrent }: { isCurrent: boolean }) {
   return <span data-typing-caret-indicator="true" aria-hidden="true" className="formaltype-caret-indicator" />;
 }
 
-const PreviousPaceMarker = React.forwardRef<HTMLSpanElement, { style: ThemeSettings["previousPaceStyle"] }>(
-  function PreviousPaceMarker({ style }, ref) {
+function ActiveTargetAnchor({ isCurrent, targetIndex }: { isCurrent: boolean; targetIndex: number }) {
+  if (!isCurrent) return null;
+  return (
+    <span
+      data-active-target="true"
+      data-target-index={targetIndex}
+      aria-hidden="true"
+      className="pointer-events-none absolute left-0 top-0 h-[1em] w-0"
+    />
+  );
+}
+
+const PreviousPaceMarker = React.forwardRef<HTMLSpanElement>(
+  function PreviousPaceMarker(_props, ref) {
     return (
       <span
         data-testid="previous-pace-marker"
         data-character-index="0"
         aria-hidden="true"
         ref={ref}
-        className={`formaltype-previous-pace-marker formaltype-previous-pace-${style}`}
+        className="formaltype-previous-pace-marker formaltype-previous-pace-fixed"
         style={{
           position: "absolute",
           left: 0,
           top: 0,
           display: "block",
-          width: style === "line" ? 2 : "0.62em",
-          height: style === "underline" ? "0.14em" : "0.95em",
-          marginTop: style === "underline" ? "0.82em" : undefined,
+          width: 2,
+          height: "0.58em",
+          marginTop: "0.19em",
           transform: "translate3d(0px, 0px, 0)",
           transition: "opacity 120ms ease",
           opacity: 0,
@@ -3614,6 +3795,49 @@ function caretSmoothDuration(setting: ThemeSettings["caretSmooth"]) {
 
 function shouldShowLineBreakMarker(status: string, revealMistakes: boolean) {
   return status === "current" || ((status === "wrong" || status === "extra") && revealMistakes);
+}
+
+function getTargetIdentity(passage: StoredPassage) {
+  return JSON.stringify({
+    passageId: passage.id ?? null,
+    language: passage.language ?? "english",
+    category: passage.category,
+    target: (passage.comparableText ?? passage.text).trim()
+  });
+}
+
+function createCompletedAttemptSnapshot(snapshot: {
+  passage: StoredPassage;
+  previousResult: PreviousTypingResult;
+  targetIdentity: string;
+}): CompletedAttemptSnapshot {
+  const passage = Object.freeze({
+    ...snapshot.passage,
+    displayTokens: snapshot.passage.displayTokens
+      ? Object.freeze([...snapshot.passage.displayTokens]) as unknown as string[]
+      : undefined
+  });
+  const previousPaceTimeline = snapshot.previousResult.previousPaceTimeline?.map((point) =>
+    Object.freeze({ ...point })
+  );
+  const previousResult = Object.freeze({
+    ...snapshot.previousResult,
+    previousPaceTimeline: previousPaceTimeline
+      ? Object.freeze(previousPaceTimeline) as unknown as PreviousTypingResult["previousPaceTimeline"]
+      : undefined
+  });
+  return Object.freeze({
+    passage,
+    previousResult,
+    targetIdentity: snapshot.targetIdentity
+  });
+}
+
+function copyPreviousTypingResult(previousResult: Readonly<PreviousTypingResult>): PreviousTypingResult {
+  return {
+    ...previousResult,
+    previousPaceTimeline: previousResult.previousPaceTimeline?.map((point) => ({ ...point }))
+  };
 }
 
 function TypingTimer({ value }: { value: string }) {
