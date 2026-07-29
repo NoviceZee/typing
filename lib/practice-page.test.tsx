@@ -85,6 +85,16 @@ vi.mock("@/lib/typingAttemptStorage", () => ({
 
 const mockedGetSupabaseAnalyticsTypingResults = vi.mocked(getSupabaseAnalyticsTypingResults);
 const mockedSaveSupabaseTypingResult = vi.mocked(saveSupabaseTypingResult);
+const REAL_POETRY_PASSAGES = [
+  {
+    id: "wang-wei-shanju-qioming",
+    text: "空山新雨後，天氣晚來秋。明月松間照，清泉石上流。竹喧歸浣女，蓮動下漁舟。隨意春芳歇，王孫自可留。"
+  },
+  {
+    id: "du-fu-denglou",
+    text: "花近高樓傷客心，萬方多難此登臨。錦江春色來天地，玉壘浮雲變古今。北極朝廷終不改，西山寇盜莫相侵。可憐後主還祠廟，日暮聊為梁甫吟。"
+  }
+] as const;
 const TOUCH_FIRST_INPUT_MEDIA_QUERY = "(hover: none) and (pointer: coarse)";
 const SOUND_PACKS = [
   "mechanical",
@@ -493,6 +503,8 @@ describe("PracticePage passage loading", () => {
     expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("typing-timer")).toBeNull();
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
+    expect(screen.queryByLabelText("Terminal typing caret")).toBeNull();
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.durationSeconds).toBe(60);
     expect(getResultAnalyticsDomain({ category: mockedSaveSupabaseTypingResult.mock.calls[0][0].passage.category })).toBe("english");
 
@@ -1262,15 +1274,230 @@ describe("PracticePage passage loading", () => {
   });
 
   it("requires and accepts the final Chinese punctuation before completing", async () => {
-    const target = "枯藤老樹昏鴉，\n小橋流水人家。";
+    const target = "空山新雨後，天氣晚來秋。\n明月松間照，清泉石上流。\n竹喧歸浣女，蓮動下漁舟。\n隨意春芳歇，王孫自可留。";
     const typed = target.replace(/\n/g, "");
     const input = await renderChineseInfiniteFixture(target, "poetry-final-punctuation");
 
     enterPracticeText(input, typed.slice(0, -1), "chinese");
     expect(screen.queryByRole("dialog", { name: /Session ended/i })).toBeNull();
-    enterPracticeText(input, typed, "chinese", typed.slice(0, -1));
+    expect((input as HTMLTextAreaElement).value.endsWith("留")).toBe(true);
+
+    fireEvent.compositionStart(input, { data: "" });
+    fireEvent.input(input, {
+      target: { value: typed },
+      nativeEvent: { isComposing: true, data: "。" }
+    });
+    fireEvent.compositionEnd(input, { data: "。" });
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
 
     expect(await screen.findByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expect((input as HTMLTextAreaElement).value).toBe(typed);
+    const finalEntry = Array.from(
+      screen.getByTestId("typing-character-layer").querySelectorAll<HTMLElement>("[data-target-index]")
+    ).at(-1);
+    expect(finalEntry?.textContent).toBe("。");
+    expect(screen.getByTestId("typing-character-layer").querySelector("[data-active-target='true']")).toBeNull();
+    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+  });
+
+  it.each(REAL_POETRY_PASSAGES)(
+    "keeps the final $id punctuation fallback alive when the first post-composition input is stale",
+    async ({ id, text }) => {
+      const input = await renderChineseInfiniteFixture(text, `real-poetry-stale-${id}`);
+      const prefix = text.slice(0, -1);
+
+      enterPracticeText(input, prefix, "chinese");
+      expect(
+        screen.getByTestId("typing-character-layer")
+          .querySelector("[data-active-target='true']")
+          ?.getAttribute("data-target-index")
+      ).toBe(String(text.length - 1));
+
+      vi.useFakeTimers();
+      fireEvent.compositionStart(input, { data: "" });
+      fireEvent.compositionEnd(input, {
+        data: "。",
+        target: { value: prefix }
+      });
+      fireEvent.input(input, {
+        target: { value: prefix },
+        nativeEvent: { isComposing: false, data: "。" }
+      });
+
+      (input as HTMLTextAreaElement).value = text;
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync();
+      });
+
+      expect((input as HTMLTextAreaElement).value).toBe(text);
+      expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+      expect(screen.getByTestId("typing-character-layer").querySelector("[data-active-target='true']")).toBeNull();
+    }
+  );
+
+  it.each(
+    REAL_POETRY_PASSAGES.flatMap((passage) =>
+      (["timed", "infinite"] as const).map((mode) => ({ ...passage, mode }))
+    )
+  )(
+    "completes the exact $id production poem once from a direct final input in $mode mode",
+    async ({ id, text, mode }) => {
+      const input = await renderChinesePracticeFixture(text, `real-poetry-direct-${mode}-${id}`, {
+        mode
+      });
+
+      fireEvent.input(input, {
+        target: { value: text },
+        nativeEvent: { isComposing: false, data: "。" }
+      });
+
+      expect((input as HTMLTextAreaElement).value).toBe(text);
+      expect(await screen.findAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+      const finalEntry = screen
+        .getByTestId("typing-character-layer")
+        .querySelector<HTMLElement>(`[data-target-index="${text.length - 1}"]`);
+      expect(finalEntry?.textContent).toBe("。");
+      expect(finalEntry?.className).toContain("formaltype-typed-correct");
+      expect(screen.getByTestId("typing-character-layer").querySelector("[data-active-target='true']")).toBeNull();
+    }
+  );
+
+  it.each(REAL_POETRY_PASSAGES)(
+    "completes multiline and trailing-newline storage for the exact $id poem",
+    async ({ id, text }) => {
+      const storedText = `${text.replaceAll("。", "。\n")}\n`;
+      const input = await renderChinesePracticeFixture(storedText, `real-poetry-multiline-${id}`, {
+        mode: "infinite"
+      });
+
+      enterPracticeText(input, text, "chinese");
+
+      expect(await screen.findAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+      expect(screen.getByTestId("typing-character-layer").querySelector("[data-active-target='true']")).toBeNull();
+    }
+  );
+
+  it.each(REAL_POETRY_PASSAGES)(
+    "completes the exact $id production target stored with Unicode line separators",
+    async ({ id, text }) => {
+      const productionStoredText = text.replace(/。(?=.)/g, "。\u2028");
+      const input = await renderChinesePracticeFixture(
+        productionStoredText,
+        `real-poetry-unicode-lines-${id}`,
+        { mode: "infinite" }
+      );
+
+      enterPracticeText(input, text, "chinese");
+
+      expect(await screen.findAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+      const finalEntry = screen
+        .getByTestId("typing-character-layer")
+        .querySelector<HTMLElement>(`[data-target-index="${text.length - 1}"]`);
+      expect(finalEntry).toBeTruthy();
+      expect(finalEntry?.textContent).toBe("。");
+      expect(finalEntry?.className).toContain("formaltype-typed-correct");
+    }
+  );
+
+  it.each(REAL_POETRY_PASSAGES)(
+    "restores the exact $id completed snapshot and Previous Pace after Restart",
+    async ({ id, text }) => {
+      const productionStoredText = text.replace(/。(?=.)/g, "。\u2028");
+      const input = await renderChinesePracticeFixture(
+        productionStoredText,
+        `real-poetry-restart-${id}`,
+        {
+          mode: "infinite",
+          start: false
+        }
+      );
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-07-29T12:00:00.000Z"));
+      fireEvent.keyDown(window, { key: "Tab" });
+      enterPracticeText(input, text.slice(0, 1), "chinese");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000);
+      });
+      enterPracticeText(input, text, "chinese", text.slice(0, 1));
+      expect(screen.getByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+      expect(screen.getByTestId("typing-character-layer").textContent).toBe(text);
+      fireEvent.keyDown(window, { key: "Tab" });
+      enterPracticeText(screen.getByLabelText("Typing input"), text.slice(0, 1), "chinese");
+
+      expect(screen.getByTestId("previous-pace-marker")).toBeTruthy();
+    },
+    10_000
+  );
+
+  it("finishes the exact poetry target by time_up even when the final punctuation is unresolved", async () => {
+    const { id, text } = REAL_POETRY_PASSAGES[1];
+    const productionStoredText = text.replace(/。(?=.)/g, "。\u2028");
+    const input = await renderChinesePracticeFixture(
+      productionStoredText,
+      `real-poetry-time-up-${id}`,
+      {
+        mode: "timed",
+        start: false
+      }
+    );
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-29T12:00:00.000Z"));
+    fireEvent.keyDown(window, { key: "Tab" });
+    enterPracticeText(input, text.slice(0, -1), "chinese");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_500);
+    });
+
+    expect(screen.getAllByRole("dialog", { name: /Time up/i })).toHaveLength(1);
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll("[data-typing-caret='true']")).toHaveLength(0);
+    expect(screen.queryByLabelText("Terminal typing caret")).toBeNull();
+  }, 10_000);
+
+  it("opens one timed Result when the exact Chinese poem ending is committed", async () => {
+    const target = "空山新雨後，天氣晚來秋。明月松間照，清泉石上流。竹喧歸浣女，蓮動下漁舟。隨意春芳歇，王孫自可留。";
+    window.localStorage.setItem(SELECTED_LANGUAGE_STORAGE_KEY, "chinese");
+    window.localStorage.setItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, "specific");
+    window.localStorage.setItem(ACTIVE_PASSAGE_ID_STORAGE_KEY, "timed-poetry-final-punctuation");
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage(
+          "timed-poetry-final-punctuation",
+          "山居秋暝",
+          target,
+          "chinese",
+          "詩詞",
+          "Poetry"
+        )
+      ])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toBe(target);
+    });
+    const input = screen.getByLabelText("Typing input");
+    fireEvent.keyDown(window, { key: "Tab" });
+    enterPracticeText(input, target.slice(0, -1), "chinese");
+    fireEvent.compositionStart(input, { data: "" });
+    fireEvent.input(input, {
+      target: { value: target },
+      nativeEvent: { isComposing: true, data: "。" }
+    });
+    fireEvent.compositionEnd(input, { data: "。" });
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    expect((input as HTMLTextAreaElement).value).toBe(target);
+    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
   });
 
   it("ignores a trailing stored newline when completing a Chinese classical passage", async () => {
@@ -1507,7 +1734,9 @@ describe("PracticePage passage loading", () => {
     expect(characterLayer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(1);
     expect(characterLayer.querySelector('[aria-label="Typing caret"]')).toBeNull();
     expect(marker.textContent).toBe("");
-    expect(marker.style.height).toBe("0.58em");
+    expect(marker.style.height).toBe("");
+    expect(marker.style.marginTop).toBe("");
+    expect(marker.style.top).toBe("");
 
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
@@ -1548,8 +1777,9 @@ describe("PracticePage passage loading", () => {
       const marker = screen.getByTestId("previous-pace-marker");
       expect(marker.className).toBe("formaltype-previous-pace-marker formaltype-previous-pace-fixed");
       expect(marker.style.width).toBe("2px");
-      expect(marker.style.height).toBe("0.58em");
-      expect(marker.style.marginTop).toBe("0.19em");
+      expect(marker.style.height).toBe("");
+      expect(marker.style.marginTop).toBe("");
+      expect(marker.style.top).toBe("");
     },
     10_000
   );
@@ -1984,7 +2214,7 @@ describe("PracticePage passage loading", () => {
     expect(layer.querySelector('[data-active-target="true"]')?.getAttribute("data-target-index")).toBe("2");
   });
 
-  it("marks the visible Practice caret across English spaces, line breaks, and Chinese text", async () => {
+  it("marks the visible Practice caret across English spaces, layout separators, and Chinese text", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
       JSON.stringify([
@@ -2004,7 +2234,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.change(englishInput, { target: { value: "A" } });
     expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("1");
     fireEvent.change(englishInput, { target: { value: "A B" } });
-    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("4");
+    expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("3");
 
     fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
     await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("今天再見"));
@@ -2561,6 +2791,20 @@ describe("PracticePage passage loading", () => {
 });
 
 async function renderChineseInfiniteFixture(target: string, id: string, start = true) {
+  return renderChinesePracticeFixture(target, id, { mode: "infinite", start });
+}
+
+async function renderChinesePracticeFixture(
+  target: string,
+  id: string,
+  {
+    mode,
+    start = true
+  }: {
+    mode: "timed" | "infinite";
+    start?: boolean;
+  }
+) {
   window.localStorage.setItem(SELECTED_LANGUAGE_STORAGE_KEY, "chinese");
   window.localStorage.setItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, "specific");
   window.localStorage.setItem(ACTIVE_PASSAGE_ID_STORAGE_KEY, id);
@@ -2572,12 +2816,20 @@ async function renderChineseInfiniteFixture(target: string, id: string, start = 
 
   render(<PracticePage />);
   await waitFor(() => {
-    expect(screen.getByTestId("typing-character-layer").textContent).toContain(target.trim().split("\n")[0]);
+    expect(screen.getByTestId("typing-character-layer").textContent).toContain(
+      target.trim().split(/\r\n|[\n\r\u2028\u2029]/)[0]
+    );
   });
-  fireEvent.click(screen.getByRole("button", { name: "Infinite" }));
+  if (mode === "infinite") {
+    fireEvent.click(screen.getByRole("button", { name: "Infinite" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("practice-passage-metadata").textContent).toContain("Infinite");
+    });
+  }
   await waitFor(() => {
-    expect(screen.getByTestId("practice-passage-metadata").textContent).toContain("Infinite");
-    expect(screen.getByTestId("typing-character-layer").textContent).toBe(target.trim().replace(/\n/g, ""));
+    expect(screen.getByTestId("typing-character-layer").textContent).toBe(
+      target.trim().replace(/[ \t]*(?:\r?\n|[\u2028\u2029])[ \t]*/g, "")
+    );
   });
   const input = screen.getByLabelText("Typing input");
   if (start) {

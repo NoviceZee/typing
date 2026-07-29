@@ -52,8 +52,10 @@ import {
 } from "@/lib/app-storage";
 import {
   createTypingSessionCoordinator,
+  getTypingSessionClock,
   type TypingSessionCoordinator
 } from "@/lib/typingSessionLifecycle";
+import { createCanonicalTypingTarget } from "@/lib/typingTarget";
 import {
   getActivePassageId,
   getActivePassageLibrary,
@@ -299,13 +301,21 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const shouldShowPracticeHeader =
     !trainingMode?.hideMetadata || !trainingMode?.hidePassageControls || !trainingMode?.hidePracticeModeControls;
   const shouldShowTypingHeader = Boolean(trainingMode?.controls) || shouldShowPracticeHeader;
-  const displayText = passage?.text.trim() ?? "";
-  const sourceText = (passage?.comparableText ?? passage?.text ?? "").trim();
+  const canonicalTarget = useMemo(
+    () =>
+      createCanonicalTypingTarget({
+        storedText: passage?.text ?? "",
+        comparableText: passage?.comparableText
+      }),
+    [passage?.comparableText, passage?.text]
+  );
+  const displayText = canonicalTarget.displayText;
+  const sourceText = canonicalTarget.comparableText;
   const isChinesePassage = passage?.language === "chinese" || passage?.category === "training_chinese";
   const isChineseTraining = passage?.category === "training_chinese";
   const shouldUseChineseImeSink = isChinesePassage;
   const shouldTraceIme = Boolean(
-    isChineseTraining &&
+    isChinesePassage &&
       typeof window !== "undefined" &&
       process.env.NODE_ENV !== "production" &&
       new URLSearchParams(window.location.search).get("imeDebug") === "1"
@@ -685,8 +695,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         source: passage.source,
         displayTokens: passage.displayTokens,
         metricUnit: passage.metricUnit,
-        displayText: passage.text.trim(),
-        comparableText: (passage.comparableText ?? passage.text).trim()
+        displayText: canonicalTarget.displayText,
+        comparableText: canonicalTarget.comparableText
       },
       mode: {
         kind: modeKind,
@@ -696,7 +706,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     });
     sessionCoordinatorRef.current = coordinator;
     return coordinator;
-  }, [durationSeconds, isTimedMode, passage, practiceLanguage, rules, trainingSession?.kind]);
+  }, [canonicalTarget, durationSeconds, isTimedMode, passage, practiceLanguage, rules, trainingSession?.kind]);
 
   const finishSession = useCallback(
     (completionReason: CompletionReason, expectedSessionId = activeAttemptIdRef.current) => {
@@ -717,7 +727,13 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       if (!completedSession) return;
 
       const measuredElapsed = completedSession.elapsedSeconds;
-      const finalElapsed = completionReason === "time_up" && isTimedMode ? durationSeconds : measuredElapsed;
+      const completedDurationSeconds = completedSession.mode.durationSeconds;
+      const finalElapsed =
+        completionReason === "time_up" &&
+        completedSession.mode.kind === "timed" &&
+        completedDurationSeconds !== null
+          ? completedDurationSeconds
+          : measuredElapsed;
       const resultDurationSeconds = getComparableDurationSeconds(practiceMode, finalElapsed);
       const sessionPassage: StoredPassage = {
         id: completedSession.target.passageId ?? undefined,
@@ -741,7 +757,13 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       elapsedSecondsRef.current = finalElapsed;
       setFinishedAt(finishedTime);
       setElapsedSeconds(finalElapsed);
-      setRemainingSeconds(isTimedMode ? (completionReason === "time_up" ? 0 : Math.max(0, durationSeconds - finalElapsed)) : 0);
+      setRemainingSeconds(
+        completedSession.mode.kind === "timed" && completedDurationSeconds !== null
+          ? completionReason === "time_up"
+            ? 0
+            : Math.max(0, completedDurationSeconds - finalElapsed)
+          : 0
+      );
       setStatus("finished");
       isResultModalOpenRef.current = true;
       setIsResultModalOpen(true);
@@ -901,7 +923,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         }
       }
     },
-    [cancelPendingChineseImeFallback, durationSeconds, isTimedMode, practiceMode, previousResultScope, rules, user]
+    [cancelPendingChineseImeFallback, practiceMode, previousResultScope, rules, user]
   );
 
   const startSession = useCallback(() => {
@@ -957,28 +979,40 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   ]);
 
   useEffect(() => {
-    if (!isRunning || isFinished || !startedAt) {
+    if (!isRunning || isFinished) {
       return;
     }
 
-    const timerSessionId = activeAttemptIdRef.current;
-    const timer = window.setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-      const remaining = isTimedMode ? Math.max(0, durationSeconds - elapsed) : 0;
+    const session = sessionCoordinatorRef.current?.getSession();
+    if (!session) {
+      return;
+    }
 
-      elapsedSecondsRef.current = elapsed;
-      recordAttemptTimelinePoint(elapsed, typedTextRef.current);
-      setElapsedSeconds(elapsed);
-      setRemainingSeconds(remaining);
-
-      if (isTimedMode && remaining <= 0) {
-        window.clearInterval(timer);
-        finishSession("time_up", timerSessionId);
+    const tickSessionClock = () => {
+      if (statusRef.current !== "running") {
+        return;
       }
-    }, 250);
 
+      const clock = getTypingSessionClock({
+        startedAt: session.startedAt,
+        now: Date.now(),
+        durationSeconds: session.mode.kind === "timed" ? session.mode.durationSeconds : null
+      });
+
+      elapsedSecondsRef.current = clock.displayElapsedSeconds;
+      recordAttemptTimelinePoint(clock.displayElapsedSeconds, typedTextRef.current);
+      setElapsedSeconds(clock.displayElapsedSeconds);
+      setRemainingSeconds(clock.displayRemainingSeconds ?? 0);
+
+      if (clock.shouldFinish) {
+        finishSession("time_up", session.id);
+      }
+    };
+
+    tickSessionClock();
+    const timer = window.setInterval(tickSessionClock, 250);
     return () => window.clearInterval(timer);
-  }, [durationSeconds, finishSession, isFinished, isRunning, isTimedMode, recordAttemptTimelinePoint, startedAt]);
+  }, [finishSession, isFinished, isRunning, recordAttemptTimelinePoint]);
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -1264,7 +1298,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     }
     setTypedText(nextValue);
 
-    if (shouldFinishCompletedText(trainingSession?.kind, sourceText, nextValue, rules)) {
+    const session = sessionCoordinatorRef.current?.getSession();
+    const completionTarget = session?.target.comparableText ?? sourceText;
+    if (shouldFinishCompletedText(trainingSession?.kind, completionTarget, nextValue, session?.rules ?? rules)) {
       finishSession("text_completed");
     }
   }
@@ -1291,8 +1327,11 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     if (didAddError) setAttemptErrorEvents([...attemptErrorEventsRef.current]);
   }
 
-  function syncChineseTextareaValue(source: "input" | "compositionend-fallback") {
-    const textareaValue = chineseImeInputRef.current?.value ?? "";
+  function syncChineseTextareaValue(
+    source: "input" | "compositionend-fallback",
+    committedTextareaValue?: string
+  ): "processed" | "duplicate" | "skipped" {
+    const textareaValue = committedTextareaValue ?? chineseImeInputRef.current?.value ?? "";
     const nextValue = getChineseComparableInput(textareaValue);
 
     if (
@@ -1301,7 +1340,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       finishedRef.current ||
       (rules.requireTabToStart && !isInputActivatedRef.current)
     ) {
-      return;
+      return "skipped";
     }
 
     if (!isRunning && nextValue.length === 0) {
@@ -1310,7 +1349,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         processed: false,
         textareaValue
       });
-      return;
+      return "skipped";
     }
 
     if (nextValue === typedTextRef.current) {
@@ -1319,7 +1358,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         processed: false,
         textareaValue
       });
-      return;
+      return "duplicate";
     }
 
     if (!isRunning && isChinesePassage) {
@@ -1330,18 +1369,42 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           processed: false,
           textareaValue
         });
-        return;
+        return "skipped";
       }
     }
 
+    const sessionTarget =
+      sessionCoordinatorRef.current?.getSession().target.comparableText ?? sourceText;
+    const committedComparison = validateTypedText({
+      targetText: sessionTarget,
+      typedText: nextValue,
+      rules: sessionCoordinatorRef.current?.getSession().rules ?? rules
+    });
+    const finalTargetIndex = Math.max(0, sessionTarget.length - 1);
+    const finalComparisonEntry = committedComparison.characters.find(
+      (character) => character.expected !== "" && character.index === finalTargetIndex
+    );
     logImeAction("sync-textarea-value", {
       source,
       processed: true,
+      rawDatabaseText: passage.text,
+      normalizedDisplayText: displayText,
+      immutableSessionTarget: sessionTarget,
+      renderedTarget: sourceText,
+      textareaCommittedValue: textareaValue,
+      comparisonTarget: sessionTarget,
+      rawLength: passage.text.length,
+      comparableLength: sessionTarget.length,
+      finalPunctuationRawIndex: passage.text.lastIndexOf("。"),
+      finalPunctuationComparableOrdinal: sessionTarget.lastIndexOf("。"),
+      finalComparisonEntry,
+      activeTargetIndex: committedComparison.activeTargetIndex ?? null,
       textareaLength: textareaValue.length,
-      comparableLength: nextValue.length
+      comparableInputLength: nextValue.length
     });
 
     handleTyping(nextValue);
+    return "processed";
   }
 
   function logImeAction(action: string, details: Record<string, unknown> = {}) {
@@ -1350,7 +1413,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     }
 
     imeDebugSequenceRef.current += 1;
-    console.info("[Typing Station IME]", {
+    console.info("[Typing Station IME]", JSON.stringify({
       sequence: imeDebugSequenceRef.current,
       eventType: action,
       timestamp: Date.now(),
@@ -1362,7 +1425,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       refValue: chineseImeInputRef.current?.value ?? "",
       fallbackPending: chineseImeFallbackTimeoutRef.current !== null,
       ...details
-    });
+    }));
   }
 
   function logImeEvent(eventType: string, event: React.SyntheticEvent<HTMLTextAreaElement>) {
@@ -1378,7 +1441,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     };
 
     imeDebugSequenceRef.current += 1;
-    console.info("[Typing Station IME]", {
+    console.info("[Typing Station IME]", JSON.stringify({
       sequence: imeDebugSequenceRef.current,
       eventType,
       timestamp: Date.now(),
@@ -1395,7 +1458,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       currentTargetValue: event.currentTarget.value,
       refValue: chineseImeInputRef.current?.value ?? inputRef.current?.value ?? "",
       fallbackPending: chineseImeFallbackTimeoutRef.current !== null
-    });
+    }));
   }
 
   function handleChineseImeKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -1441,9 +1504,15 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
-    cancelPendingChineseImeFallback();
-    awaitingChineseFinalCommitRef.current = false;
-    syncChineseTextareaValue("input");
+    const wasAwaitingFinalCommit = awaitingChineseFinalCommitRef.current;
+    const outcome = syncChineseTextareaValue("input", event.currentTarget.value);
+    // macOS can emit a non-composing input whose value is still the prefix
+    // seen before compositionend. Keep the scheduled DOM-value read alive
+    // until a genuinely new committed value has been processed.
+    if (!wasAwaitingFinalCommit || outcome === "processed") {
+      cancelPendingChineseImeFallback();
+      awaitingChineseFinalCommitRef.current = false;
+    }
   }
 
   function handleChineseChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -1456,6 +1525,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     isComposingRef.current = false;
     awaitingChineseFinalCommitRef.current = true;
     const sessionGenerationId = activeSessionGenerationRef.current;
+    const textarea = event.currentTarget;
     cancelPendingChineseImeFallback();
     chineseImeFallbackTimeoutRef.current = window.setTimeout(() => {
       chineseImeFallbackTimeoutRef.current = null;
@@ -1467,7 +1537,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         return;
       }
 
-      syncChineseTextareaValue("compositionend-fallback");
+      syncChineseTextareaValue("compositionend-fallback", textarea.value);
       if (sessionGenerationId === activeSessionGenerationRef.current) {
         awaitingChineseFinalCommitRef.current = false;
       }
@@ -1887,6 +1957,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
               ref={typingTextRef}
               className={clsx(
                 "relative mx-auto",
+                `formaltype-typing-size-${themeSettings.typingTextSize}`,
                 passage?.displayTokens?.length ? "w-fit max-w-full" : `formaltype-typing-width-${themeSettings.typingWidth}`
               )}
               data-testid="typing-text-container"
@@ -2304,11 +2375,8 @@ const PreviousPaceMarker = React.forwardRef<HTMLSpanElement>(
         style={{
           position: "absolute",
           left: 0,
-          top: 0,
           display: "block",
           width: 2,
-          height: "0.58em",
-          marginTop: "0.19em",
           transform: "translate3d(0px, 0px, 0)",
           transition: "opacity 120ms ease",
           opacity: 0,
@@ -3798,11 +3866,15 @@ function shouldShowLineBreakMarker(status: string, revealMistakes: boolean) {
 }
 
 function getTargetIdentity(passage: StoredPassage) {
+  const canonicalTarget = createCanonicalTypingTarget({
+    storedText: passage.text,
+    comparableText: passage.comparableText
+  });
   return JSON.stringify({
     passageId: passage.id ?? null,
     language: passage.language ?? "english",
     category: passage.category,
-    target: (passage.comparableText ?? passage.text).trim()
+    target: canonicalTarget.comparableText
   });
 }
 

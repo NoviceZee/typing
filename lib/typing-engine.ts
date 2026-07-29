@@ -1,5 +1,8 @@
 import { normalizeEquivalentTypingPunctuation } from "./passageTextNormalization";
 import { isProgressionEligibleResult } from "./resultEligibility";
+import { normalizeComparableUnicode } from "./typingTarget";
+
+export { normalizeComparableUnicode } from "./typingTarget";
 
 export type PracticeCategory =
   | "Business email"
@@ -247,16 +250,6 @@ export function validateTypedText({
     normalizeComparableUnicode(typedText),
     rules
   );
-}
-
-export function normalizeComparableUnicode(value: string): string {
-  // Canonical composition removes visually irrelevant encoding differences
-  // without compatibility-folding authored full-width Chinese punctuation.
-  return value
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .normalize("NFC")
-    .replace(/[\uFE00-\uFE0F]|\uDB40[\uDD00-\uDDEF]/g, "");
 }
 
 export function compareTyping(target: string, typed: string, rules: TypingRules): TypingComparison {
