@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LeaderboardPage, { formatLeaderboardDuration } from "../pages/leaderboard";
@@ -9,7 +9,8 @@ import { getSupabaseLeaderboardResults } from "@/lib/typingResultStorage";
 
 const mockState = vi.hoisted(() => ({
   user: null as { id: string; email: string } | null,
-  isLoading: false
+  isLoading: false,
+  ownResultIds: new Set<string>()
 }));
 
 vi.mock("@/components/AppShell", () => ({
@@ -29,7 +30,7 @@ vi.mock("@/lib/typingResultStorage", async () => {
   return {
     ...actual,
     getSupabaseLeaderboardCategories: vi.fn().mockResolvedValue(["Business email"]),
-    getSupabaseOwnTypingResultIds: vi.fn().mockResolvedValue(new Set()),
+    getSupabaseOwnTypingResultIds: vi.fn().mockImplementation(() => Promise.resolve(mockState.ownResultIds)),
     getSupabaseLeaderboardResults: vi.fn().mockResolvedValue([
       {
         id: "result-1",
@@ -51,6 +52,7 @@ describe("LeaderboardPage", () => {
   beforeEach(() => {
     mockState.user = null;
     mockState.isLoading = false;
+    mockState.ownResultIds = new Set();
     mockedGetSupabaseLeaderboardResults.mockClear();
     mockedGetSupabaseLeaderboardResults.mockResolvedValue([
       {
@@ -80,7 +82,7 @@ describe("LeaderboardPage", () => {
     render(<LeaderboardPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("@formal_typist")).toBeTruthy();
+      expect(screen.getAllByText("@formal_typist")).toHaveLength(2);
     });
     expect(screen.queryByText("typist@example.com")).toBeNull();
   });
@@ -88,9 +90,10 @@ describe("LeaderboardPage", () => {
   it("links public handles to public profile pages", async () => {
     render(<LeaderboardPage />);
 
-    const profileLink = await screen.findByRole("link", { name: "@formal_typist" });
+    const profileLinks = await screen.findAllByRole("link", { name: "@formal_typist" });
 
-    expect(profileLink.getAttribute("href")).toBe("/u/formal_typist");
+    expect(profileLinks).toHaveLength(2);
+    expect(profileLinks.every((link) => link.getAttribute("href") === "/u/formal_typist")).toBe(true);
   });
 
   it("defaults to today with the daily heading", async () => {
@@ -103,6 +106,28 @@ describe("LeaderboardPage", () => {
         expect.objectContaining({ timeRange: "today" })
       );
     });
+  });
+
+  it("exposes named filter groups with selected-state and focus contracts", async () => {
+    render(<LeaderboardPage />);
+
+    const groups = [
+      "Leaderboard domain",
+      "Leaderboard time range",
+      "Leaderboard duration",
+      "Leaderboard category"
+    ];
+
+    for (const name of groups) {
+      expect(await screen.findByRole("group", { name })).toBeTruthy();
+    }
+
+    const today = screen.getByRole("button", { name: "Today" });
+    today.focus();
+    expect(document.activeElement).toBe(today);
+    expect(today.getAttribute("aria-pressed")).toBe("true");
+    expect(today.getAttribute("data-selected-indicator")).toBe("underline");
+    expect(today.getAttribute("data-focus-ring")).toBe("standard");
   });
 
   it("updates the heading and query range from segmented range buttons", async () => {
@@ -123,6 +148,7 @@ describe("LeaderboardPage", () => {
       fireEvent.click(screen.getByRole("button", { name: buttonLabel }));
 
       expect(screen.getByRole("heading", { name: heading })).toBeTruthy();
+      expect(screen.getByRole("button", { name: buttonLabel }).getAttribute("aria-pressed")).toBe("true");
       await waitFor(() => {
         expect(mockedGetSupabaseLeaderboardResults).toHaveBeenLastCalledWith(
           expect.objectContaining({ timeRange })
@@ -132,6 +158,49 @@ describe("LeaderboardPage", () => {
 
     expect(screen.getByText("No saved typing results match this time range.")).toBeTruthy();
     expect(screen.queryByText("typist@example.com")).toBeNull();
+  });
+
+  it("announces loading, error, and empty states with the correct semantics", async () => {
+    mockedGetSupabaseLeaderboardResults.mockImplementationOnce(() => new Promise(() => undefined));
+    const loadingView = render(<LeaderboardPage />);
+    expect(screen.getByRole("status", { name: "Loading leaderboard" })).toBeTruthy();
+    loadingView.unmount();
+
+    mockedGetSupabaseLeaderboardResults.mockRejectedValueOnce(new Error("Leaderboard could not be loaded."));
+    const errorView = render(<LeaderboardPage />);
+    expect((await screen.findByRole("alert")).textContent).toContain("Leaderboard could not be loaded.");
+    expect(screen.queryByRole("region", { name: "Ranked results" })).toBeNull();
+    errorView.unmount();
+
+    mockedGetSupabaseLeaderboardResults.mockResolvedValueOnce([]);
+    render(<LeaderboardPage />);
+    expect((await screen.findByRole("status", { name: "No leaderboard results" })).textContent).toContain(
+      "No saved typing results match this time range."
+    );
+  });
+
+  it("renders a mobile stacked list and a desktop table without fixed mobile width", async () => {
+    render(<LeaderboardPage />);
+
+    const mobileResults = await screen.findByRole("list", { name: "Leaderboard results" });
+    const desktopResults = screen.getByRole("table", { name: "Leaderboard results table" });
+
+    expect(within(mobileResults).getByRole("listitem")).toBeTruthy();
+    expect(within(desktopResults).getByRole("columnheader", { name: "Rank" })).toBeTruthy();
+    expect(mobileResults.getAttribute("data-responsive-layout")).toBe("stacked");
+    expect(mobileResults.querySelector('[style*="min-width"]')).toBeNull();
+  });
+
+  it("keeps an authenticated user's row visibly identified with the You cue", async () => {
+    mockState.user = { id: "user-1", email: "typist@example.com" };
+    mockState.ownResultIds = new Set(["result-1"]);
+
+    render(<LeaderboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("You").length).toBeGreaterThanOrEqual(2);
+    });
+    expect(screen.getAllByText("You").every((cue) => cue.getAttribute("data-own-row-cue") === "true")).toBe(true);
   });
 
   it("uses direct text choices for duration and category filters", async () => {
