@@ -452,7 +452,7 @@ describe("PracticePage passage loading", () => {
     expect(screen.queryByTestId("typing-timer-overlay")).toBeNull();
   });
 
-  it("does not finish a timed Practice attempt before the first accepted input", async () => {
+  it("starts and finishes a timed English Practice attempt from explicit Tab start", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
       JSON.stringify([makePassage("local", "Local active", "Local fallback body text.")])
@@ -472,9 +472,9 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(60_500);
     });
 
-    expect(screen.getByTestId("typing-timer").textContent).toBe("1:00");
-    expect(screen.queryByText("Time up")).toBeNull();
-    expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("dialog", { name: /Time up/i })).toHaveLength(1);
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].typedCharacters).toBe(0);
   });
 
   it("finishes and saves English 1m Practice exactly once when the timer expires", async () => {
@@ -505,7 +505,7 @@ describe("PracticePage passage loading", () => {
     expect(screen.queryByTestId("typing-timer")).toBeNull();
     expect(screen.getByTestId("typing-character-layer").querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
     expect(screen.queryByLabelText("Terminal typing caret")).toBeNull();
-    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.durationSeconds).toBe(60);
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.modeDurationSeconds).toBe(60);
     expect(getResultAnalyticsDomain({ category: mockedSaveSupabaseTypingResult.mock.calls[0][0].passage.category })).toBe("english");
 
     await act(async () => {
@@ -543,6 +543,68 @@ describe("PracticePage passage loading", () => {
 
     expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives time_up precedence when the final character arrives exactly at the deadline", async () => {
+    const target = "Deadline";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("deadline-exact", "Exact deadline", target)])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: "user-1" };
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(target));
+
+    vi.useFakeTimers();
+    const startedAt = new Date("2026-07-07T12:00:00.000Z");
+    vi.setSystemTime(startedAt);
+    fireEvent.keyDown(window, { key: "Tab" });
+    const input = screen.getByLabelText("Typing input");
+    typeIncrementally(input, target.slice(0, -1));
+
+    // Move wall time without delivering the interval callback, as happens when
+    // a background tab resumes and an input event is delivered first.
+    vi.setSystemTime(new Date(startedAt.getTime() + 60_000));
+    await act(async () => {
+      fireEvent.change(input, { target: { value: target } });
+      await Promise.resolve();
+    });
+
+    expect(screen.getAllByRole("dialog", { name: /Time up/i })).toHaveLength(1);
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].typedCharacters).toBe(target.length - 1);
+  });
+
+  it("freezes the pre-deadline input when a delayed background tick has not run", async () => {
+    const target = "Background deadline";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("deadline-delayed", "Delayed deadline", target)])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: "user-1" };
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(target));
+
+    vi.useFakeTimers();
+    const startedAt = new Date("2026-07-07T12:00:00.000Z");
+    vi.setSystemTime(startedAt);
+    fireEvent.keyDown(window, { key: "Tab" });
+    const input = screen.getByLabelText("Typing input");
+    typeIncrementally(input, "Back");
+
+    vi.setSystemTime(new Date(startedAt.getTime() + 75_000));
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "Backg" } });
+      await Promise.resolve();
+    });
+
+    expect(screen.getAllByRole("dialog", { name: /Time up/i })).toHaveLength(1);
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].typedCharacters).toBe(4);
+    expect((input as HTMLTextAreaElement).value).toBe("Back");
   });
 
   it("shows an Escape result without saving or counting it", async () => {
@@ -916,7 +978,8 @@ describe("PracticePage passage loading", () => {
         accuracy: 100,
         completionReason: "text_completed",
         isRankable: true,
-        timeUsedSeconds: 16
+        elapsedSeconds: 16,
+        modeDurationSeconds: null
       });
     }
     fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
@@ -2763,6 +2826,104 @@ describe("PracticePage passage loading", () => {
     expect(readPreviousResult("local", 60)).toBeNull();
   });
 
+  it("keeps a long committed Chinese composition eligible", async () => {
+    const target = "今天我們一起練習中文輸入";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("english-placeholder", "English", "English placeholder.", "english"),
+        makePassage("long-chinese-commit", "Long Chinese commit", target, "chinese", "工作", "一般")
+      ])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: "user-1" };
+
+    render(<PracticePage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Chinese" }));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(target));
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-29T12:00:00.000Z"));
+    fireEvent.keyDown(window, { key: "Tab" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16_000);
+    });
+
+    const input = screen.getByLabelText("Typing input");
+    fireEvent.compositionStart(input, { data: "" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+    fireEvent.compositionEnd(input, { data: target, target: { value: target } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expect(screen.queryByText(/suspicious input was detected/i)).toBeNull();
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a long mobile replacement eligible when its transaction timing is plausible", async () => {
+    const target = "Correction";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("mobile-replacement", "Mobile replacement", target)])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: "user-1" };
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(target));
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-29T12:00:00.000Z"));
+    fireEvent.keyDown(window, { key: "Tab" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16_000);
+    });
+    await act(async () => {
+      fireEvent.input(screen.getByLabelText("Typing input"), {
+        target: { value: target },
+        inputType: "insertReplacementText"
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expect(screen.queryByText(/suspicious input was detected/i)).toBeNull();
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+  });
+
+  it("still rejects an impossibly fast long replacement", async () => {
+    const target = "An impossible replacement transaction";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("impossible-replacement", "Impossible replacement", target)])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain(target));
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-29T12:00:00.000Z"));
+    fireEvent.keyDown(window, { key: "Tab" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    await act(async () => {
+      fireEvent.input(screen.getByLabelText("Typing input"), {
+        target: { value: target },
+        inputType: "insertReplacementText"
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/suspicious input was detected/i)).toBeTruthy();
+    expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
+  });
+
   it("scopes Training history stats to the same comparable content and duration", () => {
     const comparable = filterComparableRecentResults(
       [
@@ -2783,7 +2944,7 @@ describe("PracticePage passage loading", () => {
         text: "const total = price * quantity;",
         updatedAt: "2026-07-04T00:00:00.000Z"
       },
-      { durationSeconds: 60 }
+      { modeDurationSeconds: 60 }
     );
 
     expect(comparable.map((result) => result.id)).toEqual(["code-60"]);

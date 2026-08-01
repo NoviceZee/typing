@@ -14,6 +14,7 @@ import {
   getSupabaseLeaderboardResults
 } from "@/lib/typingResultStorage";
 import { getDurationFilterOptions } from "@/lib/practiceDurations";
+import { resolveResultDuration } from "@/lib/resultDuration";
 import {
   DEFAULT_LEADERBOARD_TIME_RANGE,
   LEADERBOARD_HEADING_BY_RANGE,
@@ -80,12 +81,12 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     let isMounted = true;
-    const durationSeconds = durationFilter === ALL_FILTER ? null : Number(durationFilter);
+    const modeDurationSeconds = durationFilter === ALL_FILTER ? null : Number(durationFilter);
     const category = isEnglishLeaderboard && categoryFilter !== ALL_FILTER ? categoryFilter : null;
 
     setIsLoading(true);
     setOwnResultIds(new Set());
-    getSupabaseLeaderboardResults({ durationSeconds, category, timeRange, domain: leaderboardDomain })
+    getSupabaseLeaderboardResults({ modeDurationSeconds, category, timeRange, domain: leaderboardDomain })
       .then((leaderboardResults) => {
         if (!isMounted) return;
         setResults(leaderboardResults);
@@ -267,10 +268,10 @@ export default function LeaderboardPage() {
                   <div>
                     <h2 className="font-semibold text-paper">{result.passage_title}</h2>
                     <p className="mt-1 font-mono text-utility text-paper/40 md:hidden">
-                      {formatLeaderboardDuration(result.duration_seconds)} · {formatDate(result.created_at)}
+                      {formatLeaderboardDuration(getLeaderboardModeDuration(result))} · {formatDate(result.created_at)}
                     </p>
                   </div>
-                  <Metric label="Duration" value={formatLeaderboardDuration(result.duration_seconds)} />
+                  <Metric label="Duration" value={formatLeaderboardDuration(getLeaderboardModeDuration(result))} />
                   <Metric label="WPM" value={formatNumber(result.wpm)} strong />
                   <Metric label="Accuracy" value={`${formatNumber(result.accuracy)}%`} />
                   <div className="font-mono text-body text-paper/55 max-md:hidden">{formatDate(result.created_at)}</div>
@@ -281,6 +282,11 @@ export default function LeaderboardPage() {
       </PageContainer>
     </AppShell>
   );
+}
+
+function getLeaderboardModeDuration(result: SupabaseLeaderboardResultRow) {
+  const duration = resolveResultDuration(result);
+  return duration.modeDurationSeconds ?? duration.elapsedSeconds;
 }
 
 function LeaderboardName({ displayName }: { displayName: string }) {

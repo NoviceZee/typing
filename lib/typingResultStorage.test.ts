@@ -33,8 +33,8 @@ describe("typingResultStorage", () => {
       accuracy: 97.6,
       wpm: 48,
       rawWpm: 49.2,
-      timeUsedSeconds: 30,
-      durationSeconds: 60,
+      elapsedSeconds: 30,
+      modeDurationSeconds: 60,
       category: "Business email",
       presetName: "Custom rules",
       completionReason: "text_completed",
@@ -56,6 +56,7 @@ describe("typingResultStorage", () => {
       passage_id: null,
       passage_title: "Generated business email practice",
       duration_seconds: 60,
+      mode_duration_seconds: 60,
       elapsed_seconds: 30,
       completion_reason: "text_completed",
       is_rankable: true,
@@ -64,6 +65,25 @@ describe("typingResultStorage", () => {
       accuracy: 97.6,
       correct_chars: 120,
       typed_chars: 123
+    });
+  });
+
+  it("persists an explicit null mode bucket for untimed attempts", () => {
+    const input = makeSaveInput();
+    const payload = toSupabaseTypingResultInsert({
+      ...input,
+      result: {
+        ...input.result,
+        elapsedSeconds: 23,
+        modeDurationSeconds: null,
+        completionReason: "text_completed"
+      }
+    });
+
+    expect(payload).toMatchObject({
+      duration_seconds: 23,
+      mode_duration_seconds: null,
+      elapsed_seconds: 23
     });
   });
 
@@ -109,8 +129,8 @@ describe("typingResultStorage", () => {
       accuracy: 98.8,
       wpm: 42,
       rawWpm: 43,
-      timeUsedSeconds: 600,
-      durationSeconds: 600,
+      elapsedSeconds: 600,
+      modeDurationSeconds: 600,
       category: "Business email",
       presetName: "Custom rules",
       completionReason: "time_up",
@@ -177,8 +197,8 @@ describe("typingResultStorage", () => {
       accuracy: 98,
       wpm: 36,
       rawWpm: 37,
-      timeUsedSeconds: 60,
-      durationSeconds: 60,
+      elapsedSeconds: 60,
+      modeDurationSeconds: 60,
       category: "training_numbers",
       presetName: "Custom rules",
       completionReason: "time_up",
@@ -201,6 +221,7 @@ describe("typingResultStorage", () => {
       passage_id: null,
       passage_title: "Numbers training",
       duration_seconds: 60,
+      mode_duration_seconds: 60,
       elapsed_seconds: 60,
       completion_reason: "time_up",
       is_rankable: true,
@@ -235,8 +256,8 @@ describe("typingResultStorage", () => {
       accuracy: 98,
       wpm: 36,
       rawWpm: 37,
-      timeUsedSeconds: 60,
-      durationSeconds: 60,
+      elapsedSeconds: 60,
+      modeDurationSeconds: 60,
       category: "training_symbols",
       presetName: "Custom rules",
       completionReason: "time_up",
@@ -259,6 +280,7 @@ describe("typingResultStorage", () => {
       passage_id: null,
       passage_title: "Symbols training",
       duration_seconds: 60,
+      mode_duration_seconds: 60,
       elapsed_seconds: 60,
       completion_reason: "time_up",
       is_rankable: true,
@@ -339,6 +361,7 @@ describe("typingResultStorage", () => {
         passage_title: "Board memo",
         passage_category: "Business email",
         duration_seconds: 60,
+        mode_duration_seconds: 60,
         elapsed_seconds: 20,
         completion_reason: "text_completed",
         is_rankable: true,
@@ -353,6 +376,8 @@ describe("typingResultStorage", () => {
         passage_title: "Legacy memo",
         passage_category: null,
         duration_seconds: 300,
+        mode_duration_seconds: 300,
+        elapsed_seconds: 300,
         wpm: 61,
         accuracy: 99,
         correct_chars: 1525,
@@ -361,7 +386,7 @@ describe("typingResultStorage", () => {
     ]);
     expect(from).toHaveBeenCalledWith("typing_results");
     expect(select).toHaveBeenCalledWith(
-      "id,passage_title,metric_domain,duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)"
+      "id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)"
     );
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
     expect(order).toHaveBeenCalledWith("created_at", { ascending: false });
@@ -384,7 +409,7 @@ describe("typingResultStorage", () => {
     await expect(
       getSupabaseLeaderboardResults(
         {
-          durationSeconds: 60,
+          modeDurationSeconds: 60,
           category: "Business email",
           dateRange: { start, end }
         },
@@ -393,7 +418,7 @@ describe("typingResultStorage", () => {
     ).resolves.toEqual([]);
 
     expect(from).toHaveBeenCalledWith("typing_results_leaderboard");
-    expect(eq).toHaveBeenCalledWith("duration_seconds", 60);
+    expect(eq).toHaveBeenCalledWith("mode_duration_seconds", 60);
     expect(eq).toHaveBeenCalledWith("passage_category", "Business email");
     expect(gte).toHaveBeenCalledWith("created_at", start.toISOString());
     expect(lt).toHaveBeenCalledWith("created_at", end.toISOString());
@@ -463,6 +488,8 @@ describe("typingResultStorage", () => {
         passage_category: "Business email",
         metric_domain: "english",
         duration_seconds: 60,
+        mode_duration_seconds: 60,
+        elapsed_seconds: 60,
         wpm: 66,
         accuracy: 99.2,
         correct_chars: 330,
@@ -472,7 +499,7 @@ describe("typingResultStorage", () => {
 
     expect(from).toHaveBeenCalledWith("public_profile_typing_results");
     expect(select).toHaveBeenCalledWith(
-      "id,passage_title,passage_category,metric_domain,duration_seconds,wpm,accuracy,correct_chars,created_at"
+      "id,passage_title,passage_category,metric_domain,mode_duration_seconds,elapsed_seconds,duration_seconds,wpm,accuracy,correct_chars,created_at"
     );
     expect(eq).toHaveBeenCalledWith("handle", "formal_typist");
     expect(limit).toHaveBeenCalledWith(10);
@@ -502,8 +529,8 @@ function makeSaveInput() {
     accuracy: 100,
     wpm: 48,
     rawWpm: 48,
-    timeUsedSeconds: 30,
-    durationSeconds: 60,
+    elapsedSeconds: 30,
+    modeDurationSeconds: 60,
     category: "Business email",
     presetName: "Custom rules",
     completionReason: "manual",

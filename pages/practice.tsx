@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Fragment, KeyboardEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpenText, Clock3, ImageIcon, KeyboardIcon, Languages, RefreshCw, RotateCcw, Shuffle, X } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
@@ -23,6 +23,7 @@ import {
 } from "@/lib/typing-engine";
 import { calculateTypingViewportScrollTop } from "@/lib/typingViewport";
 import { isProgressionEligibleResult } from "@/lib/resultEligibility";
+import { resolveResultDuration } from "@/lib/resultDuration";
 import {
   ALL_FILTER,
   CategoryFilter,
@@ -71,7 +72,6 @@ import {
 import {
   PRACTICE_MODE_OPTIONS,
   PracticeModeId,
-  getComparableDurationSeconds,
   getPracticeMode,
   isManualFinishShortcut,
   isTimedPracticeMode,
@@ -157,6 +157,8 @@ export type ResultImageCardInput = {
 const RANDOM_PASSAGE_ID = "__random__";
 const SUSPICIOUS_RESULT_NOTE = "This result was not saved because suspicious input was detected.";
 const MAX_CHARACTERS_PER_INPUT_EVENT = 5;
+const MAX_TRUSTED_COMPOSITION_CHARACTERS_PER_SECOND = 100;
+const MAX_REPLACEMENT_CHARACTERS_PER_EVENT = 50;
 const SUSPICIOUS_WPM_THRESHOLD = 250;
 const CONSISTENCY_HELP_TEXT =
   "Consistency shows how steady your WPM stayed during the test. It is based on the coefficient of variation of your WPM timeline.";
@@ -172,6 +174,11 @@ type CelebrationMilestone = {
 };
 
 const EMPTY_CELEBRATION_MILESTONES: CelebrationMilestone[] = [];
+
+type TypingInputTransaction = {
+  source: "keyboard" | "composition" | "replacement";
+  elapsedMs: number | null;
+};
 
 function useTouchFirstInput() {
   const [isTouchFirstInput, setIsTouchFirstInput] = useState(false);
@@ -258,6 +265,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const isComposingRef = useRef(false);
   const explicitCompositionActiveRef = useRef(false);
   const awaitingChineseFinalCommitRef = useRef(false);
+  const chineseCompositionStartedAtRef = useRef<number | null>(null);
+  const pendingChineseCompositionElapsedMsRef = useRef<number | null>(null);
+  const pendingStandardInputTransactionRef = useRef<TypingInputTransaction | null>(null);
   const imeDebugSequenceRef = useRef(0);
   const activeTrainingConfigKeyRef = useRef<string | null>(null);
   const activeSessionGenerationRef = useRef(0);
@@ -333,6 +343,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   if (activeTargetSourceRef.current !== targetText) {
     activeTargetSourceRef.current = targetText;
     lastValidActiveTargetIndexRef.current = null;
+    previousActiveCaretRectRef.current = null;
   }
   const exactActiveTargetIndex = typeof comparison.activeTargetIndex === "number"
     ? comparison.activeTargetIndex
@@ -468,6 +479,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       isComposingRef.current = false;
       explicitCompositionActiveRef.current = false;
       awaitingChineseFinalCommitRef.current = false;
+      chineseCompositionStartedAtRef.current = null;
+      pendingChineseCompositionElapsedMsRef.current = null;
+      pendingStandardInputTransactionRef.current = null;
+      previousActiveCaretRectRef.current = null;
       isInputActivatedRef.current = false;
       finishedRef.current = false;
       statusRef.current = "idle";
@@ -610,19 +625,28 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
   const recordAttemptTimelinePoint = useCallback(
     (elapsed: number, typed: string) => {
-      if (elapsed < 1 || !sourceText) {
+      const session = sessionCoordinatorRef.current?.getSession();
+      const timelineSource = session?.target.comparableText ?? sourceText;
+      const timelineRules = session?.rules ?? rules;
+      const timelineCategory = session?.target.category ?? passage?.category;
+      const timelineLanguage = session?.target.language ?? passage?.language;
+
+      if (elapsed < 1 || !timelineSource) {
         return;
       }
 
       const point = buildAttemptTimelinePoint({
         elapsedSeconds: elapsed,
-        sourceText,
+        sourceText: timelineSource,
         typedText: typed,
-        category: passage?.category,
-        language: passage?.language,
-        rules
+        category: timelineCategory,
+        language: timelineLanguage,
+        rules: timelineRules
       });
-      point.burstWpm = getBurstWpm(typedCharacterDelaysRef.current, passage?.language === "chinese" || passage?.category === "training_chinese");
+      point.burstWpm = getBurstWpm(
+        typedCharacterDelaysRef.current,
+        timelineLanguage === "chinese" || timelineCategory === "training_chinese"
+      );
       point.errorCount = attemptErrorEventsRef.current.length;
       const existingIndex = attemptTimelineRef.current.findIndex(
         (timelinePoint) => timelinePoint.timeSeconds === point.timeSeconds
@@ -700,7 +724,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       },
       mode: {
         kind: modeKind,
-        durationSeconds: modeKind === "timed" ? durationSeconds : null
+        durationSeconds: modeKind === "timed" ? durationSeconds : null,
+        finishOnTargetCompletion: trainingSession?.kind !== "time"
       },
       rules: { ...rules }
     });
@@ -709,13 +734,16 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }, [canonicalTarget, durationSeconds, isTimedMode, passage, practiceLanguage, rules, trainingSession?.kind]);
 
   const finishSession = useCallback(
-    (completionReason: CompletionReason, expectedSessionId = activeAttemptIdRef.current) => {
+    (
+      completionReason: CompletionReason,
+      expectedSessionId = activeAttemptIdRef.current,
+      finishedTime = Date.now()
+    ) => {
       const coordinator = sessionCoordinatorRef.current;
       if (!coordinator || statusRef.current !== "running") {
         return;
       }
 
-      const finishedTime = Date.now();
       const completedSession = coordinator.finish({
         sessionId: expectedSessionId,
         reason: completionReason,
@@ -734,7 +762,6 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         completedDurationSeconds !== null
           ? completedDurationSeconds
           : measuredElapsed;
-      const resultDurationSeconds = getComparableDurationSeconds(practiceMode, finalElapsed);
       const sessionPassage: StoredPassage = {
         id: completedSession.target.passageId ?? undefined,
         title: completedSession.target.title,
@@ -771,6 +798,9 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       isComposingRef.current = false;
       explicitCompositionActiveRef.current = false;
       awaitingChineseFinalCommitRef.current = false;
+      chineseCompositionStartedAtRef.current = null;
+      pendingChineseCompositionElapsedMsRef.current = null;
+      pendingStandardInputTransactionRef.current = null;
       isInputActivatedRef.current = false;
       setIsInputActivated(false);
       if (scrollFrameRef.current !== null) {
@@ -797,14 +827,14 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         target: completedSession.target.comparableText,
         typed: completedSession.input,
         elapsedSeconds: Math.max(finalElapsed, 1),
-        durationSeconds: resultDurationSeconds,
+        modeDurationSeconds: completedSession.mode.kind === "timed" ? completedDurationSeconds : null,
         category: sessionPassage.category,
         language: sessionPassage.language,
         rules: sessionRules,
         completionReason
       });
       const finalTimelinePoint: AttemptTimelinePoint = {
-        timeSeconds: finalResult.timeUsedSeconds,
+        timeSeconds: finalResult.elapsedSeconds,
         characterIndex: completedSession.input.length,
         wpm: finalResult.wpm,
         accuracy: finalResult.accuracy,
@@ -923,18 +953,21 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         }
       }
     },
-    [cancelPendingChineseImeFallback, practiceMode, previousResultScope, rules, user]
+    [cancelPendingChineseImeFallback, previousResultScope, rules, user]
   );
 
-  const startSession = useCallback(() => {
+  const beginAttempt = useCallback(() => {
+    if (statusRef.current === "running") {
+      return sessionCoordinatorRef.current;
+    }
     if (!passage || !sourceText || isFinished) {
-      return;
+      return null;
     }
 
     finishedRef.current = false;
     activeAttemptIdRef.current = createClientAttemptId();
     const now = Date.now();
-    beginSessionTransaction(now, activeAttemptIdRef.current);
+    const coordinator = beginSessionTransaction(now, activeAttemptIdRef.current);
     statusRef.current = "running";
     startedAtRef.current = now;
     typedTextRef.current = "";
@@ -968,6 +1001,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     isInputActivatedRef.current = true;
     setIsInputActivated(true);
     setStatus("running");
+    return coordinator;
   }, [
     beginSessionTransaction,
     durationSeconds,
@@ -993,9 +1027,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         return;
       }
 
+      const now = Date.now();
       const clock = getTypingSessionClock({
         startedAt: session.startedAt,
-        now: Date.now(),
+        now,
         durationSeconds: session.mode.kind === "timed" ? session.mode.durationSeconds : null
       });
 
@@ -1005,7 +1040,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       setRemainingSeconds(clock.displayRemainingSeconds ?? 0);
 
       if (clock.shouldFinish) {
-        finishSession("time_up", session.id);
+        finishSession("time_up", session.id, now);
       }
     };
 
@@ -1019,15 +1054,15 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       if (event.key === "Tab") {
         isTabPressedRef.current = true;
 
-        if (isRunning || (rules.requireTabToStart && status === "idle")) {
+        if (isRunning || status === "idle") {
           event.preventDefault();
         }
 
-        if (rules.requireTabToStart && status === "idle") {
+        if (status === "idle") {
           isInputActivatedRef.current = true;
           setIsInputActivated(true);
+          beginAttempt();
           if (shouldUseChineseImeSink) {
-            startSession();
             chineseImeInputRef.current?.focus({ preventScroll: true });
             return;
           }
@@ -1072,7 +1107,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", resetTabState);
     };
-  }, [finishSession, isRunning, resetSession, rules.requireTabToStart, shouldUseChineseImeSink, startSession, status]);
+  }, [beginAttempt, finishSession, isRunning, resetSession, shouldUseChineseImeSink, status]);
 
   useEffect(() => {
     if (isRunning) {
@@ -1244,7 +1279,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     );
   }, [activeCharacterIndex, themeSettings.caretSmooth]);
 
-  function handleTyping(value: string) {
+  function handleTyping(
+    value: string,
+    inputTransaction: TypingInputTransaction = { source: "keyboard", elapsedMs: null }
+  ) {
     if (
       !passage ||
       isFinished ||
@@ -1254,59 +1292,62 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
-    if (!isRunning) {
-      const now = Date.now();
-      finishedRef.current = false;
-      activeAttemptIdRef.current = createClientAttemptId();
-      statusRef.current = "running";
-      startedAtRef.current = now;
-      beginSessionTransaction(now, activeAttemptIdRef.current);
-      attemptTimelineRef.current = [];
-      attemptErrorEventsRef.current = [];
-      activeErrorIndexesRef.current = new Set();
-      typedCharacterDelaysRef.current = [];
-      lastTypedCharacterAtRef.current = null;
-      elapsedSecondsRef.current = 0;
-      setElapsedSeconds(0);
-      setAttemptTimeline([]);
-      setAttemptErrorEvents([]);
-      setProgressMilestones([]);
-      setStartedAt(now);
-      setFinishedAt(null);
-      setRemainingSeconds(isTimedMode ? durationSeconds : 0);
-      setLastResult(null);
-      setLastResultPassage(null);
-      isResultModalOpenRef.current = false;
-      setIsResultModalOpen(false);
-      isInputActivatedRef.current = true;
-      setIsInputActivated(true);
-      setStatus("running");
+    let coordinator = sessionCoordinatorRef.current;
+    if (statusRef.current !== "running") {
+      coordinator = beginAttempt();
+    }
+    if (!coordinator) {
+      return;
     }
 
+    const session = coordinator.getSession();
+    const acceptedAt = Date.now();
+    const clock = getTypingSessionClock({
+      startedAt: session.startedAt,
+      now: acceptedAt,
+      durationSeconds: session.mode.kind === "timed" ? session.mode.durationSeconds : null
+    });
+    if (clock.remainingMs !== null && clock.remainingMs <= 0) {
+      finishSession("time_up", session.id, acceptedAt);
+      return;
+    }
+
+    const sessionRules = session.rules ?? rules;
     const previous = typedTextRef.current;
-    const nextValue = enforceBackspacePolicy(previous, value, rules.allowBackspace);
+    const nextValue = enforceBackspacePolicy(previous, value, sessionRules.allowBackspace);
     const didTypingChange = nextValue !== previous;
+    const measuredTransaction = inputTransaction.elapsedMs === null
+      ? {
+          ...inputTransaction,
+          elapsedMs: Math.max(0, acceptedAt - (lastTypedCharacterAtRef.current ?? session.startedAt))
+        }
+      : inputTransaction;
     recordTypedCharacterDelays(previous, nextValue);
-    if (isSuspiciousInputChange(previous, nextValue, elapsedSecondsRef.current)) {
+    if (isSuspiciousInputChange(previous, nextValue, clock.elapsedMs / 1_000, measuredTransaction)) {
       markAttemptSuspicious();
     }
     typedTextRef.current = nextValue;
-    recordHistoricalErrors(nextValue);
-    recordAttemptTimelinePoint(elapsedSecondsRef.current, nextValue);
+    recordHistoricalErrors(nextValue, clock.elapsedMs);
+    recordAttemptTimelinePoint(clock.displayElapsedSeconds, nextValue);
     if (didTypingChange) {
       playPendingKeyboardSound();
     }
     setTypedText(nextValue);
 
-    const session = sessionCoordinatorRef.current?.getSession();
-    const completionTarget = session?.target.comparableText ?? sourceText;
-    if (shouldFinishCompletedText(trainingSession?.kind, completionTarget, nextValue, session?.rules ?? rules)) {
-      finishSession("text_completed");
+    const completionTarget = session.target.comparableText;
+    const sessionKind = session.mode.finishOnTargetCompletion ? undefined : "time";
+    if (shouldFinishCompletedText(sessionKind, completionTarget, nextValue, sessionRules)) {
+      finishSession("text_completed", session.id, acceptedAt);
     }
   }
 
-  function recordHistoricalErrors(nextValue: string) {
-    const nextComparison = validateTypedText({ targetText: sourceText, typedText: nextValue, rules });
+  function recordHistoricalErrors(nextValue: string, elapsedMs: number) {
+    const session = sessionCoordinatorRef.current?.getSession();
+    const nextComparison = validateTypedText({
+      targetText: session?.target.comparableText ?? sourceText,
+      typedText: nextValue,
+      rules: session?.rules ?? rules
+    });
     const nextActiveErrors = new Set<number>();
     let didAddError = false;
 
@@ -1315,9 +1356,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       nextActiveErrors.add(character.index);
       if (activeErrorIndexesRef.current.has(character.index)) return;
 
-      const sessionStartedAt = startedAtRef.current;
       attemptErrorEventsRef.current.push({
-        timeSeconds: sessionStartedAt === null ? 0.1 : Math.max(0.1, (Date.now() - sessionStartedAt) / 1000),
+        timeSeconds: Math.max(0.1, elapsedMs / 1_000),
         characterIndex: character.index
       });
       didAddError = true;
@@ -1329,7 +1369,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
   function syncChineseTextareaValue(
     source: "input" | "compositionend-fallback",
-    committedTextareaValue?: string
+    committedTextareaValue?: string,
+    inputTransaction: TypingInputTransaction = { source: "keyboard", elapsedMs: null }
   ): "processed" | "duplicate" | "skipped" {
     const textareaValue = committedTextareaValue ?? chineseImeInputRef.current?.value ?? "";
     const nextValue = getChineseComparableInput(textareaValue);
@@ -1403,7 +1444,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       comparableInputLength: nextValue.length
     });
 
-    handleTyping(nextValue);
+    handleTyping(nextValue, inputTransaction);
     return "processed";
   }
 
@@ -1474,7 +1515,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       return;
     }
 
-    if (!rules.allowBackspace && event.key === "Backspace") {
+    const sessionRules = sessionCoordinatorRef.current?.getSession().rules ?? rules;
+    if (!sessionRules.allowBackspace && event.key === "Backspace") {
       event.preventDefault();
     }
   }
@@ -1486,6 +1528,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     awaitingChineseFinalCommitRef.current = false;
     explicitCompositionActiveRef.current = true;
     isComposingRef.current = true;
+    chineseCompositionStartedAtRef.current = Date.now();
+    pendingChineseCompositionElapsedMsRef.current = null;
   }
 
   function handleChineseCompositionUpdate(event: React.CompositionEvent<HTMLTextAreaElement>) {
@@ -1505,7 +1549,15 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     }
 
     const wasAwaitingFinalCommit = awaitingChineseFinalCommitRef.current;
-    const outcome = syncChineseTextareaValue("input", event.currentTarget.value);
+    const nativeEvent = event.nativeEvent as InputEvent;
+    const outcome = syncChineseTextareaValue("input", event.currentTarget.value, {
+      source: wasAwaitingFinalCommit
+        ? "composition"
+        : nativeEvent.inputType === "insertReplacementText"
+          ? "replacement"
+          : "keyboard",
+      elapsedMs: wasAwaitingFinalCommit ? pendingChineseCompositionElapsedMsRef.current : null
+    });
     // macOS can emit a non-composing input whose value is still the prefix
     // seen before compositionend. Keep the scheduled DOM-value read alive
     // until a genuinely new committed value has been processed.
@@ -1524,6 +1576,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     explicitCompositionActiveRef.current = false;
     isComposingRef.current = false;
     awaitingChineseFinalCommitRef.current = true;
+    pendingChineseCompositionElapsedMsRef.current = chineseCompositionStartedAtRef.current === null
+      ? null
+      : Math.max(0, Date.now() - chineseCompositionStartedAtRef.current);
+    chineseCompositionStartedAtRef.current = null;
     const sessionGenerationId = activeSessionGenerationRef.current;
     const textarea = event.currentTarget;
     cancelPendingChineseImeFallback();
@@ -1537,7 +1593,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         return;
       }
 
-      syncChineseTextareaValue("compositionend-fallback", textarea.value);
+      syncChineseTextareaValue("compositionend-fallback", textarea.value, {
+        source: "composition",
+        elapsedMs: pendingChineseCompositionElapsedMsRef.current
+      });
       if (sessionGenerationId === activeSessionGenerationRef.current) {
         awaitingChineseFinalCommitRef.current = false;
       }
@@ -1918,19 +1977,6 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
 
         <div
           tabIndex={0}
-          onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-            if (event.key === "Tab" && rules.requireTabToStart && status === "idle") {
-              event.preventDefault();
-              isInputActivatedRef.current = true;
-              setIsInputActivated(true);
-              if (shouldUseChineseImeSink) {
-                startSession();
-                chineseImeInputRef.current?.focus({ preventScroll: true });
-                return;
-              }
-              inputRef.current?.focus({ preventScroll: true });
-            }
-          }}
           className={clsx(
             "formaltype-practice-shell relative mx-auto flex w-full flex-col overflow-hidden outline-none transition-all duration-300 focus:ring-brass/30",
             isCompactPractice
@@ -2103,7 +2149,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                   event.preventDefault();
                   return;
                 }
-                if (!rules.allowBackspace && event.key === "Backspace") {
+                const sessionRules = sessionCoordinatorRef.current?.getSession().rules ?? rules;
+                if (!sessionRules.allowBackspace && event.key === "Backspace") {
                   pendingSoundKeyTypeRef.current = null;
                   event.preventDefault();
                   return;
@@ -2117,7 +2164,24 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                 }
               }}
               onPaste={handlePaste}
-              onChange={(event) => handleTyping(event.target.value)}
+              onInput={(event) => {
+                const nativeEvent = event.nativeEvent as InputEvent;
+                if (nativeEvent.inputType === "insertReplacementText") {
+                  pendingStandardInputTransactionRef.current = {
+                    source: "replacement",
+                    elapsedMs: null
+                  };
+                }
+              }}
+              onChange={(event) => {
+                const nativeEvent = event.nativeEvent as InputEvent;
+                const inputTransaction = pendingStandardInputTransactionRef.current ?? {
+                  source: nativeEvent.inputType === "insertReplacementText" ? "replacement" as const : "keyboard" as const,
+                  elapsedMs: null
+                };
+                pendingStandardInputTransactionRef.current = null;
+                handleTyping(event.target.value, inputTransaction);
+              }}
               className="absolute inset-0 h-full w-full resize-none opacity-0"
               aria-label="Typing input"
               spellCheck={false}
@@ -2476,7 +2540,7 @@ function ResultsPanel({
       <div className={clsx("grid grid-cols-2 md:grid-cols-4", compact ? "mt-3 gap-x-3" : "mt-4 gap-2")}>
         <Metric label={metricLabel} value={result.wpm.toFixed(1)} flat={compact} />
         <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} flat={compact} />
-        <Metric label="Time" value={formatTime(result.timeUsedSeconds)} flat={compact} />
+        <Metric label="Time" value={formatTime(result.elapsedSeconds)} flat={compact} />
         <Metric label="Mistakes" value={result.incorrectCharacters} flat={compact} />
       </div>
     </section>
@@ -2788,8 +2852,9 @@ function toCurrentAnalyticsResult(
     id: "__current_result__",
     passage_title: passage.title?.trim() || "Untitled passage",
     passage_category: passage.category,
-    duration_seconds: result.durationSeconds,
-    elapsed_seconds: result.timeUsedSeconds,
+    mode_duration_seconds: result.modeDurationSeconds,
+    duration_seconds: result.modeDurationSeconds ?? result.elapsedSeconds,
+    elapsed_seconds: result.elapsedSeconds,
     wpm: result.wpm,
     accuracy: result.accuracy,
     correct_chars: result.correctCharacters,
@@ -2910,7 +2975,13 @@ function addPreviousComparableResult(
     {
       id: `previous-${previousResult.completedAt}`,
       passage_title: previousResult.passageTitle,
-      duration_seconds: previousResult.durationSeconds ?? result.durationSeconds,
+      mode_duration_seconds: getPreviousModeDuration(previousResult),
+      duration_seconds:
+        getPreviousModeDuration(previousResult) ??
+        previousResult.durationSeconds ??
+        result.modeDurationSeconds ??
+        result.elapsedSeconds,
+      elapsed_seconds: previousResult.elapsedSeconds,
       wpm: previousResult.wpm,
       accuracy: previousResult.accuracy,
       created_at: previousResult.completedAt
@@ -2919,7 +2990,13 @@ function addPreviousComparableResult(
 }
 
 function isPreviousResultComparable(previousResult: PreviousTypingResult, result: TypingResult) {
-  return !previousResult.durationSeconds || previousResult.durationSeconds === result.durationSeconds;
+  return getPreviousModeDuration(previousResult) === result.modeDurationSeconds;
+}
+
+function getPreviousModeDuration(previousResult: PreviousTypingResult) {
+  return previousResult.modeDurationSeconds !== undefined
+    ? previousResult.modeDurationSeconds
+    : previousResult.durationSeconds ?? null;
 }
 
 function isSameHistoryAttempt(recentResult: SupabaseOwnTypingResultRow, previousResult: PreviousTypingResult) {
@@ -2941,14 +3018,17 @@ function isSameHistoryAttempt(recentResult: SupabaseOwnTypingResultRow, previous
 export function filterComparableRecentResults(
   savedResults: SupabaseOwnTypingResultRow[],
   passage: StoredPassage,
-  result: Pick<TypingResult, "durationSeconds">
+  result: Pick<TypingResult, "modeDurationSeconds">
 ) {
   const comparableTitle = passage.title?.trim() || "Untitled passage";
   const comparableDomain = getResultAnalyticsDomain({ passage_category: passage.category, passage_title: passage.title });
 
   return savedResults
     .filter(isProgressionEligibleResult)
-    .filter((savedResult) => savedResult.duration_seconds === result.durationSeconds)
+    .filter(
+      (savedResult) =>
+        resolveResultDuration(savedResult).modeDurationSeconds === result.modeDurationSeconds
+    )
     .filter((savedResult) => savedResult.passage_title === comparableTitle)
     .filter(
       (savedResult) =>
@@ -2958,11 +3038,36 @@ export function filterComparableRecentResults(
     .slice(0, 10);
 }
 
-function isSuspiciousInputChange(previousValue: string, nextValue: string, elapsedSeconds: number) {
+function isSuspiciousInputChange(
+  previousValue: string,
+  nextValue: string,
+  elapsedSeconds: number,
+  transaction: TypingInputTransaction
+) {
   const addedCharacters = nextValue.length - previousValue.length;
 
   if (addedCharacters > MAX_CHARACTERS_PER_INPUT_EVENT) {
-    return true;
+    if (transaction.source === "keyboard") {
+      return true;
+    }
+    if (
+      transaction.source === "replacement" &&
+      addedCharacters > MAX_REPLACEMENT_CHARACTERS_PER_EVENT
+    ) {
+      return true;
+    }
+    if (transaction.source === "replacement") {
+      const transactionSeconds = Math.max(transaction.elapsedMs ?? 0, 1) / 1_000;
+      if (addedCharacters / transactionSeconds > MAX_TRUSTED_COMPOSITION_CHARACTERS_PER_SECOND) {
+        return true;
+      }
+    }
+    if (transaction.source === "composition") {
+      const transactionSeconds = Math.max(transaction.elapsedMs ?? 0, 1) / 1_000;
+      if (addedCharacters / transactionSeconds > MAX_TRUSTED_COMPOSITION_CHARACTERS_PER_SECOND) {
+        return true;
+      }
+    }
   }
 
   if (elapsedSeconds < 1 || nextValue.length === 0) {
@@ -3002,7 +3107,7 @@ function ThisResultColumn({
         <ResultMetricRow label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
         <ResultMetricRow label="Final mistakes" value={result.incorrectCharacters} />
         <ResultMetricRow label="Errors encountered" value={historicalErrorCount} tone={historicalErrorCount > 0 ? "text-ember" : "text-paper"} />
-        <ResultMetricRow label="Time" value={formatTime(result.timeUsedSeconds)} />
+        <ResultMetricRow label="Time" value={formatTime(result.elapsedSeconds)} />
         <ResultMetricRow
           label="Consistency"
           value={consistency === null ? "N/A" : `${consistency.toFixed(1)}%`}
@@ -3513,7 +3618,7 @@ function getAttemptGraphPoints(timeline: AttemptTimelinePoint[], result: TypingR
     .sort((left, right) => left.timeSeconds - right.timeSeconds);
   const points = sortedPoints[0]?.timeSeconds === 0 ? sortedPoints : [{ timeSeconds: 0, wpm: 0 }, ...sortedPoints];
   const finalPoint: AttemptTimelinePoint = {
-    timeSeconds: result.timeUsedSeconds,
+    timeSeconds: result.elapsedSeconds,
     wpm: result.wpm,
     accuracy: result.accuracy
   };
@@ -3533,7 +3638,7 @@ export function getAttemptGraphLayout(points: AttemptTimelinePoint[], result: Ty
   const right = width - 48;
   const top = 32;
   const bottom = height - 46;
-  const maxTime = Math.max(result.timeUsedSeconds, ...normalizedPoints.map((point) => point.timeSeconds), 1);
+  const maxTime = Math.max(result.elapsedSeconds, ...normalizedPoints.map((point) => point.timeSeconds), 1);
   const maxWpm = getStableGraphMax(normalizedPoints, result);
   const graphBase = {
     width,
@@ -3757,7 +3862,7 @@ function drawResultImageCard(
   const stats = [
     ["Accuracy", `${result.accuracy.toFixed(2)}%`],
     ["Mistakes", String(result.incorrectCharacters)],
-    ["Time", formatTime(result.timeUsedSeconds)],
+    ["Time", formatTime(result.elapsedSeconds)],
     ["Mode", modeLabel]
   ];
   stats.forEach(([label, value], index) => {

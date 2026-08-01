@@ -12,6 +12,7 @@ export type ProgressionEligibilityCandidate = {
   elapsedSeconds?: number | null;
   elapsed_seconds?: number | null;
   durationSeconds?: number | null;
+  modeDurationSeconds?: number | null;
   duration_seconds?: number | null;
   correctCharacters?: number | null;
   correct_chars?: number | null;

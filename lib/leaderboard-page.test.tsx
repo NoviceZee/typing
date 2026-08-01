@@ -153,7 +153,7 @@ describe("LeaderboardPage", () => {
       expect(mockedGetSupabaseLeaderboardResults).toHaveBeenLastCalledWith(
         expect.objectContaining({
           timeRange: "this_month",
-          durationSeconds: 300,
+          modeDurationSeconds: 300,
           category: null
         })
       );
@@ -194,7 +194,7 @@ describe("LeaderboardPage", () => {
       expect(mockedGetSupabaseLeaderboardResults).toHaveBeenLastCalledWith(
         expect.objectContaining({
           domain: "chinese",
-          durationSeconds: 60,
+          modeDurationSeconds: 60,
           category: null
         })
       );
@@ -211,7 +211,7 @@ describe("LeaderboardPage", () => {
       expect(mockedGetSupabaseLeaderboardResults).toHaveBeenLastCalledWith(
         expect.objectContaining({
           domain: "code",
-          durationSeconds: 60,
+          modeDurationSeconds: 60,
           category: null
         })
       );

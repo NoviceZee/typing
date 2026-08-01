@@ -10,6 +10,7 @@ import {
   extractPassageTitle,
   filterLibraryPassages,
   formatPassageLength,
+  createPreviousTypingResult,
   mergeImportedPassages,
   readPreviousResult,
   readThemeSettings,
@@ -23,6 +24,7 @@ import {
 } from "./app-storage";
 import type { StoredPassage } from "./app-storage";
 import type { TypingResult } from "./typing-engine";
+import { createCanonicalTypingTarget } from "./typingTarget";
 
 let storage: Map<string, string>;
 
@@ -259,6 +261,51 @@ describe("readPracticePassageFromLibrary", () => {
 });
 
 describe("previous result storage", () => {
+  it("canonicalizes new Previous Pace target snapshots without folding authored punctuation", () => {
+    const result = createPreviousTypingResult(
+      {
+        ...makeStoredPassage("canonical-target"),
+        text: "甲，\r\n乙。\u2028丙！\u2029丁？\uFE0F  \n"
+      },
+      makeResult({ durationSeconds: 60, wpm: 42 }),
+      8
+    );
+
+    expect(result.targetSnapshot).toBe("甲，乙。丙！丁？");
+  });
+
+  it("canonicalizes eligible legacy snapshots to the same target used after Restart", () => {
+    const storedTarget = "甲，\r\n乙。\u2028丙！\u2029丁？\uFE0F  \n";
+    storage.set(
+      PREVIOUS_RESULTS_STORAGE_KEY,
+      JSON.stringify({
+        "passage-1::60s": {
+          ...makePreviousResult({ wpm: 39 }),
+          targetSnapshot: storedTarget
+        }
+      })
+    );
+
+    expect(readPreviousResult("passage-1", 60)?.targetSnapshot).toBe(
+      createCanonicalTypingTarget({ storedText: storedTarget }).comparableText
+    );
+  });
+
+  it("keeps an eligible legacy Infinite result outside timed duration buckets", () => {
+    storage.set(
+      PREVIOUS_RESULTS_STORAGE_KEY,
+      JSON.stringify({
+        "passage-1::infinite": {
+          ...makePreviousResult({ wpm: 39 }),
+          durationSeconds: 60,
+          completionReason: "text_completed"
+        }
+      })
+    );
+
+    expect(readPreviousResult("passage-1", "infinite")?.modeDurationSeconds).toBeNull();
+  });
+
   it("scopes previous results by passage and duration", () => {
     const passage = makeStoredPassage("passage-1");
 
@@ -561,8 +608,8 @@ function makeResult({ durationSeconds, wpm }: { durationSeconds: number; wpm: nu
     accuracy: 100,
     wpm,
     rawWpm: wpm,
-    timeUsedSeconds: durationSeconds,
-    durationSeconds,
+    elapsedSeconds: durationSeconds,
+    modeDurationSeconds: durationSeconds,
     category: "Business email",
     presetName: "General",
     completionReason: "time_up",

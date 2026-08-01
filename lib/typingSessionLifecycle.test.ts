@@ -20,7 +20,8 @@ function makeSession(overrides: Partial<TypingSessionSnapshot> = {}): TypingSess
     },
     mode: {
       kind: "infinite",
-      durationSeconds: null
+      durationSeconds: null,
+      finishOnTargetCompletion: true
     },
     ...overrides
   };

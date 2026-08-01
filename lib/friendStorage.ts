@@ -1,6 +1,8 @@
 import { supabase } from "./supabaseClient";
 import { validateHandle } from "./profileStorage";
 
+export const FRIENDSHIP_RESOLVED_EVENT = "formaltype:friendship-resolved";
+
 export type FriendshipStatus = "pending" | "accepted";
 export type FriendshipDirection = "incoming" | "outgoing" | "accepted";
 
@@ -69,7 +71,9 @@ export async function acceptFriendRequest(
     throw error;
   }
 
-  return Array.isArray(data) ? data[0] ?? null : data;
+  const acceptedFriendship = Array.isArray(data) ? data[0] ?? null : data;
+  dispatchFriendshipResolved(friendshipId);
+  return acceptedFriendship;
 }
 
 export async function rejectFriendRequest(friendshipId: string, client = requireSupabaseClient()): Promise<void> {
@@ -78,6 +82,15 @@ export async function rejectFriendRequest(friendshipId: string, client = require
   if (error) {
     throw error;
   }
+
+  dispatchFriendshipResolved(friendshipId);
+}
+
+function dispatchFriendshipResolved(friendshipId: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(FRIENDSHIP_RESOLVED_EVENT, {
+    detail: { friendshipId }
+  }));
 }
 
 export async function removeFriend(friendshipId: string, client = requireSupabaseClient()): Promise<void> {

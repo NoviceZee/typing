@@ -5,6 +5,7 @@ import {
   calculateResult,
   enforceBackspacePolicy,
   getRequiredWordCount,
+  isTypingComparisonComplete,
   isTypedTextComplete,
   normalizeTargetForRules,
   shouldFinishCompletedText,
@@ -140,7 +141,7 @@ describe("typing rule comparison", () => {
       target: "const total = price * quantity;",
       typed: "const total = price * quantity;",
       elapsedSeconds: 60,
-      durationSeconds: 60,
+      modeDurationSeconds: 60,
       category: "training_code",
       rules: DEFAULT_RULES,
       completionReason: "time_up"
@@ -155,7 +156,7 @@ describe("typing rule comparison", () => {
       target: "今天工作時間朋友香港",
       typed: "今天工作時間朋友香港",
       elapsedSeconds: 60,
-      durationSeconds: 60,
+      modeDurationSeconds: 60,
       category: "training_chinese",
       rules: DEFAULT_RULES,
       completionReason: "time_up"
@@ -171,7 +172,7 @@ describe("typing rule comparison", () => {
       target: "今天工作時間朋友香港",
       typed: "今天工作時間",
       elapsedSeconds: 30,
-      durationSeconds: 60,
+      modeDurationSeconds: 60,
       category: "training_chinese",
       rules: DEFAULT_RULES,
       completionReason: "manual"
@@ -350,6 +351,38 @@ describe("typing rule comparison", () => {
     expect(isTypedTextComplete(target, typed, DEFAULT_RULES)).toBe(true);
   });
 
+  it("maps the exact final Chinese full stop to the final target coordinate", () => {
+    const target = "空山新雨後，天氣晚來秋。\n明月松間照，清泉石上流。\n竹喧歸浣女，蓮動下漁舟。\n隨意春芳歇，王孫自可留。";
+    const committed = target.replace(/\n/g, "");
+    const before = validateTypedText({
+      targetText: target,
+      typedText: committed.slice(0, -1),
+      rules: DEFAULT_RULES
+    });
+    const after = validateTypedText({
+      targetText: target,
+      typedText: committed,
+      rules: DEFAULT_RULES
+    });
+    const finalTargetIndex = target.lastIndexOf("。");
+
+    expect(before.activeTargetIndex).toBe(finalTargetIndex);
+    expect(before.characters.find((entry) => entry.index === finalTargetIndex)).toMatchObject({
+      expected: "。",
+      actual: "",
+      index: finalTargetIndex,
+      status: "current"
+    });
+    expect(after.characters.find((entry) => entry.index === finalTargetIndex)).toMatchObject({
+      expected: "。",
+      actual: "。",
+      index: finalTargetIndex,
+      status: "correct"
+    });
+    expect(after.activeTargetIndex).toBeNull();
+    expect(isTypingComparisonComplete(after)).toBe(true);
+  });
+
   it("finishes completed Practice and word drills at the input boundary, but not timed Training", () => {
     expect(shouldFinishCompletedText(undefined, "客戶測試", "客戶測試", DEFAULT_RULES)).toBe(true);
     expect(shouldFinishCompletedText("words", "Complete this", "Complete this", DEFAULT_RULES)).toBe(true);
@@ -364,7 +397,7 @@ describe("result calculation", () => {
       target: "Formal filing notice.",
       typed: "Formal filling notice.",
       elapsedSeconds: 60,
-      durationSeconds: 60,
+      modeDurationSeconds: 60,
       category: "Government / formal English",
       rules: DEFAULT_RULES,
       completionReason: "text_completed"
@@ -376,7 +409,7 @@ describe("result calculation", () => {
     expect(result.totalCharacters).toBe(21);
     expect(result.correctCharacters).toBe(21);
     expect(result.incorrectCharacters).toBe(1);
-    expect(result.timeUsedSeconds).toBe(60);
+    expect(result.elapsedSeconds).toBe(60);
     expect(result.completionReason).toBe("text_completed");
     expect(result.isRankable).toBe(true);
   });
@@ -386,7 +419,7 @@ describe("result calculation", () => {
       target: "A formal response is required.",
       typed: "xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       elapsedSeconds: 60,
-      durationSeconds: 60,
+      modeDurationSeconds: 60,
       category: "Legal / contract style",
       rules: DEFAULT_RULES,
       completionReason: "time_up"
@@ -401,13 +434,14 @@ describe("result calculation", () => {
       target: "Hello world",
       typed: "Hello world",
       elapsedSeconds: 12,
-      durationSeconds: 60,
+      modeDurationSeconds: 60,
       category: "Business email",
       rules: DEFAULT_RULES,
       completionReason: "text_completed"
     });
 
-    expect(result.timeUsedSeconds).toBe(12);
+    expect(result.elapsedSeconds).toBe(12);
+    expect(result.modeDurationSeconds).toBe(60);
     expect(result.completionReason).toBe("text_completed");
     expect(result.wpm).toBe(11);
   });

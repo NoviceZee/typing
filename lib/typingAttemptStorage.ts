@@ -1,12 +1,15 @@
 import { supabase } from "./supabaseClient";
 import type { TypingAttemptDetail } from "./typingStatistics";
 import { isProgressionEligibleResult } from "./resultEligibility";
+import { getLegacyDurationBucket, resolveResultDuration } from "./resultDuration";
 
 type TypingAttemptDetailRow = {
   id: string;
   user_id: string;
   completed_at: string;
   duration_seconds: number;
+  mode_duration_seconds?: number | null;
+  elapsed_seconds?: number | null;
   category: string | null;
   wpm: number;
   accuracy: number;
@@ -32,7 +35,9 @@ function toRow(detail: TypingAttemptDetail, typingResultId?: string | null) {
     user_id: detail.userId,
     typing_result_id: typingResultId ?? null,
     completed_at: detail.completedAt,
-    duration_seconds: detail.durationSeconds,
+    duration_seconds: getLegacyDurationBucket(detail),
+    mode_duration_seconds: detail.modeDurationSeconds,
+    elapsed_seconds: detail.elapsedSeconds,
     category: detail.category ?? null,
     wpm: detail.wpm,
     accuracy: detail.accuracy,
@@ -49,7 +54,7 @@ export async function getSupabaseTypingAttemptDetails(
 ): Promise<TypingAttemptDetail[]> {
   const { data, error } = await client
     .from("typing_attempt_details")
-    .select("id,user_id,completed_at,duration_seconds,category,wpm,accuracy,characters,timeline")
+    .select("id,user_id,completed_at,duration_seconds,mode_duration_seconds,elapsed_seconds,category,wpm,accuracy,characters,timeline")
     .eq("user_id", userId)
     .order("completed_at", { ascending: false })
     .limit(limit);
@@ -75,11 +80,13 @@ export async function syncLocalTypingAttemptDetails(
 }
 
 function fromRow(row: TypingAttemptDetailRow): TypingAttemptDetail {
+  const duration = resolveResultDuration(row);
   return {
     id: row.id,
     userId: row.user_id,
     completedAt: row.completed_at,
-    durationSeconds: Number(row.duration_seconds),
+    modeDurationSeconds: duration.modeDurationSeconds,
+    elapsedSeconds: duration.elapsedSeconds,
     category: row.category,
     wpm: Number(row.wpm),
     accuracy: Number(row.accuracy),

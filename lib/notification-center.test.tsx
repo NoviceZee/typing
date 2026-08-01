@@ -28,6 +28,7 @@ vi.mock("@/components/AuthProvider", () => ({
 }));
 
 vi.mock("@/lib/friendStorage", () => ({
+  FRIENDSHIP_RESOLVED_EVENT: "formaltype:friendship-resolved",
   listIncomingFriendRequests: vi.fn(async () => mockState.friendRequests)
 }));
 
@@ -127,6 +128,43 @@ describe("NotificationCenter", () => {
     expect(screen.queryByRole("button", { name: "Notifications, 1 unread" })).toBeNull();
   });
 
+  it("ignores a mark-seen completion from the previous account", async () => {
+    let releaseSave!: () => void;
+    mockState.persistPromise = new Promise<void>((resolve) => {
+      releaseSave = resolve;
+    });
+    const view = render(<NotificationCenter />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Notifications, 1 unread" }));
+    mockState.user = { id: "user-2" };
+    view.rerender(<NotificationCenter />);
+
+    expect(await screen.findByRole("button", { name: "Notifications, 1 unread" })).toBeTruthy();
+
+    releaseSave();
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("button", { name: "Notifications, 1 unread" })).toBeTruthy();
+  });
+
+  it("clears the previous account's friend requests while the next account hydrates", async () => {
+    mockState.announcements = [];
+    mockState.friendRequests = [{ id: "friendship-user-1", handle: "first_account_friend" }];
+    const view = render(<NotificationCenter />);
+    expect(await screen.findByRole("button", { name: "Notifications, 1 unread" })).toBeTruthy();
+
+    mockState.friendRequests = [];
+    mockState.loadPromise = new Promise(() => undefined);
+    mockState.user = { id: "user-2" };
+    view.rerender(<NotificationCenter />);
+
+    expect(screen.getByRole("button", { name: "Notifications" })).toBeTruthy();
+    expect(screen.queryByText("@first_account_friend")).toBeNull();
+  });
+
   it("does not flash an unread announcement before account read-state hydration completes", async () => {
     let releaseLoad!: (state: { source: "account"; lastSeenAnnouncementAt: string | null }) => void;
     mockState.loadPromise = new Promise((resolve) => {
@@ -197,5 +235,29 @@ describe("NotificationCenter", () => {
     const trigger = await screen.findByRole("button", { name: "Notifications" });
     fireEvent.click(trigger);
     expect(screen.queryByText("Maintenance notice")).toBeNull();
+  });
+
+  it("removes a resolved friend request without creating a post-accept notification", async () => {
+    mockState.announcements = [];
+    mockState.friendRequests = [{
+      id: "friendship-1",
+      handle: "formal_typist"
+    }];
+    render(<NotificationCenter />);
+
+    const trigger = await screen.findByRole("button", { name: "Notifications, 1 unread" });
+    fireEvent.click(trigger);
+    expect(screen.getByText("New friend request")).toBeTruthy();
+    expect(screen.getByText("@formal_typist")).toBeTruthy();
+    expect(screen.queryByText(/wants to compare results/i)).toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent("formaltype:friendship-resolved", {
+        detail: { friendshipId: "friendship-1" }
+      }));
+    });
+
+    expect(screen.getByRole("button", { name: "Notifications" })).toBeTruthy();
+    expect(screen.queryByText("New friend request")).toBeNull();
   });
 });

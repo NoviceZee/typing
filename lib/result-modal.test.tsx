@@ -671,7 +671,7 @@ describe("ResultModal", () => {
   });
 
   it("keeps 5-minute WPM graph samples on elapsed seconds from 0 to 300", () => {
-    const result = { ...makeResult(), timeUsedSeconds: 300, durationSeconds: 300 };
+    const result = { ...makeResult(), elapsedSeconds: 300, modeDurationSeconds: 300 };
     const timeline = Array.from({ length: 301 }, (_, timeSeconds) => ({
       timeSeconds,
       wpm: timeSeconds === 0 ? 0 : 48,
@@ -691,7 +691,7 @@ describe("ResultModal", () => {
 
   it("caps longer attempt axes at 10 divisions so labels remain readable", () => {
     const layoutFor = (seconds: number) =>
-      getAttemptGraphLayout([], { ...makeResult(), timeUsedSeconds: seconds, durationSeconds: seconds });
+      getAttemptGraphLayout([], { ...makeResult(), elapsedSeconds: seconds, modeDurationSeconds: seconds });
 
     expect(layoutFor(15).xTicks).toHaveLength(11);
     expect(layoutFor(15).xTicks[1]).toBe(1.5);
@@ -706,8 +706,8 @@ describe("ResultModal", () => {
   it("uses actual Training time instead of the normalized comparison duration", () => {
     const layout = getAttemptGraphLayout([], {
       ...makeResult(),
-      timeUsedSeconds: 15,
-      durationSeconds: 60,
+      elapsedSeconds: 15,
+      modeDurationSeconds: 60,
       category: "training_words"
     });
 
@@ -742,13 +742,13 @@ describe("ResultModal", () => {
   });
 
   it("adds a final time-up point at the duration instead of using remaining seconds", () => {
-    const result = { ...makeResult(), timeUsedSeconds: 300, durationSeconds: 300, wpm: 52, accuracy: 99 };
+    const result = { ...makeResult(), elapsedSeconds: 300, modeDurationSeconds: 300, wpm: 52, accuracy: 99 };
     const timeline = [
       { timeSeconds: 296, wpm: 51, accuracy: 99 },
       { timeSeconds: 297, wpm: 51, accuracy: 99 }
     ].reduce(addAttemptTimelinePoint, [] as Array<{ timeSeconds: number; wpm: number; accuracy?: number }>);
     const completedTimeline = addAttemptTimelinePoint(timeline, {
-      timeSeconds: result.timeUsedSeconds,
+      timeSeconds: result.elapsedSeconds,
       wpm: result.wpm,
       accuracy: result.accuracy
     });
@@ -760,7 +760,7 @@ describe("ResultModal", () => {
   });
 
   it("anchors elapsed-time charts at zero even when the first recorded sample is after start", () => {
-    const result = { ...makeResult(), timeUsedSeconds: 300, durationSeconds: 300 };
+    const result = { ...makeResult(), elapsedSeconds: 300, modeDurationSeconds: 300 };
     const layout = getAttemptGraphLayout(
       [
         { timeSeconds: 1, wpm: 30, accuracy: 95 },
@@ -910,8 +910,8 @@ function makeResult(): TypingResult {
     accuracy: 100,
     wpm: 48,
     rawWpm: 50,
-    timeUsedSeconds: 60,
-    durationSeconds: 60,
+    elapsedSeconds: 60,
+    modeDurationSeconds: 60,
     category: "Uncategorised",
     presetName: "General",
     completionReason: "time_up",

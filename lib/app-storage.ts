@@ -7,6 +7,7 @@ import {
   buildPracticePassage
 } from "./typing-engine";
 import { isProgressionEligibleResult } from "./resultEligibility";
+import { createCanonicalTypingTarget } from "./typingTarget";
 import {
   installTypingStationStorageDebugHelper,
   runTypingStationStorageMigration,
@@ -165,6 +166,8 @@ export type PreviousTypingResult = {
   correctCharacters: number;
   typedCharacters: number;
   elapsedSeconds: number;
+  modeDurationSeconds?: number | null;
+  /** Legacy compatibility field. New records use modeDurationSeconds. */
   durationSeconds?: number;
   targetSnapshot?: string;
   previousPaceTimeline?: PreviousPaceTimelinePoint[];
@@ -935,7 +938,12 @@ export function readPreviousResults(): Record<string, PreviousTypingResult> {
   try {
     const stored = window.localStorage.getItem(PREVIOUS_RESULTS_STORAGE_KEY);
     const parsed = stored ? (JSON.parse(stored) as Record<string, PreviousTypingResult>) : {};
-    return parsed && typeof parsed === "object" ? parsed : {};
+    if (!parsed || typeof parsed !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .filter((entry): entry is [string, PreviousTypingResult] => isPreviousTypingResult(entry[1]))
+        .map(([key, result]) => [key, canonicalizePreviousTypingResult(result)])
+    );
   } catch {
     return {};
   }
@@ -963,7 +971,15 @@ export function readPreviousResult(passageId?: string, scope?: PreviousResultSco
   const previousResults = readPreviousResults();
   const scopedKey = getPreviousResultStorageKey(passageId, scope);
   const previousResult = previousResults[scopedKey] ?? previousResults[passageId] ?? null;
-  return previousResult && isProgressionEligibleResult(previousResult) ? previousResult : null;
+  if (!previousResult || !isProgressionEligibleResult(previousResult)) return null;
+  return {
+    ...previousResult,
+    modeDurationSeconds: previousResult.modeDurationSeconds !== undefined
+      ? previousResult.modeDurationSeconds
+      : typeof scope === "number"
+        ? previousResult.durationSeconds ?? Math.round(scope)
+        : null
+  };
 }
 
 export function writePreviousResult(
@@ -978,7 +994,10 @@ export function writePreviousResult(
   }
 
   const previousResults = prunePreviousResults(readPreviousResults());
-  previousResults[getPreviousResultStorageKey(passage.id, scope ?? result.durationSeconds)] = createPreviousTypingResult(
+  previousResults[getPreviousResultStorageKey(
+    passage.id,
+    scope ?? result.modeDurationSeconds ?? "infinite"
+  )] = createPreviousTypingResult(
     passage,
     result,
     typedCharacters,
@@ -1004,13 +1023,37 @@ export function createPreviousTypingResult(
     errors: result.incorrectCharacters,
     correctCharacters: result.correctCharacters,
     typedCharacters,
-    elapsedSeconds: result.timeUsedSeconds,
-    durationSeconds: result.durationSeconds,
-    targetSnapshot: (passage.comparableText ?? passage.text).trim(),
+    elapsedSeconds: result.elapsedSeconds,
+    modeDurationSeconds: result.modeDurationSeconds,
+    targetSnapshot: createCanonicalTypingTarget({
+      storedText: passage.text,
+      comparableText: passage.comparableText
+    }).comparableText,
     previousPaceTimeline: downsamplePreviousPaceTimeline(previousPaceTimeline),
     completedAt: result.completedAt,
     completionReason: result.completionReason
   };
+}
+
+function canonicalizePreviousTypingResult(result: PreviousTypingResult): PreviousTypingResult {
+  if (typeof result.targetSnapshot !== "string") return result;
+  return {
+    ...result,
+    targetSnapshot: createCanonicalTypingTarget({ storedText: result.targetSnapshot }).comparableText
+  };
+}
+
+function isPreviousTypingResult(value: unknown): value is PreviousTypingResult {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<PreviousTypingResult>;
+  return (
+    typeof candidate.passageId === "string" &&
+    typeof candidate.passageTitle === "string" &&
+    typeof candidate.wpm === "number" &&
+    typeof candidate.accuracy === "number" &&
+    typeof candidate.elapsedSeconds === "number" &&
+    typeof candidate.completedAt === "string"
+  );
 }
 
 export function updateLibraryPassage(updatedPassage: LibraryPassage) {

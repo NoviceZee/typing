@@ -29,6 +29,7 @@ import {
   SupabaseAnalyticsTypingResultRow,
   getSupabaseAnalyticsTypingResults
 } from "@/lib/typingResultStorage";
+import { resolveResultDuration } from "@/lib/resultDuration";
 import {
   aggregateTypingStatistics,
   buildTypingReplayEvents,
@@ -844,7 +845,7 @@ function MyResults({ results, domain }: { results: SupabaseAnalyticsTypingResult
               <div className="mt-1 font-mono text-utility uppercase text-paper/35">{result.passage_category}</div>
             )}
           </div>
-          <ResultMetric label="Duration" value={formatDuration(result.duration_seconds)} />
+          <ResultMetric label="Duration" value={formatDuration(resolveResultDuration(result).elapsedSeconds)} />
           <ResultMetric label="WPM" value={formatNumber(result.wpm)} strong />
           <ResultMetric label="Accuracy" value={`${formatNumber(result.accuracy)}%`} />
         </article>

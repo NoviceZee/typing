@@ -18,6 +18,8 @@ describe("typingAttemptStorage", () => {
       id: "attempt-1",
       user_id: "user-1",
       typing_result_id: "result-1",
+      mode_duration_seconds: 60,
+      elapsed_seconds: 23,
       characters: expect.any(Array),
       timeline: expect.any(Array)
     }));
@@ -45,7 +47,14 @@ describe("typingAttemptStorage", () => {
     const from = vi.fn(() => ({ select }));
 
     await expect(getSupabaseTypingAttemptDetails("user-1", 50, { from })).resolves.toEqual([
-      expect.objectContaining({ id: "attempt-1", userId: "user-1", wpm: 72, accuracy: 98.5 })
+      expect.objectContaining({
+        id: "attempt-1",
+        userId: "user-1",
+        modeDurationSeconds: 60,
+        elapsedSeconds: 60,
+        wpm: 72,
+        accuracy: 98.5
+      })
     ]);
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
   });
@@ -76,7 +85,8 @@ function makeDetail(): TypingAttemptDetail {
     id: "attempt-1",
     userId: "user-1",
     completedAt: "2026-07-11T00:00:00.000Z",
-    durationSeconds: 60,
+    modeDurationSeconds: 60,
+    elapsedSeconds: 23,
     category: "Business email",
     wpm: 72,
     accuracy: 98.5,

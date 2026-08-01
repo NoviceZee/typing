@@ -5,6 +5,7 @@ import { normalizeHandle } from "./profileStorage";
 import { supabase } from "./supabaseClient";
 import type { TypingResult } from "./typing-engine";
 import { isProgressionEligibleResult } from "./resultEligibility";
+import { getLegacyDurationBucket, resolveResultDuration } from "./resultDuration";
 
 export type SupabaseTypingResultInsert = {
   user_id: string;
@@ -12,6 +13,7 @@ export type SupabaseTypingResultInsert = {
   passage_id: string | null;
   passage_title: string;
   duration_seconds: number;
+  mode_duration_seconds: number | null;
   elapsed_seconds: number;
   completion_reason: TypingResult["completionReason"];
   is_rankable: boolean;
@@ -33,7 +35,9 @@ export type SupabaseLeaderboardResultRow = {
   passage_title: string;
   passage_category: string | null;
   metric_domain?: AnalyticsDomain;
-  duration_seconds: number;
+  mode_duration_seconds: number | null;
+  elapsed_seconds: number;
+  duration_seconds?: number;
   wpm: number;
   accuracy: number;
   created_at: string;
@@ -44,8 +48,9 @@ export type SupabaseOwnTypingResultRow = {
   passage_title: string;
   passage_category?: string | null;
   metric_domain?: AnalyticsDomain;
-  duration_seconds: number;
+  mode_duration_seconds?: number | null;
   elapsed_seconds?: number;
+  duration_seconds?: number;
   completion_reason?: TypingResult["completionReason"] | "legacy";
   is_rankable?: boolean;
   wpm: number;
@@ -64,7 +69,7 @@ export type SupabaseAnalyticsTypingResultRow = SupabaseOwnTypingResultRow & {
 
 export type SupabaseLeaderboardFilters = {
   limit?: number;
-  durationSeconds?: number | null;
+  modeDurationSeconds?: number | null;
   category?: string | null;
   domain?: AnalyticsDomain;
   timeRange?: LeaderboardTimeRange;
@@ -93,8 +98,9 @@ export function toSupabaseTypingResultInsert({
     client_attempt_id: attemptId,
     passage_id: isUuid(supabasePassageId) ? supabasePassageId : null,
     passage_title: passage.title?.trim() || "Untitled passage",
-    duration_seconds: result.durationSeconds,
-    elapsed_seconds: result.timeUsedSeconds,
+    duration_seconds: getLegacyDurationBucket(result),
+    mode_duration_seconds: result.modeDurationSeconds,
+    elapsed_seconds: result.elapsedSeconds,
     completion_reason: result.completionReason,
     is_rankable: isProgressionEligibleResult(result),
     metric_domain: getResultAnalyticsDomain({
@@ -137,7 +143,7 @@ export async function saveSupabaseTypingResult(
 
 export async function getSupabaseLeaderboardResults({
   limit = 25,
-  durationSeconds,
+  modeDurationSeconds,
   category,
   domain = "english",
   timeRange,
@@ -149,13 +155,13 @@ export async function getSupabaseLeaderboardResults({
 
   let query = client
     .from("typing_results_leaderboard")
-    .select("id,display_name,passage_title,passage_category,metric_domain,duration_seconds,wpm,accuracy,created_at")
+    .select("id,display_name,passage_title,passage_category,metric_domain,mode_duration_seconds,elapsed_seconds,duration_seconds,wpm,accuracy,created_at")
     .order("wpm", { ascending: false })
     .order("accuracy", { ascending: false })
     .order("created_at", { ascending: false });
 
-  if (durationSeconds) {
-    query = query.eq("duration_seconds", durationSeconds);
+  if (modeDurationSeconds) {
+    query = query.eq("mode_duration_seconds", modeDurationSeconds);
   }
 
   if (category?.trim()) {
@@ -177,7 +183,7 @@ export async function getSupabaseLeaderboardResults({
     throw error;
   }
 
-  return data ?? [];
+  return (data ?? []).map(toSupabaseLeaderboardResultRow);
 }
 
 export async function getSupabaseLeaderboardCategories(limit = 200, domain: AnalyticsDomain = "english"): Promise<string[]> {
@@ -228,7 +234,7 @@ export async function getSupabaseOwnTypingResults(
 
   const { data, error } = await supabase
     .from("typing_results")
-    .select("id,passage_title,metric_domain,duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
+    .select("id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -247,7 +253,7 @@ export async function getSupabaseAnalyticsTypingResults(
 ): Promise<SupabaseAnalyticsTypingResultRow[]> {
   const { data, error } = await client
     .from("typing_results")
-    .select("id,passage_title,metric_domain,duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
+    .select("id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -272,7 +278,7 @@ export async function getSupabasePublicTypingResultsByHandle(
 
   const { data, error } = await client
     .from("public_profile_typing_results")
-    .select("id,passage_title,passage_category,metric_domain,duration_seconds,wpm,accuracy,correct_chars,created_at")
+    .select("id,passage_title,passage_category,metric_domain,mode_duration_seconds,elapsed_seconds,duration_seconds,wpm,accuracy,correct_chars,created_at")
     .eq("handle", cleanHandle)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -294,14 +300,16 @@ function requireSupabaseClient(): any {
 
 function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingResultRow {
   const passage = Array.isArray(row.passages) ? row.passages[0] : row.passages;
+  const duration = resolveResultDuration(row);
 
   return {
     id: row.id,
     passage_title: row.passage_title,
     passage_category: passage?.category ?? null,
     ...toMetricDomainField(row.metric_domain),
-    duration_seconds: Number(row.duration_seconds),
-    ...(row.elapsed_seconds == null ? {} : { elapsed_seconds: Number(row.elapsed_seconds) }),
+    mode_duration_seconds: duration.modeDurationSeconds,
+    duration_seconds: getLegacyDurationBucket(duration),
+    elapsed_seconds: duration.elapsedSeconds,
     ...(row.completion_reason == null ? {} : { completion_reason: row.completion_reason }),
     ...(typeof row.is_rankable === "boolean" ? { is_rankable: row.is_rankable } : {}),
     wpm: Number(row.wpm),
@@ -314,14 +322,16 @@ function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingRe
 
 function toSupabaseOwnTypingResultRow(row: any): SupabaseOwnTypingResultRow {
   const passage = Array.isArray(row.passages) ? row.passages[0] : row.passages;
+  const duration = resolveResultDuration(row);
 
   return {
     id: row.id,
     passage_title: row.passage_title,
     passage_category: passage?.category ?? row.passage_category ?? null,
     ...toMetricDomainField(row.metric_domain),
-    duration_seconds: Number(row.duration_seconds),
-    ...(row.elapsed_seconds == null ? {} : { elapsed_seconds: Number(row.elapsed_seconds) }),
+    mode_duration_seconds: duration.modeDurationSeconds,
+    duration_seconds: getLegacyDurationBucket(duration),
+    elapsed_seconds: duration.elapsedSeconds,
     ...(row.completion_reason == null ? {} : { completion_reason: row.completion_reason }),
     ...(typeof row.is_rankable === "boolean" ? { is_rankable: row.is_rankable } : {}),
     wpm: Number(row.wpm),
@@ -333,15 +343,35 @@ function toSupabaseOwnTypingResultRow(row: any): SupabaseOwnTypingResultRow {
 }
 
 function toSupabasePublicTypingResultRow(row: any): SupabaseAnalyticsTypingResultRow {
+  const duration = resolveResultDuration(row);
   return {
     id: row.id,
     passage_title: row.passage_title,
     passage_category: row.passage_category ?? null,
     ...toMetricDomainField(row.metric_domain),
-    duration_seconds: Number(row.duration_seconds),
+    mode_duration_seconds: duration.modeDurationSeconds,
+    duration_seconds: getLegacyDurationBucket(duration),
+    elapsed_seconds: duration.elapsedSeconds,
     wpm: Number(row.wpm),
     accuracy: Number(row.accuracy),
     correct_chars: Number(row.correct_chars ?? 0),
+    created_at: row.created_at
+  };
+}
+
+function toSupabaseLeaderboardResultRow(row: any): SupabaseLeaderboardResultRow {
+  const duration = resolveResultDuration(row);
+  return {
+    id: row.id,
+    display_name: row.display_name,
+    passage_title: row.passage_title,
+    passage_category: row.passage_category ?? null,
+    ...toMetricDomainField(row.metric_domain),
+    mode_duration_seconds: duration.modeDurationSeconds,
+    duration_seconds: getLegacyDurationBucket(duration),
+    elapsed_seconds: duration.elapsedSeconds,
+    wpm: Number(row.wpm),
+    accuracy: Number(row.accuracy),
     created_at: row.created_at
   };
 }

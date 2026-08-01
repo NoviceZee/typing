@@ -14,6 +14,7 @@ import { useAuth } from "@/components/AuthProvider";
 import {
   type AccountSettingsSaveResult,
   type AccountSettingsV1,
+  createDefaultAccountSettings,
   hydrateAccountSettings,
   normalizeAccountSettings,
   readLocalAccountSettings,
@@ -38,13 +39,17 @@ const AccountSettingsContext = createContext<AccountSettingsContextValue | null>
 export function AccountSettingsProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const [settings, setSettings] = useState<AccountSettingsV1 | null>(null);
+  const [hydratedAccountKey, setHydratedAccountKey] = useState<string | null>(null);
   const [syncState, setSyncState] = useState<AccountSettingsSyncState>("loading");
   const currentSettingsRef = useRef<AccountSettingsV1 | null>(null);
   const hydratingRef = useRef(false);
   const userIdRef = useRef<string | null>(null);
   const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const saveRevisionRef = useRef(0);
+  const accountGenerationRef = useRef(0);
+  const lastAuthenticatedUserIdRef = useRef<string | null>(null);
   userIdRef.current = user?.id ?? null;
+  const accountKey = user?.id ?? "anonymous";
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -53,26 +58,47 @@ export function AccountSettingsProvider({ children }: { children: ReactNode }) {
     }
 
     let cancelled = false;
+    const generation = ++accountGenerationRef.current;
+    const userId = user?.id ?? null;
+    const switchedAuthenticatedAccount = Boolean(
+      userId &&
+      lastAuthenticatedUserIdRef.current &&
+      lastAuthenticatedUserIdRef.current !== userId
+    );
+    if (userId) lastAuthenticatedUserIdRef.current = userId;
     hydratingRef.current = true;
+    currentSettingsRef.current = null;
+    setSettings(null);
+    setHydratedAccountKey(null);
     setSyncState("loading");
-    const localSettings = readLocalAccountSettings();
+    saveQueueRef.current = Promise.resolve();
+    saveRevisionRef.current = 0;
+    const localSettings = switchedAuthenticatedAccount
+      ? createDefaultAccountSettings()
+      : readLocalAccountSettings();
 
     void hydrateAccountSettings({
-      userId: user?.id ?? null,
+      userId,
       repository: supabaseAccountSettingsRepository,
       localSettings
     })
       .then((result) => {
-        if (cancelled) return;
-        currentSettingsRef.current = result.settings;
-        setSettings(result.settings);
+        if (cancelled || accountGenerationRef.current !== generation) return;
+        const hydratedSettings = writeLocalAccountSettings(result.settings);
+        currentSettingsRef.current = hydratedSettings;
+        setSettings(hydratedSettings);
+        setHydratedAccountKey(accountKey);
         setSyncState(result.source === "local_fallback" ? "local_fallback" : "saved");
       })
       .catch(() => {
-        if (cancelled) return;
-        currentSettingsRef.current = localSettings;
-        setSettings(localSettings);
-        setSyncState("local_fallback");
+        if (cancelled || accountGenerationRef.current !== generation) return;
+        const fallbackSettings = userId
+          ? writeLocalAccountSettings(createDefaultAccountSettings())
+          : writeLocalAccountSettings(localSettings);
+        currentSettingsRef.current = fallbackSettings;
+        setSettings(fallbackSettings);
+        setHydratedAccountKey(accountKey);
+        setSyncState(userId ? "save_failed" : "local_fallback");
       })
       .finally(() => {
         if (!cancelled) hydratingRef.current = false;
@@ -82,11 +108,12 @@ export function AccountSettingsProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       hydratingRef.current = false;
     };
-  }, [isAuthLoading, user?.id]);
+  }, [accountKey, isAuthLoading, user?.id]);
 
   const saveSettings = useCallback((nextSettings: AccountSettingsV1) => {
     const localSettings = writeLocalAccountSettings(normalizeAccountSettings(nextSettings));
     const userId = userIdRef.current;
+    const generation = accountGenerationRef.current;
     const revision = ++saveRevisionRef.current;
     currentSettingsRef.current = localSettings;
     setSettings(localSettings);
@@ -114,6 +141,8 @@ export function AccountSettingsProvider({ children }: { children: ReactNode }) {
     return save.then((result) => {
       if (
         saveRevisionRef.current === revision &&
+        accountGenerationRef.current === generation &&
+        userIdRef.current === userId &&
         currentSettingsRef.current === localSettings
       ) {
         setSyncState(result.status);
@@ -151,8 +180,10 @@ export function AccountSettingsProvider({ children }: { children: ReactNode }) {
   }, [saveSettings]);
 
   const value = useMemo<AccountSettingsContextValue | null>(
-    () => settings ? { settings, syncState, saveSettings, updateSettings } : null,
-    [saveSettings, settings, syncState, updateSettings]
+    () => settings && hydratedAccountKey === accountKey
+      ? { settings, syncState, saveSettings, updateSettings }
+      : null,
+    [accountKey, hydratedAccountKey, saveSettings, settings, syncState, updateSettings]
   );
 
   // Authenticated cloud values must be resolved before application pages read

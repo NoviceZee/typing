@@ -18,6 +18,7 @@ export type TypingSessionTargetSnapshot = Readonly<{
 export type TypingSessionModeSnapshot = Readonly<{
   kind: "timed" | "finite" | "infinite";
   durationSeconds: number | null;
+  finishOnTargetCompletion: boolean;
 }>;
 
 export type TypingSessionSnapshot = Readonly<{

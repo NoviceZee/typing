@@ -55,6 +55,16 @@ describe("database security migration contracts", () => {
     expect(sql).toContain("where typing_results.is_rankable = true");
   });
 
+  it("exposes configured mode duration separately from actual elapsed time", () => {
+    const sql = readMigration("202608010001_stabilize_result_duration_contracts.sql");
+
+    expect(sql).toContain("add column if not exists mode_duration_seconds integer");
+    expect(sql).toContain("typing_results.mode_duration_seconds");
+    expect(sql).toContain("typing_results.elapsed_seconds");
+    expect(sql).not.toContain("typing_results.elapsed_seconds as duration_seconds");
+    expect(sql).toContain("typing_results.duration_seconds");
+  });
+
   it("stores versioned account settings and durable announcement read state behind owner RLS", () => {
     const sql = readMigration("202607260001_create_user_settings_and_notification_read_state.sql");
 

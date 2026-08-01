@@ -1,4 +1,5 @@
 import type { SupabaseAnalyticsTypingResultRow } from "./typingResultStorage";
+import { hasValidResultDuration, resolveResultDuration } from "./resultDuration";
 import { AnalyticsDomain, getResultAnalyticsDomain } from "./analyticsDomain";
 import { isProgressionEligibleResult } from "./resultEligibility";
 
@@ -412,7 +413,7 @@ function toChallengeItem(
 
 function getFastestForDuration(results: SupabaseAnalyticsTypingResultRow[], durationSeconds: number) {
   return [...results]
-    .filter((result) => result.duration_seconds === durationSeconds)
+    .filter((result) => resolveResultDuration(result).modeDurationSeconds === durationSeconds)
     .sort(compareByWpmAccuracyAndDate)[0] ?? null;
 }
 
@@ -492,13 +493,12 @@ function getCurrentStreakDays(activeDates: string[], now: Date) {
 }
 
 function isValidAnalyticsResult(result: SupabaseAnalyticsTypingResultRow) {
+  if (!hasValidResultDuration(result)) return false;
+  const duration = resolveResultDuration(result);
   return (
     Boolean(result?.id) &&
-    Number.isFinite(result.duration_seconds) &&
-    result.duration_seconds > 0 &&
-    result.duration_seconds <= 86_400 &&
-    (result.elapsed_seconds === undefined ||
-      (Number.isFinite(result.elapsed_seconds) && result.elapsed_seconds > 0 && result.elapsed_seconds <= 86_400)) &&
+    (duration.modeDurationSeconds === null || duration.modeDurationSeconds <= 86_400) &&
+    duration.elapsedSeconds <= 86_400 &&
     Number.isFinite(result.wpm) &&
     result.wpm >= 0 &&
     result.wpm <= 1_000 &&
@@ -533,7 +533,7 @@ function sumPracticeSeconds(results: SupabaseAnalyticsTypingResultRow[]) {
 }
 
 function getPracticeSeconds(result: SupabaseAnalyticsTypingResultRow) {
-  return result.elapsed_seconds ?? result.duration_seconds;
+  return resolveResultDuration(result).elapsedSeconds;
 }
 
 function isBusinessCategory(category: string | null) {

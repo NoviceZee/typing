@@ -148,17 +148,16 @@ export async function hydrateAccountSettings({
 }): Promise<AccountSettingsHydrationResult> {
   const local = normalizeAccountSettings(localSettings);
   if (!userId) {
-    return { settings: writeLocalAccountSettings(local), source: "local_fallback" };
+    return { settings: local, source: "local_fallback" };
   }
 
   const cloud = await repository.load(userId);
   if (cloud) {
-    const settings = writeLocalAccountSettings(normalizeAccountSettings(cloud));
-    return { settings, source: "cloud" };
+    return { settings: normalizeAccountSettings(cloud), source: "cloud" };
   }
 
   await repository.save(userId, local);
-  return { settings: writeLocalAccountSettings(local), source: "migrated" };
+  return { settings: local, source: "migrated" };
 }
 
 export async function persistAccountSettings({

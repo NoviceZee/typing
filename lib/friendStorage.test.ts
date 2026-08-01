@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, expect, it, vi } from "vitest";
 import {
   acceptFriendRequest,
@@ -47,6 +50,8 @@ describe("friendStorage", () => {
   });
 
   it("accepts a pending friend request", async () => {
+    const resolved = vi.fn();
+    window.addEventListener("formaltype:friendship-resolved", resolved, { once: true });
     const single = vi.fn().mockResolvedValue({
       data: makeFriendship({ status: "accepted" }),
       error: null
@@ -56,16 +61,21 @@ describe("friendStorage", () => {
     const eqId = vi.fn(() => ({ eq: eqStatus }));
     const update = vi.fn(() => ({ eq: eqId }));
     const from = vi.fn(() => ({ update }));
+    const rpc = vi.fn();
 
-    await expect(acceptFriendRequest("friendship-1", { from })).resolves.toMatchObject({ status: "accepted" });
+    await expect(acceptFriendRequest("friendship-1", { from, rpc })).resolves.toMatchObject({ status: "accepted" });
 
     expect(from).toHaveBeenCalledWith("friendships");
     expect(update).toHaveBeenCalledWith({ status: "accepted" });
     expect(eqId).toHaveBeenCalledWith("id", "friendship-1");
     expect(eqStatus).toHaveBeenCalledWith("status", "pending");
+    expect(rpc).not.toHaveBeenCalled();
+    expect(resolved).toHaveBeenCalledTimes(1);
   });
 
   it("deletes pending requests when rejecting", async () => {
+    const resolved = vi.fn();
+    window.addEventListener("formaltype:friendship-resolved", resolved, { once: true });
     const eqStatus = vi.fn().mockResolvedValue({ error: null });
     const eqId = vi.fn(() => ({ eq: eqStatus }));
     const remove = vi.fn(() => ({ eq: eqId }));
@@ -74,6 +84,7 @@ describe("friendStorage", () => {
     await expect(rejectFriendRequest("friendship-1", { from })).resolves.toBeUndefined();
 
     expect(eqStatus).toHaveBeenCalledWith("status", "pending");
+    expect(resolved).toHaveBeenCalledTimes(1);
   });
 
   it("deletes accepted friendships when removing friends", async () => {

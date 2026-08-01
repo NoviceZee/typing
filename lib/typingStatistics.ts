@@ -1,6 +1,7 @@
 import type { CharacterComparison, TypingResult } from "./typing-engine";
 import { AnalyticsDomain, getCategoryAnalyticsDomain } from "./analyticsDomain";
 import { safeSetJsonStorageItem } from "./storageSafety";
+import { resolveResultDuration } from "./resultDuration";
 
 export const TYPING_ATTEMPT_DETAILS_STORAGE_KEY = "formaltype.typing_attempt_details.v1";
 const MAX_STORED_ATTEMPT_DETAILS = 50;
@@ -23,7 +24,10 @@ export type TypingAttemptDetail = {
   id: string;
   userId: string | null;
   completedAt: string;
-  durationSeconds: number;
+  modeDurationSeconds: number | null;
+  elapsedSeconds: number;
+  /** Legacy local-storage compatibility. */
+  durationSeconds?: number;
   category?: string | null;
   wpm: number;
   accuracy: number;
@@ -162,7 +166,8 @@ export function buildTypingAttemptDetail({
     id: `${result.completedAt}-${Math.random().toString(36).slice(2, 10)}`,
     userId: userId ?? null,
     completedAt: result.completedAt,
-    durationSeconds: result.durationSeconds,
+    modeDurationSeconds: result.modeDurationSeconds,
+    elapsedSeconds: result.elapsedSeconds,
     category: result.category,
     wpm: result.wpm,
     accuracy: result.accuracy,
@@ -429,13 +434,17 @@ export function readTypingAttemptDetails(userId?: string | null): TypingAttemptD
       return [];
     }
 
-    return parsed.filter((detail): detail is TypingAttemptDetail => {
-      if (!isTypingAttemptDetail(detail)) {
-        return false;
-      }
-
-      return userId ? detail.userId === userId : true;
-    });
+    return parsed
+      .filter(isTypingAttemptDetail)
+      .filter((detail) => userId ? detail.userId === userId : true)
+      .map((detail) => {
+        const duration = resolveResultDuration(detail);
+        return {
+          ...detail,
+          modeDurationSeconds: duration.modeDurationSeconds,
+          elapsedSeconds: duration.elapsedSeconds
+        };
+      });
   } catch {
     return [];
   }

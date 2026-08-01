@@ -85,7 +85,7 @@ export type ResultInput = {
   target: string;
   typed: string;
   elapsedSeconds: number;
-  durationSeconds: number;
+  modeDurationSeconds: number | null;
   category: PracticeCategory;
   language?: "english" | "chinese";
   rules: TypingRules;
@@ -98,8 +98,8 @@ export type CompletionReason = "time_up" | "text_completed" | "manual";
 export type TypingResult = TypingComparison & {
   wpm: number;
   rawWpm: number;
-  timeUsedSeconds: number;
-  durationSeconds: number;
+  elapsedSeconds: number;
+  modeDurationSeconds: number | null;
   category: PracticeCategory;
   presetName: string;
   completionReason: CompletionReason;
@@ -424,8 +424,8 @@ export function calculateResult(input: ResultInput): TypingResult {
     ...comparison,
     wpm,
     rawWpm: roundOne(rawWpm),
-    timeUsedSeconds: Math.round(input.elapsedSeconds),
-    durationSeconds: input.durationSeconds,
+    elapsedSeconds: Math.round(input.elapsedSeconds),
+    modeDurationSeconds: input.modeDurationSeconds,
     category: input.category,
     presetName: input.presetName ?? "Custom rules",
     completionReason,
@@ -433,7 +433,7 @@ export function calculateResult(input: ResultInput): TypingResult {
     isRankable: isProgressionEligibleResult({
       accuracy: comparison.accuracy,
       wpm,
-      timeUsedSeconds: input.elapsedSeconds,
+      elapsedSeconds: input.elapsedSeconds,
       completionReason,
       correctCharacters: comparison.correctCharacters,
       typedCharacters: input.typed.length,
