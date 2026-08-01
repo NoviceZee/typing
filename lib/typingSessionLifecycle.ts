@@ -59,6 +59,46 @@ export type TypingSessionCoordinator = {
   getSession(): TypingSessionSnapshot;
 };
 
+export type TypingSessionClock = Readonly<{
+  elapsedMs: number;
+  remainingMs: number | null;
+  displayElapsedSeconds: number;
+  displayRemainingSeconds: number | null;
+  shouldFinish: boolean;
+}>;
+
+export function getTypingSessionClock({
+  startedAt,
+  now,
+  durationSeconds
+}: {
+  startedAt: number;
+  now: number;
+  durationSeconds: number | null;
+}): TypingSessionClock {
+  const elapsedMs = Math.max(0, now - startedAt);
+  const displayElapsedSeconds = Math.floor(elapsedMs / 1_000);
+
+  if (durationSeconds === null) {
+    return {
+      elapsedMs,
+      remainingMs: null,
+      displayElapsedSeconds,
+      displayRemainingSeconds: null,
+      shouldFinish: false
+    };
+  }
+
+  const remainingMs = durationSeconds * 1_000 - elapsedMs;
+  return {
+    elapsedMs,
+    remainingMs,
+    displayElapsedSeconds,
+    displayRemainingSeconds: Math.max(0, Math.ceil(remainingMs / 1_000)),
+    shouldFinish: remainingMs <= 0
+  };
+}
+
 export function createTypingSessionCoordinator(snapshot: TypingSessionSnapshot): TypingSessionCoordinator {
   const session = freezeSessionSnapshot(snapshot);
   let finished = false;

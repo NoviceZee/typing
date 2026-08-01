@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   createTypingSessionCoordinator,
+  getTypingSessionClock,
   type TypingSessionSnapshot
 } from "@/lib/typingSessionLifecycle";
+import * as typingSessionLifecycle from "@/lib/typingSessionLifecycle";
 
 function makeSession(overrides: Partial<TypingSessionSnapshot> = {}): TypingSessionSnapshot {
   return {
@@ -25,6 +27,56 @@ function makeSession(overrides: Partial<TypingSessionSnapshot> = {}): TypingSess
 }
 
 describe("typing session completion transaction", () => {
+  it("exports the typing session clock helper", () => {
+    expect(typingSessionLifecycle.getTypingSessionClock).toBeTypeOf("function");
+  });
+
+  it("derives the visible countdown and time-up boundary from the same millisecond clock", () => {
+    expect(
+      getTypingSessionClock({
+        startedAt: 1_000,
+        now: 60_999,
+        durationSeconds: 60
+      })
+    ).toMatchObject({
+      elapsedMs: 59_999,
+      remainingMs: 1,
+      displayElapsedSeconds: 59,
+      displayRemainingSeconds: 1,
+      shouldFinish: false
+    });
+
+    expect(
+      getTypingSessionClock({
+        startedAt: 1_000,
+        now: 61_001,
+        durationSeconds: 60
+      })
+    ).toMatchObject({
+      elapsedMs: 60_001,
+      remainingMs: -1,
+      displayElapsedSeconds: 60,
+      displayRemainingSeconds: 0,
+      shouldFinish: true
+    });
+  });
+
+  it("never gives an Infinite count-up clock a time-up boundary", () => {
+    expect(
+      getTypingSessionClock({
+        startedAt: 1_000,
+        now: 601_000,
+        durationSeconds: null
+      })
+    ).toEqual({
+      elapsedMs: 600_000,
+      remainingMs: null,
+      displayElapsedSeconds: 600,
+      displayRemainingSeconds: null,
+      shouldFinish: false
+    });
+  });
+
   it("freezes one immutable completion snapshot and rejects duplicate finish requests", () => {
     const coordinator = createTypingSessionCoordinator(makeSession());
     const request = {
