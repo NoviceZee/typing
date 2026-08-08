@@ -109,6 +109,7 @@ import {
 import type { TypingAttemptDetail } from "@/lib/typingStatistics";
 import { saveSupabaseTypingAttemptDetail } from "@/lib/typingAttemptStorage";
 import { SessionReview } from "@/components/practice/SessionReview";
+import { PassagePicker } from "@/components/PassagePicker";
 
 export type PracticeTrainingMode = {
   pageTitle: string;
@@ -229,12 +230,14 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const [practiceLanguage, setPracticeLanguage] = useState<PassageLanguage>("english");
   const [selectedCategory, setSelectedCategoryState] = useState<CategoryFilter>(ALL_FILTER);
   const [selectedPassageId, setSelectedPassageId] = useState(RANDOM_PASSAGE_ID);
+  const [isPassagePickerOpen, setIsPassagePickerOpen] = useState(false);
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(DEFAULT_THEME_SETTINGS);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const chineseImeInputRef = useRef<HTMLTextAreaElement | null>(null);
   const typingWindowRef = useRef<HTMLDivElement>(null);
   const typingTextRef = useRef<HTMLDivElement>(null);
   const resultPanelRestartButtonRef = useRef<HTMLButtonElement>(null);
+  const passagePickerButtonRef = useRef<HTMLButtonElement>(null);
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
   const previousActiveCaretRectRef = useRef<DOMRect | null>(null);
   const terminalCaretRef = useRef<HTMLSpanElement | null>(null);
@@ -1723,15 +1726,26 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }
 
   function handlePassageSelection(passageId: string) {
+    const selectedLibraryPassage = filterLibraryPassagesByLanguage(availableLibrary, practiceLanguage).find(
+      (libraryPassage) => libraryPassage.id === passageId
+    );
+    if (!selectedLibraryPassage) {
+      return;
+    }
+
     resetForUnrelatedTarget();
+    setSelectedCategoryState(selectedLibraryPassage.category);
+    setSelectedCategory(selectedLibraryPassage.category);
     choosePracticePassage({
       library: availableLibrary,
-      category: selectedCategory,
+      category: selectedLibraryPassage.category,
       duration: durationSeconds,
       textMode: passageTextMode,
       language: practiceLanguage,
       preferredPassageId: passageId
     });
+    setIsPassagePickerOpen(false);
+    window.requestAnimationFrame(() => passagePickerButtonRef.current?.focus());
   }
 
   function loadNextPassage() {
@@ -1892,8 +1906,8 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
             data-testid="practice-header"
             className={clsx(
               isCompactPractice
-                ? "mx-auto mb-2 grid max-w-5xl grid-cols-1 items-start gap-x-3 gap-y-1 text-center sm:grid-cols-[minmax(0,1fr)_auto]"
-                : "mx-auto mb-3 grid max-w-5xl grid-cols-1 items-start gap-x-4 gap-y-1.5 text-center sm:grid-cols-[minmax(0,1fr)_auto]",
+                ? "mx-auto grid max-w-5xl grid-cols-1 items-start gap-x-3 gap-y-1 text-center sm:grid-cols-[minmax(0,1fr)_auto]"
+                : "mx-auto grid max-w-5xl grid-cols-1 items-start gap-x-4 gap-y-1.5 text-center sm:grid-cols-[minmax(0,1fr)_auto]",
               isFocusMode && "invisible pointer-events-none"
             )}
           >
@@ -1933,13 +1947,15 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
                           >
                             Random
                           </TextChoiceButton>
-                          <Link
-                            href={`/passages?language=${practiceLanguage}`}
-                            className="inline-flex min-h-7 items-center gap-1 px-1.5 py-1 text-control text-paper/45 outline-none transition hover:text-paper/80 focus-visible:text-brass focus-visible:ring-1 focus-visible:ring-brass/60"
+                          <TextChoiceButton
+                            buttonRef={passagePickerButtonRef}
+                            selected={selectedPassageId !== RANDOM_PASSAGE_ID}
+                            disabled={isRunning || isPassageLoading}
+                            onClick={() => setIsPassagePickerOpen(true)}
+                            icon={<BookOpenText className="icon-control" />}
                           >
-                            <BookOpenText className="icon-inline" aria-hidden="true" />
-                            Library
-                          </Link>
+                            Passage
+                          </TextChoiceButton>
                         </TextChoiceGroup>
                       </>
                     )}
@@ -1978,10 +1994,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         <div
           tabIndex={0}
           className={clsx(
-            "formaltype-practice-shell relative mx-auto flex w-full flex-col overflow-hidden outline-none transition-all duration-300 focus:ring-brass/30",
+            "formaltype-practice-shell formaltype-typing-stage relative mx-auto flex w-full flex-col overflow-hidden outline-none transition-all duration-300 focus:ring-brass/30",
             isCompactPractice
-              ? "h-[64vh] h-[64dvh] max-h-[64vh] max-h-[64dvh] max-w-5xl p-2 md:h-[72vh] md:h-[72dvh] md:max-h-[76vh] md:max-h-[76dvh] md:p-3"
-              : "h-[60vh] h-[60dvh] max-h-[60vh] max-h-[60dvh] max-w-5xl rounded-lg bg-paper/[0.025] p-3 md:h-[68vh] md:h-[68dvh] md:max-h-[72vh] md:max-h-[72dvh] md:p-5"
+              ? "h-[64vh] h-[64dvh] max-h-[64vh] max-h-[64dvh] max-w-5xl px-2 pb-2 md:h-[72vh] md:h-[72dvh] md:max-h-[76vh] md:max-h-[76dvh] md:px-3 md:pb-3"
+              : "h-[60vh] h-[60dvh] max-h-[60vh] max-h-[60dvh] max-w-5xl rounded-lg bg-paper/[0.025] px-3 pb-3 md:h-[68vh] md:h-[68dvh] md:max-h-[72vh] md:max-h-[72dvh] md:px-5 md:pb-5"
           )}
           data-focus-mode={isFocusMode ? "true" : "false"}
         >
@@ -2241,6 +2257,20 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           />
         )}
       </section>
+      {!trainingMode && (
+        <PassagePicker
+          open={isPassagePickerOpen}
+          passages={availableLibrary}
+          language={practiceLanguage}
+          selectedPassageId={selectedPassageId === RANDOM_PASSAGE_ID ? null : selectedPassageId}
+          libraryHref={`/passages?language=${practiceLanguage}`}
+          onClose={() => {
+            setIsPassagePickerOpen(false);
+            window.requestAnimationFrame(() => passagePickerButtonRef.current?.focus());
+          }}
+          onSelect={handlePassageSelection}
+        />
+      )}
     </AppShell>
   );
 }
@@ -2276,17 +2306,20 @@ function TextChoiceButton({
   selected,
   disabled,
   onClick,
+  buttonRef,
   icon,
   children
 }: {
   selected: boolean;
   disabled?: boolean;
   onClick: () => void;
+  buttonRef?: React.Ref<HTMLButtonElement>;
   icon?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       aria-pressed={selected}
       disabled={disabled}

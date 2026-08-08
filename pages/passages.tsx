@@ -2,22 +2,19 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import { BookOpen, Check, FileText, Languages, Tags } from "lucide-react";
+import { Check, Languages, Search, Tags } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { Button, SegmentedControl } from "@/components/Controls";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
-import { FilterControl, SecondaryToolbar, ToolbarGroup } from "@/components/SecondaryNavigation";
+import { DataSurface, EmptyState, PageSection, SectionStack, StatusMessage } from "@/components/Surface";
 import {
   ALL_FILTER,
   CategoryFilter,
   LibraryPassage,
   PassageLanguage,
-  PassageSelectionMode,
-  STYLES,
-  StyleFilter,
   filterLibraryPassages,
   filterLibraryPassagesByLanguage,
   formatPassageLength,
-  selectRandomLibraryPassage,
   toStoredPassage,
   withBuiltInSamplePassages,
   writeStoredPassage
@@ -25,16 +22,12 @@ import {
 import {
   getActivePassageId,
   getActivePassageLibrary,
-  getPassageLibrary,
-  getPassageSelectionMode,
   getSelectedCategory,
   getSelectedLanguage,
-  getSelectedStyle,
   getSupabasePassageLibrary,
   setPassageSelectionMode,
   setSelectedCategory,
   setSelectedLanguage,
-  setSelectedStyle,
   setActivePassageId as setStoredActivePassageId
 } from "@/lib/passageStorage";
 
@@ -44,10 +37,10 @@ export default function PassagesPage() {
   const [activePassageId, setActivePassageId] = useState<string | null>(null);
   const [language, setLanguage] = useState<PassageLanguage>("english");
   const [category, setCategory] = useState<CategoryFilter>(ALL_FILTER);
-  const [style, setStyle] = useState<StyleFilter>(ALL_FILTER);
+  const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
-  const [selectionMode, setSelectionMode] = useState<PassageSelectionMode>("specific");
   const [hasLoadedLibrary, setHasLoadedLibrary] = useState(false);
+  const [hasRefreshError, setHasRefreshError] = useState(false);
 
   const activeLibrary = useMemo(() => library.filter((passage) => passage.isActive), [library]);
   const activePassage = useMemo(
@@ -55,28 +48,35 @@ export default function PassagesPage() {
     [activeLibrary, activePassageId]
   );
   const languageLibrary = useMemo(() => filterLibraryPassagesByLanguage(activeLibrary, language), [activeLibrary, language]);
-  const filteredLibrary = useMemo(() => filterLibraryPassages(languageLibrary, category, style), [languageLibrary, category, style]);
-  const articleSelectorValue =
-    selectionMode === "random" || !filteredLibrary.some((passage) => passage.id === activePassageId)
-      ? "random"
-      : activePassageId ?? "random";
+  const categoryLibrary = useMemo(
+    () => filterLibraryPassages(languageLibrary, category, ALL_FILTER),
+    [category, languageLibrary]
+  );
+  const filteredLibrary = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase();
+    if (!normalizedSearch) return categoryLibrary;
+
+    return categoryLibrary.filter((passage) =>
+      `${passage.title} ${passage.category}`.toLocaleLowerCase().includes(normalizedSearch)
+    );
+  }, [categoryLibrary, search]);
 
   const refreshLibrary = useCallback(async () => {
     try {
       const remoteLibrary = await getSupabasePassageLibrary();
       setLibrary(remoteLibrary.length > 0 ? withBuiltInSamplePassages(remoteLibrary) : getActivePassageLibrary());
+      setHasRefreshError(false);
     } catch {
       setLibrary(getActivePassageLibrary());
+      setHasRefreshError(true);
     }
 
     setActivePassageId(getActivePassageId());
-    setSelectionMode(getPassageSelectionMode());
     const queryLanguage = router.query.language === "chinese" ? "chinese" : router.query.language === "english" ? "english" : null;
     const nextLanguage = queryLanguage ?? getSelectedLanguage();
     setLanguage(nextLanguage);
     setSelectedLanguage(nextLanguage);
     setCategory(getSelectedCategory());
-    setStyle(getSelectedStyle());
     setHasLoadedLibrary(true);
   }, [router.query.language]);
 
@@ -84,51 +84,16 @@ export default function PassagesPage() {
     refreshLibrary();
   }, [refreshLibrary]);
 
-  function selectPracticePassage(passage: LibraryPassage, sourceLibrary = filteredLibrary.length > 0 ? filteredLibrary : activeLibrary) {
+  function selectPracticePassage(
+    passage: LibraryPassage,
+    sourceLibrary = categoryLibrary.length > 0 ? categoryLibrary : languageLibrary
+  ) {
     setPassageSelectionMode("specific");
     setSelectedLanguage(passage.language ?? "english");
     setStoredActivePassageId(passage.id);
     writeStoredPassage(toStoredPassage(passage, 60, sourceLibrary));
     setActivePassageId(passage.id);
-    setSelectionMode("specific");
     setMessage(`"${passage.title}" is selected for practice.`);
-  }
-
-  function setRandomPassageMode() {
-    setPassageSelectionMode("random");
-    setSelectedLanguage(language);
-    setSelectionMode("random");
-
-    if (filteredLibrary.length === 0) {
-      setMessage(
-        activeLibrary.length === 0
-          ? "No passages are available yet."
-          : "No passages match this category/style. Please choose All or another filter."
-      );
-      return;
-    }
-
-    const randomPassage = selectRandomLibraryPassage(activePassageId ?? undefined, filteredLibrary) ?? filteredLibrary[0];
-    setStoredActivePassageId(randomPassage.id);
-    writeStoredPassage(toStoredPassage(randomPassage, 60, filteredLibrary));
-    setActivePassageId(randomPassage.id);
-    setMessage("Random passage mode is selected for practice.");
-  }
-
-  function handleArticleSelection(value: string) {
-    if (value === "random") {
-      setRandomPassageMode();
-      return;
-    }
-
-    if (value === "__none") {
-      return;
-    }
-
-    const selectedPassage = filteredLibrary.find((passage) => passage.id === value);
-    if (selectedPassage) {
-      selectPracticePassage(selectedPassage);
-    }
   }
 
   function startPractice(passage: LibraryPassage) {
@@ -147,11 +112,7 @@ export default function PassagesPage() {
     setSelectedLanguage(value);
     setCategory(ALL_FILTER);
     setSelectedCategory(ALL_FILTER);
-  }
-
-  function updateStyle(value: string) {
-    setStyle(value);
-    setSelectedStyle(value);
+    setSearch("");
   }
 
   return (
@@ -159,126 +120,144 @@ export default function PassagesPage() {
       <PageContainer>
         <PageHeader eyebrow="Library" title="Passage library" />
 
-        {message && (
-          <div role="status" aria-live="polite" className="mt-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-body text-brass">
-            {message}
-          </div>
-        )}
+        <SectionStack>
+          {message && <StatusMessage tone="success">{message}</StatusMessage>}
 
-        <div className={`${message ? "mt-5 " : ""}grid gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start`}>
-          <aside className="space-y-5 lg:sticky lg:top-5" data-testid="passages-setup-panel">
-            <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4">
-              <h2 className="font-mono text-section uppercase text-paper/65">Setup</h2>
-              <div className="mt-4 space-y-5">
-                <ChoiceGroup
+          {hasRefreshError && (
+            <StatusMessage tone="warning" aria-label="Library refresh warning">
+              The library could not be refreshed. Showing available fallback passages.
+            </StatusMessage>
+          )}
+
+          <PageSection aria-label="Library setup">
+            <div className="space-y-3">
+              <label className="flex min-h-11 w-full max-w-xl items-center gap-2 rounded-[var(--ui-radius-control)] border border-[color:var(--ui-border-control)] bg-[var(--ui-surface-subtle)] px-3 focus-within:ring-2 focus-within:ring-[color:var(--ui-focus-ring)] focus-within:ring-offset-2 focus-within:ring-offset-[color:var(--ui-surface-canvas)]">
+                <Search className="icon-control shrink-0 text-[color:var(--ui-text-muted)]" strokeWidth={1.75} aria-hidden="true" />
+                <span className="sr-only">Search passages</span>
+                <input
+                  type="search"
+                  role="searchbox"
+                  aria-label="Search passages"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search by title or category"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-[length:var(--ui-type-control-size)] leading-[var(--ui-type-control-leading)] text-[color:var(--ui-text-primary)] outline-none placeholder:text-[color:var(--ui-text-muted)]"
+                />
+              </label>
+              <div className="grid min-w-0 gap-2 md:flex md:flex-wrap md:items-start md:gap-x-4 md:gap-y-2">
+                <SegmentedControl
                   label="Language"
+                  icon={Languages}
                   value={language}
-                  onChange={(value) => updateLanguage(value as PassageLanguage)}
+                  onChange={updateLanguage}
                   options={[
-                    { value: "english", label: "English" },
-                    { value: "chinese", label: "Chinese" }
+                    { value: "english", label: "English", ariaLabel: "English language" },
+                    { value: "chinese", label: "Chinese", ariaLabel: "Chinese language" }
                   ]}
                 />
-                <ChoiceGroup
+                <SegmentedControl
                   label="Category"
+                  icon={Tags}
                   value={category}
                   onChange={updateCategory}
-                  options={[ALL_FILTER, ...getAvailableCategories(languageLibrary)].map((option) => ({ value: option, label: option }))}
-                />
-                <ChoiceGroup
-                  label="Style"
-                  value={style}
-                  onChange={updateStyle}
-                  options={[ALL_FILTER, ...STYLES].map((option) => ({ value: option, label: option }))}
-                />
-                <PassageChoiceList
-                  label="Article / Passage"
-                  value={articleSelectorValue}
-                  onChange={handleArticleSelection}
-                  options={[
-                    ["random", "Random passage"],
-                    ...(filteredLibrary.length > 0
-                      ? filteredLibrary.map((passage) => [passage.id, passage.title] as [string, string])
-                      : [{ value: "__none", label: "No passages found", disabled: true }])
-                  ]}
+                  options={[ALL_FILTER, ...getAvailableCategories(languageLibrary)].map((option) => ({
+                    value: option,
+                    label: option,
+                    ariaLabel: `${option} category`
+                  }))}
                 />
               </div>
-            </section>
-          </aside>
+            </div>
+          </PageSection>
 
-          <div className="space-y-5">
-            <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-section font-semibold text-paper">Available passages</h2>
-                  <p className="mt-1 font-mono text-body text-paper/45">
-                    {filteredLibrary.length} shown / {activeLibrary.length} available · Selected: {activePassage?.title ?? "none"}
-                  </p>
-                </div>
-              </div>
+          <PageSection aria-label="Available passages" className="min-w-0">
+            <div className="mb-3">
+              <h2 className="text-[length:var(--ui-type-section-title-size)] font-semibold leading-[var(--ui-type-section-title-leading)] text-[color:var(--ui-text-primary)]">
+                Available passages
+              </h2>
+              <p className="mt-1 font-mono text-[length:var(--ui-type-caption-size)] leading-[var(--ui-type-caption-leading)] text-[color:var(--ui-text-secondary)]">
+                {filteredLibrary.length} shown / {languageLibrary.length} in {language === "chinese" ? "Chinese" : "English"}
+                {activePassage ? ` · Selected: ${activePassage.title}` : ""}
+              </p>
+            </div>
 
-              <div className="mt-5 space-y-3">
-                {!hasLoadedLibrary && (
-                  <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-body text-paper/45">
-                    Loading passages...
-                  </div>
-                )}
+            <DataSurface aria-label="Passage results">
+              {!hasLoadedLibrary && (
+                <StatusMessage
+                  aria-label="Loading passage library"
+                  className="rounded-none border-0 bg-transparent px-4 py-10 text-center"
+                >
+                  Loading passages...
+                </StatusMessage>
+              )}
 
-                {hasLoadedLibrary && library.length === 0 && (
-                  <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-body text-paper/45">
-                    No passages are available yet.
-                  </div>
-                )}
+              {hasLoadedLibrary && activeLibrary.length === 0 && (
+                <EmptyState label="No passages available">No passages are available yet.</EmptyState>
+              )}
 
-                {hasLoadedLibrary && library.length > 0 && filteredLibrary.length === 0 && (
-                  <div className="rounded-md border border-dashed border-paper/10 bg-ink-900/60 p-6 text-center font-mono text-body text-paper/45">
-                    No passages match this category/style. Please choose All or another filter.
-                  </div>
-                )}
+              {hasLoadedLibrary && activeLibrary.length > 0 && filteredLibrary.length === 0 && (
+                <EmptyState label="No matching passages">
+                  No passages match the current filters or search.
+                </EmptyState>
+              )}
 
-                {filteredLibrary.map((passage) => (
-                  <article
-                    key={passage.id}
-                    className={`rounded-md border p-4 transition ${
-                      passage.id === activePassageId
-                        ? "border-brass/45 bg-brass/[0.08]"
-                        : "border-transparent bg-paper/[0.035] hover:bg-paper/[0.055]"
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <FileText className="icon-prominent text-brass" />
-                          <h3 className="font-semibold text-paper">{passage.title}</h3>
-                          {passage.id === activePassageId && (
-                            <span className="rounded-sm border border-mint/30 bg-mint/10 px-2 py-0.5 font-mono text-utility uppercase text-mint">
-                              Selected
-                            </span>
-                          )}
+              {filteredLibrary.length > 0 && (
+                <div className="divide-y divide-[color:var(--ui-border-subtle)]">
+                  {filteredLibrary.map((passage) => {
+                    const isSelected = passage.id === activePassageId;
+                    const readableStyle = getReadableStyle(passage.style);
+
+                    return (
+                      <article
+                        key={passage.id}
+                        aria-label={passage.title}
+                        aria-current={isSelected ? "true" : undefined}
+                        className={`min-w-0 border-l-2 px-4 py-4 transition-colors duration-[var(--ui-motion-fast)] ease-[var(--ui-ease-standard)] md:px-5 ${
+                          isSelected
+                            ? "border-l-[color:var(--ui-border-selected)] bg-[var(--ui-surface-selected)]"
+                            : "border-l-transparent hover:bg-[var(--ui-surface-hover)]"
+                        }`}
+                      >
+                        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                              <h3 className="break-words text-[length:var(--ui-type-subsection-title-size)] font-semibold leading-[var(--ui-type-subsection-title-leading)] text-[color:var(--ui-text-primary)]">
+                                {passage.title}
+                              </h3>
+                              {isSelected && (
+                                <span
+                                  data-testid="selected-passage-cue"
+                                  className="inline-flex shrink-0 items-center gap-1 font-mono text-[length:var(--ui-type-caption-size)] font-semibold uppercase text-[color:var(--ui-text-accent)]"
+                                >
+                                  <Check className="icon-compact" strokeWidth={2} aria-hidden="true" />
+                                  Selected
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-2 break-words font-mono text-[length:var(--ui-type-caption-size)] leading-[var(--ui-type-caption-leading)] text-[color:var(--ui-text-secondary)]">
+                              {passage.category}{readableStyle ? ` · ${readableStyle}` : ""} · {formatPassageLength(passage)}
+                            </p>
+                            <p className="mt-3 line-clamp-2 break-words text-[length:var(--ui-type-body-size)] leading-[var(--ui-type-body-leading)] text-[color:var(--ui-text-secondary)]">
+                              {passage.content}
+                            </p>
+                          </div>
+
+                          <Button
+                            variant="primary"
+                            onClick={() => startPractice(passage)}
+                            className="shrink-0 self-start sm:self-center"
+                          >
+                            Practice this passage
+                          </Button>
                         </div>
-                        <p className="mt-2 font-mono text-utility text-paper/45">
-                          {passage.language === "chinese" ? "Chinese" : "English"} · {passage.category} · {passage.style} · {passage.source} · {formatPassageLength(passage)}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startPractice(passage)}
-                          className="inline-flex items-center gap-2 rounded-md border border-brass/35 bg-brass/10 px-3 py-2 font-mono text-control text-brass transition hover:bg-brass/15"
-                        >
-                          <Check className="icon-control" />
-                          Practice this passage
-                        </button>
-                      </div>
-                    </div>
-                    <p className="mt-3 line-clamp-2 text-body leading-6 text-paper/55">{passage.content}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-          </div>
-        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </DataSurface>
+          </PageSection>
+        </SectionStack>
       </PageContainer>
     </AppShell>
   );
@@ -288,82 +267,10 @@ function getAvailableCategories(library: LibraryPassage[]) {
   return Array.from(new Set(library.map((passage) => passage.category))).sort();
 }
 
-function ChoiceGroup({
-  label,
-  value,
-  onChange,
-  options
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: Array<{ value: string; label: string; disabled?: boolean }>;
-}) {
-  const Icon = label === "Language" ? Languages : label === "Style" ? BookOpen : Tags;
-
-  return (
-    <SecondaryToolbar className="mt-1">
-      <ToolbarGroup label={label} icon={Icon}>
-        {options.map((option) => {
-          const isSelected = option.value === value;
-
-          return (
-            <FilterControl
-              key={option.value}
-              aria-label={`${option.label} ${label.toLowerCase()}`}
-              selected={isSelected}
-              disabled={option.disabled}
-              onClick={() => onChange(option.value)}
-            >
-              {option.label}
-            </FilterControl>
-          );
-        })}
-      </ToolbarGroup>
-    </SecondaryToolbar>
-  );
-}
-
-function PassageChoiceList({
-  label,
-  value,
-  onChange,
-  options
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: Array<[string, string] | { value: string; label: string; disabled?: boolean }>;
-}) {
-  return (
-    <fieldset>
-      <legend className="flex items-center gap-2 font-mono text-utility uppercase text-paper/45"><BookOpen className="icon-control" strokeWidth={1.75} aria-hidden="true" />{label}</legend>
-      <div className="mt-2 max-h-72 space-y-2 overflow-y-auto pr-1">
-        {options.map((option) => {
-          const optionValue = Array.isArray(option) ? option[0] : option.value;
-          const optionLabel = Array.isArray(option) ? option[1] : option.label;
-          const disabled = !Array.isArray(option) ? option.disabled : false;
-          const isSelected = optionValue === value;
-
-          return (
-            <button
-              key={optionValue}
-              type="button"
-              aria-label={optionValue === "random" ? optionLabel : `Select ${optionLabel}`}
-              aria-pressed={isSelected}
-              disabled={disabled}
-              onClick={() => onChange(optionValue)}
-              className={`block w-full rounded-md border px-3 py-2 text-left font-mono text-control transition disabled:cursor-not-allowed disabled:opacity-45 ${
-                isSelected
-                  ? "border-brass/70 bg-brass/15 text-brass"
-                  : "border-paper/10 bg-paper/[0.035] text-paper/65 hover:border-brass/35 hover:bg-paper/[0.055] hover:text-paper/85"
-              }`}
-            >
-              {optionLabel}
-            </button>
-          );
-        })}
-      </div>
-    </fieldset>
-  );
+function getReadableStyle(style: string) {
+  const normalized = style.trim();
+  if (!normalized || normalized === "General" || normalized === "English longform v1" || normalized === "Modern essay") {
+    return "";
+  }
+  return normalized;
 }

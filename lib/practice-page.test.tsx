@@ -11,6 +11,7 @@ import {
   PASSAGE_LIBRARY_STORAGE_KEY,
   PASSAGE_SELECTION_MODE_STORAGE_KEY,
   RULES_STORAGE_KEY,
+  SELECTED_CATEGORY_STORAGE_KEY,
   SELECTED_LANGUAGE_STORAGE_KEY,
   readPreviousResults,
   readPreviousResult
@@ -202,7 +203,7 @@ describe("PracticePage passage loading", () => {
     expect(screen.queryByTestId("passage-loading-placeholder")).toBeNull();
   });
 
-  it("shows compact passage actions and metadata without category or passage dropdowns", async () => {
+  it("shows Random and Passage source controls with a direct passage picker", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
       JSON.stringify([makePassage("local", "Local active", "Local fallback body text.")])
@@ -223,7 +224,17 @@ describe("PracticePage passage loading", () => {
     const randomButton = screen.getByRole("button", { name: "Random" });
     expect(randomButton.querySelector("svg")).toBeTruthy();
     expect(randomButton.textContent).toBe("Random");
-    expect(screen.getByRole("link", { name: "Library" }).getAttribute("href")).toBe("/passages?language=english");
+    expect(randomButton.getAttribute("aria-pressed")).toBe("true");
+    const passageButton = screen.getByRole("button", { name: "Passage" });
+    expect(passageButton.getAttribute("aria-pressed")).toBe("false");
+    const initialPath = window.location.pathname;
+    fireEvent.click(passageButton);
+    expect(screen.getByRole("dialog", { name: "Choose a passage" })).toBeTruthy();
+    expect(window.location.pathname).toBe(initialPath);
+    expect(mockedGetSupabasePassageLibrary).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("link", { name: "Browse Library" }).getAttribute("href")).toBe(
+      "/passages?language=english"
+    );
     expect(screen.getByRole("button", { name: "1m" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "5m" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "10m" })).toBeTruthy();
@@ -232,6 +243,62 @@ describe("PracticePage passage loading", () => {
     expect(container.querySelector("select")).toBeNull();
     expect(screen.queryByLabelText("Category")).toBeNull();
     expect(screen.queryByLabelText("Passage")).toBeNull();
+  });
+
+  it("loads an explicitly selected passage even when the stored Random category conflicts", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("email", "Email brief", "Exact email body.", "english", "Business email", "Formal"),
+        makePassage("news", "News clip", "Stored category body.", "english", "News article", "Intermediate")
+      ])
+    );
+    window.localStorage.setItem(SELECTED_CATEGORY_STORAGE_KEY, "News article");
+    window.localStorage.setItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, "random");
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toContain("Stored category body.");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Passage" }));
+    const emailOption = screen.getByRole("option", { name: /Email brief/ });
+    expect(emailOption.getAttribute("aria-selected")).toBe("false");
+    fireEvent.click(emailOption);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toContain("Exact email body.");
+    });
+    expect(screen.queryByRole("dialog", { name: "Choose a passage" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Passage" }).getAttribute("aria-pressed")).toBe("true");
+    expect(window.localStorage.getItem(ACTIVE_PASSAGE_ID_STORAGE_KEY)).toBe("email");
+    expect(window.localStorage.getItem(SELECTED_CATEGORY_STORAGE_KEY)).toBe("Business email");
+  });
+
+  it("restricts the Practice picker to the active language and closes it with Escape", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("english", "English option", "English body."),
+        makePassage("chinese", "中文選項", "中文內容。", "chinese", "生活", "Modern essay")
+      ])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+    await screen.findByText(/English option · Business email/);
+    fireEvent.click(screen.getByRole("button", { name: "Passage" }));
+    expect(screen.getByRole("option", { name: /English option/ })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /中文選項/ })).toBeNull();
+    fireEvent.keyDown(screen.getByRole("searchbox", { name: "Search passages" }), { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Choose a passage" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
+    await screen.findByText(/中文選項 · 生活/);
+    fireEvent.click(screen.getByRole("button", { name: "Passage" }));
+    expect(screen.getByRole("option", { name: /中文選項/ })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /English option/ })).toBeNull();
   });
 
   it("keeps one stable Practice timer outside the typing viewport", async () => {
@@ -1076,7 +1143,7 @@ describe("PracticePage passage loading", () => {
     });
 
     expect(screen.getByRole("button", { name: "Random" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Library" }).getAttribute("href")).toBe("/passages?language=english");
+    expect(screen.getByRole("button", { name: "Passage" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "1m" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "5m" })).toBeTruthy();
     expect(screen.getByLabelText("Typing input")).toBeTruthy();
@@ -1096,9 +1163,12 @@ describe("PracticePage passage loading", () => {
     fireEvent.click(screen.getByRole("button", { name: "Chinese" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: "Library" }).getAttribute("href")).toBe("/passages?language=chinese");
       expect(screen.getByTestId("typing-character-layer").textContent).toMatch(/[\u3400-\u9fff]/);
     });
+    fireEvent.click(screen.getByRole("button", { name: "Passage" }));
+    expect(screen.getByRole("link", { name: "Browse Library" }).getAttribute("href")).toBe(
+      "/passages?language=chinese"
+    );
     expect(screen.queryByText("No active saved passages found. Using a sample passage.")).toBeNull();
     expect(screen.getByLabelText("Typing input")).toBeTruthy();
   });
@@ -1211,7 +1281,10 @@ describe("PracticePage passage loading", () => {
     expect(container.textContent).not.toContain("English body text for typing.");
     expect(screen.getByText("Tab = start")).toBeTruthy();
     expect((screen.getByLabelText("Typing input") as HTMLTextAreaElement).value).toBe("");
-    expect(screen.getByRole("link", { name: "Library" }).getAttribute("href")).toBe("/passages?language=chinese");
+    fireEvent.click(screen.getByRole("button", { name: "Passage" }));
+    expect(screen.getByRole("link", { name: "Browse Library" }).getAttribute("href")).toBe(
+      "/passages?language=chinese"
+    );
     expect(mockedGetSupabasePassageLibrary).toHaveBeenCalledTimes(1);
   });
 

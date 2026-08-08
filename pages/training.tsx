@@ -59,7 +59,7 @@ export default function TrainingPage() {
     () => (
       <section
         data-testid="training-controls"
-        className="mx-auto mb-2 flex max-w-fit justify-center px-1"
+        className="mx-auto flex max-w-fit justify-center px-1"
       >
         <SecondaryToolbar className="justify-center lg:flex-nowrap" label="Training controls">
         <ToolbarGroup label="Content" icon={Keyboard} className="lg:flex-nowrap">

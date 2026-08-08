@@ -1,7 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { readFileSync } from "node:fs";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PassagesPage from "../pages/passages";
@@ -18,6 +19,7 @@ const mockPassageStorage = vi.hoisted(() => ({
   selectedCategory: "All",
   selectedStyle: "All",
   selectedLanguage: "english" as "english" | "chinese",
+  fallbackLibrary: [] as LibraryPassage[],
   setPassageSelectionMode: vi.fn((mode: "random" | "specific") => {
     mockPassageStorage.selectionMode = mode;
   }),
@@ -50,6 +52,7 @@ vi.mock("@/lib/passageStorage", async () => {
     ...actual,
     getSupabasePassageLibrary: mockPassageStorage.getSupabasePassageLibrary,
     getPassageLibrary: () => [],
+    getActivePassageLibrary: () => mockPassageStorage.fallbackLibrary,
     getActivePassageId: () => mockPassageStorage.activePassageId,
     getPassageSelectionMode: () => mockPassageStorage.selectionMode,
     getSelectedCategory: () => mockPassageStorage.selectedCategory,
@@ -73,6 +76,7 @@ describe("PassagesPage", () => {
     mockPassageStorage.selectedCategory = "All";
     mockPassageStorage.selectedStyle = "All";
     mockPassageStorage.selectedLanguage = "english";
+    mockPassageStorage.fallbackLibrary = [];
     mockPassageStorage.setPassageSelectionMode.mockClear();
     mockPassageStorage.setSelectedCategory.mockClear();
     mockPassageStorage.setSelectedStyle.mockClear();
@@ -85,44 +89,134 @@ describe("PassagesPage", () => {
     ]);
   });
 
-  it("uses sticky visible filters instead of native category and style dropdowns", async () => {
+  it("keeps search, Language, and data-derived Category controls without public Style filtering", async () => {
     const { container } = render(<PassagesPage />);
 
     await waitFor(() => {
       expect(screen.getAllByText("Email brief").length).toBeGreaterThan(0);
     });
 
-    expect(screen.getByTestId("passages-setup-panel").className).toContain("sticky");
+    expect(screen.getByRole("group", { name: "Language" })).toBeTruthy();
     expect(screen.getByRole("group", { name: "Category" })).toBeTruthy();
-    expect(screen.getByRole("group", { name: "Style" })).toBeTruthy();
+    expect(screen.getByRole("searchbox", { name: "Search passages" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Style" })).toBeNull();
     expect(container.querySelector("select")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "News article category" }));
     expect(mockPassageStorage.setSelectedCategory).toHaveBeenCalledWith("News article");
+    expect(screen.getByRole("button", { name: "News article category" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "News article category" }).getAttribute("data-focus-ring")).toBe(
+      "standard"
+    );
     expect(screen.queryByText("Email brief")).toBeNull();
     expect(screen.getAllByText("News clip").length).toBeGreaterThan(0);
   });
 
-  it("keeps passage selection usable with random and article buttons", async () => {
+  it("uses one semantic results surface without a permanent selector column or Random control", async () => {
     render(<PassagesPage />);
 
-    await waitFor(() => {
-      expect(screen.getAllByText("Email brief").length).toBeGreaterThan(0);
+    await screen.findByText("Email brief");
+
+    expect(screen.getByRole("region", { name: "Library setup" })).toBeTruthy();
+    expect(screen.getAllByRole("region", { name: "Passage results" })).toHaveLength(1);
+    expect(screen.queryByRole("region", { name: "Passage selection" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Random passage" })).toBeNull();
+    expect(screen.queryByText("Article / Passage")).toBeNull();
+  });
+
+  it("exposes current passage semantics and one visible non-colour cue in the result row", async () => {
+    mockPassageStorage.activePassageId = "email";
+    mockPassageStorage.selectionMode = "specific";
+    render(<PassagesPage />);
+
+    const emailRow = await screen.findByRole("article", { name: "Email brief" });
+
+    expect(emailRow.getAttribute("aria-current")).toBe("true");
+    expect(within(emailRow).getByText("Selected")).toBeTruthy();
+    expect(screen.getAllByTestId("selected-passage-cue")).toHaveLength(1);
+    expect(screen.getByRole("article", { name: "News clip" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  it("searches result titles and categories without changing passage metadata", async () => {
+    render(<PassagesPage />);
+    await screen.findByText("Email brief");
+
+    const search = screen.getByRole("searchbox", { name: "Search passages" });
+    fireEvent.change(search, { target: { value: "news" } });
+    expect(screen.getByText("News clip")).toBeTruthy();
+    expect(screen.queryByText("Email brief")).toBeNull();
+
+    fireEvent.change(search, { target: { value: "business email" } });
+    expect(screen.getByText("Email brief")).toBeTruthy();
+    expect(screen.queryByText("News clip")).toBeNull();
+  });
+
+  it("uses a shared semantic loading state while passages load", () => {
+    mockPassageStorage.getSupabasePassageLibrary.mockReturnValue(new Promise(() => {}));
+
+    render(<PassagesPage />);
+
+    expect(screen.getByRole("status", { name: "Loading passage library" })).toBeTruthy();
+    expect(screen.getByText("Loading passages...")).toBeTruthy();
+  });
+
+  it("shows a non-blocking refresh warning while retaining fallback passages", async () => {
+    mockPassageStorage.fallbackLibrary = [
+      makePassage("fallback", "Fallback passage", "Business email", "Formal", "english")
+    ];
+    mockPassageStorage.getSupabasePassageLibrary.mockRejectedValue(new Error("offline"));
+
+    render(<PassagesPage />);
+
+    expect((await screen.findByRole("status", { name: "Library refresh warning" })).textContent).toContain(
+      "The library could not be refreshed. Showing available fallback passages."
+    );
+    expect(screen.getByText("Fallback passage")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Practice this passage" })).toBeTruthy();
+  });
+
+  it("uses shared empty states for an empty library and empty filtered results", async () => {
+    mockPassageStorage.getSupabasePassageLibrary.mockResolvedValue([]);
+    const view = render(<PassagesPage />);
+
+    expect((await screen.findByRole("status", { name: "No passages available" })).textContent).toContain(
+      "No passages are available yet."
+    );
+
+    mockPassageStorage.getSupabasePassageLibrary.mockResolvedValue([
+      makePassage("email", "Email brief", "Business email", "Formal", "english")
+    ]);
+    view.unmount();
+    render(<PassagesPage />);
+    await screen.findByText("Email brief");
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search passages" }), {
+      target: { value: "missing passage" }
     });
+    expect(screen.getByRole("status", { name: "No matching passages" }).textContent).toContain(
+      "No passages match the current filters or search."
+    );
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Random passage" }));
-    expect(mockPassageStorage.setPassageSelectionMode).toHaveBeenCalledWith("random");
+  it("preserves the passage Practice action and navigation", async () => {
+    render(<PassagesPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Select Email brief" }));
+    await screen.findByText("Email brief");
+    const practiceAction = screen.getAllByRole("button", { name: "Practice this passage" })[0];
+    expect(practiceAction.getAttribute("data-focus-ring")).toBe("standard");
+    expect(practiceAction.getAttribute("data-touch-target")).toBe("44");
+    fireEvent.click(practiceAction);
+
     expect(mockPassageStorage.setPassageSelectionMode).toHaveBeenCalledWith("specific");
     expect(mockPassageStorage.setActivePassageId).toHaveBeenCalledWith("email");
+    expect(mockRouter.push).toHaveBeenCalledWith("/practice");
   });
 
   it("filters the Passage Library by explicit language and honors Practice query language", async () => {
     render(<PassagesPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Email brief").length).toBeGreaterThan(0);
+      expect(screen.getByText("Email brief")).toBeTruthy();
     });
 
     expect(screen.getByRole("group", { name: "Language" })).toBeTruthy();
@@ -133,6 +227,13 @@ describe("PassagesPage", () => {
     expect(screen.getAllByText("忙碌生活中的休息").length).toBeGreaterThan(0);
     expect(screen.queryByText("Email brief")).toBeNull();
     expect(screen.getByText(/32 chars$/).textContent).not.toContain("words");
+  });
+
+  it("has no fixed/minimum-width or horizontal-scroll-only mobile layout contract", () => {
+    const source = readFileSync("pages/passages.tsx", "utf8");
+
+    expect(source).not.toMatch(/(?:^|\s)(?:min-w|w)-\[(?:\d+(?:px|rem)|min-content|max-content)/);
+    expect(source).not.toContain("overflow-x-auto");
   });
 });
 
