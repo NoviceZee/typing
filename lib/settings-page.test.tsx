@@ -80,7 +80,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     expect(screen.getByRole("status").textContent).toContain("Changes save automatically");
-    fireEvent.click(screen.getByRole("button", { name: "Light mode" }));
+    fireEvent.click(screen.getByRole("button", { name: "Light theme preview" }));
     expect(screen.getByRole("status").textContent).toContain("Saved automatically");
   });
 
@@ -133,7 +133,9 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("heading", { name: "Theme" })).toBeTruthy();
     expect(screen.queryByRole("group", { name: "Workspace presets" })).toBeNull();
     expect(screen.getByRole("button", { name: /Dracula theme preview/i }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Light mode" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByRole("group", { name: "Mode" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Light mode" })).toBeNull();
+    expect(screen.getByRole("button", { name: /System theme preview/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Purple accent" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Purple accent" }).className).toContain("h-9");
     expect(screen.getAllByTestId("accent-swatch")).toHaveLength(9);
@@ -169,8 +171,8 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "System mode" }));
     fireEvent.click(screen.getByRole("button", { name: "Cyan accent" }));
+    fireEvent.click(screen.getByRole("button", { name: /System theme preview/i }));
     fireEvent.click(screen.getByRole("button", { name: "Rounded app font" }));
     fireEvent.click(screen.getByRole("button", { name: "Serif font" }));
     fireEvent.click(screen.getByRole("button", { name: "Small text size" }));
@@ -181,8 +183,7 @@ describe("SettingsPage", () => {
 
     expect(window.localStorage.getItem("formaltype.keyboard_sound.v1")).toBe("mechanical");
     expect(JSON.parse(window.localStorage.getItem("formaltype.theme.v1") ?? "{}")).toEqual({
-      themePreset: "default-dark",
-      mode: "system",
+      themePreset: "system",
       accentColor: "cyan",
       appFont: "rounded",
       typingFont: "serif",
@@ -307,9 +308,10 @@ describe("SettingsPage", () => {
     expect(window.localStorage.getItem("formaltype.theme.v1")).toBeNull();
   });
 
-  it("persists selected theme preview cards with preset mode and accent", () => {
+  it("persists selected named theme preview cards without changing the independent accent", () => {
     render(<SettingsPage />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Cyan accent" }));
     fireEvent.click(screen.getByRole("button", { name: /Tokyo Night theme preview/i }));
 
     expect(screen.getByRole("button", { name: /Tokyo Night theme preview/i }).getAttribute("aria-pressed")).toBe(
@@ -317,9 +319,9 @@ describe("SettingsPage", () => {
     );
     expect(JSON.parse(window.localStorage.getItem("formaltype.theme.v1") ?? "{}")).toMatchObject({
       themePreset: "tokyo-night",
-      mode: "dark",
-      accentColor: "blue"
+      accentColor: "cyan"
     });
+    expect(JSON.parse(window.localStorage.getItem("formaltype.theme.v1") ?? "{}")).not.toHaveProperty("mode");
   });
 
   it("renders a sticky live preview and direct setting controls", () => {
@@ -332,7 +334,7 @@ describe("SettingsPage", () => {
     expect(screen.getByTestId("settings-sidebar").className).toContain("min-w-0");
     expect(screen.getByTestId("settings-content").className).toContain("min-w-0");
     expect(screen.getByTestId("settings-live-preview")).toBeTruthy();
-    expect(screen.getByRole("group", { name: "Mode" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Mode" })).toBeNull();
     expect(screen.getByRole("group", { name: "App font" })).toBeTruthy();
     expect(screen.getByRole("group", { name: "Active caret style" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "System Mono font" }).closest("fieldset")?.className).toContain(
@@ -340,14 +342,15 @@ describe("SettingsPage", () => {
     );
     expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("w-[8.25rem]");
     expect(screen.getByRole("button", { name: /Default Dark theme preview/i }).className).toContain("h-9");
+    expect(screen.getByRole("button", { name: /System theme preview/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Rose Pine Dawn theme preview/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Solarized Light theme preview/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Tangerine theme preview/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Matcha theme preview/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Milkshake theme preview/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Paper theme preview/i })).toBeTruthy();
-    expect(screen.getAllByTestId("theme-preview-card")).toHaveLength(19);
-    expect(screen.getAllByTestId("theme-preview-accent-dot")).toHaveLength(19);
+    expect(screen.getAllByTestId("theme-preview-card")).toHaveLength(20);
+    expect(screen.getAllByTestId("theme-preview-accent-dot")).toHaveLength(20);
   });
 
   it("renders functional sidebar links for real settings sections", () => {

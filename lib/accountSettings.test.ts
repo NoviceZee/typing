@@ -16,12 +16,16 @@ describe("account settings lifecycle", () => {
   });
 
   it("uses authenticated cloud settings as the source of truth over local values", async () => {
-    window.localStorage.setItem("formaltype.theme.v1", JSON.stringify({ mode: "light", caretStyle: "block" }));
+    window.localStorage.setItem(
+      "formaltype.theme.v1",
+      JSON.stringify({ themePreset: "paper", mode: "dark", caretStyle: "block" })
+    );
     const cloud = {
       ...createDefaultAccountSettings(),
       appearance: {
         ...createDefaultAccountSettings().appearance,
-        mode: "dark" as const,
+        themePreset: "dracula" as const,
+        mode: "light",
         caretStyle: "underline" as const
       }
     };
@@ -37,13 +41,22 @@ describe("account settings lifecycle", () => {
     });
 
     expect(result.source).toBe("cloud");
-    expect(result.settings.appearance.mode).toBe("dark");
+    expect(result.settings.appearance.themePreset).toBe("dracula");
+    expect(result.settings.appearance).not.toHaveProperty("mode");
     expect(result.settings.appearance.caretStyle).toBe("underline");
     expect(repository.save).not.toHaveBeenCalled();
   });
 
   it("migrates local settings once only when the account has no cloud row", async () => {
-    window.localStorage.setItem("formaltype.theme.v1", JSON.stringify({ mode: "light", typingTextSize: "large" }));
+    window.localStorage.setItem(
+      "formaltype.theme.v1",
+      JSON.stringify({
+        themePreset: "rose-pine-dawn",
+        mode: "system",
+        accentColor: "lime",
+        typingTextSize: "large"
+      })
+    );
     const repository = {
       load: vi.fn().mockResolvedValue(null),
       save: vi.fn().mockResolvedValue(undefined)
@@ -54,7 +67,9 @@ describe("account settings lifecycle", () => {
 
     expect(result.source).toBe("migrated");
     expect(result.settings.version).toBe(ACCOUNT_SETTINGS_VERSION);
-    expect(result.settings.appearance.mode).toBe("light");
+    expect(result.settings.appearance.themePreset).toBe("system");
+    expect(result.settings.appearance.accentColor).toBe("lime");
+    expect(result.settings.appearance).not.toHaveProperty("mode");
     expect(result.settings.appearance.typingTextSize).toBe("large");
     expect(repository.save).toHaveBeenCalledTimes(1);
     expect(repository.save).toHaveBeenCalledWith("user-1", localSettings);

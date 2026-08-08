@@ -1214,7 +1214,7 @@ describe("TrainingPage", () => {
       window.localStorage.setItem(
         "formaltype.theme.v1",
         JSON.stringify({
-          mode: "dark",
+          themePreset: "default-dark",
           accentColor: "amber",
           appFont: "sans",
           typingFont: "mono",

@@ -5,7 +5,8 @@ import { useOptionalAccountSettings } from "@/components/AccountSettingsProvider
 import {
   THEME_SETTING_CHANGE_EVENT,
   type ThemeSettings,
-  readThemeSettings
+  readThemeSettings,
+  resolveThemePreset
 } from "@/lib/app-storage";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -33,11 +34,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const mediaQuery = window.matchMedia?.("(prefers-color-scheme: light)") ?? null;
 
     function applyResolvedTheme() {
-      const resolvedMode =
-        currentSettings.mode === "system" ? (mediaQuery?.matches ? "light" : "dark") : currentSettings.mode;
-      document.documentElement.dataset.theme = resolvedMode;
-      document.documentElement.dataset.themeMode = currentSettings.mode;
-      document.documentElement.dataset.themePreset = currentSettings.themePreset;
+      const resolvedTheme = resolveThemePreset(currentSettings.themePreset, mediaQuery?.matches ?? false);
+      document.documentElement.dataset.theme = resolvedTheme.appearance;
+      document.documentElement.dataset.themePreset = resolvedTheme.themePreset;
+      delete document.documentElement.dataset.themeMode;
       document.documentElement.dataset.accent = currentSettings.accentColor;
       document.documentElement.dataset.appFont = currentSettings.appFont;
     }

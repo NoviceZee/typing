@@ -7,6 +7,8 @@ import {
   PREVIOUS_RESULTS_STORAGE_KEY,
   THEME_SETTINGS_STORAGE_KEY,
   DEFAULT_THEME_SETTINGS,
+  THEME_PRESET_APPEARANCES,
+  THEME_PRESET_OPTIONS,
   extractPassageTitle,
   filterLibraryPassages,
   formatPassageLength,
@@ -15,6 +17,7 @@ import {
   readPreviousResult,
   readThemeSettings,
   readPracticePassageFromLibrary,
+  resolveThemePreset,
   splitTextIntoPassages,
   toStoredPassage,
   writePassageLibrary,
@@ -416,6 +419,67 @@ describe("passage storage bounds", () => {
 describe("theme settings storage", () => {
   it("returns defaults when no theme settings are saved", () => {
     expect(readThemeSettings()).toEqual(DEFAULT_THEME_SETTINGS);
+    expect(readThemeSettings()).not.toHaveProperty("mode");
+  });
+
+  it("classifies every registered named preset and resolves System to a valid appearance", () => {
+    expect(THEME_PRESET_OPTIONS.some((option) => option.value === "system")).toBe(true);
+
+    const registeredNamedPresets = THEME_PRESET_OPTIONS.flatMap((option) =>
+      option.value === "system" ? [] : [option.value]
+    );
+    expect(Array.from(new Set(registeredNamedPresets)).sort()).toEqual(Object.keys(THEME_PRESET_APPEARANCES).sort());
+
+    for (const preset of registeredNamedPresets) {
+      expect(["dark", "light"]).toContain(THEME_PRESET_APPEARANCES[preset]);
+    }
+
+    expect(resolveThemePreset("system", false)).toEqual({ themePreset: "default-dark", appearance: "dark" });
+    expect(resolveThemePreset("system", true)).toEqual({ themePreset: "light", appearance: "light" });
+  });
+
+  it("migrates legacy System mode while preserving unrelated appearance settings", () => {
+    storage.set(
+      THEME_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        themePreset: "dracula",
+        mode: "system",
+        accentColor: "cyan",
+        appFont: "serif",
+        typingFont: "accessible",
+        typingTextSize: "large",
+        typingWidth: "wide",
+        caretStyle: "underline",
+        caretBlink: "off",
+        caretSmooth: "slow",
+        previousPaceEnabled: "off",
+        typingColorStyle: "soft"
+      })
+    );
+
+    expect(readThemeSettings()).toEqual({
+      themePreset: "system",
+      accentColor: "cyan",
+      appFont: "serif",
+      typingFont: "accessible",
+      typingTextSize: "large",
+      typingWidth: "wide",
+      caretStyle: "underline",
+      caretBlink: "off",
+      caretSmooth: "slow",
+      previousPaceEnabled: "off",
+      typingColorStyle: "soft"
+    });
+  });
+
+  it("preserves a valid named preset and ignores a conflicting legacy mode", () => {
+    storage.set(
+      THEME_SETTINGS_STORAGE_KEY,
+      JSON.stringify({ themePreset: "dracula", mode: "light", accentColor: "purple" })
+    );
+
+    expect(readThemeSettings()).toMatchObject({ themePreset: "dracula", accentColor: "purple" });
+    expect(readThemeSettings()).not.toHaveProperty("mode");
   });
 
   it("normalises legacy caret values and supplies backward-compatible pace defaults", () => {
@@ -440,7 +504,6 @@ describe("theme settings storage", () => {
 
     writeThemeSettings({
       themePreset: "rose-pine-dawn",
-      mode: "light",
       accentColor: "emerald",
       appFont: "rounded",
       typingFont: "serif",
@@ -456,7 +519,6 @@ describe("theme settings storage", () => {
     expect(storage.get(THEME_SETTINGS_STORAGE_KEY)).toBe(
       JSON.stringify({
         themePreset: "rose-pine-dawn",
-        mode: "light",
         accentColor: "emerald",
         appFont: "rounded",
         typingFont: "serif",
@@ -472,7 +534,6 @@ describe("theme settings storage", () => {
     expect(storage.get("formaltype.keyboard_sound.v1")).toBe("mechanical");
     expect(readThemeSettings()).toEqual({
       themePreset: "rose-pine-dawn",
-      mode: "light",
       accentColor: "emerald",
       appFont: "rounded",
       typingFont: "serif",

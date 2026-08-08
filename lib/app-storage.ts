@@ -199,13 +199,13 @@ export type PassageLibraryImportResult = {
   summary: PassageLibraryImportSummary;
 };
 
-export type ThemeMode = "dark" | "light" | "system";
+export type ThemeAppearance = "dark" | "light";
 export type AccentColor = "blue" | "purple" | "emerald" | "rose" | "amber" | "cyan" | "lime" | "red" | "orange";
 export type AppFont = "system" | "sans" | "serif" | "rounded" | "humanist" | "grotesk" | "mono" | "editorial";
 export type TypingFont = "system-mono" | "serif" | "code" | "humanist-mono" | "geometric-mono" | "accessible" | "cjk";
 export type TypingTextSize = "small" | "medium" | "large";
 export type TypingWidth = "compact" | "comfortable" | "wide";
-export type ThemePreset =
+export type NamedThemePreset =
   | "default-dark"
   | "light"
   | "dracula"
@@ -225,6 +225,7 @@ export type ThemePreset =
   | "serika"
   | "copper"
   | "iceberg";
+export type ThemePreset = NamedThemePreset | "system";
 export type CaretStyle = "off" | "line" | "block" | "outline-block" | "underline";
 export type CaretBlink = "on" | "off";
 export type CaretSmooth = "off" | "slow" | "medium" | "fast";
@@ -233,7 +234,6 @@ export type TypingColorStyle = "theme-default" | "high-contrast" | "soft";
 
 export type ThemeSettings = {
   themePreset: ThemePreset;
-  mode: ThemeMode;
   accentColor: AccentColor;
   appFont: AppFont;
   typingFont: TypingFont;
@@ -248,7 +248,6 @@ export type ThemeSettings = {
 
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   themePreset: "default-dark",
-  mode: "dark",
   accentColor: "amber",
   appFont: "system",
   typingFont: "system-mono",
@@ -261,11 +260,8 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   typingColorStyle: "theme-default"
 };
 
-export type ThemePresetOption = {
-  value: ThemePreset;
+type ThemePresetOptionBase = {
   label: string;
-  mode: ThemeMode;
-  accentColor: AccentColor;
   preview: {
     background: string;
     surface: string;
@@ -275,12 +271,45 @@ export type ThemePresetOption = {
   };
 };
 
+export type ThemePresetOption = ThemePresetOptionBase & { value: ThemePreset };
+
+export const THEME_PRESET_APPEARANCES: Record<NamedThemePreset, ThemeAppearance> = {
+  "default-dark": "dark",
+  light: "light",
+  dracula: "dark",
+  nord: "dark",
+  "catppuccin-mocha": "dark",
+  "tokyo-night": "dark",
+  "rose-pine-dawn": "light",
+  "solarized-light": "light",
+  tangerine: "light",
+  matcha: "light",
+  milkshake: "light",
+  paper: "light",
+  "gruvbox-dark": "dark",
+  "rose-pine-moon": "dark",
+  terminal: "dark",
+  "modern-ink": "light",
+  serika: "dark",
+  copper: "dark",
+  iceberg: "light"
+};
+
 export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
+  {
+    value: "system",
+    label: "System",
+    preview: {
+      background: "#070807",
+      surface: "#f8f6ef",
+      text: "#ece7d7",
+      accent: "#7f7a6a",
+      muted: "#9b927f"
+    }
+  },
   {
     value: "default-dark",
     label: "Default Dark",
-    mode: "dark",
-    accentColor: "amber",
     preview: {
       background: "#070807",
       surface: "#191d18",
@@ -292,8 +321,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "light",
     label: "Light",
-    mode: "light",
-    accentColor: "blue",
     preview: {
       background: "#f8f6ef",
       surface: "#fffaf0",
@@ -305,8 +332,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "dracula",
     label: "Dracula",
-    mode: "dark",
-    accentColor: "purple",
     preview: {
       background: "#191622",
       surface: "#282436",
@@ -318,8 +343,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "nord",
     label: "Nord",
-    mode: "dark",
-    accentColor: "blue",
     preview: {
       background: "#111827",
       surface: "#243142",
@@ -331,8 +354,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "catppuccin-mocha",
     label: "Catppuccin Mocha",
-    mode: "dark",
-    accentColor: "rose",
     preview: {
       background: "#11111b",
       surface: "#1e1e2e",
@@ -344,8 +365,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "tokyo-night",
     label: "Tokyo Night",
-    mode: "dark",
-    accentColor: "blue",
     preview: {
       background: "#0f172a",
       surface: "#1a1b26",
@@ -357,8 +376,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "rose-pine-dawn",
     label: "Rose Pine Dawn",
-    mode: "light",
-    accentColor: "rose",
     preview: {
       background: "#faf4ed",
       surface: "#fffaf3",
@@ -370,8 +387,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "solarized-light",
     label: "Solarized Light",
-    mode: "light",
-    accentColor: "blue",
     preview: {
       background: "#fdf6e3",
       surface: "#eee8d5",
@@ -383,8 +398,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "tangerine",
     label: "Tangerine",
-    mode: "light",
-    accentColor: "amber",
     preview: {
       background: "#fff3e6",
       surface: "#ffe3c2",
@@ -396,8 +409,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "matcha",
     label: "Matcha",
-    mode: "light",
-    accentColor: "emerald",
     preview: {
       background: "#f2f7e8",
       surface: "#dcecc8",
@@ -409,8 +420,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "milkshake",
     label: "Milkshake",
-    mode: "light",
-    accentColor: "rose",
     preview: {
       background: "#fff0f7",
       surface: "#ffe1ee",
@@ -422,8 +431,6 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
   {
     value: "paper",
     label: "Paper",
-    mode: "light",
-    accentColor: "amber",
     preview: {
       background: "#fbf7ec",
       surface: "#eee3cc",
@@ -433,40 +440,50 @@ export const THEME_PRESET_OPTIONS: ThemePresetOption[] = [
     }
   },
   {
-    value: "gruvbox-dark", label: "Gruvbox Dark", mode: "dark", accentColor: "amber",
+    value: "gruvbox-dark", label: "Gruvbox Dark",
     preview: { background: "#282828", surface: "#3c3836", text: "#ebdbb2", accent: "#fabd2f", muted: "#928374" }
   },
   {
-    value: "rose-pine-moon", label: "Rose Pine Moon", mode: "dark", accentColor: "rose",
+    value: "rose-pine-moon", label: "Rose Pine Moon",
     preview: { background: "#232136", surface: "#2a273f", text: "#e0def4", accent: "#ea9a97", muted: "#6e6a86" }
   },
   {
-    value: "terminal", label: "Terminal", mode: "dark", accentColor: "emerald",
+    value: "terminal", label: "Terminal",
     preview: { background: "#07110a", surface: "#0d1c11", text: "#b8d8bd", accent: "#4ade80", muted: "#52705a" }
   },
   {
-    value: "modern-ink", label: "Modern Ink", mode: "light", accentColor: "red",
+    value: "modern-ink", label: "Modern Ink",
     preview: { background: "#f4f1ea", surface: "#e6e1d7", text: "#181817", accent: "#dc2626", muted: "#858078" }
   },
   {
-    value: "serika", label: "Serika", mode: "dark", accentColor: "amber",
+    value: "serika", label: "Serika",
     preview: { background: "#323437", surface: "#2c2e31", text: "#d1d0c5", accent: "#e2b714", muted: "#646669" }
   },
   {
-    value: "copper", label: "Copper", mode: "dark", accentColor: "orange",
+    value: "copper", label: "Copper",
     preview: { background: "#17120f", surface: "#2b211b", text: "#eaded3", accent: "#d97745", muted: "#806b5e" }
   },
   {
-    value: "iceberg", label: "Iceberg", mode: "light", accentColor: "cyan",
+    value: "iceberg", label: "Iceberg",
     preview: { background: "#e8eef3", surface: "#d7e1e8", text: "#26384a", accent: "#0e7490", muted: "#718393" }
   }
 ];
 
-export const THEME_MODE_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
-  { value: "dark", label: "Dark" },
-  { value: "light", label: "Light" },
-  { value: "system", label: "System" }
-];
+export type ResolvedThemePreset = {
+  themePreset: NamedThemePreset;
+  appearance: ThemeAppearance;
+};
+
+export function resolveThemePreset(themePreset: ThemePreset, prefersLight: boolean): ResolvedThemePreset {
+  const resolvedPreset: NamedThemePreset = themePreset === "system"
+    ? prefersLight ? "light" : "default-dark"
+    : themePreset;
+
+  return {
+    themePreset: resolvedPreset,
+    appearance: THEME_PRESET_APPEARANCES[resolvedPreset]
+  };
+}
 
 export const ACCENT_COLOR_OPTIONS: Array<{ value: AccentColor; label: string }> = [
   { value: "blue", label: "Blue" },
@@ -1321,8 +1338,11 @@ export function normaliseThemeSettings(settings: unknown): ThemeSettings {
   }
 
   return {
-    themePreset: isThemePreset(settings.themePreset) ? settings.themePreset : DEFAULT_THEME_SETTINGS.themePreset,
-    mode: isThemeMode(settings.mode) ? settings.mode : DEFAULT_THEME_SETTINGS.mode,
+    themePreset: settings.mode === "system"
+      ? "system"
+      : isThemePreset(settings.themePreset)
+        ? settings.themePreset
+        : DEFAULT_THEME_SETTINGS.themePreset,
     accentColor: isAccentColor(settings.accentColor) ? settings.accentColor : DEFAULT_THEME_SETTINGS.accentColor,
     appFont: isAppFont(settings.appFont) ? settings.appFont : DEFAULT_THEME_SETTINGS.appFont,
     typingFont: isTypingFont(settings.typingFont) ? settings.typingFont : DEFAULT_THEME_SETTINGS.typingFont,
@@ -1345,6 +1365,7 @@ export function normaliseThemeSettings(settings: unknown): ThemeSettings {
 function isThemePreset(value: unknown): value is ThemePreset {
   return (
     value === "default-dark" ||
+    value === "system" ||
     value === "light" ||
     value === "dracula" ||
     value === "nord" ||
@@ -1364,10 +1385,6 @@ function isThemePreset(value: unknown): value is ThemePreset {
     value === "copper" ||
     value === "iceberg"
   );
-}
-
-function isThemeMode(value: unknown): value is ThemeMode {
-  return value === "dark" || value === "light" || value === "system";
 }
 
 function isAccentColor(value: unknown): value is AccentColor {

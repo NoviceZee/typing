@@ -13,7 +13,6 @@ import {
   CARET_SMOOTH_OPTIONS,
   CARET_STYLE_OPTIONS,
   DEFAULT_THEME_SETTINGS,
-  THEME_MODE_OPTIONS,
   THEME_PRESET_OPTIONS,
   ThemePresetOption,
   PREVIOUS_PACE_ENABLED_OPTIONS,
@@ -165,9 +164,7 @@ export default function SettingsPage() {
   function handleThemePreset(preset: ThemePresetOption) {
     const nextSettings: ThemeSettings = {
       ...themeSettings,
-      themePreset: preset.value,
-      mode: preset.mode,
-      accentColor: preset.accentColor
+      themePreset: preset.value
     };
     setThemeSettings(nextSettings);
     if (accountSettingsContext) {
@@ -256,14 +253,6 @@ export default function SettingsPage() {
               </div>
 
               <div className="mt-6 grid gap-5">
-                <ButtonGroup
-                  label="Mode"
-                  options={THEME_MODE_OPTIONS}
-                  value={themeSettings.mode}
-                  getAriaLabel={(option) => `${option.label} mode`}
-                  onChange={(value) => handleThemeSetting("mode", value as ThemeSettings["mode"])}
-                />
-
                 <AccentSelector
                   value={themeSettings.accentColor}
                   onChange={(value) => handleThemeSetting("accentColor", value)}
