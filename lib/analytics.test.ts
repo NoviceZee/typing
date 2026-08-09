@@ -3,6 +3,22 @@ import { buildProgressAnalytics } from "./analytics";
 import type { SupabaseAnalyticsTypingResultRow } from "./typingResultStorage";
 
 describe("buildProgressAnalytics", () => {
+  it("combines legacy and v2 English category values in historical analytics", () => {
+    const analytics = buildProgressAnalytics([
+      makeResult("legacy", 60, 50, 98, "Business email", "2026-06-19T00:01:00.000Z"),
+      makeResult("v2", 60, 70, 100, "Business communication", "2026-06-19T00:02:00.000Z")
+    ]);
+
+    expect(analytics.categoryBreakdown).toEqual([
+      {
+        category: "Business communication",
+        averageWpm: 60,
+        averageAccuracy: 99,
+        tests: 2
+      }
+    ]);
+  });
+
   it("summarizes results, personal records, and category breakdowns", () => {
     const analytics = buildProgressAnalytics([
       makeResult("one-minute-fast", 60, 72, 98.2, "Business email", "2026-06-19T00:03:00.000Z"),
@@ -26,13 +42,13 @@ describe("buildProgressAnalytics", () => {
     expect(analytics.records.highestAccuracy?.id).toBe("uncategorised");
     expect(analytics.categoryBreakdown).toEqual([
       {
-        category: "Business email",
+        category: "Business communication",
         averageWpm: 65,
         averageAccuracy: 98.8,
         tests: 2
       },
       {
-        category: "Legal / contract style",
+        category: "Legal & contracts",
         averageWpm: 64,
         averageAccuracy: 97.5,
         tests: 1

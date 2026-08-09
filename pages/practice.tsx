@@ -406,6 +406,34 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       preferredPassageId?: string | null;
     }) => {
       const languageLibrary = filterLibraryPassagesByLanguage(library, language);
+
+      if (preferredPassageId && preferredPassageId !== RANDOM_PASSAGE_ID) {
+        const preferredLibraryPassage = languageLibrary.find(
+          (libraryPassage) => libraryPassage.id === preferredPassageId
+        );
+
+        if (preferredLibraryPassage) {
+          const preferredCategoryLibrary = filterLibraryByCategory(
+            languageLibrary,
+            preferredLibraryPassage.category
+          );
+          const sourceLibrary = preferredCategoryLibrary.length > 0
+            ? preferredCategoryLibrary
+            : languageLibrary;
+          setPassageSelectionMode("specific");
+          setActivePassageId(preferredLibraryPassage.id);
+          setSelectedPassageId(preferredLibraryPassage.id);
+          setSelectedCategoryState(preferredLibraryPassage.category);
+          setSelectedCategory(preferredLibraryPassage.category);
+          const nextPassage = toStoredPassage(preferredLibraryPassage, duration, sourceLibrary, textMode);
+          setPassage(nextPassage);
+          setPreviousResult(readPreviousResult(nextPassage.id, getPreviousResultScope(duration, textMode)));
+          writeStoredPassage(nextPassage);
+          setPassageNotice("");
+          return;
+        }
+      }
+
       const categoryLibrary = filterLibraryByCategory(languageLibrary, category);
 
       if (categoryLibrary.length > 0) {
@@ -428,10 +456,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
           return;
         }
 
-        const preferredLibraryPassage = preferredPassageId
-          ? categoryLibrary.find((libraryPassage) => libraryPassage.id === preferredPassageId)
-          : undefined;
-        const selectedLibraryPassage = preferredLibraryPassage ?? categoryLibrary[0];
+        const selectedLibraryPassage = categoryLibrary[0];
         setPassageSelectionMode("specific");
         setActivePassageId(selectedLibraryPassage.id);
         setSelectedPassageId(selectedLibraryPassage.id);

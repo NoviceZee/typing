@@ -41,6 +41,7 @@ import {
 } from "@/lib/profileDisplaySettings";
 import { DEFAULT_RULES, type TypingRules } from "@/lib/typing-engine";
 import { supabase } from "@/lib/supabaseClient";
+import { normalizeCategoryFilter } from "@/lib/passageCategories";
 
 export const ACCOUNT_SETTINGS_VERSION = 1 as const;
 export const ACCOUNT_SETTINGS_CHANGE_EVENT = "typing-station-account-settings-change";
@@ -238,9 +239,9 @@ export function normalizeAccountSettings(value: unknown): AccountSettingsV1 {
     },
     preferences: {
       language: preferences.language === "chinese" ? "chinese" : "english",
-      category: typeof preferences.category === "string"
-        ? preferences.category as CategoryFilter
-        : defaults.preferences.category,
+      category: normalizeCategoryFilter(
+        typeof preferences.category === "string" ? preferences.category : defaults.preferences.category
+      ) as CategoryFilter,
       style: typeof preferences.style === "string" ? preferences.style : defaults.preferences.style
     }
   };

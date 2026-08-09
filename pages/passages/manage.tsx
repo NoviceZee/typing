@@ -36,6 +36,7 @@ import {
   updatePassage
 } from "@/lib/passageStorage";
 import { normalizeEnglishPassagePunctuation } from "@/lib/passageTextNormalization";
+import { normalizePassageCategory } from "@/lib/passageCategories";
 
 type StatusFilter = "All" | "Active" | "Hidden";
 type StorageMode = "supabase" | "local";
@@ -63,8 +64,8 @@ function ManagePassages() {
   const [status, setStatus] = useState<StatusFilter>("All");
   const [replaceExistingLibrary, setReplaceExistingLibrary] = useState(false);
   const [newPassageTitle, setNewPassageTitle] = useState("");
-  const [newPassageCategory, setNewPassageCategory] = useState<PracticeCategory>("Business email");
-  const [newPassageStyle, setNewPassageStyle] = useState("Formal");
+  const [newPassageCategory, setNewPassageCategory] = useState<PracticeCategory>("Business communication");
+  const [newPassageStyle, setNewPassageStyle] = useState("General");
   const [newPassageContent, setNewPassageContent] = useState("");
   const [editingPassage, setEditingPassage] = useState<LibraryPassage | null>(null);
   const [previewPassage, setPreviewPassage] = useState<LibraryPassage | null>(null);
@@ -751,7 +752,8 @@ function toLibraryPassageFromImport(item: unknown): LibraryPassage | null {
 }
 
 function toPracticeCategory(category: string): PracticeCategory {
-  return CATEGORIES.find((knownCategory) => knownCategory === category) ?? "Uncategorised";
+  const normalized = normalizePassageCategory(category) as PracticeCategory;
+  return CATEGORIES.includes(normalized) ? normalized : "Uncategorised";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

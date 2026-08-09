@@ -5,6 +5,13 @@ import { normalizeComparableUnicode } from "./typingTarget";
 export { normalizeComparableUnicode } from "./typingTarget";
 
 export type PracticeCategory =
+  | "Articles"
+  | "Personal writing"
+  | "News"
+  | "Business communication"
+  | "Government & public information"
+  | "Proposals & tenders"
+  | "Legal & contracts"
   | "Business email"
   | "Tender / proposal writing"
   | "Government / formal English"
@@ -201,6 +208,16 @@ const PASSAGE_BANK: Partial<Record<PracticeCategory, string[]>> = {
     "Use the category and style filters before uploading if you want future passages to appear in a more specific library group.",
     "Typing Station will still measure speed, accuracy, punctuation, and spacing rules for uncategorised material in exactly the same way."
   ]
+};
+
+const PASSAGE_BANK_ALIASES: Partial<Record<PracticeCategory, PracticeCategory>> = {
+  Articles: "Random paragraph",
+  "Personal writing": "Casual writing",
+  News: "News article",
+  "Business communication": "Business email",
+  "Government & public information": "Government / formal English",
+  "Proposals & tenders": "Tender / proposal writing",
+  "Legal & contracts": "Legal / contract style"
 };
 
 export function normalizeTargetForRules(target: string, rules: TypingRules): string {
@@ -464,7 +481,8 @@ export function getRequiredWordCount(durationSeconds: number): number {
 
 export function buildPracticePassage(category: PracticeCategory, durationSeconds: number): string {
   const targetWordCount = getRequiredWordCount(durationSeconds);
-  const paragraphs = PASSAGE_BANK[category] ?? PASSAGE_BANK["Business email"] ?? [];
+  const passageBankCategory = PASSAGE_BANK_ALIASES[category] ?? category;
+  const paragraphs = PASSAGE_BANK[passageBankCategory] ?? PASSAGE_BANK["Business email"] ?? [];
   const output: string[] = [];
   let wordCount = 0;
   let index = 0;

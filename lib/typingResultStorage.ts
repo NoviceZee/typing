@@ -6,6 +6,12 @@ import { supabase } from "./supabaseClient";
 import type { TypingResult } from "./typing-engine";
 import { isProgressionEligibleResult } from "./resultEligibility";
 import { getLegacyDurationBucket, resolveResultDuration } from "./resultDuration";
+import {
+  getCompatibleEnglishCategoryValues,
+  getLegacyDeactivatedPassageCategory,
+  normalizeEnglishPassageCategory,
+  normalizePassageCategory
+} from "./passageCategories";
 
 export type SupabaseTypingResultInsert = {
   user_id: string;
@@ -165,7 +171,10 @@ export async function getSupabaseLeaderboardResults({
   }
 
   if (category?.trim()) {
-    query = query.eq("passage_category", category.trim());
+    const normalizedCategory = normalizeEnglishPassageCategory(category);
+    query = normalizedCategory
+      ? query.in("passage_category", getCompatibleEnglishCategoryValues(normalizedCategory))
+      : query.eq("passage_category", category.trim());
   } else {
     query = applyLeaderboardDomainFilter(query, domain);
   }
@@ -205,7 +214,14 @@ export async function getSupabaseLeaderboardCategories(limit = 200, domain: Anal
     throw error;
   }
 
-  return Array.from(new Set((data ?? []).map((row) => row.passage_category).filter(Boolean) as string[]));
+  return Array.from(
+    new Set(
+      (data ?? [])
+        .map((row) => row.passage_category)
+        .filter(Boolean)
+        .map((category) => normalizePassageCategory(category))
+    )
+  );
 }
 
 export async function getSupabaseOwnTypingResultIds(resultIds: string[], userId: string): Promise<Set<string>> {
@@ -234,7 +250,7 @@ export async function getSupabaseOwnTypingResults(
 
   const { data, error } = await supabase
     .from("typing_results")
-    .select("id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
+    .select("id,passage_id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -253,7 +269,7 @@ export async function getSupabaseAnalyticsTypingResults(
 ): Promise<SupabaseAnalyticsTypingResultRow[]> {
   const { data, error } = await client
     .from("typing_results")
-    .select("id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
+    .select("id,passage_id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -301,11 +317,12 @@ function requireSupabaseClient(): any {
 function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingResultRow {
   const passage = Array.isArray(row.passages) ? row.passages[0] : row.passages;
   const duration = resolveResultDuration(row);
+  const passageCategory = passage?.category ?? row.passage_category ?? getLegacyDeactivatedPassageCategory(row.passage_id);
 
   return {
     id: row.id,
     passage_title: row.passage_title,
-    passage_category: passage?.category ?? null,
+    passage_category: passageCategory ? normalizePassageCategory(passageCategory) : null,
     ...toMetricDomainField(row.metric_domain),
     mode_duration_seconds: duration.modeDurationSeconds,
     duration_seconds: getLegacyDurationBucket(duration),
@@ -323,11 +340,12 @@ function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingRe
 function toSupabaseOwnTypingResultRow(row: any): SupabaseOwnTypingResultRow {
   const passage = Array.isArray(row.passages) ? row.passages[0] : row.passages;
   const duration = resolveResultDuration(row);
+  const passageCategory = passage?.category ?? row.passage_category ?? getLegacyDeactivatedPassageCategory(row.passage_id);
 
   return {
     id: row.id,
     passage_title: row.passage_title,
-    passage_category: passage?.category ?? row.passage_category ?? null,
+    passage_category: passageCategory ? normalizePassageCategory(passageCategory) : null,
     ...toMetricDomainField(row.metric_domain),
     mode_duration_seconds: duration.modeDurationSeconds,
     duration_seconds: getLegacyDurationBucket(duration),
@@ -347,7 +365,7 @@ function toSupabasePublicTypingResultRow(row: any): SupabaseAnalyticsTypingResul
   return {
     id: row.id,
     passage_title: row.passage_title,
-    passage_category: row.passage_category ?? null,
+    passage_category: row.passage_category ? normalizePassageCategory(row.passage_category) : null,
     ...toMetricDomainField(row.metric_domain),
     mode_duration_seconds: duration.modeDurationSeconds,
     duration_seconds: getLegacyDurationBucket(duration),
@@ -365,7 +383,7 @@ function toSupabaseLeaderboardResultRow(row: any): SupabaseLeaderboardResultRow 
     id: row.id,
     display_name: row.display_name,
     passage_title: row.passage_title,
-    passage_category: row.passage_category ?? null,
+    passage_category: row.passage_category ? normalizePassageCategory(row.passage_category) : null,
     ...toMetricDomainField(row.metric_domain),
     mode_duration_seconds: duration.modeDurationSeconds,
     duration_seconds: getLegacyDurationBucket(duration),

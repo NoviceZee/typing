@@ -15,6 +15,11 @@ import {
   safeSetStorageItem
 } from "./storageSafety";
 import { dispatchLocalAccountSettingsMutation } from "./settingsEvents";
+import {
+  ENGLISH_PASSAGE_CATEGORIES,
+  normalizeCategoryFilter,
+  normalizePassageCategory
+} from "./passageCategories";
 
 export const RULES_STORAGE_KEY = "formaltype.rules.v1";
 export const PASSAGE_STORAGE_KEY = "formaltype.passage.v1";
@@ -37,13 +42,7 @@ const MAX_PREVIOUS_RESULTS = 120;
 const MAX_PREVIOUS_PACE_POINTS = 90;
 
 export const CATEGORIES: PracticeCategory[] = [
-  "Business email",
-  "Tender / proposal writing",
-  "Government / formal English",
-  "News article",
-  "Casual writing",
-  "Legal / contract style",
-  "Random paragraph",
+  ...ENGLISH_PASSAGE_CATEGORIES,
   "生活",
   "工作",
   "教育",
@@ -63,17 +62,6 @@ export const CATEGORIES: PracticeCategory[] = [
   "醫療",
   "文言文",
   "詩詞",
-  "numbers",
-  "symbols",
-  "training_words",
-  "training_numbers",
-  "training_symbols",
-  "training_code",
-  "training_chinese",
-  "training_words_numbers",
-  "training_words_symbols",
-  "training_numbers_symbols",
-  "training_words_numbers_symbols",
   "Uncategorised"
 ];
 
@@ -608,9 +596,9 @@ export function getDefaultPassage(durationSeconds = 60): StoredPassage {
   return {
     id: "default-generated",
     title: "Generated business email practice",
-    category: "Business email",
+    category: "Business communication",
     style: "Formal",
-    text: buildPracticePassage("Business email", durationSeconds),
+    text: buildPracticePassage("Business communication", durationSeconds),
     source: "generated",
     updatedAt: new Date().toISOString()
   };
@@ -772,11 +760,11 @@ export function readSelectedCategory(): CategoryFilter {
     return ALL_FILTER;
   }
 
-  return (window.localStorage.getItem(SELECTED_CATEGORY_STORAGE_KEY) || ALL_FILTER) as CategoryFilter;
+  return normalizeCategoryFilter(window.localStorage.getItem(SELECTED_CATEGORY_STORAGE_KEY)) as CategoryFilter;
 }
 
 export function writeSelectedCategory(category: CategoryFilter) {
-  safeSetStorageItem(SELECTED_CATEGORY_STORAGE_KEY, category, { context: "writeSelectedCategory" });
+  safeSetStorageItem(SELECTED_CATEGORY_STORAGE_KEY, normalizeCategoryFilter(category), { context: "writeSelectedCategory" });
   dispatchLocalAccountSettingsMutation();
 }
 
@@ -1302,7 +1290,7 @@ function restoreImportedSettings(settings: unknown, library: LibraryPassage[]) {
   runTypingStationStorageMigration();
 
   if (typeof settings.selectedCategory === "string") {
-    safeSetStorageItem(SELECTED_CATEGORY_STORAGE_KEY, settings.selectedCategory, { context: "restoreImportedSettings" });
+    safeSetStorageItem(SELECTED_CATEGORY_STORAGE_KEY, normalizeCategoryFilter(settings.selectedCategory), { context: "restoreImportedSettings" });
   }
 
   if (typeof settings.selectedStyle === "string") {
@@ -1457,7 +1445,7 @@ function normaliseImportedLibraryPassage(item: unknown): LibraryPassage | null {
     id: typeof item.id === "string" && item.id.trim() ? item.id : createId(),
     title: typeof item.title === "string" ? item.title : "Untitled passage",
     content,
-    category: typeof item.category === "string" && item.category.trim() ? (item.category as PracticeCategory) : "Uncategorised",
+    category: normalizePassageCategory(typeof item.category === "string" ? item.category : null) as PracticeCategory,
     style: typeof item.style === "string" && item.style.trim() ? item.style : "General",
     language: toPassageLanguage(typeof item.language === "string" ? item.language : null),
     source,
@@ -1481,7 +1469,7 @@ function normaliseLibraryPassage(passage: LibraryPassage): LibraryPassage {
     ...passage,
     content,
     title: passage.title?.trim() || "Untitled passage",
-    category: passage.category ?? "Uncategorised",
+    category: normalizePassageCategory(passage.category) as PracticeCategory,
     style: passage.style || "General",
     language: toPassageLanguage(passage.language),
     createdAt,

@@ -200,7 +200,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("100-Day Streak")).toBeTruthy();
     expect(screen.getByText("1,000 Words")).toBeTruthy();
     expect(screen.getByText("Category Breakdown")).toBeTruthy();
-    expect(screen.getByText("Weakest: News article")).toBeTruthy();
+    expect(screen.getByText("Weakest: News")).toBeTruthy();
     expect(screen.getByText("Activity")).toBeTruthy();
     expect(screen.getAllByText("Current streak").length).toBeGreaterThan(0);
     expect(screen.getByText("My Results")).toBeTruthy();

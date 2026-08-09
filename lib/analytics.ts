@@ -2,6 +2,7 @@ import type { SupabaseAnalyticsTypingResultRow } from "./typingResultStorage";
 import { hasValidResultDuration, resolveResultDuration } from "./resultDuration";
 import { AnalyticsDomain, getResultAnalyticsDomain } from "./analyticsDomain";
 import { isProgressionEligibleResult } from "./resultEligibility";
+import { normalizePassageCategory } from "./passageCategories";
 
 export type ProgressAnalytics = {
   summary: {
@@ -525,7 +526,7 @@ function compareByWpmAccuracyAndDate(left: SupabaseAnalyticsTypingResultRow, rig
 }
 
 function normalizeCategory(category: string | null) {
-  return category?.trim() || "Uncategorised";
+  return normalizePassageCategory(category);
 }
 
 function sumPracticeSeconds(results: SupabaseAnalyticsTypingResultRow[]) {

@@ -8,6 +8,7 @@ import {
 } from "./typingResultStorage";
 import type { StoredPassage } from "./app-storage";
 import type { TypingResult } from "./typing-engine";
+import { buildProgressAnalytics } from "./analytics";
 
 describe("typingResultStorage", () => {
   it("builds a Supabase insert payload and omits non-uuid passage ids", () => {
@@ -311,12 +312,28 @@ describe("typingResultStorage", () => {
         },
         {
           id: "result-2",
+          passage_id: "443f564d-7b45-4008-a0b3-6ae275ca9f9f",
           passage_title: "Legacy memo",
           duration_seconds: 300,
           wpm: 61,
           accuracy: 99,
           correct_chars: 1525,
           created_at: "2026-06-18T00:00:00.000Z",
+          passages: null
+        },
+        {
+          id: "result-unknown-passage",
+          passage_id: "00000000-0000-0000-0000-000000000000",
+          passage_title: "Unknown legacy passage",
+          duration_seconds: 60,
+          elapsed_seconds: 60,
+          completion_reason: "time_up",
+          is_rankable: true,
+          wpm: 55,
+          accuracy: 99,
+          correct_chars: 275,
+          typed_chars: 278,
+          created_at: "2026-06-17T00:00:00.000Z",
           passages: null
         },
         {
@@ -359,7 +376,7 @@ describe("typingResultStorage", () => {
       {
         id: "result-1",
         passage_title: "Board memo",
-        passage_category: "Business email",
+        passage_category: "Business communication",
         duration_seconds: 60,
         mode_duration_seconds: 60,
         elapsed_seconds: 20,
@@ -374,7 +391,7 @@ describe("typingResultStorage", () => {
       {
         id: "result-2",
         passage_title: "Legacy memo",
-        passage_category: null,
+        passage_category: "Articles",
         duration_seconds: 300,
         mode_duration_seconds: 300,
         elapsed_seconds: 300,
@@ -382,15 +399,37 @@ describe("typingResultStorage", () => {
         accuracy: 99,
         correct_chars: 1525,
         created_at: "2026-06-18T00:00:00.000Z"
+      },
+      {
+        id: "result-unknown-passage",
+        passage_title: "Unknown legacy passage",
+        passage_category: null,
+        duration_seconds: 60,
+        mode_duration_seconds: 60,
+        elapsed_seconds: 60,
+        completion_reason: "time_up",
+        is_rankable: true,
+        wpm: 55,
+        accuracy: 99,
+        correct_chars: 275,
+        typed_chars: 278,
+        created_at: "2026-06-17T00:00:00.000Z"
       }
     ]);
     expect(from).toHaveBeenCalledWith("typing_results");
     expect(select).toHaveBeenCalledWith(
-      "id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)"
+      "id,passage_id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)"
     );
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
     expect(order).toHaveBeenCalledWith("created_at", { ascending: false });
     expect(limit).toHaveBeenCalledWith(50);
+
+    const analytics = buildProgressAnalytics(await getSupabaseAnalyticsTypingResults("user-1", 50, { from }));
+    expect(analytics.categoryBreakdown.map((category) => category.category)).toEqual([
+      "Articles",
+      "Business communication",
+      "Uncategorised"
+    ]);
   });
 
   it("applies leaderboard date range filters to created_at", async () => {
@@ -399,8 +438,9 @@ describe("typingResultStorage", () => {
     const lt = vi.fn(() => query);
     const gte = vi.fn(() => query);
     const eq = vi.fn(() => query);
+    const inFilter = vi.fn(() => query);
     const order = vi.fn(() => query);
-    Object.assign(query, { order, limit, eq, gte, lt });
+    Object.assign(query, { order, limit, eq, in: inFilter, gte, lt });
     const select = vi.fn(() => query);
     const from = vi.fn(() => ({ select }));
     const start = new Date("2026-06-21T00:00:00.000Z");
@@ -410,7 +450,7 @@ describe("typingResultStorage", () => {
       getSupabaseLeaderboardResults(
         {
           modeDurationSeconds: 60,
-          category: "Business email",
+          category: "Business communication",
           dateRange: { start, end }
         },
         { from } as any
@@ -419,7 +459,10 @@ describe("typingResultStorage", () => {
 
     expect(from).toHaveBeenCalledWith("typing_results_leaderboard");
     expect(eq).toHaveBeenCalledWith("mode_duration_seconds", 60);
-    expect(eq).toHaveBeenCalledWith("passage_category", "Business email");
+    expect(inFilter).toHaveBeenCalledWith("passage_category", [
+      "Business communication",
+      "Business email"
+    ]);
     expect(gte).toHaveBeenCalledWith("created_at", start.toISOString());
     expect(lt).toHaveBeenCalledWith("created_at", end.toISOString());
     expect(limit).toHaveBeenCalledWith(25);
@@ -485,7 +528,7 @@ describe("typingResultStorage", () => {
       {
         id: "public-result",
         passage_title: "Public passage",
-        passage_category: "Business email",
+        passage_category: "Business communication",
         metric_domain: "english",
         duration_seconds: 60,
         mode_duration_seconds: 60,

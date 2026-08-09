@@ -6,6 +6,7 @@ import {
   ACCOUNT_SETTINGS_VERSION,
   createDefaultAccountSettings,
   hydrateAccountSettings,
+  normalizeAccountSettings,
   persistAccountSettings,
   readLocalAccountSettings
 } from "@/lib/accountSettings";
@@ -117,5 +118,22 @@ describe("account settings lifecycle", () => {
 
     expect(settings.appearance.previousPaceEnabled).toBe("on");
     expect(settings.appearance).not.toHaveProperty("previousPaceStyle");
+  });
+
+  it("normalizes legacy local and cloud category preferences without resetting unrelated settings", () => {
+    const settings = normalizeAccountSettings({
+      ...createDefaultAccountSettings(),
+      preferences: {
+        language: "english",
+        category: "Tender / proposal writing",
+        style: "Punctuation-heavy"
+      }
+    });
+
+    expect(settings.preferences).toEqual({
+      language: "english",
+      category: "Proposals & tenders",
+      style: "Punctuation-heavy"
+    });
   });
 });

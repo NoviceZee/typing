@@ -83,8 +83,8 @@ describe("PassagesPage", () => {
     mockPassageStorage.setSelectedLanguage.mockClear();
     mockPassageStorage.setActivePassageId.mockClear();
     mockPassageStorage.getSupabasePassageLibrary.mockResolvedValue([
-      makePassage("email", "Email brief", "Business email", "Formal", "english"),
-      makePassage("news", "News clip", "News article", "Simple", "english"),
+      makePassage("email", "Email brief", "Business communication", "General", "english"),
+      makePassage("news", "News clip", "News", "General", "english"),
       makePassage("chinese", "忙碌生活中的休息", "生活", "一般", "chinese", "現代城市生活節奏急速，休息能夠整理思緒。")
     ]);
   });
@@ -102,10 +102,10 @@ describe("PassagesPage", () => {
     expect(screen.queryByRole("group", { name: "Style" })).toBeNull();
     expect(container.querySelector("select")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "News article category" }));
-    expect(mockPassageStorage.setSelectedCategory).toHaveBeenCalledWith("News article");
-    expect(screen.getByRole("button", { name: "News article category" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "News article category" }).getAttribute("data-focus-ring")).toBe(
+    fireEvent.click(screen.getByRole("button", { name: "News category" }));
+    expect(mockPassageStorage.setSelectedCategory).toHaveBeenCalledWith("News");
+    expect(screen.getByRole("button", { name: "News category" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "News category" }).getAttribute("data-focus-ring")).toBe(
       "standard"
     );
     expect(screen.queryByText("Email brief")).toBeNull();
@@ -146,9 +146,19 @@ describe("PassagesPage", () => {
     expect(screen.getByText("News clip")).toBeTruthy();
     expect(screen.queryByText("Email brief")).toBeNull();
 
-    fireEvent.change(search, { target: { value: "business email" } });
+    fireEvent.change(search, { target: { value: "business communication" } });
     expect(screen.getByText("Email brief")).toBeTruthy();
     expect(screen.queryByText("News clip")).toBeNull();
+  });
+
+  it("normalizes a legacy stored category before applying the Library filter", async () => {
+    mockPassageStorage.selectedCategory = "News article";
+
+    render(<PassagesPage />);
+
+    expect(await screen.findByText("News clip")).toBeTruthy();
+    expect(screen.queryByText("Email brief")).toBeNull();
+    expect(screen.getByRole("button", { name: "News category" }).getAttribute("aria-pressed")).toBe("true");
   });
 
   it("uses a shared semantic loading state while passages load", () => {

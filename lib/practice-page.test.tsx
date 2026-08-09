@@ -216,7 +216,7 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text.");
     });
 
-    expect(screen.getByTestId("practice-passage-metadata").textContent).toContain("Local active · Business email · Formal · 1m");
+    expect(screen.getByTestId("practice-passage-metadata").textContent).toContain("Local active · Business communication · Formal · 1m");
     expect(screen.getByRole("group", { name: "Practice language" })).toBeTruthy();
     expect(screen.getByRole("group", { name: "Practice passage source" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
@@ -273,7 +273,50 @@ describe("PracticePage passage loading", () => {
     expect(screen.queryByRole("dialog", { name: "Choose a passage" })).toBeNull();
     expect(screen.getByRole("button", { name: "Passage" }).getAttribute("aria-pressed")).toBe("true");
     expect(window.localStorage.getItem(ACTIVE_PASSAGE_ID_STORAGE_KEY)).toBe("email");
-    expect(window.localStorage.getItem(SELECTED_CATEGORY_STORAGE_KEY)).toBe("Business email");
+    expect(window.localStorage.getItem(SELECTED_CATEGORY_STORAGE_KEY)).toBe("Business communication");
+  });
+
+  it("restores a retained explicit passage id before applying a legacy Random category preference", async () => {
+    const retainedId = "4cae241a-8af6-40b5-afa4-11d7742e1443";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage(retainedId, "Northbank Project Handover", "Retained passage body.", "english", "Business communication", "General"),
+        makePassage("article", "An article", "Article body.", "english", "Articles", "General")
+      ])
+    );
+    window.localStorage.setItem(ACTIVE_PASSAGE_ID_STORAGE_KEY, retainedId);
+    window.localStorage.setItem(SELECTED_CATEGORY_STORAGE_KEY, "Random paragraph");
+    window.localStorage.setItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, "specific");
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toContain("Retained passage body.");
+    });
+    expect(window.localStorage.getItem(ACTIVE_PASSAGE_ID_STORAGE_KEY)).toBe(retainedId);
+    expect(window.localStorage.getItem(SELECTED_CATEGORY_STORAGE_KEY)).toBe("Business communication");
+  });
+
+  it("restores a legacy category preference into the v2 random pool", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([
+        makePassage("business", "Business v2", "Business pool body.", "english", "Business communication", "General"),
+        makePassage("article", "Article v2", "Article pool body.", "english", "Articles", "General")
+      ])
+    );
+    window.localStorage.setItem(SELECTED_CATEGORY_STORAGE_KEY, "Business email");
+    window.localStorage.setItem(PASSAGE_SELECTION_MODE_STORAGE_KEY, "random");
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toContain("Business pool body.");
+    });
+    expect(screen.getByTestId("typing-character-layer").textContent).not.toContain("Article pool body.");
   });
 
   it("restricts the Practice picker to the active language and closes it with Escape", async () => {
@@ -287,7 +330,7 @@ describe("PracticePage passage loading", () => {
     mockedGetSupabasePassageLibrary.mockResolvedValue([]);
 
     render(<PracticePage />);
-    await screen.findByText(/English option · Business email/);
+    await screen.findByText(/English option · Business communication/);
     fireEvent.click(screen.getByRole("button", { name: "Passage" }));
     expect(screen.getByRole("option", { name: /English option/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /中文選項/ })).toBeNull();
@@ -2560,7 +2603,7 @@ describe("PracticePage passage loading", () => {
       expect(container.textContent).toContain("Local fallback body text for typing");
     });
 
-    expect(screen.getAllByText("Local active · Business email · Formal · 1m")).toHaveLength(1);
+    expect(screen.getAllByText("Local active · Business communication · Formal · 1m")).toHaveLength(1);
   });
 
   it("keeps wrong-character styling dimension-stable", async () => {

@@ -5,6 +5,7 @@ import {
   PASSAGE_STORAGE_KEY,
   PASSAGE_LIBRARY_STORAGE_KEY,
   PREVIOUS_RESULTS_STORAGE_KEY,
+  SELECTED_CATEGORY_STORAGE_KEY,
   THEME_SETTINGS_STORAGE_KEY,
   DEFAULT_THEME_SETTINGS,
   THEME_PRESET_APPEARANCES,
@@ -17,6 +18,7 @@ import {
   readPreviousResult,
   readThemeSettings,
   readPracticePassageFromLibrary,
+  readSelectedCategory,
   resolveThemePreset,
   splitTextIntoPassages,
   toStoredPassage,
@@ -137,6 +139,23 @@ describe("filterLibraryPassages", () => {
   it("does not hide inactive passages by itself so manage views can show all statuses", () => {
     const hiddenPassage = { ...library[0], id: "hidden", isActive: false };
     expect(filterLibraryPassages([hiddenPassage], "All", "All").map((passage) => passage.id)).toEqual(["hidden"]);
+  });
+});
+
+describe("stored category compatibility", () => {
+  it("restores a legacy Random paragraph preference as Articles", () => {
+    storage.set(SELECTED_CATEGORY_STORAGE_KEY, "Random paragraph");
+
+    expect(readSelectedCategory()).toBe("Articles");
+  });
+
+  it("normalizes legacy categories in locally cached passages", () => {
+    storage.set(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("legacy", "Legacy business", "Business email", "Formal")])
+    );
+
+    expect(readPracticePassageFromLibrary(60)?.category).toBe("Business communication");
   });
 });
 

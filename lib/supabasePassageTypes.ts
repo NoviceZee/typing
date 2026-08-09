@@ -1,37 +1,6 @@
 import type { LibraryPassage } from "./app-storage";
 import type { PracticeCategory } from "./typing-engine";
-
-const PRACTICE_CATEGORIES = [
-  "Business email",
-  "Tender / proposal writing",
-  "Government / formal English",
-  "News article",
-  "Casual writing",
-  "Legal / contract style",
-  "Random paragraph",
-  "生活",
-  "工作",
-  "教育",
-  "科技",
-  "文化",
-  "社會",
-  "環境",
-  "健康",
-  "香港",
-  "房屋",
-  "土地",
-  "交通",
-  "民生",
-  "養老",
-  "勞工",
-  "財政",
-  "醫療",
-  "文言文",
-  "詩詞",
-  "training_code",
-  "training_chinese",
-  "Uncategorised"
-];
+import { normalizePassageCategory } from "./passageCategories";
 
 export type SupabasePassageRow = {
   id: string;
@@ -113,6 +82,5 @@ function countWords(text: string): number {
 }
 
 function toPracticeCategory(category: string | null): PracticeCategory {
-  const cleanCategory = category?.trim();
-  return (PRACTICE_CATEGORIES.find((knownCategory) => knownCategory === cleanCategory) ?? "Uncategorised") as PracticeCategory;
+  return normalizePassageCategory(category) as PracticeCategory;
 }

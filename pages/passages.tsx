@@ -30,6 +30,7 @@ import {
   setSelectedLanguage,
   setActivePassageId as setStoredActivePassageId
 } from "@/lib/passageStorage";
+import { normalizeCategoryFilter } from "@/lib/passageCategories";
 
 export default function PassagesPage() {
   const router = useRouter();
@@ -76,7 +77,7 @@ export default function PassagesPage() {
     const nextLanguage = queryLanguage ?? getSelectedLanguage();
     setLanguage(nextLanguage);
     setSelectedLanguage(nextLanguage);
-    setCategory(getSelectedCategory());
+    setCategory(normalizeCategoryFilter(getSelectedCategory()) as CategoryFilter);
     setHasLoadedLibrary(true);
   }, [router.query.language]);
 
@@ -102,7 +103,7 @@ export default function PassagesPage() {
   }
 
   function updateCategory(value: string) {
-    const nextCategory = value as CategoryFilter;
+    const nextCategory = normalizeCategoryFilter(value) as CategoryFilter;
     setCategory(nextCategory);
     setSelectedCategory(nextCategory);
   }

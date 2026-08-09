@@ -113,7 +113,7 @@ describe("passageStorage", () => {
 
     await expect(
       updateSupabasePassage(row.id, { title: row.title, content: row.content, isActive: true }, { from })
-    ).resolves.toMatchObject({ id: row.id, title: row.title, content: row.content });
+    ).resolves.toMatchObject({ id: row.id, title: row.title, category: "News", content: row.content });
 
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
       title: row.title,
