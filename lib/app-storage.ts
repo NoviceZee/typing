@@ -1032,7 +1032,8 @@ export function createPreviousTypingResult(
     modeDurationSeconds: result.modeDurationSeconds,
     targetSnapshot: createCanonicalTypingTarget({
       storedText: passage.text,
-      comparableText: passage.comparableText
+      comparableText: passage.comparableText,
+      language: passage.language ?? (passage.category === "training_chinese" ? "chinese" : "english")
     }).comparableText,
     previousPaceTimeline: downsamplePreviousPaceTimeline(previousPaceTimeline),
     completedAt: result.completedAt,

@@ -318,9 +318,10 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     () =>
       createCanonicalTypingTarget({
         storedText: passage?.text ?? "",
-        comparableText: passage?.comparableText
+        comparableText: passage?.comparableText,
+        language: passage?.language ?? (passage?.category === "training_chinese" ? "chinese" : "english")
       }),
-    [passage?.comparableText, passage?.text]
+    [passage?.category, passage?.comparableText, passage?.language, passage?.text]
   );
   const displayText = canonicalTarget.displayText;
   const sourceText = canonicalTarget.comparableText;
@@ -4031,7 +4032,8 @@ function shouldShowLineBreakMarker(status: string, revealMistakes: boolean) {
 function getTargetIdentity(passage: StoredPassage) {
   const canonicalTarget = createCanonicalTypingTarget({
     storedText: passage.text,
-    comparableText: passage.comparableText
+    comparableText: passage.comparableText,
+    language: passage.language ?? (passage.category === "training_chinese" ? "chinese" : "english")
   });
   return JSON.stringify({
     passageId: passage.id ?? null,

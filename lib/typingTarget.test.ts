@@ -8,10 +8,28 @@ const REAL_POETRY_PASSAGES = [
 ] as const;
 
 describe("canonical typing targets", () => {
+  it.each([
+    ["The path.\nOur response.", "The path. Our response."],
+    ["One question?\nAnother answer.", "One question? Another answer."],
+    ["Stop!\nNext step.", "Stop! Next step."],
+    ["For example,\nthe next item follows.", "For example, the next item follows."],
+    ["Existing spaces.  \n   One remains.", "Existing spaces. One remains."],
+    ["Several lines.\n\n\nThe next paragraph.", "Several lines. The next paragraph."]
+  ])("joins English prose boundaries with exactly one ASCII space", (storedText, comparableText) => {
+    expect(createCanonicalTypingTarget({ storedText, language: "english" }).comparableText).toBe(comparableText);
+  });
+
+  it.each([
+    ["中文第一段。\n中文第二段。", "中文第一段。中文第二段。"],
+    ["學而時習之，\n不亦說乎？", "學而時習之，不亦說乎？"]
+  ])("keeps Chinese prose and Classical line joins free of inserted ASCII spaces", (storedText, comparableText) => {
+    expect(createCanonicalTypingTarget({ storedText, language: "chinese" }).comparableText).toBe(comparableText);
+  });
+
   it.each(REAL_POETRY_PASSAGES)(
     "keeps the exact single-line production poem as the one comparable target",
     (text) => {
-      const target = createCanonicalTypingTarget({ storedText: text });
+      const target = createCanonicalTypingTarget({ storedText: text, language: "chinese" });
 
       expect(target.displayText).toBe(text);
       expect(target.comparableText).toBe(text);
@@ -24,7 +42,7 @@ describe("canonical typing targets", () => {
     "maps multiline and trailing-newline production poem storage to the same comparable target",
     (text) => {
       const multiline = text.replaceAll("。", "。\r\n  ");
-      const target = createCanonicalTypingTarget({ storedText: `${multiline}\n\n` });
+      const target = createCanonicalTypingTarget({ storedText: `${multiline}\n\n`, language: "chinese" });
 
       expect(target.displayText).toContain("\n");
       expect(target.comparableText).toBe(text);
@@ -58,7 +76,7 @@ describe("canonical typing targets", () => {
         separatorIndex += 1;
         return `${separator}${lineBreak}`;
       });
-      const target = createCanonicalTypingTarget({ storedText: unicodeWrapped });
+      const target = createCanonicalTypingTarget({ storedText: unicodeWrapped, language: "chinese" });
 
       expect(unicodeWrapped.length).toBeGreaterThan(text.length);
       expect(target.comparableText).toBe(text);
@@ -68,7 +86,8 @@ describe("canonical typing targets", () => {
 
   it("preserves authored full-width punctuation character-for-character", () => {
     const target = createCanonicalTypingTarget({
-      storedText: "「『文字』」，王孫自可留。"
+      storedText: "「『文字』」，王孫自可留。",
+      language: "chinese"
     });
 
     expect(target.comparableText).toBe("「『文字』」，王孫自可留。");

@@ -203,6 +203,20 @@ describe("PracticePage passage loading", () => {
     expect(screen.queryByTestId("passage-loading-placeholder")).toBeNull();
   });
 
+  it("renders English paragraph boundaries as one comparable ASCII space", async () => {
+    mockedGetSupabasePassageLibrary.mockResolvedValue([
+      makePassage("english-paragraphs", "English paragraphs", "The path.\n\nOur response records the result.\nThe next step follows.")
+    ]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toContain("The path. Our response");
+    });
+    expect(screen.getByTestId("typing-character-layer").textContent).toContain("result. The next step");
+    expect(screen.getByTestId("typing-character-layer").textContent).not.toContain("path.Our");
+  });
+
   it("shows Random and Passage source controls with a direct passage picker", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
@@ -2404,7 +2418,7 @@ describe("PracticePage passage loading", () => {
     mockedGetSupabasePassageLibrary.mockResolvedValue([]);
 
     render(<PracticePage />);
-    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("A BC"));
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("A B C"));
 
     const englishInput = screen.getByLabelText("Typing input");
     expect(screen.getByTestId("typing-character-layer").querySelector('[data-typing-caret="true"]')?.getAttribute("data-index")).toBe("0");

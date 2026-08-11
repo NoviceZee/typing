@@ -287,6 +287,7 @@ describe("previous result storage", () => {
     const result = createPreviousTypingResult(
       {
         ...makeStoredPassage("canonical-target"),
+        language: "chinese",
         text: "甲，\r\n乙。\u2028丙！\u2029丁？\uFE0F  \n"
       },
       makeResult({ durationSeconds: 60, wpm: 42 }),
