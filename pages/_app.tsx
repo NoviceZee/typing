@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { SiteTelemetry } from "@/components/SiteTelemetry";
 import { getShareImageUrl, getSiteUrl } from "@/lib/siteMetadata";
+import { supabaseOrigin } from "@/lib/supabaseClient";
 import "@/styles/globals.css";
 
 const SITE_URL = getSiteUrl();
@@ -33,6 +34,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta property="og:image:height" content="630" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:image" content={SHARE_IMAGE_URL} />
+        {supabaseOrigin && <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />}
         <link rel="icon" href="/favicon.svg" />
       </Head>
       <SiteTelemetry />

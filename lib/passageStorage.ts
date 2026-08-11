@@ -34,6 +34,18 @@ import {
 
 export type PassageUpdates = Partial<Omit<LibraryPassage, "id" | "createdAt">>;
 
+export const PUBLIC_PASSAGE_LIBRARY_CACHE_TTL_MS = 60_000;
+
+let publicPassageLibraryCache: { passages: LibraryPassage[]; fetchedAt: number } | null = null;
+let publicPassageLibraryRequest: Promise<LibraryPassage[]> | null = null;
+let publicPassageLibraryCacheGeneration = 0;
+
+export function invalidatePublicPassageLibraryCache() {
+  publicPassageLibraryCache = null;
+  publicPassageLibraryRequest = null;
+  publicPassageLibraryCacheGeneration += 1;
+}
+
 // localStorage remains the offline/unconfigured fallback. Supabase-backed
 // screens should call the async helpers below and fall back here only when
 // Supabase is unavailable.
@@ -43,6 +55,7 @@ export function getPassageLibrary(): LibraryPassage[] {
 
 export function savePassageLibrary(passages: LibraryPassage[]) {
   writePassageLibrary(passages);
+  invalidatePublicPassageLibraryCache();
 }
 
 export function getActivePassageLibrary(): LibraryPassage[] {
@@ -97,15 +110,21 @@ export function exportPassageLibrary() {
 
 export function importPassageLibrary(payload: unknown, replaceExisting = false): PassageLibraryImportSummary {
   const importPayload = Array.isArray(payload) ? { passages: payload } : payload;
-  return importPassageLibraryExport(importPayload, replaceExisting);
+  const summary = importPassageLibraryExport(importPayload, replaceExisting);
+  invalidatePublicPassageLibraryCache();
+  return summary;
 }
 
 export function addPassage(passage: LibraryPassage) {
   addPassagesToLibrary([passage]);
+  invalidatePublicPassageLibraryCache();
 }
 
 export function addPassages(passages: LibraryPassage[]) {
   addPassagesToLibrary(passages);
+  if (passages.length > 0) {
+    invalidatePublicPassageLibraryCache();
+  }
 }
 
 export function updatePassage(id: string, updates: PassageUpdates): LibraryPassage | null {
@@ -123,21 +142,53 @@ export function updatePassage(id: string, updates: PassageUpdates): LibraryPassa
   };
 
   updateLibraryPassage(nextPassage);
+  invalidatePublicPassageLibraryCache();
   return nextPassage;
 }
 
 export function deletePassage(id: string) {
   deleteLibraryPassage(id);
+  invalidatePublicPassageLibraryCache();
 }
 
-// Supabase-ready helpers. These are intentionally not used by the UI yet, so
-// localStorage remains the default and fallback passage backend for now.
-export async function getSupabasePassageLibrary(): Promise<LibraryPassage[]> {
-  if (!supabase) {
-    return [];
+// Public screens share the active/public request and short-lived result here;
+// admin/private reads remain separate and never populate this cache.
+export function getSupabasePassageLibrary(client: any = supabase): Promise<LibraryPassage[]> {
+  if (!client) {
+    return Promise.resolve([]);
   }
 
-  const { data, error } = await supabase
+  if (
+    publicPassageLibraryCache &&
+    Date.now() - publicPassageLibraryCache.fetchedAt < PUBLIC_PASSAGE_LIBRARY_CACHE_TTL_MS
+  ) {
+    return Promise.resolve(publicPassageLibraryCache.passages);
+  }
+
+  if (publicPassageLibraryRequest) {
+    return publicPassageLibraryRequest;
+  }
+
+  const requestGeneration = publicPassageLibraryCacheGeneration;
+  const request = loadSupabasePublicPassageLibrary(client).then((passages) => {
+    if (requestGeneration === publicPassageLibraryCacheGeneration) {
+      publicPassageLibraryCache = { passages, fetchedAt: Date.now() };
+    }
+    return passages;
+  });
+
+  publicPassageLibraryRequest = request;
+  void request.finally(() => {
+    if (publicPassageLibraryRequest === request) {
+      publicPassageLibraryRequest = null;
+    }
+  }).catch(() => undefined);
+
+  return request;
+}
+
+async function loadSupabasePublicPassageLibrary(client: any): Promise<LibraryPassage[]> {
+  const { data, error } = await client
     .from("passages")
     .select("*")
     .eq("is_public", true)
@@ -148,15 +199,17 @@ export async function getSupabasePassageLibrary(): Promise<LibraryPassage[]> {
     throw error;
   }
 
-  return (data ?? []).map(supabasePassageRowToLibraryPassage);
+  return (data ?? [])
+    .filter((row: { is_public: boolean; is_active: boolean }) => row.is_public && row.is_active)
+    .map(supabasePassageRowToLibraryPassage);
 }
 
-export async function getSupabaseAdminPassageLibrary(): Promise<LibraryPassage[]> {
-  if (!supabase) {
+export async function getSupabaseAdminPassageLibrary(client: any = supabase): Promise<LibraryPassage[]> {
+  if (!client) {
     return [];
   }
 
-  const { data, error } = await supabase.from("passages").select("*").order("updated_at", { ascending: false });
+  const { data, error } = await client.from("passages").select("*").order("updated_at", { ascending: false });
 
   if (error) {
     throw error;
@@ -179,20 +232,26 @@ export async function getSupabasePassageById(id: string): Promise<LibraryPassage
   return data ? supabasePassageRowToLibraryPassage(data) : null;
 }
 
-export async function addSupabasePassage(passage: LibraryPassage, createdBy: string | null): Promise<LibraryPassage> {
+export async function addSupabasePassage(
+  passage: LibraryPassage,
+  createdBy: string | null,
+  client: any = supabase
+): Promise<LibraryPassage> {
   const insertPayload: SupabasePassageInsert = libraryPassageToSupabaseInsert(passage, createdBy);
 
-  if (!supabase) {
+  if (!client) {
     throw new Error("Supabase is not configured yet.");
   }
 
-  const { data, error } = await supabase.from("passages").insert(insertPayload).select("*").single();
+  const { data, error } = await client.from("passages").insert(insertPayload).select("*").single();
 
   if (error) {
     throw error;
   }
 
-  return supabasePassageRowToLibraryPassage(data);
+  const addedPassage = supabasePassageRowToLibraryPassage(data);
+  invalidatePublicPassageLibraryCache();
+  return addedPassage;
 }
 
 export async function updateSupabasePassage(
@@ -220,19 +279,23 @@ export async function updateSupabasePassage(
     throw error;
   }
 
-  return supabasePassageRowToLibraryPassage(data);
+  const updatedPassage = supabasePassageRowToLibraryPassage(data);
+  invalidatePublicPassageLibraryCache();
+  return updatedPassage;
 }
 
-export async function deleteSupabasePassage(id: string): Promise<void> {
-  if (!supabase) {
+export async function deleteSupabasePassage(id: string, client: any = supabase): Promise<void> {
+  if (!client) {
     throw new Error("Supabase is not configured yet.");
   }
 
-  const { error } = await supabase.from("passages").delete().eq("id", id);
+  const { error } = await client.from("passages").delete().eq("id", id);
 
   if (error) {
     throw error;
   }
+
+  invalidatePublicPassageLibraryCache();
 }
 
 export async function exportSupabasePassageLibrary(): Promise<LibraryPassage[]> {
@@ -241,18 +304,23 @@ export async function exportSupabasePassageLibrary(): Promise<LibraryPassage[]> 
 
 export async function importSupabasePassageLibrary(
   passages: LibraryPassage[],
-  createdBy: string | null
+  createdBy: string | null,
+  client: any = supabase
 ): Promise<LibraryPassage[]> {
-  if (!supabase) {
+  if (!client) {
     throw new Error("Supabase is not configured yet.");
   }
 
   const insertPayload = passages.map((passage) => libraryPassageToSupabaseInsert(passage, createdBy));
-  const { data, error } = await supabase.from("passages").insert(insertPayload).select("*");
+  const { data, error } = await client.from("passages").insert(insertPayload).select("*");
 
   if (error) {
     throw error;
   }
 
-  return (data ?? []).map(supabasePassageRowToLibraryPassage);
+  const importedPassages = (data ?? []).map(supabasePassageRowToLibraryPassage);
+  if (passages.length > 0) {
+    invalidatePublicPassageLibraryCache();
+  }
+  return importedPassages;
 }
