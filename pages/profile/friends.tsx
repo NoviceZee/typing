@@ -6,7 +6,9 @@ import { useRouter } from "next/router";
 import React, { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Ban, Plus, UserCircle, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { Button, IconButton } from "@/components/Controls";
 import { ProfilePageLayout } from "@/components/ProfilePageLayout";
+import { DataSurface, EmptyState, PageSection, SectionStack, StatusMessage } from "@/components/Surface";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import { ANALYTICS_DOMAIN_OPTIONS, AnalyticsDomain } from "@/lib/analyticsDomain";
@@ -219,18 +221,22 @@ export default function FriendsPage() {
           </p>
           {user && (
             <div className="relative">
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                icon={Plus}
                 onClick={() => setIsAddFriendOpen((isOpen) => !isOpen)}
-                className="inline-flex items-center gap-2 rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-control uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15"
+                aria-expanded={isAddFriendOpen}
+                aria-controls="add-friend-panel"
               >
-                <Plus className="icon-control" />
                 Add friend
-              </button>
+              </Button>
               {isAddFriendOpen && (
                 <form
+                  id="add-friend-panel"
+                  role="region"
+                  aria-label="Add a friend"
                   onSubmit={handleSendFriendRequest}
-                  className="absolute right-0 z-10 mt-2 w-72 rounded-lg border border-paper/10 bg-ink-950 p-3 shadow-glow"
+                  className="absolute right-0 z-10 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-[var(--ui-radius-overlay)] border border-[color:var(--ui-border-subtle)] bg-[var(--ui-surface-overlay)] p-4 shadow-[var(--ui-shadow-overlay)]"
                 >
                   <label className="block">
                     <span className="font-mono text-utility uppercase text-paper/45">Add friend by handle</span>
@@ -242,20 +248,19 @@ export default function FriendsPage() {
                     />
                   </label>
                   <div className="mt-3 flex justify-end gap-2">
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
                       onClick={() => setIsAddFriendOpen(false)}
-                      className="rounded-md border border-paper/10 bg-ink-900 px-3 py-2 font-mono text-control uppercase text-paper/55 transition hover:border-paper/20 hover:text-paper"
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="submit"
+                      variant="primary"
                       disabled={isSendingRequest}
-                      className="rounded-md border border-brass/30 bg-brass/10 px-3 py-2 font-mono text-control uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-55"
                     >
                       {isSendingRequest ? "Sending..." : "Send request"}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               )}
@@ -263,19 +268,11 @@ export default function FriendsPage() {
           )}
         </div>
         {user && (
-          <div className="mt-6 space-y-4">
+          <SectionStack spacing="subsection" className="mt-6">
             {friendsMessage && (
-              <div
-                role={friendsMessageKind === "error" ? "alert" : "status"}
-                aria-live={friendsMessageKind === "error" ? "assertive" : "polite"}
-                className={`rounded-md border px-4 py-3 font-mono text-body ${
-                  friendsMessageKind === "error"
-                    ? "border-ember/25 bg-ember/10 text-ember"
-                    : "border-brass/25 bg-brass/10 text-brass"
-                }`}
-              >
+              <StatusMessage tone={friendsMessageKind === "error" ? "danger" : "success"}>
                 {friendsMessage}
-              </div>
+              </StatusMessage>
             )}
 
             {isLoadingFriends && (
@@ -317,7 +314,7 @@ export default function FriendsPage() {
                 />
               </>
             )}
-          </div>
+          </SectionStack>
         )}
       </ProfilePageLayout>
     </AppShell>
@@ -337,16 +334,16 @@ function BlockedUsersPanel({
 }) {
   if (!isAvailable) {
     return (
-      <p role="status" className="rounded-md border border-paper/10 bg-ink-950/60 px-4 py-3 font-mono text-utility text-paper/45">
+      <StatusMessage>
         Blocking controls are unavailable until the latest database migration is applied.
-      </p>
+      </StatusMessage>
     );
   }
 
   if (users.length === 0) return null;
 
   return (
-    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 px-4 py-3">
+    <PageSection aria-label="Blocked users" className="border-y border-[color:var(--ui-border-subtle)] py-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2"><Ban className="icon-inline text-ember/75" /><h2 className="font-mono text-body text-paper">Blocked users</h2></div>
@@ -356,15 +353,15 @@ function BlockedUsersPanel({
           {users.map((blockedUser) => {
             const actionId = `blocked:${blockedUser.handle}`;
             return (
-              <div key={blockedUser.handle} className="flex items-center justify-between gap-3 rounded-md border border-paper/10 bg-ink-900/60 px-3 py-2">
+              <div key={blockedUser.handle} className="flex items-center justify-between gap-3 border-b border-[color:var(--ui-border-subtle)] px-1 py-2 last:border-b-0">
                 <Link href={`/u/${blockedUser.handle}`} className="min-w-0 truncate font-mono text-body text-paper/70 hover:text-brass">@{blockedUser.handle}</Link>
-                <button type="button" onClick={() => onUnblock(blockedUser)} disabled={pendingActionId === actionId} className="rounded-md border border-paper/10 px-3 py-1.5 font-mono text-control text-paper/55 transition hover:border-brass/35 hover:text-paper disabled:cursor-wait disabled:opacity-50">{pendingActionId === actionId ? "Updating..." : "Unblock"}</button>
+                <Button size="compact" onClick={() => onUnblock(blockedUser)} disabled={pendingActionId === actionId}>{pendingActionId === actionId ? "Updating..." : "Unblock"}</Button>
               </div>
             );
           })}
         </div>
       </div>
-    </section>
+    </PageSection>
   );
 }
 
@@ -447,17 +444,17 @@ function FriendsTable({
 }) {
   if (rows.length === 0 && !selfRow) {
     return (
-      <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 px-4 py-8 text-center">
+      <EmptyState label="No friends" className="border-y border-[color:var(--ui-border-subtle)]">
         <p className="font-mono text-body text-paper">No friends yet.</p>
         <p className="mt-2 text-body text-paper/45">Add a handle to start building your stats table.</p>
-      </section>
+      </EmptyState>
     );
   }
 
   const comparisonRows = selfRow ? [selfRow, ...rows] : rows;
 
   return (
-    <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-paper/[0.08] bg-ink-950/45">
+    <DataSurface aria-label="Friends comparison" className="min-w-0 max-w-full">
       <div className="flex items-center justify-between border-b border-paper/10 px-4 py-3">
         <div><h2 className="font-mono text-body text-paper">Compare results</h2><p className="mt-1 text-utility text-paper/40">Best scores by practice type</p></div>
         <span className="rounded-full border border-brass/25 bg-brass/10 px-2.5 py-1 font-mono text-utility uppercase tracking-wide text-brass">You + {rows.length}</span>
@@ -490,7 +487,7 @@ function FriendsTable({
         </tbody>
       </table>
       </div>
-    </section>
+    </DataSurface>
   );
 }
 
@@ -547,16 +544,13 @@ function FriendTableRow({
         )}
       </td>
       <td className="px-4 py-3 text-right">
-        {!isSelf && <button
-          type="button"
+        {!isSelf && <IconButton
+          icon={X}
           onClick={onRemove}
           disabled={isPending}
-          aria-label={`Remove friend @${friend.handle}`}
-          title={`Remove friend @${friend.handle}`}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-paper/10 bg-ink-900 text-paper/45 transition hover:border-ember/35 hover:text-ember disabled:cursor-not-allowed disabled:opacity-55"
-        >
-          <X className="icon-control" />
-        </button>}
+          label={`Remove friend @${friend.handle}`}
+          variant="danger"
+        />}
       </td>
     </tr>
   );
@@ -584,7 +578,7 @@ function RequestsPanel({
   }
 
   return (
-    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 px-4 py-3">
+    <PageSection aria-label="Friend requests" className="border-y border-[color:var(--ui-border-subtle)] py-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 className="font-mono text-section uppercase text-brass">Requests</h2>
@@ -617,7 +611,7 @@ function RequestsPanel({
           ))}
         </div>
       </div>
-    </section>
+    </PageSection>
   );
 }
 
@@ -643,7 +637,7 @@ function RequestRow({
   const secondaryActionLabel = secondaryLabel ? `${secondaryLabel} request @${item.handle}` : "";
 
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-paper/10 bg-ink-900/60 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 border-b border-[color:var(--ui-border-subtle)] px-1 py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
         <Link href={`/u/${item.handle}`} className="font-mono text-body text-paper transition hover:text-brass">
           @{item.handle}
@@ -651,27 +645,27 @@ function RequestRow({
         <span className="font-mono text-utility uppercase text-paper/35">{statusLabel}</span>
       </div>
       <div className="flex gap-2">
-        <button
-          type="button"
+        <Button
+          size="compact"
+          variant="primary"
           onClick={onPrimary}
           disabled={isPending}
           aria-label={primaryActionLabel}
           title={primaryActionLabel}
-          className="rounded-md border border-brass/30 bg-brass/10 px-3 py-1.5 font-mono text-control uppercase text-brass transition hover:border-brass/50 hover:bg-brass/15 disabled:cursor-not-allowed disabled:opacity-55"
         >
           {primaryLabel}
-        </button>
+        </Button>
         {secondaryLabel && onSecondary && (
-          <button
-            type="button"
+          <Button
+            size="compact"
+            variant="ghost"
             onClick={onSecondary}
             disabled={isPending}
             aria-label={secondaryActionLabel}
             title={secondaryActionLabel}
-            className="rounded-md border border-paper/10 bg-ink-900 px-3 py-1.5 font-mono text-control uppercase text-paper/55 transition hover:border-ember/35 hover:text-ember disabled:cursor-not-allowed disabled:opacity-55"
           >
             {secondaryLabel}
-          </button>
+          </Button>
         )}
       </div>
     </div>

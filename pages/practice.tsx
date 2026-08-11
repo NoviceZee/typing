@@ -110,6 +110,7 @@ import type { TypingAttemptDetail } from "@/lib/typingStatistics";
 import { saveSupabaseTypingAttemptDetail } from "@/lib/typingAttemptStorage";
 import { SessionReview } from "@/components/practice/SessionReview";
 import { PassagePicker } from "@/components/PassagePicker";
+import { Button, IconButton } from "@/components/Controls";
 
 export type PracticeTrainingMode = {
   pageTitle: string;
@@ -2706,7 +2707,7 @@ export function ResultModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/85 px-3 py-3 backdrop-blur md:px-4">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/90 px-2 py-2 sm:px-3 sm:py-3 md:px-4">
       <CelebrationToast milestones={milestones} />
       <section
         ref={dialogRef}
@@ -2715,9 +2716,9 @@ export function ResultModal({
         aria-labelledby="result-dialog-title"
         aria-describedby="result-dialog-description"
         tabIndex={-1}
-        className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-brass/25 bg-ink-900 shadow-glow"
+        className="flex max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[var(--ui-radius-overlay)] border border-[color:var(--ui-border-strong)] bg-[var(--ui-surface-overlay)] shadow-[var(--ui-shadow-overlay)] sm:max-h-[96vh]"
       >
-        <div className="sticky top-0 z-10 border-b border-paper/10 bg-ink-900/95 px-4 py-3 backdrop-blur md:px-5">
+        <div className="sticky top-0 z-10 border-b border-[color:var(--ui-border-subtle)] bg-[var(--ui-surface-overlay)] px-4 py-3 md:px-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="font-mono text-utility uppercase text-brass">Result</p>
@@ -2742,19 +2743,17 @@ export function ResultModal({
                 </p>
               )}
             </div>
-            <button
-              type="button"
+            <IconButton
+              icon={X}
+              label="Close result"
+              variant="secondary"
               onClick={onClose}
-              aria-label="Close result"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-paper/10 bg-ink-800 text-paper/75 transition hover:border-brass/50 hover:text-paper"
-            >
-              <X className="icon-control" />
-            </button>
+            />
           </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
-          <div className="grid gap-5 md:grid-cols-[minmax(13rem,16rem)_minmax(0,1fr)] md:gap-6">
+          <div className="grid gap-6 lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] lg:gap-7">
             <ThisResultColumn
               result={result}
               timeline={attemptTimeline}
@@ -2779,7 +2778,7 @@ export function ResultModal({
               }
             />
 
-            <section className="min-w-0 md:border-l md:border-paper/10 md:pl-6">
+            <section className="min-w-0 border-t border-[color:var(--ui-border-subtle)] pt-5 lg:border-l lg:border-t-0 lg:pl-7 lg:pt-0">
               <AttemptWpmGraph result={result} timeline={attemptTimeline} errorEvents={errorEvents} metricLabel={getMetricLabel(passage)} />
 
               <div className="mt-4 grid gap-4 border-t border-paper/10 pt-4 md:grid-cols-[0.7fr_1.3fr]">
@@ -2796,31 +2795,25 @@ export function ResultModal({
           )}
 
           {!recentResults && <SignInResultCta />}
-          <SessionReview result={result} />
+          <details className="mt-5 border-t border-[color:var(--ui-border-subtle)] pt-1">
+            <summary className="ui-focus-ring min-h-11 cursor-pointer rounded-[var(--ui-radius-control)] px-1 py-3 font-mono text-control text-[color:var(--ui-text-secondary)] hover:text-[color:var(--ui-text-primary)]">
+              <span>Review mistakes</span>
+              <span className="ml-3 text-[color:var(--ui-text-muted)]">{result.incorrectCharacters} final</span>
+            </summary>
+            <SessionReview result={result} />
+          </details>
         </div>
 
-        <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-paper/10 bg-ink-900 px-4 py-3 md:px-5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-1.5 font-mono text-control text-paper/70 transition hover:border-brass/50 hover:text-paper"
-          >
+        <div role="group" aria-label="Result actions" className="sticky bottom-0 z-10 flex flex-col gap-2 border-t border-[color:var(--ui-border-subtle)] bg-[var(--ui-surface-overlay)] px-4 py-3 sm:flex-row sm:flex-wrap sm:justify-end md:px-5">
+          <Button variant="ghost" onClick={onClose}>
             Close
-          </button>
-          <button
-            type="button"
-            onClick={onRestart}
-            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-1.5 font-mono text-control text-paper/85 transition hover:border-brass/50"
-          >
+          </Button>
+          <Button onClick={onRestart}>
             Restart same passage
-          </button>
-          <button
-            type="button"
-            onClick={onNextPassage}
-            className="rounded-md border border-brass/35 bg-brass/10 px-4 py-1.5 font-mono text-control text-brass transition hover:bg-brass/15"
-          >
+          </Button>
+          <Button variant="primary" onClick={onNextPassage}>
             Next passage
-          </button>
+          </Button>
         </div>
       </section>
     </div>
@@ -3153,7 +3146,7 @@ function ThisResultColumn({
   const consistency = getResultConsistency(timeline);
 
   return (
-    <section>
+    <section aria-label="Result summary">
       <p className="font-mono text-body uppercase text-brass">This Result</p>
       <div className="mt-3">
         <p className="font-mono text-utility uppercase text-paper/45">{metricLabel}</p>
@@ -3161,20 +3154,34 @@ function ThisResultColumn({
           {result.rawWpm.toFixed(1)}
         </div>
       </div>
-      <div className="mt-3 space-y-0">
-        <ResultMetricRow label={`Net ${metricLabel}`} value={result.wpm.toFixed(1)} tone="text-mint" />
-        <ResultMetricRow label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-        <ResultMetricRow label="Final mistakes" value={result.incorrectCharacters} />
-        <ResultMetricRow label="Errors encountered" value={historicalErrorCount} tone={historicalErrorCount > 0 ? "text-ember" : "text-paper"} />
-        <ResultMetricRow label="Time" value={formatTime(result.elapsedSeconds)} />
-        <ResultMetricRow
+      <div className="mt-4 grid grid-cols-3 gap-2 border-y border-[color:var(--ui-border-subtle)] py-3">
+        <PrimaryResultMetric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
+        <PrimaryResultMetric
           label="Consistency"
           value={consistency === null ? "N/A" : `${consistency.toFixed(1)}%`}
           helpText={CONSISTENCY_HELP_TEXT}
         />
+        <PrimaryResultMetric label="Duration" value={formatTime(result.elapsedSeconds)} />
+      </div>
+      <div className="mt-2 space-y-0">
+        <ResultMetricRow label={`Net ${metricLabel}`} value={result.wpm.toFixed(1)} tone="text-mint" />
+        <ResultMetricRow label="Final mistakes" value={result.incorrectCharacters} />
+        <ResultMetricRow label="Errors encountered" value={historicalErrorCount} tone={historicalErrorCount > 0 ? "text-ember" : "text-paper"} />
       </div>
       {imageAction}
     </section>
+  );
+}
+
+function PrimaryResultMetric({ label, value, helpText }: { label: string; value: string; helpText?: string }) {
+  return (
+    <div className="min-w-0 font-mono">
+      <p className="whitespace-nowrap text-[0.65rem] uppercase leading-4 text-paper/40 sm:text-secondary">
+        {label}
+        {helpText && <span className="ml-1 cursor-help text-paper/30" title={helpText} aria-label={helpText}>ⓘ</span>}
+      </p>
+      <p className="mt-1 truncate text-body font-semibold text-paper/85">{value}</p>
+    </div>
   );
 }
 
@@ -3324,15 +3331,15 @@ function ResultImageCardAction({
           {error && <p className="mt-2 text-utility text-ember">{error}</p>}
         </div>
       </div>
-      <button
-        type="button"
+      <Button
+        size="compact"
+        variant="ghost"
         aria-label="Generate image card"
         onClick={onGenerate}
         disabled={disabled}
-        className="shrink-0 rounded-md border border-paper/10 bg-transparent px-2.5 py-1.5 text-control text-paper/60 transition hover:border-brass/40 hover:text-paper disabled:cursor-not-allowed disabled:opacity-55"
       >
         {disabled ? "Generating..." : "Generate"}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -3359,7 +3366,7 @@ function AttemptWpmGraph({
     <section>
       <div className="flex items-start justify-between gap-4">
         <p className="font-mono text-body uppercase text-brass">{metricLabel} Over Time</p>
-        <div className="hidden gap-5 font-mono text-utility uppercase text-paper/45 sm:flex">
+        <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 font-mono text-secondary uppercase text-paper/45">
           <span className="inline-flex items-center gap-2">
             <span className="w-8 border-t-2 border-dotted opacity-70" style={{ borderColor: "rgb(var(--chart-line-secondary))" }} />
             Burst
@@ -3379,7 +3386,7 @@ function AttemptWpmGraph({
           viewBox={`0 0 ${graph.width} ${graph.height}`}
           role="img"
           aria-label={`${metricLabel} over time`}
-          className="h-[260px] w-full overflow-visible"
+          className="h-[220px] w-full overflow-visible sm:h-[250px]"
           preserveAspectRatio="none"
           onMouseLeave={() => setHoveredPoint(null)}
         >

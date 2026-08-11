@@ -8,6 +8,7 @@ import { Activity, Award, CalendarDays, Camera, ChartNoAxesCombined, Clock, Copy
 import { AppShell } from "@/components/AppShell";
 import { FilterControl, SecondaryToolbar, ToolbarGroup } from "@/components/SecondaryNavigation";
 import { ProfilePageLayout } from "@/components/ProfilePageLayout";
+import { DataSurface, EmptyState, PageSection, SectionStack, StatusMessage } from "@/components/Surface";
 import { useAuth } from "@/components/AuthProvider";
 import { buildProgressAnalytics } from "@/lib/analytics";
 import {
@@ -291,18 +292,18 @@ export default function ProfilePage() {
       <ProfilePageLayout>
 
         {!user && !isAuthLoading && (
-          <section className="mt-8 rounded-lg border border-paper/[0.08] bg-ink-950/45 p-5">
+          <StatusMessage className="mt-8">
             <p className="font-mono text-body text-paper/55">
               <Link href="/login?redirectTo=/profile" className="text-brass hover:text-brass/80">
                 Log in
               </Link>{" "}
               to view your profile.
             </p>
-          </section>
+          </StatusMessage>
         )}
 
         {user && (
-          <div className="mt-6 space-y-6">
+          <SectionStack className="mt-6">
             <ProfileIdentityCard
               profile={profile}
               analytics={analytics}
@@ -327,32 +328,22 @@ export default function ProfilePage() {
               onSaveIdentity={handleSaveIdentity}
             />
 
-            {resultsMessage && (
-              <div role="alert" className="rounded-md border border-ember/25 bg-ember/10 px-4 py-3 font-mono text-body text-ember">
-                {resultsMessage}
-              </div>
-            )}
+            {resultsMessage && <StatusMessage tone="danger">{resultsMessage}</StatusMessage>}
 
             <section className="flex flex-col gap-3 border-y border-paper/[0.07] py-2 lg:flex-row lg:items-center lg:justify-between">
               <AnalyticsDomainSelector value={analyticsDomain} onChange={setAnalyticsDomain} />
               <ProfileViewPreferences value={displaySettings} onChange={handleDisplaySettingsChange} />
             </section>
 
-            {displaySettingsError && (
-              <p role="alert" className="font-mono text-body text-ember">
-                {displaySettingsError}
-              </p>
-            )}
+            {displaySettingsError && <StatusMessage tone="danger">{displaySettingsError}</StatusMessage>}
 
             {isLoadingResults && (
-              <div role="status" aria-live="polite" className="rounded-md border border-paper/10 bg-ink-950/75 px-4 py-5 font-mono text-body text-paper/45">
-                Loading profile...
-              </div>
+              <StatusMessage aria-label="Loading profile">Loading profile...</StatusMessage>
             )}
 
             {!isLoadingResults && domainResults.length === 0 && !resultsMessage && (
               <>
-                <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-5">
+                <EmptyState label={`${analyticsDomain} profile statistics`} className="border-y border-[color:var(--ui-border-subtle)]">
                   <p className="font-mono text-body text-paper/55">
                     {emptyState.title}{" "}
                     <Link href={analyticsDomain === "english" ? "/practice" : "/training"} className="text-brass hover:text-brass/80">
@@ -360,7 +351,7 @@ export default function ProfilePage() {
                     </Link>{" "}
                     {emptyState.action}
                   </p>
-                </section>
+                </EmptyState>
                 {analyticsDomain === "english" && typingStatistics.keys.length > 0 && (
                   <TypingWeaknessesSection
                     statistics={typingStatistics}
@@ -376,6 +367,11 @@ export default function ProfilePage() {
             {domainResults.length > 0 && (
               <>
                 <ProgressSummary analytics={analytics} displaySettings={displaySettings} />
+                <Trends
+                  range={trendRange}
+                  results={trendResults}
+                  onRangeChange={setTrendRange}
+                />
                 {analyticsDomain === "english" && (
                   <TypingWeaknessesSection
                     statistics={typingStatistics}
@@ -384,11 +380,6 @@ export default function ProfilePage() {
                   />
                 )}
                 {analyticsDomain === "chinese" && <ChineseMistakesSection statistics={typingStatistics} />}
-                <Trends
-                  range={trendRange}
-                  results={trendResults}
-                  onRangeChange={setTrendRange}
-                />
                 <section className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
                   <ConsistencySection summary={consistency} />
                   <CategoryBreakdown analytics={analytics} />
@@ -399,7 +390,7 @@ export default function ProfilePage() {
                 <MyResults results={domainResults} domain={analyticsDomain} />
               </>
             )}
-          </div>
+          </SectionStack>
         )}
       </ProfilePageLayout>
     </AppShell>
@@ -497,7 +488,11 @@ function ProfileIdentityCard({
   const publicProfileUrl = handle ? getPublicProfileUrl(handle) : "Set a handle to publish your profile.";
 
   return (
-    <section id="identity-settings" className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-5">
+    <PageSection
+      id="identity-settings"
+      aria-label="Profile overview"
+      className="border-y border-[color:var(--ui-border-subtle)] py-5"
+    >
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex min-w-0 gap-4">
           <div className="space-y-2">
@@ -552,7 +547,7 @@ function ProfileIdentityCard({
           </div>
         </div>
 
-        <div className="rounded-md bg-paper/[0.035] p-4">
+        <div className="rounded-[var(--ui-radius-surface)] bg-[var(--ui-surface-subtle)] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-mono text-utility uppercase text-paper/35">Level</p>
@@ -563,7 +558,14 @@ function ProfileIdentityCard({
               <p className="mt-2 font-mono text-lg text-brass">{analytics.progression.totalXp}</p>
             </div>
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-paper/[0.06]">
+          <div
+            role="progressbar"
+            aria-label="Level progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={analytics.progression.progressPercent}
+            className="mt-3 h-2 overflow-hidden rounded-full bg-paper/[0.06]"
+          >
             <div className="h-full rounded-full bg-brass" style={{ width: `${analytics.progression.progressPercent}%` }} />
           </div>
           <p className="mt-2 text-right font-mono text-utility uppercase text-paper/35">
@@ -641,7 +643,7 @@ function ProfileIdentityCard({
         </div>
       )}
       </details>
-    </section>
+    </PageSection>
   );
 }
 
@@ -752,8 +754,12 @@ function ChallengeGroupSection({ group }: { group: ReturnType<typeof buildProgre
 }
 
 function AchievementsSection({ analytics }: { analytics: ReturnType<typeof buildProgressAnalytics> }) {
+  const collectionProgress = Math.round(
+    (analytics.achievements.unlockedCount / Math.max(analytics.achievements.totalCount, 1)) * 100
+  );
+
   return (
-    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
+    <PageSection aria-label="Achievements" className="border-y border-[color:var(--ui-border-subtle)] py-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-mono text-section uppercase text-brass">Achievements</h2>
@@ -761,7 +767,7 @@ function AchievementsSection({ analytics }: { analytics: ReturnType<typeof build
             {analytics.achievements.unlockedCount} / {analytics.achievements.totalCount} unlocked
           </p>
         </div>
-        <div className="flex items-center gap-3 rounded-md border border-brass/20 bg-brass/10 px-4 py-3">
+        <div className="flex items-center gap-3 px-1 py-2">
           <Flame className="icon-inline text-brass" />
           <div>
             <p className="font-mono text-utility uppercase text-paper/40">Current streak</p>
@@ -769,43 +775,51 @@ function AchievementsSection({ analytics }: { analytics: ReturnType<typeof build
           </div>
         </div>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        role="progressbar"
+        aria-label="Achievement collection progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={collectionProgress}
+        className="mt-4 h-1.5 overflow-hidden rounded-full bg-paper/[0.06]"
+      >
+        <div className="h-full rounded-full bg-brass/80" style={{ width: `${collectionProgress}%` }} />
+      </div>
+      <div className="mt-5 grid gap-x-5 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
         {analytics.achievements.items.map((achievement) => (
           <article
             key={achievement.id}
-            className={`rounded-md border px-4 py-4 transition ${
+            aria-label={`${achievement.title}, ${achievement.isUnlocked ? "unlocked" : "locked"}`}
+            data-achievement-state={achievement.isUnlocked ? "unlocked" : "locked"}
+            className={`rounded-[var(--ui-radius-control)] border-l-2 px-4 py-3 transition-colors ${
               achievement.isUnlocked
-                ? "border-brass/30 bg-brass/10"
-                : "border-paper/10 bg-ink-900/70 opacity-70"
+                ? "border-l-brass bg-[var(--ui-surface-selected)]"
+                : "border-l-paper/10 bg-[var(--ui-surface-subtle)]"
             }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-mono text-body uppercase text-paper">{achievement.title}</h3>
-                <p className="mt-2 text-body leading-6 text-paper/50">{achievement.description}</p>
+                <p className="mt-1.5 text-body leading-6 text-[color:var(--ui-text-secondary)]">{achievement.description}</p>
               </div>
               <span
-                className={`rounded-full border p-2 ${
+                className={`rounded-full p-2 ${
                   achievement.isUnlocked
-                    ? "border-brass/35 bg-brass/15 text-brass"
-                    : "border-paper/10 bg-paper/[0.03] text-paper/30"
+                    ? "bg-brass/15 text-brass"
+                    : "bg-paper/[0.03] text-paper/30"
                 }`}
                 aria-hidden="true"
               >
                 {achievement.isUnlocked ? <Award className="icon-inline" /> : <Lock className="icon-inline" />}
               </span>
             </div>
-            <p
-              className={`mt-4 font-mono text-utility uppercase ${
-                achievement.isUnlocked ? "text-brass" : "text-paper/35"
-              }`}
-            >
+            <p className={`mt-4 border-t border-[color:var(--ui-border-subtle)] pt-2 font-mono text-utility uppercase ${achievement.isUnlocked ? "text-brass" : "text-paper/35"}`}>
               {achievement.isUnlocked ? "Unlocked" : "Locked"}
             </p>
           </article>
         ))}
       </div>
-    </section>
+    </PageSection>
   );
 }
 
@@ -872,15 +886,15 @@ function ChineseMistakesSection({ statistics }: { statistics: TypingStatistics }
 
 function ProgressSummary({ analytics, displaySettings }: { analytics: ReturnType<typeof buildProgressAnalytics>; displaySettings: ProfileDisplaySettings }) {
   return (
-    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
+    <PageSection className="border-y border-[color:var(--ui-border-subtle)] py-5">
       <h2 className="font-mono text-section uppercase text-brass">Summary Stats</h2>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid divide-y divide-[color:var(--ui-border-subtle)] sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
         <SummaryCard label="Total practice time" value={formatPracticeTime(analytics.summary.totalPracticeSeconds)} icon={<Clock className="icon-inline" />} />
         <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} all-time`} value={formatSpeed(analytics.summary.averageWpm, displaySettings)} icon={<Activity className="icon-inline" />} />
         <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} last 10`} value={formatSpeed(analytics.summary.averageWpmLast10, displaySettings)} icon={<Activity className="icon-inline" />} />
         <SummaryCard label={`Average ${displaySettings.speedUnit.toUpperCase()} last 100`} value={formatSpeed(analytics.summary.averageWpmLast100, displaySettings)} icon={<Activity className="icon-inline" />} />
       </div>
-    </section>
+    </PageSection>
   );
 }
 
@@ -894,7 +908,7 @@ function SummaryCard({
   icon: ReactNode;
 }) {
   return (
-    <article className="rounded-md bg-paper/[0.035] px-4 py-4">
+    <article className="px-1 py-4 sm:px-4 sm:first:pl-1 lg:py-2">
       <div className="flex items-center justify-between gap-3 text-brass">
         <p className="font-mono text-utility uppercase text-paper/40">{label}</p>
         {icon}
@@ -914,7 +928,7 @@ function Trends({
   onRangeChange: (range: TrendRange) => void;
 }) {
   return (
-    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
+    <PageSection aria-label="Primary trends" className="border-y border-[color:var(--ui-border-subtle)] py-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-mono text-section uppercase text-brass">Trends</h2>
@@ -950,7 +964,7 @@ function Trends({
           formatValue={(value) => `${formatNumber(value)}%`}
         />
       </div>
-    </section>
+    </PageSection>
   );
 }
 
@@ -978,7 +992,7 @@ function TrendChart({
   const best = values.length > 0 ? Math.max(...values) : 0;
 
   return (
-    <section className="rounded-md border border-paper/10 bg-ink-900/70 p-4">
+    <DataSurface aria-label={title} className="border-0 bg-[var(--ui-surface-subtle)] p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="font-mono text-utility uppercase text-paper/70">{title}</h3>
@@ -989,7 +1003,7 @@ function TrendChart({
           <p className="text-utility uppercase text-paper/35">Latest</p>
         </div>
       </div>
-      <div className="mt-4 h-56 w-full overflow-hidden rounded-md bg-ink-950/70">
+      <div className="mt-4 h-48 w-full overflow-hidden rounded-[var(--ui-radius-control)] bg-ink-950/45 sm:h-56">
         <svg viewBox="0 0 420 220" role="img" aria-label={title} className="h-full w-full">
           <line data-testid="profile-trend-axis" x1="38" y1="174" x2="390" y2="174" stroke="rgb(var(--chart-axis))" />
           <line x1="38" y1="36" x2="38" y2="174" stroke="rgb(var(--chart-axis))" />
@@ -1026,7 +1040,7 @@ function TrendChart({
         <span>Best {formatValue(best)}</span>
         <span>{results[results.length - 1] ? formatDate(results[results.length - 1].created_at) : "No date"}</span>
       </div>
-    </section>
+    </DataSurface>
   );
 }
 
@@ -1055,7 +1069,7 @@ function TypingWeaknessesSection({
   const hasStatistics = statistics.keys.length > 0;
 
   return (
-    <section className="rounded-lg border border-paper/[0.08] bg-ink-950/45 p-4 md:p-5">
+    <PageSection aria-label="Typing insights" className="border-y border-[color:var(--ui-border-subtle)] py-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-mono text-section uppercase text-brass">Typing Insights</h2>
@@ -1115,7 +1129,7 @@ function TypingWeaknessesSection({
           </section>
         </>
       )}
-    </section>
+    </PageSection>
   );
 }
 

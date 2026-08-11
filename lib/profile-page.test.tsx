@@ -144,6 +144,8 @@ describe("ProfilePage", () => {
     expect(mockedGetSupabaseAnalyticsTypingResults).toHaveBeenCalledWith("user-1");
     expect(mockedGetSupabaseProfile).toHaveBeenCalledWith("user-1");
     expect(screen.getByText("Profile Identity")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Profile overview" })).toBeTruthy();
+    expect(screen.getByRole("progressbar", { name: "Level progress" }).getAttribute("aria-valuenow")).toBeTruthy();
     expect(screen.getByText("@formal_typist")).toBeTruthy();
     expect(screen.getByText("Joined Jun 20, 2026")).toBeTruthy();
     expect(screen.getAllByText("I type with ceremonial precision.").length).toBeGreaterThan(0);
@@ -194,6 +196,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("Daily Challenge")).toBeTruthy();
     expect(screen.getByText("Weekly Challenge")).toBeTruthy();
     expect(screen.getByText("Achievements")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Achievements" })).toBeTruthy();
     expect(screen.getByText("6 / 23 unlocked")).toBeTruthy();
     expect(screen.getByText("First Test")).toBeTruthy();
     expect(screen.getByText("Getting Started")).toBeTruthy();
@@ -206,6 +209,10 @@ describe("ProfilePage", () => {
     expect(screen.getByText("My Results")).toBeTruthy();
     expect(screen.getByText("Recent attempts")).toBeTruthy();
     expect(screen.getByText("Passage latest")).toBeTruthy();
+    expect(
+      screen.getByRole("region", { name: "Primary trends" }).compareDocumentPosition(screen.getByText("Typing Insights")) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(
       screen.getByText("Typing Insights").compareDocumentPosition(screen.getByText("My Results")) &
         Node.DOCUMENT_POSITION_FOLLOWING
@@ -390,6 +397,8 @@ describe("ProfilePage", () => {
     expect(screen.getByText("0 / 23 unlocked")).toBeTruthy();
     expect(screen.getByText("First Test")).toBeTruthy();
     expect(screen.getAllByText("Locked").length).toBeGreaterThan(0);
+    expect(screen.getByRole("progressbar", { name: "Achievement collection progress" }).getAttribute("aria-valuenow")).toBe("0");
+    expect(screen.getByRole("article", { name: "First Test, locked" }).getAttribute("data-achievement-state")).toBe("locked");
     expect(screen.queryByText("Summary Stats")).toBeNull();
   });
 

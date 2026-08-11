@@ -120,6 +120,10 @@ describe("ResultModal", () => {
       "Cloud save failed. Your current result is still visible here."
     );
     expect(screen.getByText("This Result")).toBeTruthy();
+    const resultSummary = screen.getByRole("region", { name: "Result summary" });
+    expect(within(resultSummary).getByText("Accuracy")).toBeTruthy();
+    expect(within(resultSummary).getByText("Consistency")).toBeTruthy();
+    expect(within(resultSummary).getByText("Duration")).toBeTruthy();
   });
 
   it("shows the authenticated result layout without duplicated summary sections", () => {
@@ -166,9 +170,12 @@ describe("ResultModal", () => {
     expect(screen.queryByText("36.2 → 48.0")).toBeNull();
     expect(screen.queryByText("36.2 → 50.0")).toBeNull();
     expect(screen.getByText("Session review")).toBeTruthy();
+    expect(screen.getByText("Review mistakes")).toBeTruthy();
     expect(screen.queryByText("Highest")).toBeNull();
     expect(screen.queryByText("Lowest")).toBeNull();
     expect(screen.queryByTestId("result-sign-in-cta")).toBeNull();
+    expect(screen.getByRole("group", { name: "Result actions" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Next passage" }).getAttribute("data-touch-target")).toBe("44");
 
     const chart = screen.getByRole("img", { name: "WPM over time" });
     expect(chart.querySelector('[data-testid="attempt-chart-line"]')?.getAttribute("stroke")).toBe(

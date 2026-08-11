@@ -246,6 +246,7 @@ describe("Profile friends page", () => {
     expect(screen.getByText("@grace_keys")).toBeTruthy();
     expect(screen.getByText("@linus_letters")).toBeTruthy();
     expect(screen.getByText("Pending")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Friend requests" })).toBeTruthy();
   });
 
   it("links friend and request handles to public profiles", async () => {
@@ -317,6 +318,8 @@ describe("Profile friends page", () => {
       expect(screen.getByText("No friends yet.")).toBeTruthy();
     });
     fireEvent.click(screen.getByRole("button", { name: "Add friend" }));
+    expect(screen.getByRole("button", { name: "Add friend" }).getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("region", { name: "Add a friend" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Add friend by handle"), { target: { value: "@kkk" } });
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
 
@@ -324,6 +327,13 @@ describe("Profile friends page", () => {
       expect(mockedSend).toHaveBeenCalledWith("@kkk");
     });
     expect(await screen.findByText("Friend request sent to @kkk.")).toBeTruthy();
+  });
+
+  it("uses an intentional shared empty state for the friends collection", async () => {
+    render(<FriendsPage />);
+
+    const emptyState = await screen.findByRole("status", { name: "No friends" });
+    expect(emptyState.textContent).toContain("No friends yet.");
   });
 
   it("renders private friend stats as dashes without breaking the friends table", async () => {
