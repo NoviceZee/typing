@@ -33,7 +33,13 @@ describe("Home authentication routing", () => {
     render(<Home />);
 
     expect(screen.getByRole("heading", { name: /Type with purpose/i })).toBeTruthy();
+    expect(screen.getByText(/English and Chinese typing practice/i)).toBeTruthy();
+    expect(screen.getByText(/英文及中文打字練習/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Typing Station" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "Typing practice" }).getAttribute("href")).toBe("/practice");
+    expect(screen.getByRole("link", { name: "Typing training" }).getAttribute("href")).toBe("/training");
+    expect(screen.getByRole("link", { name: "Passage library" }).getAttribute("href")).toBe("/passages");
+    expect(screen.getByRole("link", { name: "Typing leaderboard" }).getAttribute("href")).toBe("/leaderboard");
     expect(mockState.routerReplace).not.toHaveBeenCalled();
   });
 

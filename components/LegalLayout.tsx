@@ -1,10 +1,8 @@
-import Head from "next/head";
 import React from "react";
 import { PublicSiteHeader, ReturnToPracticeLink, SITE_FRAME_CLASS, SiteFooter } from "@/components/SiteChrome";
 
 export function LegalLayout({ title, summary, children }: React.PropsWithChildren<{ title: string; summary: string }>) {
   return <>
-    <Head><title>{`${title} — Typing Station`}</title><meta name="description" content={summary} /></Head>
     <main className="min-h-screen bg-ink-950 px-5 py-5 text-paper md:px-8">
       <div className={SITE_FRAME_CLASS}>
         <PublicSiteHeader><ReturnToPracticeLink /></PublicSiteHeader>

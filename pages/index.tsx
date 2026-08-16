@@ -1,12 +1,8 @@
-import Head from "next/head";
 import Link from "next/link";
 import React from "react";
 import { ArrowRight, BarChart3, BookOpenText, Keyboard, Sparkles, Trophy } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
-import { getSiteUrl } from "@/lib/siteMetadata";
 import { PublicSiteHeader, SITE_FRAME_CLASS, SITE_PAGE_GUTTERS_CLASS, SiteFooter } from "@/components/SiteChrome";
-
-const SITE_URL = getSiteUrl();
 
 const FEATURES = [
   { icon: Keyboard, eyebrow: "Focused practice", title: "Train the writing you actually use", body: "Build speed with formal English, business passages, numbers, symbols, Chinese and code—not filler text." },
@@ -18,13 +14,7 @@ export default function Home() {
   const { user } = useAuth();
 
   return (
-    <>
-      <Head>
-        <title>Typing Station — Deliberate typing practice</title>
-        <meta name="description" content="A focused typing practice room for formal English, business writing, Chinese, code, numbers and symbols." />
-        <link rel="canonical" href={SITE_URL} />
-      </Head>
-      <main className="landing-shell min-h-screen overflow-hidden text-paper">
+    <main className="landing-shell min-h-screen overflow-hidden text-paper">
         <div className={`relative z-20 pt-5 ${SITE_PAGE_GUTTERS_CLASS}`}>
           <div className={SITE_FRAME_CLASS}>
           <PublicSiteHeader>
@@ -47,13 +37,22 @@ export default function Home() {
               Type with purpose.<br /><span className="text-paper/42">Write with pace.</span>
             </h1>
             <p className="landing-reveal landing-delay-2 mt-7 max-w-xl text-lg leading-8 text-paper/58">
-              A deliberate practice room for the words, formats and rhythms that show up in real work.
+              English and Chinese typing practice for focused sessions, timed typing tests and curated passages—with clear speed, accuracy and progress feedback.
+            </p>
+            <p lang="zh-Hant" className="landing-reveal landing-delay-2 mt-3 max-w-xl text-body leading-7 text-paper/42">
+              英文及中文打字練習，支援計時測試、文章練習，以及速度與準確度記錄。
             </p>
             <div className="landing-reveal landing-delay-3 mt-9 flex flex-wrap gap-3">
               <Link href="/practice" className="landing-button-primary">{user ? "Continue practising" : "Start a one-minute test"} <ArrowRight className="icon-control" /></Link>
               <Link href="/training" className="landing-button-secondary"><BookOpenText className="icon-control" /> Explore training</Link>
             </div>
             <p className="landing-reveal landing-delay-3 mt-4 font-mono text-utility uppercase tracking-[0.15em] text-paper/30">No account required to begin</p>
+            <nav aria-label="Explore Typing Station" className="landing-reveal landing-delay-3 mt-5 flex flex-wrap gap-x-5 gap-y-2 font-mono text-control text-paper/45">
+              <Link href="/practice" className="transition hover:text-paper">Typing practice</Link>
+              <Link href="/training" className="transition hover:text-paper">Typing training</Link>
+              <Link href="/passages" className="transition hover:text-paper">Passage library</Link>
+              <Link href="/leaderboard" className="transition hover:text-paper">Typing leaderboard</Link>
+            </nav>
           </div>
 
           <div className="landing-reveal landing-delay-2 relative mx-auto w-full max-w-xl" aria-label="Typing Station practice preview">
@@ -93,8 +92,7 @@ export default function Home() {
         </section>
 
         <div className={SITE_PAGE_GUTTERS_CLASS}><div className={SITE_FRAME_CLASS}><SiteFooter /></div></div>
-      </main>
-    </>
+    </main>
   );
 }
 

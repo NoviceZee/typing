@@ -12,10 +12,10 @@ describe("Supabase connection hints", () => {
   });
 
   it("adds one conditional preconnect for the derived Supabase origin", () => {
-    const appSource = readFileSync("pages/_app.tsx", "utf8");
+    const metadataSource = readFileSync("components/SiteMetadata.tsx", "utf8");
 
-    expect(appSource).toContain('rel="preconnect"');
-    expect(appSource).toContain("href={supabaseOrigin}");
-    expect(appSource).not.toContain("supabase.co\"");
+    expect(metadataSource.match(/rel="preconnect"/g)).toHaveLength(1);
+    expect(metadataSource).toContain("href={supabaseOrigin}");
+    expect(metadataSource).not.toContain("supabase.co\"");
   });
 });

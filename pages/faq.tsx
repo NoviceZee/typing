@@ -1,5 +1,4 @@
 import React from "react";
-import Head from "next/head";
 import Link from "next/link";
 import { ArrowRight, BarChart3, ChevronDown, Keyboard, ShieldCheck } from "lucide-react";
 import { PublicSiteHeader, ReturnToPracticeLink, SITE_FRAME_CLASS, SiteFooter } from "@/components/SiteChrome";
@@ -82,12 +81,7 @@ export default function FaqPage() {
   const questionCount = FAQ_GROUPS.reduce((total, group) => total + group.questions.length, 0);
 
   return (
-    <>
-      <Head>
-        <title>FAQ — Typing Station</title>
-        <meta name="description" content="Answers about Typing Station practice, results, accounts and privacy." />
-      </Head>
-      <main className="min-h-screen overflow-hidden bg-ink-950 px-5 py-5 text-paper md:px-8">
+    <main className="min-h-screen overflow-hidden bg-ink-950 px-5 py-5 text-paper md:px-8">
         <div className="pointer-events-none fixed inset-0" aria-hidden="true">
           <div className="absolute -right-40 -top-52 h-[34rem] w-[34rem] rounded-full border border-brass/10 bg-brass/[0.025]" />
           <div className="absolute -bottom-64 -left-48 h-[38rem] w-[38rem] rounded-full border border-paper/[0.04]" />
@@ -140,7 +134,6 @@ export default function FaqPage() {
 
           <SiteFooter />
         </div>
-      </main>
-    </>
+    </main>
   );
 }
