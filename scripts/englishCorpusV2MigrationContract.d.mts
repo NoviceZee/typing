@@ -31,5 +31,9 @@ export type ApprovedReleaseContract = {
 export function sha256(value: string | Uint8Array): string;
 export function parseEnglishCorpusV2MigrationSeeds(sql: string): CorpusSeedRow[];
 export function isExactSeededRerun(seed: CorpusSeedRow, existing: CorpusSeedRow | null | undefined): boolean;
+export function findActiveDeactivationLeaks<T extends { id: string }>(
+  deactivations: T[],
+  activePublicPassages: Array<{ id: string }>
+): T[];
 export function verifyApprovedContractSources(contract: ApprovedReleaseContract, rootDir?: string): string[];
 export function validateMigrationAgainstApprovedContract(sql: string, contract: ApprovedReleaseContract): string[];

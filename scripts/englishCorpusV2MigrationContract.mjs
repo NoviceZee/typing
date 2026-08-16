@@ -39,6 +39,11 @@ export function isExactSeededRerun(seed, existing) {
   );
 }
 
+export function findActiveDeactivationLeaks(deactivations, activePublicPassages) {
+  const activeIds = new Set(activePublicPassages.map((passage) => passage.id));
+  return deactivations.filter((passage) => activeIds.has(passage.id));
+}
+
 export function verifyApprovedContractSources(contract, rootDir = process.cwd()) {
   const errors = [];
   for (const source of Object.values(contract.generatedFrom ?? {})) {

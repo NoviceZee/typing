@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  findActiveDeactivationLeaks,
   isExactSeededRerun,
   validateMigrationAgainstApprovedContract,
   verifyApprovedContractSources
@@ -78,6 +79,15 @@ describe("English Corpus v2 production migration contract", () => {
       (match) => match[1]
     );
     expect(ids.sort()).toEqual(deactivatedIds.sort());
+  });
+
+  it("accepts deployed deactivations only when none remain in the active public snapshot", () => {
+    const deactivations = [{ id: "legacy-one" }, { id: "legacy-two" }];
+
+    expect(findActiveDeactivationLeaks(deactivations, [])).toEqual([]);
+    expect(findActiveDeactivationLeaks(deactivations, [{ id: "legacy-two" }])).toEqual([
+      { id: "legacy-two" }
+    ]);
   });
 
   it("uses passage-specific assignments and guards the migration transaction", () => {

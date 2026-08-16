@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import {
+  findActiveDeactivationLeaks,
   isExactSeededRerun,
   validateMigrationAgainstApprovedContract,
   verifyApprovedContractSources
@@ -36,7 +37,7 @@ const retained = seeds.filter((seed) => seed.retained);
 const inserted = seeds.filter((seed) => !seed.retained);
 
 const missingRetained = retained.filter((seed) => currentById.get(seed.id)?.language !== "english");
-const missingDeactivations = deactivations.filter((seed) => currentById.get(seed.id)?.language !== "english");
+const activeDeactivationLeaks = findActiveDeactivationLeaks(deactivations, production);
 const visibleNewIdCollisions = inserted.filter((seed) => currentById.has(seed.id));
 const unsafeVisibleNewIdCollisions = visibleNewIdCollisions.filter((seed) => !isExactSeededRerun(
   { ...seed, language: "english", is_active: true, is_public: true },
@@ -80,7 +81,7 @@ const approvedMigrationErrors = validateMigrationAgainstApprovedContract(sql, ap
 const assertions = {
   sourceSeeds: seeds.length === 140,
   retainedUpdates: retained.length === 40 && missingRetained.length === 0,
-  deactivations: deactivations.length === 9 && missingDeactivations.length === 0,
+  deactivations: deactivations.length === 9 && activeDeactivationLeaks.length === 0,
   intendedNewSeedRows: inserted.length === 100,
   visibleActivePublicIdCollisions: unsafeVisibleNewIdCollisions.length === 0,
   visibleActivePublicTitleCollisions: productionTitleCollisions.length === 0,
@@ -117,11 +118,13 @@ const report = {
     activeLegacyCategories: finalEnglish.filter((passage) => legacyCategories.includes(passage.category)).length,
     activePublicChinese: currentChinese.length
   },
+  observations: {
+    exactSeededReruns: visibleNewIdCollisions.length
+  },
   assertions,
   failures: {
     missingRetained: missingRetained.map((row) => row.id),
-    missingDeactivations: missingDeactivations.map((row) => row.id),
-    visibleNewIdCollisions: visibleNewIdCollisions.map((row) => row.id),
+    activeDeactivationLeaks: activeDeactivationLeaks.map((row) => row.id),
     unsafeVisibleNewIdCollisions: unsafeVisibleNewIdCollisions.map((row) => row.id),
     productionTitleCollisions: productionTitleCollisions.map((row) => row.briefId),
     duplicateTitles,
