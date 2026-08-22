@@ -7,6 +7,12 @@ const configPath = require.resolve("../next.config.js");
 type NextConfigWithHeaders = {
   poweredByHeader: boolean;
   headers: () => Promise<Array<{ headers: Array<{ key: string; value: string }> }>>;
+  redirects?: () => Promise<Array<{
+    source: string;
+    destination: string;
+    permanent: boolean;
+    has?: Array<{ type: string; value: string }>;
+  }>>;
 };
 
 describe("production security headers", () => {
@@ -48,5 +54,24 @@ describe("production security headers", () => {
     expect(headers["Content-Security-Policy"]).not.toContain("'unsafe-eval'");
     expect(headers["X-Content-Type-Options"]).toBe("nosniff");
     expect(headers["X-Frame-Options"]).toBe("DENY");
+  });
+
+  it("permanently redirects only the retired Vercel production host", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL", "1");
+    delete require.cache[configPath];
+    const nextConfig = require(configPath) as NextConfigWithHeaders;
+
+    expect(nextConfig.redirects).toBeTypeOf("function");
+    const redirects = await nextConfig.redirects!();
+
+    expect(redirects).toEqual([
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "typing-puce-one.vercel.app" }],
+        destination: "https://typingstation.app/:path*",
+        permanent: true
+      }
+    ]);
   });
 });

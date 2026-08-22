@@ -5,6 +5,7 @@ import { LogIn, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { getSupabaseProfile } from "@/lib/profileStorage";
+import { getSafeAuthRedirect } from "@/lib/authRedirect";
 import Link from "next/link";
 
 type AuthMode = "login" | "signup" | "recovery";
@@ -21,8 +22,7 @@ export default function LoginPage() {
   const [acceptedLegal, setAcceptedLegal] = useState(false);
 
   const redirectTo = useMemo(() => {
-    const rawRedirect = Array.isArray(router.query.redirectTo) ? router.query.redirectTo[0] : router.query.redirectTo;
-    return rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/practice";
+    return getSafeAuthRedirect(router.query.redirectTo);
   }, [router.query.redirectTo]);
 
   useEffect(() => {

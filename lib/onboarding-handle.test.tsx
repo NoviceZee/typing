@@ -90,6 +90,20 @@ describe("HandleOnboardingPage", () => {
     expect(mockState.routerReplace).toHaveBeenCalledWith("/leaderboard");
   });
 
+  it("rejects a backslash-based external post-onboarding redirect", async () => {
+    mockState.query = { redirectTo: "/\\\\evil.example" };
+
+    render(<HandleOnboardingPage />);
+
+    const input = await screen.findByLabelText("Handle");
+    fireEvent.change(input, { target: { value: "formal_typist" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save handle" }));
+
+    await waitFor(() => {
+      expect(mockState.routerReplace).toHaveBeenCalledWith("/practice");
+    });
+  });
+
   it("shows duplicate handle errors without redirecting", async () => {
     mockedSetSupabaseProfileHandle.mockRejectedValue(new Error("That handle is already taken."));
 

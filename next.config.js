@@ -23,6 +23,16 @@ const contentSecurityPolicy = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "typing-puce-one.vercel.app" }],
+        destination: "https://typingstation.app/:path*",
+        permanent: true
+      }
+    ];
+  },
   async headers() {
     return [
       {

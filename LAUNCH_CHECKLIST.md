@@ -12,7 +12,7 @@
 
 ## Connect before beta
 
-- [x] Set `NEXT_PUBLIC_SITE_URL` to the current HTTPS production origin (`https://typing-puce-one.vercel.app`)
+- [x] Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS production origin (`https://typingstation.app`)
 - [ ] Point `NEXT_PUBLIC_FEEDBACK_URL` at a dedicated feedback form; until then, Feedback opens the GitHub issue form
 - [ ] Set `NEXT_PUBLIC_GA_MEASUREMENT_ID` and verify page views in analytics realtime view
 - [ ] Choose an error tracker and connect it to the `formaltype:error` browser event
@@ -29,9 +29,9 @@
 
 ## Domain and release
 
-- [ ] Add the custom domain in the hosting provider and copy the required DNS records
-- [ ] Confirm HTTPS certificate, `www`/apex redirect and canonical origin
-- [ ] Verify `/`, `/practice`, `/robots.txt`, `/sitemap.xml` and the share preview on production
+- [x] Add the custom domain in the hosting provider and copy the required DNS records
+- [x] Confirm HTTPS certificate, `www`/apex redirect and canonical origin
+- [x] Verify `/`, `/practice`, `/robots.txt`, `/sitemap.xml` and the share preview on production
 - [x] Add the production domain to Supabase Auth site URL and redirect allow-list
 - [x] Allow `/profile/account?recovery=1` on production and the exact latest protected preview origin
 - [x] Test reset email delivery, recovery completion, post-reset sign-out and rejection of the previous password with a permitted team test account

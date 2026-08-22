@@ -12,8 +12,8 @@ import {
 
 describe("site metadata URLs", () => {
   it("uses the production fallback when no public site URL is configured", () => {
-    expect(getSiteUrl("")).toBe("https://typing-puce-one.vercel.app");
-    expect(getShareImageUrl("")).toBe("https://typing-puce-one.vercel.app/formaltype-share.png");
+    expect(getSiteUrl("")).toBe("https://typingstation.app");
+    expect(getShareImageUrl("")).toBe("https://typingstation.app/formaltype-share.png");
   });
 
   it("normalizes a configured URL before building absolute metadata URLs", () => {

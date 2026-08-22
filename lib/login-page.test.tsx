@@ -75,6 +75,17 @@ describe("LoginPage handle redirects", () => {
     });
   });
 
+  it("rejects a backslash-based external post-login redirect", async () => {
+    mockState.query = { redirectTo: "/\\\\evil.example" };
+    mockedGetSupabaseProfile.mockResolvedValue({ display_name: "Formal Typist", handle: "formal_typist" } as any);
+
+    render(<LoginPage />);
+
+    await waitFor(() => {
+      expect(mockState.routerReplace).toHaveBeenCalledWith("/practice");
+    });
+  });
+
   it("offers password recovery without requiring a password", async () => {
     mockState.user = null;
     render(<LoginPage />);

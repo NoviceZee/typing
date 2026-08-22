@@ -6,6 +6,7 @@ import { AtSign } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import { getSupabaseProfile, setSupabaseProfileHandle, validateHandle } from "@/lib/profileStorage";
+import { getSafeAuthRedirect } from "@/lib/authRedirect";
 
 export default function HandleOnboardingPage() {
   const router = useRouter();
@@ -15,8 +16,7 @@ export default function HandleOnboardingPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const redirectTo = useMemo(() => {
-    const rawRedirect = Array.isArray(router.query.redirectTo) ? router.query.redirectTo[0] : router.query.redirectTo;
-    return rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/practice";
+    return getSafeAuthRedirect(router.query.redirectTo);
   }, [router.query.redirectTo]);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-const FALLBACK_SITE_URL = "https://typing-puce-one.vercel.app";
+const FALLBACK_SITE_URL = "https://typingstation.app";
 
 export interface RouteSeoMetadata {
   title: string;
