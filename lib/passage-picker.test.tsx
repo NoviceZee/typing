@@ -152,6 +152,13 @@ function makePassage(
     updatedAt: "2026-08-08T00:00:00.000Z",
     wordCount: 4,
     characterCount: 24,
-    isActive: true
+    riskClassification: "A",
+    sourceType: "original",
+    fictional: false,
+    reviewedAt: "2026-08-08T00:00:00.000Z",
+    reviewNotes: null,
+    reviewStatus: "approved",
+    isActive: true,
+    isPublic: true
   };
 }

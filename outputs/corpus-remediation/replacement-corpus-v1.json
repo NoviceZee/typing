@@ -1,0 +1,1716 @@
+{
+  "schemaVersion": 1,
+  "corpusVersion": "neutral-replacements-v1",
+  "uuidNamespace": "8c9f6cf2-bc8f-5afe-9fc0-c4b90f14d9a7",
+  "deterministicNamePattern": "typing-station:corpus-remediation-v1:<oldId>",
+  "reviewedAt": "2026-08-22T10:00:00.000Z",
+  "passages": [
+    {
+      "oldId": "435c0368-4299-468d-8968-0b0d41efad09",
+      "oldTitle": "人工智能需要可問責",
+      "title": "霧氣落在窗上的早晨",
+      "language": "chinese",
+      "category": "生活",
+      "style": "Descriptive",
+      "min": 505,
+      "max": 520,
+      "verification": "light",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [
+        {
+          "url": "https://weather.metoffice.gov.uk/learn-about/weather/types-of-weather/clouds",
+          "note": "英國氣象局說明水氣遇冷凝結成細小水滴，並以冷窗上的凝結作類比。"
+        }
+      ],
+      "content": "天色尚未完全亮起，窗外的樓影只剩一排淡灰輪廓。玻璃內側蒙着薄霧，靠近窗框的地方聚成細珠，中間卻像有人用柔軟的布輕輕抹過，只留下一片半透明的白。昨夜室內尚有餘暖，清晨的玻璃先冷下來，空氣中的水氣碰到冰涼表面，便凝結成看得見的水滴。窗臺木邊也沾了水，摸上去微涼而滑，角落還積着一小道亮線。指尖劃過霧面，一道清晰小路立刻通向窗外；幾顆圓珠被推到旁邊，慢慢合成較重的一滴，沿着玻璃蜿蜒而下。遠處屋頂被晨霧藏去一半，近處晾衣架上的夾子卻格外分明。廚房傳來水壺微響，暖氣靠近窗邊後，原本均勻的白霧開始退縮，先露出角落，再露出天台的欄杆。\n\n陽光越過對面牆身，在玻璃上照出一圈柔亮的邊，細珠便閃着銀點。用乾布擦窗時，布面很快吸飽水分，留下幾條不規則痕跡；若只開一道小縫，微涼的風便會把室內濕氣帶走一些。樓下第一輛車駛過，聲音隔着霧顯得很遠。等一杯熱茶放到桌上，窗面已由乳白轉為通透，只在下緣留着一列小水珠，像清晨沒有收好的腳印。先前用手指畫出的線也逐漸模糊，邊沿重新聚起極細的霧。窗外一隻麻雀落在簷口，抖了抖羽毛，隨即飛進漸亮的天空。這個緩慢變化沒有聲勢，卻把夜裏的溫差、屋內的一點濕潤，以及早晨初來的光，全都留在同一塊玻璃上。",
+      "newId": "8c930129-0602-5cce-86f8-e0d3e73043bd",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 英國氣象局說明水氣遇冷凝結成細小水滴，並以冷窗上的凝結作類比。 https://weather.metoffice.gov.uk/learn-about/weather/types-of-weather/clouds",
+      "sha256": "a6f1b88d47987549a25e795186634179cc5048c97684351a1c60ccf5e78c9d0e"
+    },
+    {
+      "oldId": "05246dd3-d8f6-46f5-b909-295b47504eac",
+      "oldTitle": "保育與旅遊的界線",
+      "title": "一鍋高湯如何慢慢變清",
+      "language": "chinese",
+      "category": "生活",
+      "style": "Everyday explanatory",
+      "min": 515,
+      "max": 535,
+      "verification": "light",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.ice.edu/blog/how-ices-director-culinary-affairs-celebrates-bastille-day",
+          "note": "烹飪學院示範以蛋白與碎肉形成澄清層，再把清湯經布過濾。"
+        }
+      ],
+      "content": "一鍋剛熬好的高湯往往帶着細碎肉屑、油脂與蔬菜纖維，看來混濁，味道卻已藏在水中。要讓它清澈，第一步不是猛烈翻滾，而是讓火力保持溫和。水面只微微顫動，浮沫便會逐步聚在一起，較容易用勺子撇走；若大火攪動，細屑重新散進湯裏，之後反而更難分離。初步熬好後，可先把固體材料濾去，待湯稍冷，再視需要進一步澄清。若只想減少一般浮沫，未必需要完整澄清，安靜沉澱後再小心倒出，也能使湯面乾淨一些。\n\n傳統做法會把蛋白拌入冷湯，有時加入瘦碎肉和切細的香味蔬菜。重新慢慢加熱時，蛋白受熱凝固，與碎肉一同形成浮在上方的厚層，細小雜質會被它黏住。這層浮物不可隨意攪散，廚師通常在中央留一個小孔，讓熱湯循環，也方便觀察下面的清澈程度。維持輕微沸騰一段時間後，湯色由暗轉亮，表面仍可能留有少量油光。\n\n取湯時不宜把上層整塊倒破，而是從小孔緩緩舀出，再經細篩或濕布過濾。布先沾濕，可減少吸走太多湯液，也能攔下最後的微粒。澄清不會把所有味道變濃，它主要改變的是外觀與口感，因此原來的高湯若過鹹或香料太重，清澈之後仍然如此。一碗完成的清湯應該能透出碗底的顏色，入口卻有完整層次。從混濁到明亮，要靠準確的溫度控制、耐心等待與細心操作，每一步也須避免把已分開的雜質再次攪回去。",
+      "newId": "df02aa9a-8dd8-546d-b949-5efcc861cf0f",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 烹飪學院示範以蛋白與碎肉形成澄清層，再把清湯經布過濾。 https://www.ice.edu/blog/how-ices-director-culinary-affairs-celebrates-bastille-day",
+      "sha256": "b3642c1330c46b1894ad29f053339adec5e903852670c2ab552a90815c05e09c"
+    },
+    {
+      "oldId": "15fdf612-d778-45f7-9777-8ebd613f50bd",
+      "oldTitle": "個人行動與制度改變",
+      "title": "失而復得的舊相簿",
+      "language": "chinese",
+      "category": "生活",
+      "style": "Narrative",
+      "min": 500,
+      "max": 515,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [],
+      "content": "搬家後第三個星期，阿晴才發現那本舊相簿不在紙箱裏。它的封面是深綠色，四角磨得發白，內頁夾着祖父母年輕時的黑白照片，也有她第一次穿校服的模糊影像。她把已拆開的箱子逐一翻查，連寫着廚房雜物的兩箱也沒有放過。床下只有空膠袋，衣櫃頂層則躺着一疊舊月曆。她打電話問搬運師傅，又回到舊居管理處，得到的答案都是沒有看見。相簿像在兩個地址之間蒸發了。幾天後下雨，她到附近洗衣店取回厚被，店員忽然問她是否遺下了一個綠色包裹。原來搬家那天，她曾把相簿用毛巾包好，暫放在盛載床單的布袋底部；洗衣店整理衣物時發現它，怕紙頁受潮，便先收進櫃裏。店員取出包裹，毛巾仍繫着那個鬆鬆的結。阿晴坐在店門旁的小椅上，一頁頁查看。照片沒有沾水，只是透明護頁多了些皺紋。她看見母親小時候站在海邊，手裏拿着一把比身體還高的傘；下一頁則是父親在舊屋窗前修理收音機。那些景物多半已經消失，照片裏的人也不再維持當年的年紀。她把相簿抱緊，沒有立即離開，而是向店員借了一張便條，把發現日期寫在封面內側。回家後，她不再把相簿塞回箱底，而是在書架留出一格，旁邊放了乾燥包。晚上家人來吃飯，她把相簿放在桌上，大家輪流指認照片中幾乎忘記的親友。失去幾天的驚慌，使每一張普通合照都像重新顯影。",
+      "newId": "b0fa4f5c-b5b6-5a9c-9253-494689359096",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "1206754df1a6b797e2cd50d469d9b813a268b1d72319189ba355fa74657c42e0"
+    },
+    {
+      "oldId": "b10cc209-99f4-45a3-9e29-e1877724a109",
+      "oldTitle": "儲備應如何使用",
+      "title": "陽台上的四季香草",
+      "language": "chinese",
+      "category": "生活",
+      "style": "Descriptive",
+      "min": 500,
+      "max": 520,
+      "verification": "light",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [
+        {
+          "url": "https://www.rhs.org.uk/herbs/growing",
+          "note": "英國皇家園藝學會整理香草的容器栽種、日照、排水及分季繁殖要點。"
+        }
+      ],
+      "content": "陽台只有一張窄長花架，卻能從春到冬換出不同氣味。春初，細香蔥先從盆土冒出中空嫩葉，薄荷的舊莖旁也長出一圈新芽。把花盆移到較明亮的位置，澆水後等多餘水分從盆底流走，葉色很快由淡轉濃。羅勒怕冷，通常待天氣暖定才放到戶外；它的葉片柔軟，指尖輕碰便留下一股甜香。夏日陽光直照，淺盆乾得特別快，早上還濕潤的泥面，傍晚已顯得鬆白。澆水時對準土面，不讓水珠長久積在葉間；採收則從枝梢開始，順便促使側芽伸展。迷迭香和百里香喜歡日照與疏水環境，葉子較硬，氣味也更沉穩。它們不必與薄荷擠在同一盆，因為薄荷地下莖擴展得快，很容易佔滿空間。入秋後，羅勒開始開花，香氣漸淡；剪下健康枝葉，可趁新鮮煮食，也可攤開晾乾。細香蔥剪過仍會再長，迷迭香則只取外圍嫩梢，不一下剪進光禿的老枝。冬天的風穿過欄杆，花架看來安靜許多。薄荷地上部分稀疏，盆土裏的根仍等待回暖；常綠的百里香貼近泥面，葉片縮得細小。把較嬌嫩的盆栽挪近窗邊，避開長時間積水，陽台便不至於完全失去綠意。偶爾摘下一小枝放進熱湯，四季似乎又在碗邊相遇。每次轉季，葉色和香味也跟着改變。這排香草沒有整齊花壇的規模，卻以新芽、花序、枯枝和再次萌生的氣味，替狹小空間記下了一年的轉折。",
+      "newId": "a00e2591-d805-59a0-98e3-964ecba5ef83",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 英國皇家園藝學會整理香草的容器栽種、日照、排水及分季繁殖要點。 https://www.rhs.org.uk/herbs/growing",
+      "sha256": "48bc0ce73976c0d45139a463544bae2dbe6a1e0a21f10d03ad7a8e60f7e06a6b"
+    },
+    {
+      "oldId": "68602d48-cc07-4428-8156-566a99ff70d1",
+      "oldTitle": "公共交通的可靠性",
+      "title": "雨天收傘的小技巧",
+      "language": "chinese",
+      "category": "生活",
+      "style": "Everyday-life",
+      "min": 505,
+      "max": 525,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [],
+      "content": "雨天走到室內門口，最狼狽的往往不是撐傘，而是把濕傘收好。若一進門便急着捲起傘布，積水會被困在摺層之間，既滴濕地面，也容易留下悶味。較從容的做法，是先站在有遮蓋而不阻路的位置，把傘尖朝下，輕輕轉動傘柄，讓大水珠順着傘骨滑落。\n\n不要猛烈甩動，以免水花濺到旁人或牆面。長傘可保持直立，逐段把傘骨合攏；摺傘則先收短傘桿，再用手沿着原有摺線整理布面。此時不必捲得很緊，只要讓各片傘布方向一致，套上寬鬆傘袋即可。\n\n若商店提供吸水傘袋，可先確認袋底沒有破口，提起時也讓傘尖向下。乘車時，把濕傘放在雙腳之間，手握傘柄，能減少它滑到通道；切勿把長傘橫放在座位旁，別人經過時容易絆到。回家後才是完全收拾的時候。打開傘面放在通風處，與牆壁留些距離，下面墊一塊吸水布。\n\n傘布乾透後，再檢查骨架是否夾着樹葉或砂粒，用乾布抹去傘桿上的水痕。摺傘的金屬接位可伸展幾次，確認沒有卡住，然後順着摺痕捲好，扣帶不宜拉得過緊。透明傘若濕着相貼，乾後可能留下斑駁水印，展開晾乾會較整潔。\n\n雨勢很大時，帶一條小毛巾比反覆套膠袋更方便，既可擦去傘尖積水，也能處理鞋邊濺濕的地方。門邊也少幾滴水。整套動作只多花一兩分鐘，卻能讓入口保持乾爽，也使下一次開傘時少一陣潮濕氣味。",
+      "newId": "65d0f9ef-f562-5d3f-a850-549da3ea0548",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "9e1a8d40f89933efe812df8ebc1b48271de123fd4c42f071d1104dad80857cda"
+    },
+    {
+      "oldId": "6929a54a-879d-4a67-9b0c-5fd00ee57492",
+      "oldTitle": "公共服務的申請門檻",
+      "title": "一張購物清單的路線",
+      "language": "chinese",
+      "category": "生活",
+      "style": "Everyday-life",
+      "min": 500,
+      "max": 510,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [],
+      "content": "購物清單若只按想到的次序寫，進店後往往要來回折返。牛奶在最裏面的冷藏櫃，走到收銀處才記起入口旁的洋蔥，一趟短採買便拉長不少。寫清單時，可先把要買的東西全部記下，再按照店內大致位置重新分組。蔬果放在一起，乾貨與罐頭列成一段，清潔用品另起一行，最後才是冷藏和冷凍食品。這樣不只容易找，也可避免雪糕在手推車裏等太久。出門前先看家中存量，尤其是米、油、洗衣液等外表相似又不常買的物品；清單旁標明數量，便不會因包裝大小不同而猶豫。若要去街市、麵包店和超市三個地方，可先想好哪一站最接近回家路線，以及哪些食品怕壓、怕熱。耐放的乾貨先買，柔軟麵包與熟食靠後，冷凍食品留到最後一站。\n\n進店後沿同一方向走，每取一件便在紙上畫記號。臨時發現缺貨，不必立刻繞遍所有貨架，可在原項旁寫下替代品，走到相關區域再決定。手推車內也可按重量安排：瓶罐在下，蔬果在上，清潔用品與食物分開。到收銀前，快速核對尚未畫記的項目，通常比憑記憶回想可靠。結帳後，清單還有最後一個用途，就是協助分袋。需要先放進冰箱的物品集中一袋，回家後可以優先處理；日用品另放，免得滲漏弄髒食材。久而久之，常走的路線甚至會留在手上，清單便從提醒工具變成一幅簡單的採買地圖。",
+      "newId": "b9d684d9-65db-54e9-8bf2-e5c6b8437e1c",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "0a5fdbe6dc110792d88274abf5b1b5a6159b89a71d02cb4f13690d7cea2b9b6f"
+    },
+    {
+      "oldId": "59a66a44-9da5-4e01-b7c3-2ff0c9c1958c",
+      "oldTitle": "公共財政要看長遠",
+      "title": "倉庫盤點的一天",
+      "language": "chinese",
+      "category": "工作",
+      "style": "Workplace narrative",
+      "min": 505,
+      "max": 525,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [],
+      "content": "八時，倉庫捲閘剛升起，阿森便把今天暫停出貨的告示掛在入口。盤點表已按貨架編號分成幾疊，兩人一組：一人逐箱數量，另一人讀出品名、批次和位置，再把結果寫下。第一排是紙品，外箱整齊，數得很快；到了五金區，細小零件分在不同抽屜，標籤又有些褪色，速度立即慢下來。阿森先抽出一盒核對條碼，沒有憑外觀猜測。中午前，他們在高架找到三箱放錯位置的螺絲，系統顯示在乙區，實物卻藏在相鄰的丙區。\n\n組員先貼上暫存標記，沒有急着搬動，以免其他人重複計算。另一邊，兩個外箱受潮變軟，裏面的獨立包裝仍然完整，也被記進異常表，等待稍後檢查。午飯後，大家交換盤點範圍，用第二雙眼睛覆核數量差異。某款膠帶帳面有四十八卷，貨架只找到四十六卷；翻查待退貨區後，缺少的兩卷正放在未完成的退貨籃裏。接近傍晚，紙本記錄陸續輸入電腦，系統列出仍未相符的項目。\n\n阿森沿着貨架再走一遍，特別查看頂層、地台邊和拆箱工作桌。最後一件遺漏的樣品落在量度區，外包裝貼着手寫便條，難怪掃描時沒有被算入。所有差異處理完，組員在表格簽名，才撕下入口告示。倉庫重新開始出貨前，錯放的箱子歸位，模糊標籤也換了新的。一天沒有搬出多少貨物，卻把每件東西的位置重新說清楚；翌日叉車駛入時，大家不必靠運氣尋找那一格存貨。",
+      "newId": "4b310638-4432-5bae-9948-42c3ce272a74",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "4197a30fb8b2bd2c8e7106353fb4301f749226b73d8540ceeb23f943605ecd81"
+    },
+    {
+      "oldId": "1f9a94ae-89ca-45ab-9cd6-2b88e2b9229b",
+      "oldTitle": "公屋社區的長遠管理",
+      "title": "一件木器的品質檢查",
+      "language": "chinese",
+      "category": "工作",
+      "style": "Science/technical",
+      "min": 565,
+      "max": 585,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.canada.ca/en/conservation-institute/services/care-objects/furniture-wooden-objects-basketry/basic-care-furniture-objects-wood.html",
+          "note": "加拿大文物保護研究所的木家具指引直接說明濕度引致的脹縮、裂縫與飾面損害，並要求搬動前檢查鬆脫接合及先移除抽屜、層板和門板。"
+        }
+      ],
+      "content": "木器品質檢查由一份可重複比較的狀況記錄開始。檢查人員先在穩固位置觀察整體輪廓，記下木種、尺寸、用途和先前修補，再從各個方向拍攝全貌。桌腳能否平穩着地、構件有沒有鬆動、板面是否翹曲，都是往後比較的基準。搬動之前還要查看接合處；抽屜、層板或可拆門板應先取出，避免重量在移動時拉扯已變弱的結構。木材會隨空氣濕度吸收或釋出水分，輕微脹縮可能逐步造成開裂、變形或飾面受損。\n\n檢查裂紋時，位置與走向比單看寬度更有用：沿接點延伸的新裂痕、鬆開的榫接，以及板邊突然隆起，都值得在圖上標示。舊裂縫裡若已有灰塵或舊塗層，則可能早已存在，不能只憑一次觀察判斷它仍在擴展。斜光掠過表面時，刮痕、漆層翹起和失去光澤的區域較容易顯現；檢查人員只以目視和輕柔觸碰確認穩定狀況，避免在脆弱塗層上擦試。細小圓孔及木器下方新出現的粉末，可能是蟲害活動線索，也要分別拍照和記錄。檢查次序固定，從頂面、側面、底部走一遍，免得只記顯眼損傷。\n\n若物件帶有金屬配件，另記鏽蝕或染色，不把它與木材裂紋混在同一欄。記錄不急着提出修補方案，先說明看到甚麼、位置在哪裡、與舊照片相比有何變化，讓後續判斷保留證據。完成後，照片、位置圖、環境讀數與文字描述放在同一份表內。下一次檢查沿用相同角度和詞語，便能分辨木紋本來的差異、舊損傷與近期變化。品質在這裡指向結構是否穩定、表面是否持續劣化，以及每項判斷能否由清楚記錄追溯。",
+      "newId": "a23e8ab2-cdfe-5833-b7cc-0ac4a72409b5",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 加拿大文物保護研究所的木家具指引直接說明濕度引致的脹縮、裂縫與飾面損害，並要求搬動前檢查鬆脫接合及先移除抽屜、層板和門板。 https://www.canada.ca/en/conservation-institute/services/care-objects/furniture-wooden-objects-basketry/basic-care-furniture-objects-wood.html",
+      "sha256": "9b7d682af791fc0941b4490c00c586b42f6b1c87e57049db196102d091e43913"
+    },
+    {
+      "oldId": "6d6843fe-6bfa-4ee5-a239-25107ab3a9ef",
+      "oldTitle": "再培訓要連接真實職位",
+      "title": "圖書館閉館後的還書流程",
+      "language": "chinese",
+      "category": "工作",
+      "style": "Workplace narrative",
+      "min": 505,
+      "max": 525,
+      "verification": "light",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [
+        {
+          "url": "https://blogs.loc.gov/preservation/2026/03/there-and-back-again-the-journey-of-a-book-request-at-the-library-of-congress/",
+          "note": "美國國會圖書館介紹館藏經系統簽入、時間記錄、分流與送回指定位置的一般流程；文中分館、人物及閉館後操作細節為原創虛構工作場景。"
+        }
+      ],
+      "content": "晚上九時，最後一位讀者離開後，玻璃門落鎖，還書箱卻仍在工作。值班員先把外牆投入口暫時關閉，再從箱內拉出盛書小車。車底有軟墊，厚書落下時不會直接撞在金屬板上。她把書推到工作檯，逐本查看封面與書脊，夾在頁間的書籤放進失物盤，明顯受潮或破損的則移到待檢架。其餘書籍掃描條碼，系統記下歸還時間並解除借閱狀態。若條碼磨損，不能連續掃描幾次便隨手放過，而要輸入館藏編號核對，以免一本已回來的書仍留在讀者帳戶。完成簽入後，打印機吐出分流清單。預約中的書貼上取書標記，送往服務臺後方；屬於其他分館的放進轉運箱；本館藏書則依樓層和分類號排在不同書車。\n\n幾本附有光碟或附件的資料，要打開盒面確認數量，再一起歸架。二樓燈光已調暗，推車輪聲顯得格外清楚。值班員沿書架緩慢前進，先看分類號，再比較作者標記，把每本書插回正確位置。若原位太擠，她稍微移動同一段書列，避免把書硬塞進去，也保留取放空間。途中發現一本倒放的圖冊，順手抽出重排；另一本找不到預期空位，便放在待查格，留待翌日核對館藏位置。回到一樓後，她清點轉運箱，在交接簿記下數量，最後重新開放門外還書口。讀者看到的只是書本離手後歸還成功，背後卻有檢查、簽入、分流與歸架，逐步把每一本書送回下一位讀者能找到的地方。",
+      "newId": "ab3b7a83-f5d3-5f8b-88f8-ae30640f13ac",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國會圖書館介紹館藏經系統簽入、時間記錄、分流與送回指定位置的一般流程；文中分館、人物及閉館後操作細節為原創虛構工作場景。 https://blogs.loc.gov/preservation/2026/03/there-and-back-again-the-journey-of-a-book-request-at-the-library-of-congress/",
+      "sha256": "4bb6c1256c79bda5f6e7016a9ce7bf326953e3b4c1eaa78fb051f048393172ba"
+    },
+    {
+      "oldId": "15268c96-1e0e-471b-83de-8602d65b82a2",
+      "oldTitle": "最低工資與生活成本",
+      "title": "冷鏈貨物如何交接",
+      "language": "chinese",
+      "category": "工作",
+      "style": "Science/technical",
+      "min": 520,
+      "max": 540,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.fda.gov/media/90666/download",
+          "note": "美國食品藥物管理局教材說明冷鏈須在裝載、運輸與收貨期間維持，並使用溫度記錄。"
+        }
+      ],
+      "content": "冷鏈貨物抵達月臺前，收貨人員已取得品名、批次、要求溫度範圍和預計到達時間。車門打開不等於立即卸貨，第一步是核對車號與封條，觀察貨廂是否清潔、有沒有異味或積水，再查看運輸期間的溫度記錄。冷藏設備顯示的是某個感測位置的狀況，不能單憑一個數字推斷所有箱內溫度，因此還要依既定方法抽查代表性貨件。\n\n量度時使用合適並經檢查的儀器，探頭位置和讀數時間都應記錄，避免只寫一個沒有背景的溫度。卸貨安排要減少貨物停在常溫區的時間。\n\n工作人員先清出通道，確認冷庫有足夠位置，再按批次移動棧板。外箱若有破損、受潮、結霜異常或封口鬆脫，會被分隔並拍照，而不是混入正常存貨。每個棧板的標籤需與送貨文件相符，包括數量、批號和期限；短少、多出或標示不清都要在交接完成前註明。\n\n溫度偏離要求時，貨物不宜由現場人員憑外觀自行放行，也不應立刻丟棄，而是先放入指定隔離區，保存記錄，交由負責人按產品條件評估。完成卸貨後，收貨方確認實收數量與異常項目，雙方在文件上簽署時間。\n\n資料隨後進入庫存系統，使日後能追查貨物由哪一車、哪一批和何時轉交。所謂冷鏈交接，不只是把箱子從車上搬進冷房，而是在責任轉移的一刻，同時接過溫度證據、貨物身分與完整狀態。只有實物和記錄一起對得上，下一段儲存才有可靠起點。",
+      "newId": "f254dc9a-275c-58ad-9c9a-d448d1a282d4",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國食品藥物管理局教材說明冷鏈須在裝載、運輸與收貨期間維持，並使用溫度記錄。 https://www.fda.gov/media/90666/download",
+      "sha256": "c55b02ce13cd2c6c9fdf219b604965ca85452dddbbef11f0f2c158ed9dfdc721"
+    },
+    {
+      "oldId": "65414482-1e71-4062-833b-a7298ff693f0",
+      "oldTitle": "單車政策需要連接",
+      "title": "工場裡的工具影子板",
+      "language": "chinese",
+      "category": "工作",
+      "style": "Explanatory",
+      "min": 505,
+      "max": 530,
+      "verification": "light",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://asq.org/quality-resources/quality-glossary",
+          "note": "美國品質學會把影子板界定為顯示工具歸位位置及缺少工具的視覺管理工具。"
+        }
+      ],
+      "content": "工具影子板是一塊把工具輪廓清楚標出的掛板。扳手、鉗子、鎚子和量尺各有固定位置，工具取走後，底下的影子立即露出，遠看也能知道少了哪一件。整齊牆面只是表象，影子板把尋找與核對變成簡單的視覺動作。設計前要先觀察實際工作：哪些工具每日使用，哪些只在特定工序出現，拿取方向是否順手，重物掛得太高會不會增加風險。若把所有物件擠在同一板上，輪廓即使漂亮，也可能妨礙操作。\n\n常用工具通常靠近工作位置，左右順序可配合使用流程；外形相似的套筒或鑽頭，除輪廓外還要標上尺寸。掛鉤須承受工具重量，尖端不可突出到容易碰撞的位置。製作輪廓時，可先把工具放在板上試排，確認手掌有足夠空間握取，再描出形狀。顏色應與工具形成對比，文字保持簡短。完成後，使用者需要共同確認每件工具的家，而不是由不熟悉工序的人單方面安排。\n\n工作開始前，一眼可看出是否齊全；結束清潔後，也能按空出的影子逐件歸還。若某工具經常留在另一張工作臺，這不一定只是個人疏忽，也可能表示掛板位置或數量不合實際，需要調整。損壞工具應另設待修位置，避免掛回原位造成它已可使用的錯覺。新增工具時，影子板也要同步更新，不能在旁邊隨意加釘。管理得好的影子板不必貼滿提醒字句，空白輪廓本身就是最直接的訊息。",
+      "newId": "5994f0bd-638c-54c9-bcc1-d7d5579b1cf1",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國品質學會把影子板界定為顯示工具歸位位置及缺少工具的視覺管理工具。 https://asq.org/quality-resources/quality-glossary",
+      "sha256": "b450121a6cf99c5b6eef46eb1235a590ab2256029eabde861910a61e1a403ef3"
+    },
+    {
+      "oldId": "f0b6da8c-ad90-4428-9a1f-b1deb6b42f4a",
+      "oldTitle": "土地供應與公共利益",
+      "title": "攝影檔案的命名規則",
+      "language": "chinese",
+      "category": "工作",
+      "style": "Explanatory",
+      "min": 560,
+      "max": 580,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [],
+      "content": "攝影檔案若一直保留相機產生的流水號，短期看來省事，累積幾次拍攝後便很難分辨內容。建立命名規則時，先決定哪些資料真正有助搜尋，例如拍攝日期、項目名稱、地點代碼、攝影者縮寫與影像次序。欄位不宜過多，否則每次輸入容易出錯；也不應把只存在幾天的處理狀態寫進永久檔名。日期採用年、月、日順序，並固定補足位數，檔案按名稱排列時便自然保持時間先後。不同欄位之間可用連字號或底線分隔，但整個團隊要選定一種，避免同一資料夾出現多套寫法。項目名稱宜短而明確，預先列出常用代碼，少用各人自行理解的縮寫。流水號需預留足夠位數，例如從零零一開始，這樣第十張不會排在第二張之前。原始檔與輸出檔可共用核心名稱，再於末端加入版本用途，但不要覆寫相機原檔。若同一畫面同時有原始格式和預覽格式，相同核心名稱能顯示它們的關聯。檔名應避開斜線、冒號等在不同系統可能具有特殊用途的符號，也不要依賴顏文字或空格數量來區分版本。拍攝結束後，先把整批檔案複製到工作位置，確認數量和備份，再進行批次改名。改名前保留一份原始名稱對照表，萬一排序或規則設定有誤，仍可追查來源。刪除影像造成號碼中斷並不要緊，不必為了連號而重命名其後所有檔案。命名只是管理的一層，資料夾結構、關鍵字和備份仍有各自作用。規則完成後，可用幾個真實情境測試：只知道月份能否找到照片，只知道項目能否縮小範圍，兩位攝影者同日工作會不會產生重名。",
+      "newId": "8e9a8c9a-0e3b-5839-bd4c-44f30cdd04e7",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "6060c74dd1eb3d5081cb2b70b8e5ecb6858b0d9c03d9cf34bbfd8705655d9c7a"
+    },
+    {
+      "oldId": "dcdb1e81-2768-49d8-bcf0-b5c2dbe9bc88",
+      "oldTitle": "土地資料應該透明",
+      "title": "間隔練習為何有用",
+      "language": "chinese",
+      "category": "教育",
+      "style": "Explanatory",
+      "min": 505,
+      "max": 525,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/17576148/",
+          "note": "實驗研究比較不同提取間隔，顯示分散提取對較長期保留有利。"
+        }
+      ],
+      "content": "學完一組內容後立刻重看幾遍，當下往往覺得十分熟悉，但這種流暢感不一定維持很久。間隔練習把重複接觸分散到不同時間，讓每次回來時都需要重新辨認線索、整理關係，甚至費力想起答案。正是這段不太順暢的提取過程，使學習者知道哪些部分真的記住，哪些只是剛看過所以眼熟。有效做法會根據目標安排多次短練習，間隔也不宜一味拉長。例如今天初學十個詞，稍後不看筆記自測，翌日再測一次，幾天後把仍會混淆的詞放進新題目。答錯時立即核對並改正，比反覆猜測可靠；答對的內容也可在更長間隔後再次出現。間隔期間學習其他材料，舊內容回來時，線索不再與原先頁面完全相同，學習者便要從記憶中重建答案。\n\n這與把同一道題連做十次不同，後者常靠短暫次序或手勢完成，看似快速，卻未必能在新情境使用。安排間隔時，可把難項目提早重現，熟練項目延後，避免每一項都套用同一日程。練習也不只限於閱讀：合上書寫摘要、用卡片回答、解一題相近例子，或向別人解釋步驟，都能提供提取機會。每次時間不必很長，關鍵是要跨越幾個時段，並保留回饋。若考核在數星期後，所有複習都擠在前一晚，便缺少檢查長期保留的機會。間隔練習的價值，在於把遺忘變成訊號。記憶經過多次離開與返回，才逐步變得穩定。",
+      "newId": "f06cce27-9c7e-547a-9905-2dcadd38c5f3",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 實驗研究比較不同提取間隔，顯示分散提取對較長期保留有利。 https://pubmed.ncbi.nlm.nih.gov/17576148/",
+      "sha256": "cc99fac0679bbf122e8054f99bb50204441d943f2da9664d067551cde036b40f"
+    },
+    {
+      "oldId": "8f2076a5-b029-44b2-8675-228665161959",
+      "oldTitle": "城市需要保留空白",
+      "title": "從錯字建立個人字表",
+      "language": "chinese",
+      "category": "教育",
+      "style": "Everyday-life",
+      "min": 510,
+      "max": 530,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [],
+      "content": "抄錯一個字時，立即擦掉再寫，常常只留下短暫印象。若同一個錯誤反覆出現，不妨建立一份個人字表，把它從尷尬的小失誤變成可觀察的練習材料。字表不必收錄所有生字，只記自己真正寫錯、讀錯或用錯的項目。每項先寫正確字形，再記下當時的錯法、出現句子和容易混淆的原因。有些字是部件位置顛倒，有些是同音替代，也有些只是筆畫太接近；原因不同，練習方式也應不同。遇到形近字，可把兩字並排，圈出差異部位，再各寫一個自然詞語。若問題在讀音，就加上粵音、拼音或自己熟悉的標記，但不要讓注音取代閱讀整個詞。對容易用錯的詞，記一個簡短情境比抄十遍定義更有幫助。隔幾天遮住答案，只看句子填字；答對後不要立刻刪去，可在旁邊畫一個小記號，過一星期再測。連續幾次都能在不同句子正確使用，才把它移到已掌握的一頁。新錯字太多時，先選最常見的五至十個，否則厚厚一疊會使人不知從何開始。紙本小冊方便隨手翻閱，電子表格則可按錯誤類型排序，兩者沒有必然高下，重點是能持續更新。偶爾回看舊頁，還會發現自己的錯誤模式，例如總是忽略某個偏旁，或在快速輸入時選中第一個同音字。這些模式能提醒下一次校對要看甚麼。個人字表像一張只為一個人繪製的路線圖；它不收藏羞恥，只標出最常走錯的岔口。",
+      "newId": "4329747a-5b82-5fed-ab40-6eb657bedfcb",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "572befae4761e693ab671565193bfd0f0d5f248152bf7a2eb6da48a5435422c5"
+    },
+    {
+      "oldId": "f952efde-16af-41b7-9d0b-b495724d4aa0",
+      "oldTitle": "基層醫療的重要",
+      "title": "用摺紙理解幾何",
+      "language": "chinese",
+      "category": "教育",
+      "style": "Explanatory",
+      "min": 510,
+      "max": 535,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://ocw.mit.edu/courses/6-849-geometric-folding-algorithms-linkages-origami-polyhedra-fall-2012/pages/calendar-and-notes/",
+          "note": "麻省理工開放課程把摺紙用於幾何構作、摺線角度、剛性與展開問題。"
+        }
+      ],
+      "content": "正方形紙不需要刻度，也能成為幾何工具。先把左右兩邊完全重合，壓出中央摺線；攤開後，可以看到摺線把紙分成兩個相等長方形，而且與上下邊垂直。再把一個角摺到另一個角，得到的對角線把正方形分成兩個全等三角形。這些關係不只靠眼睛猜測，重合本身便提供驗證：兩段邊若摺後對齊，長度相等；兩個角若疊在一起，角度相等。學習對稱時，可在紙的一側畫一點，沿摺線合起後輕壓，觀察它在另一側對應的位置。摺線上各點到紙上那一點及其反射點的距離相同，因此這條線可視為兩點連線的垂直平分線。若把紙角摺到一條指定邊，留下的摺痕又會把位置、距離和角度連在一起。\n\n較複雜的模型由許多山摺與谷摺組成，攤平後成為摺痕圖。交會點周圍的角有確定關係；某一條線稍微偏斜，其他面便可能無法平整疊合。學生可先預測哪幾個角會相等，再實際摺合檢查，也可量度摺前與摺後的圖形，分辨紙面上的長度是否改變。紙張從平面變成立體時，各個面大致保持原形，主要在摺線處轉動，這使多面體、角度與空間想像同時變得可觸摸。即使一次摺錯也有價值：攤開比較兩條摺線，偏差會直接顯現在不對稱的邊角上。摺紙讓幾何關係離開公式表，在手工過程中留下可見痕跡。手指沿着摺線移動時，平分、垂直、全等與對稱不再只是頁面的詞語，而成為一張紙如何準確重合的經驗。",
+      "newId": "3aaf2448-6c9c-52aa-ad55-1dc5971fd1d7",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 麻省理工開放課程把摺紙用於幾何構作、摺線角度、剛性與展開問題。 https://ocw.mit.edu/courses/6-849-geometric-folding-algorithms-linkages-origami-polyhedra-fall-2012/pages/calendar-and-notes/",
+      "sha256": "a7a5dca03fc59db8332ec24ccd589c4d0866c02cabb474a931ca204cc2b48f75"
+    },
+    {
+      "oldId": "d5418e83-5476-47f4-adca-3b235c2a93b1",
+      "oldTitle": "基建投資的真正成本",
+      "title": "聽寫與聲音記憶",
+      "language": "chinese",
+      "category": "教育",
+      "style": "Explanatory",
+      "min": 500,
+      "max": 518,
+      "verification": "light",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.cambridge.org/core/services/aop-cambridge-core/content/view/5C6C06854BCF8F1839ED82B4EFD15358/S1366728917000141a.pdf/learning-written-word-vocabulary-in-a-second-language-theoretical-and-practical-implications.pdf",
+          "note": "縱向研究探討短期次序記憶、執行控制與第二語言詞語聽寫表現的關聯。"
+        }
+      ],
+      "content": "聽寫表面上是把聽到的句子寫下來，實際上同時動用了辨音、暫存、分段和書寫。聲音一過便消失，學習者要在短時間內保留詞語次序，還要判斷相近音節、標點停頓與句子結構。若一開始便追逐每個字，手速稍慢就會錯過後半句；若只記大意，又可能把原來的次序改掉。練習時可先聽完整一句，不急着落筆，試着辨認它有幾個意義小段。第二次播放時，先寫每段的關鍵詞或首字，保留聲音骨架；稍後再補足連接詞與細節。\n\n這種做法把有限的暫存空間分配給較有用的線索，同時避免憑空猜句。完成後要對照原文，把錯誤分開記錄：是根本沒有聽見、聽見卻混淆、記錯次序，還是知道讀音但寫不出字形。四種情況看來都是錯字，下一步練習卻不同。辨音問題可重播短片段，比較聲音差異；次序問題可把句子切成較短單位，再逐漸延長；字形問題則另做詞語練習。\n\n初學時稍作停頓有助分析，熟悉後應回到自然節奏，因為連續語流中的輕重、連讀與停頓，本來就是訊息的一部分。自己朗讀答案能再檢查一次，看看寫出的句子是否與記得的聲音吻合。聽寫成績不只反映耳朵靈不靈，也反映如何管理轉瞬即逝的材料。每次回看失誤，學習者便更清楚自己在哪個環節失去訊息。久而久之，原本一閃而過的聲音不會停留更久，接住它的方法卻會變得更有次序。",
+      "newId": "be2d7ba4-91ec-5cad-adb9-3ddb3445059a",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 縱向研究探討短期次序記憶、執行控制與第二語言詞語聽寫表現的關聯。 https://www.cambridge.org/core/services/aop-cambridge-core/content/view/5C6C06854BCF8F1839ED82B4EFD15358/S1366728917000141a.pdf/learning-written-word-vocabulary-in-a-second-language-theoretical-and-practical-implications.pdf",
+      "sha256": "5e1c6c30feade549248005db2a226cdcfadfc3ed60e0f647523ce2928d859995"
+    },
+    {
+      "oldId": "d4b38707-f849-4368-ba33-c58722df3e15",
+      "oldTitle": "填海不是單一答案",
+      "title": "地圖比例尺的練習",
+      "language": "chinese",
+      "category": "教育",
+      "style": "Science/technical",
+      "min": 520,
+      "max": 540,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.ordnancesurvey.co.uk/mapzone/map-skills/measuring-distance/page-one",
+          "note": "英國地形測量局說明利用地圖比例尺把圖上量度換算為實際距離。"
+        }
+      ],
+      "content": "地圖把廣闊地方縮到紙面，比例尺就是縮小時遵守的關係。若標示一比二萬五千，意思是圖上一個長度單位對應地面二萬五千個相同單位。用厘米量度時，圖上一厘米代表地面二萬五千厘米，也就是二百五十米。練習先保持單位一致，再作換算；答案留到最後核對。\n\n選兩個路口，用直尺量出圖上直線距離，乘以比例尺分母，最後把厘米改成米或公里。完成後，可用圖邊的比例尺橫線再檢查一次。直路容易量，彎曲山徑則不能只連起兩端。可把一條不具彈性的細線沿路徑逐段貼合，在每個轉彎輕按定位，然後拉直細線，放到比例尺旁讀取距離；也可用紙條逐小段作記號。\n\n分段越細，越能跟隨彎位，但地圖本身的線寬與量度誤差仍然存在，所以結果應視為合理估計。坡道還帶來另一個差別：地圖通常呈現水平位置，實際沿斜坡行走的距離可能較長。比較不同比例尺時，同樣一厘米代表的實際距離不同。大比例尺地圖顯示範圍較小，細節通常較多；小比例尺地圖涵蓋範圍較廣，細小路徑可能被簡化。\n\n可把同一段河流放在兩張地圖上量度，觀察簡化線條如何影響結果。設計練習時，加入反向問題也很有用：已知實際距離一公里，要求在指定比例尺上畫出相應線段。這迫使學習者理解除法，而非只套用乘法。答案寫完後，做一次常識檢查：兩個相鄰街口若算成數十公里，通常是單位或小數位置出錯。",
+      "newId": "c162acc8-76a0-54f3-b6f1-619ae13ca641",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 英國地形測量局說明利用地圖比例尺把圖上量度換算為實際距離。 https://www.ordnancesurvey.co.uk/mapzone/map-skills/measuring-distance/page-one",
+      "sha256": "fd6864c5c6a4f4fbd448954cf578689137f7229fdecbfd6dddb01dbe17e4645d"
+    },
+    {
+      "oldId": "eb3885a5-fa9f-4db8-8ced-7092153ad201",
+      "oldTitle": "居家安老的支援網",
+      "title": "樂器慢練的一小節",
+      "language": "chinese",
+      "category": "教育",
+      "style": "Narrative",
+      "min": 500,
+      "max": 512,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [],
+      "content": "排練室的鐘走到六時，子言仍停在同一小節。那四拍只有八個音，快奏時卻總在第三拍打結：左手換把太遲，右手的弓也會忽然加重。他先把節拍器關掉，鉛筆在樂譜上圈出換指位置，然後只拉第三拍前後的三個音。第一次，第二個音偏高；第二次，弓毛擦到旁弦；第三次終於乾淨，但手腕緊得發酸。他把琴放下，甩鬆手指，再以幾乎像說話的速度重來。每按下一個音，他都先感覺指尖落點，再讓弓緩緩移動。原本連成一團的錯誤，被慢速拆成幾個可辨認的動作。他發現問題不在困難的最高音，而在前一個看似簡單的空弦；右手提早換弓，身體便趕着補回失去的時間。子言改練那個交接，先不用左手，只在兩條弦之間移動弓。\n\n動作穩定後，才把音符逐個加回。窗外天色暗下，走廊有人關門，他把節拍器調到很慢，連續拉了四次。每次完成便停一拍，確認肩膀沒有抬起。速度逐格增加時，他只在動作仍然輕鬆的範圍前進；一旦第三拍重新含糊，就退回上一格。半小時後，那一小節還未達到演出速度，卻不再像一道撞不開的牆。離開前，他把成功的速度寫在譜邊，也記下明天由哪三個音開始。第二天合奏，老師示意從前一頁接入。音樂流到那四拍時，子言沒有屏息，也沒有衝快，手指依照昨晚排好的次序落下。一小節過去了，沒有人特別留意。",
+      "newId": "2a145cdf-732f-5372-afb5-e1e9bebf3fd4",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "4e55e958cd3d0f317646b5890c9c4948cd9529cb22ca1c3db079641088ce3cd8"
+    },
+    {
+      "oldId": "5454d3a1-213c-41d7-b580-55d87767230f",
+      "oldTitle": "工時與生產力",
+      "title": "電腦如何壓縮一張照片",
+      "language": "chinese",
+      "category": "科技",
+      "style": "Science/technical",
+      "min": 510,
+      "max": 530,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.loc.gov/preservation/digital/formats/fdd/fdd000017.shtml",
+          "note": "美國國會圖書館格式說明記錄標準 JPEG 的區塊、離散餘弦轉換與有損壓縮特性。"
+        }
+      ],
+      "content": "數碼照片由大量像素組成，每個像素保存顏色與亮度資料，直接逐一記錄會佔用不少空間。壓縮程式先尋找其中可用較簡短方式表達的規律。以常見的有損照片格式為例，影像會被分成小區塊，色彩資料也可能採用較適合人眼感受的表示方法。人眼通常對細微亮度變化較敏感，對某些快速變化的色彩細節較不敏感，程式便利用這種差異減少部分資料。\n\n區塊內的像素不只逐點保存，而會經數學轉換，改寫成由平緩變化到細密變化的一組成分。大片天空或牆面主要由低頻成分描述，草葉、髮絲和砂石則包含較多高頻細節。接着進行量化，把某些數值以較粗的級距記錄；這一步會捨去資料，也是檔案變小後不能完全還原的主要原因。量化結果中常出現許多零和重複模式，之後可再用無損編碼縮短表示。選擇較高品質時，捨去的細節較少，檔案通常較大；壓縮較強時，平滑區可能出現色帶，物件邊緣也可能看見方塊或模糊光暈。\n\n壓縮涵蓋的不只照片尺寸；像素寬高不變，檔案仍可因編碼方式而縮減。相反，把像素數減少也能降低容量，卻是另一個處理步驟。保存重要原稿時，通常會保留未經反覆有損處理的版本，另輸出較小副本供傳送或瀏覽。一張照片能從龐大資料變成輕巧檔案，是因為程式把規律留下，把較不顯眼的差異近似化，再把剩餘數值排列得更有效率。",
+      "newId": "b4760321-bccf-50f1-835f-a1b0ca594c0a",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國會圖書館格式說明記錄標準 JPEG 的區塊、離散餘弦轉換與有損壓縮特性。 https://www.loc.gov/preservation/digital/formats/fdd/fdd000017.shtml",
+      "sha256": "febcba33676398988ab2e42de86698242972c872544a8b6fedca3ddc7e440859"
+    },
+    {
+      "oldId": "b819fde9-4f1d-470c-b2b2-ba2107cba3bc",
+      "oldTitle": "房屋不只是單位數目",
+      "title": "資料庫索引像書後索引",
+      "language": "chinese",
+      "category": "科技",
+      "style": "Science/technical",
+      "min": 580,
+      "max": 600,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.postgresql.org/docs/current/indexes.html",
+          "note": "PostgreSQL 官方文件說明索引可加快特定資料列查找，但會增加整體維護負擔。"
+        }
+      ],
+      "content": "翻查一本厚書中的特定名詞，若沒有書後索引，只能從頭逐頁找；索引把常用詞按次序列出，旁邊標示頁碼，讀者先找到詞，再跳到內容所在。資料庫索引也提供相似捷徑。資料表可能有數百萬列，查詢某個編號時，逐列比較稱為掃描全表；若該欄建立了合適索引，資料庫可沿着整理好的結構縮小範圍，再前往符合條件的資料列。常見的樹狀索引會保持鍵值有序，因此既適合找某一個值，也可處理一段範圍。複合索引同時包含多個欄位，順序十分重要，就像書後索引先按主題、再按人物排列，若只知道第二層資料，未必能有效利用前面的次序。\n\n索引並不是資料本身的第二份完整副本，它保存鍵值與定位所需資訊，但仍會佔用儲存空間。每當新增、刪除或修改相關資料，索引也要更新，所以索引越多，寫入工作通常越重。建立索引前要看真實查詢方式：經常用於篩選、連接或排序的欄位可能受益，只存少量不同值的欄位則未必值得單獨建立。查詢規劃器會估計使用索引還是直接掃描較快。\n\n若條件會取回表中大部分資料，逐頁讀取可能比在索引與資料之間反覆跳轉更有效率。書後索引可能因正文改版而頁碼失準，資料庫索引也需要系統維持一致；不過這項工作通常由資料庫引擎在交易中處理。使用者看到查詢很快返回，背後其實是預先付出了整理與維護成本。好的索引設計會找出真正需要迅速抵達的路徑，無須為每一欄都添捷徑，並接受每條捷徑都有建造、更新與佔位的代價。當資料量增長時，這種取捨會比單純增加索引數目更重要。",
+      "newId": "5725976e-7c3d-5868-a930-6409528e8fdd",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: PostgreSQL 官方文件說明索引可加快特定資料列查找，但會增加整體維護負擔。 https://www.postgresql.org/docs/current/indexes.html",
+      "sha256": "468fb2803a9315af148537ccb02eb999345a2d9d04f9fe3e2734b9cae9321037"
+    },
+    {
+      "oldId": "772d57a5-8dfb-4373-8d29-4a430234dcc2",
+      "oldTitle": "教師時間也是教育資源",
+      "title": "感應器如何量度溫度",
+      "language": "chinese",
+      "category": "科技",
+      "style": "Science/technical",
+      "min": 515,
+      "max": 540,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.nist.gov/pml/sensor-science/thermodynamic-metrology/mercury-thermometer-alternatives/mercury-thermometer-5",
+          "note": "美國國家標準與技術研究院說明熱電偶把溫差造成的微小電壓轉換成溫度。"
+        }
+      ],
+      "content": "電子感應器會量度某種隨溫度改變的物理量，藉此推知溫度，再依校準關係換算。熱電偶由兩種不同導體組成，測量端與參考端存在溫差時，電路會產生微小電壓；讀出裝置量得電壓後，結合參考端狀況，換算成溫度。電阻式感應器則利用材料電阻隨溫度變化的特性，向元件施加很小的測量電流，再由電壓和電阻關係求值。\n\n熱敏電阻的變化通常較大，適合某些有限範圍；鉑電阻元件穩定，常用於較精確量度。無論哪一類，感應部分與被測物之間都需要熱交換，所以讀數不會在接觸瞬間完全穩定。探頭有保護套時較耐用，反應也可能較慢；探頭尺寸、安裝深度、氣流和表面接觸，都會影響它代表哪一處溫度。\n\n若用探頭量一杯水，只碰到杯壁或停在水面附近，結果可能與液體中央不同。電線也不只是延長用途，某些感應方式要使用合適導線與接法，否則額外電阻或接點會帶來偏差。電子電路把細微信號放大、數碼化，再套用係數，螢幕才顯示熟悉的度數。\n\n校準就是把儀器讀數與可靠標準在若干溫度點比較，記下偏差和不確定度；它不能保證所有環境永遠沒有誤差，卻能說明量度在指定條件下有多可信。長期使用後，元件老化、震動或接線改變，可能令關係漂移，因此重要量度要定期檢查。感應器把熱狀態變成電壓、電阻或其他訊號，再由數學關係還原為溫度。",
+      "newId": "887f2f7e-560b-5bda-8129-45cd51810b35",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國家標準與技術研究院說明熱電偶把溫差造成的微小電壓轉換成溫度。 https://www.nist.gov/pml/sensor-science/thermodynamic-metrology/mercury-thermometer-alternatives/mercury-thermometer-5",
+      "sha256": "5d2bdad08d791d136a386d2fb5eb3256fef949475d181b570f94850fcdbdc8b5"
+    },
+    {
+      "oldId": "aa16c7c7-04bb-40eb-ba86-cadd17e8a7d1",
+      "oldTitle": "教育不應只追逐分數",
+      "title": "網絡封包的短途旅行",
+      "language": "chinese",
+      "category": "科技",
+      "style": "Science/technical",
+      "min": 525,
+      "max": 550,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.rfc-editor.org/info/rfc1812/",
+          "note": "網際網路標準文件說明路由器轉送資料報、目的位址與存活時間欄位的處理。"
+        }
+      ],
+      "content": "當電腦傳送一小段資料，內容通常分成帶有標頭的封包，逐段穿過網絡。標頭像貼在包裹外的資料卡，包含來源、目的地及協定所需資訊；實際文字、影像片段或其他內容則放在負載部分。封包先交給本機網絡介面，再送往附近的交換設備。若目的裝置在同一網段，路程可能很短；若在遠處，封包會交給路由器。路由器讀取目的位址，查自己的路由表，選擇下一個出口。它通常不需要知道整段旅程，只要把封包推向較合適的下一站。每經一個轉送節點，網際協定標頭中的存活時間值會減少，避免封包因錯誤路徑無限繞圈；數值耗盡時，封包會被丟棄。\n\n沿途各段網絡容量不同，封包可能排隊，也可能因壅塞、連線問題或檢查失敗而遺失。網際協定本身主要負責尋址與轉送，不保證每一包都按次序抵達。若上層使用可靠傳輸方式，接收端會依序號重組資料，發現缺口後促使遺失部分重傳；有些即時用途則寧可容許少量遺失，也不等待較舊資料補回。同一訊息的封包不一定全走相同路線，路由狀況改變時，後發封包可能先到。抵達目的裝置後，網絡層確認位址，把負載交給相應傳輸協定，再依連接埠送到正在使用的程式。對使用者而言，按鍵與回應幾乎連在一起；對封包而言，那是一連串短決定：封裝、排隊、查表、轉送、檢查和重組。網絡的長距離通訊，正是由許多這樣的短途接力拼成。",
+      "newId": "0c46d93d-211f-5455-b237-53434e4e4aeb",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 網際網路標準文件說明路由器轉送資料報、目的位址與存活時間欄位的處理。 https://www.rfc-editor.org/info/rfc1812/",
+      "sha256": "145f72dad5f2181db4ea9a77105e9a75cd35a6d73d645f60ad4b50f1648607c4"
+    },
+    {
+      "oldId": "e83d37bf-38cd-4c64-9d4f-8d3de9726779",
+      "oldTitle": "數碼學習的真正門檻",
+      "title": "字型如何顯示在螢幕上",
+      "language": "chinese",
+      "category": "科技",
+      "style": "Science/technical",
+      "min": 525,
+      "max": 545,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://freetype.org/freetype2/docs/glyphs/glyphs-2.html",
+          "note": "FreeType 官方文件說明字形輪廓、縮放、像素網格對齊與點陣化。"
+        }
+      ],
+      "content": "螢幕顯示文字時，程式先把字符編碼交給字型系統，尋找對應字形。許多可縮放字型以線段和曲線描述外框，並附有寬度、基線、字距等度量。排版引擎先決定每個字放在哪裏，處理換行、組合符號和相鄰字距，再把指定大小交給繪製器。外框使用字型本身的座標，顯示前要按螢幕解析度縮放到像素網格。理想曲線常穿過像素中間，若只把碰到的像素全部塗黑，小字會出現鋸齒，粗細也不均。點陣化程序會計算曲線覆蓋每個像素的程度，以不同明暗混合前景與背景，形成較平滑的邊緣，這就是常見的反鋸齒效果。小尺寸還可能使用微調資訊，把重要筆畫對齊網格，避免兩條原本等寬的直線在螢幕上變成一粗一幼。\n\n這種調整要在清晰與保持原設計之間取捨；字放大後，像素限制減少，外框可更接近原來形狀。繪製器完成單個字形後，系統按排版位置把它們合成到畫面。若所選字型缺少某個字符，系統可能轉用後備字型，因此同一句中偶爾會出現風格或高度稍異的字。彩色圖符、點陣字和可變字型還有各自資料，但都要經過選形、定位和繪製。畫面縮放或螢幕密度改變時，系統通常重新產生適合的新點陣，無須把舊小圖硬拉大。使用者看到的是連續筆畫，螢幕實際亮起的仍是一格格像素。字型技術的工作，便是把抽象輪廓與排版規則轉成有限網格中的明暗分布，讓大小不同、形狀各異的文字仍保持可讀和一致節奏。",
+      "newId": "08f13101-9ccc-5cee-a894-08255f35c0dd",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: FreeType 官方文件說明字形輪廓、縮放、像素網格對齊與點陣化。 https://freetype.org/freetype2/docs/glyphs/glyphs-2.html",
+      "sha256": "1ebd823b975e7461b71e7cc5ecefc421afbefae2f208eb2a5c7cc65a9b274081"
+    },
+    {
+      "oldId": "71ba19dd-0c82-4133-99a6-57ebaee1b2b0",
+      "oldTitle": "數碼服務不能留下任何人",
+      "title": "機械臂如何重複定位",
+      "language": "chinese",
+      "category": "科技",
+      "style": "Science/technical",
+      "min": 500,
+      "max": 518,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.nist.gov/el/intelligent-systems-division-73500/calibration-and-registration-tools",
+          "note": "美國國家標準與技術研究院區分機械人準確度與重複性，並說明校準和座標對準。"
+        }
+      ],
+      "content": "機械臂要把工具反覆送到同一位置，控制器先要知道每個關節轉了多少。馬達帶動關節，編碼器回報角度，控制程式再利用連桿長度與關節關係，推算末端工具在空間中的位置和方向。示教時，操作員把機械臂移到目標點，系統記錄一組關節值；之後執行同一路徑，便命令各軸再次接近那些數值。重複定位着重多次返回的一致程度，不完全等同於絕對準確。機械臂可能每次都穩定落在目標旁邊一毫米，重複性很好，位置卻仍有固定偏差。校準可量度實際位置與模型位置的差異，修正關節零點、連桿參數或工具座標。即使完成校準，負載重量、移動速度、關節間隙、結構彈性與溫度變化仍可能影響結果。末端夾着較重工件時，手臂變形與空載不同；從相反方向接近同一點，也可能因傳動間隙產生細小差別。精密工序會規定一致的接近方向、速度和負載，並在工作區內選取多個點測試。外部相機、量度尺或雷射追蹤設備可提供獨立參考，讓人比較命令位置與實際軌跡。若工具曾更換，末端中心點也要重新確認，否則關節移動雖相同，刀尖或夾爪位置仍會改變。控制器在運行中不斷讀取回饋，調整馬達輸出，使各軸沿預定曲線前進。穩定重複由關節感測、幾何模型、機械狀態與校準共同協調維持，單憑記住一個座標仍然不夠。",
+      "newId": "861c766e-3bd8-50fd-b21a-0f59d2400b0c",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國家標準與技術研究院區分機械人準確度與重複性，並說明校準和座標對準。 https://www.nist.gov/el/intelligent-systems-division-73500/calibration-and-registration-tools",
+      "sha256": "5d534923d6f8d4bffbca8026ec1b65e3f053cdd1323b99c7a829c2cae30bbfa2"
+    },
+    {
+      "oldId": "84c2652d-f058-495f-a152-5a4ce12907ba",
+      "oldTitle": "棕地發展的先後次序",
+      "title": "陶器入窰前的準備",
+      "language": "chinese",
+      "category": "文化",
+      "style": "Cultural/history",
+      "min": 525,
+      "max": 550,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.vam.ac.uk/articles/ceramics-a-risky-business",
+          "note": "維多利亞與艾伯特博物館說明黏土入窰前可回收重塑，燒成後會永久轉化為陶瓷。"
+        },
+        {
+          "url": "https://blueprintkentucky.mgcafe.uky.edu/community-arts/publications/clay-recycling",
+          "note": "肯塔基大學工作室指南區分濕泥、皮革硬度、全乾坯體與燒成陶器各階段。"
+        }
+      ],
+      "content": "陶坯離開拉坯機或工作板後，距離入窰仍有一段細緻準備。新成形的泥含水較多，質地柔軟，立即搬動容易扭曲；通常先讓它均勻變乾，到了可拿起又能修削的階段，再整理底部、接合把手或刻畫表面。接合處厚薄若差距太大，乾燥速度不同，便可能拉裂，所以附加部件與主體要留意濕度相近。修坯後，作品繼續放在通風但不受強風直吹的位置，較厚部分可暫時覆蓋，讓水分緩慢離開。入窰前的坯體要全乾，觸感不再冰涼，顏色也通常較淺。\n\n未燒黏土此時很脆，搬運要托住底部，不能只捏着杯耳或細頸。工作人員會核對泥種與預定燒成溫度，因為不同泥料不能隨意混在同一條燒成曲線。坯體表面若有鬆散泥屑，宜用合適方法輕輕清理，避免製造揚塵；底部也要保持平穩。第一次燒成常把未上釉坯體變成較硬而仍具吸水性的素坯，之後才便於施釉，但也有陶藝家採用單次燒成，流程並非只有一種。\n\n裝窰時，窰板與支柱先檢查穩固，作品按高度和形狀安排，不能讓重量壓在脆弱邊緣。素燒坯體在某些情況可較靠近，釉燒作品則要防止釉面互相接觸或黏到窰板。作品清單、泥料、釉料與擺放位置若有記錄，出窰後便能比較結果。火門關上之前，泥仍是可以浸水回收的材料；經過足夠高溫後，變化便不可逆轉。正因如此，入窰前最後一次查看格外安靜而重要：確認乾燥、結構、材料和位置，然後才把偶然性與火候交給燒成階段。",
+      "newId": "f076694a-b04c-591e-918f-ea224d85e50b",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 維多利亞與艾伯特博物館說明黏土入窰前可回收重塑，燒成後會永久轉化為陶瓷。 https://www.vam.ac.uk/articles/ceramics-a-risky-business | 肯塔基大學工作室指南區分濕泥、皮革硬度、全乾坯體與燒成陶器各階段。 https://blueprintkentucky.mgcafe.uky.edu/community-arts/publications/clay-recycling",
+      "sha256": "70ddc82a586260fd2c6431f01c234a40b16aa40313d0237030f4b8b4b59190f8"
+    },
+    {
+      "oldId": "d35e0383-9c94-42f4-b4ca-c021591040c3",
+      "oldTitle": "極端天氣下的城市韌性",
+      "title": "木版年畫的層層套色",
+      "language": "chinese",
+      "category": "文化",
+      "style": "Cultural/history",
+      "min": 520,
+      "max": 540,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://dfzb.suzhou.gov.cn/dfzb/szdq/202307/5f8473123cc3488e8275cc7233514186.shtml",
+          "note": "蘇州市地方志辦公室介紹桃花塢木版年畫一版一色、先印墨線版再換色版逐層套印，並展示套色流程。"
+        },
+        {
+          "url": "https://www.britishmuseum.org/collection/object/A_1981-0403-0-5",
+          "note": "大英博物館館藏記錄確認中國年畫以木版在紙上施墨與設色。"
+        }
+      ],
+      "content": "木版年畫的色彩，往往由線版和多塊色版逐次印成。畫稿確定後，工匠把主要輪廓轉到木面，刻去空白部分，留下可施墨的凸線。線版先印出人物衣紋、花葉邊沿和表情，像為後續色面搭起骨架。桃花塢木版年畫採用一版一色的套印方法；紅、黃、綠等顏色各有相應色版，印完墨線後依次換版覆印。\n\n分色時，工匠要判斷哪片衣袖屬於哪一版，也要保留輪廓間的細小空位。色版也從同一畫稿分出，刻版者需要認清色面與墨線的關係。未正式印一批之前，試印可顯示線條是否缺損、色塊是否偏離；發現問題，便回到相應木版修整。這種來回檢視令畫稿、刻版和印刷互相校正。刷色厚薄會改變色面深淺，紙張吸水快慢亦令成品留下差異。\n\n每換一版，紙都需回到準確位置。若紙角偏移，眼睛、衣邊和背景便會露出白縫或形成重影；套印是否整齊，可從色塊與墨線的交界看出。印刷者把顏色均勻刷上版面，覆紙後從紙背施力，讓凸起紋樣接觸紙纖維。完成一色，稍候表面穩定，再進入下一層。\n\n多次落紙之後，原先分散在各版的輪廓和色塊才合成完整圖像。木版能反覆使用，版面磨耗、紙張位置和刷印力度仍會令每張年畫略有差別。熱鬧構圖首先帶來整體喜氣；沿着色塊邊緣細看，還能讀出畫、刻、印三個環節如何接力。眼前同時展開的彩色場景，其實保留了逐版換色、逐層套印的先後次序。",
+      "newId": "f16445a1-ac44-5d08-928e-4c22b56ea217",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 蘇州市地方志辦公室介紹桃花塢木版年畫一版一色、先印墨線版再換色版逐層套印，並展示套色流程。 https://dfzb.suzhou.gov.cn/dfzb/szdq/202307/5f8473123cc3488e8275cc7233514186.shtml | 大英博物館館藏記錄確認中國年畫以木版在紙上施墨與設色。 https://www.britishmuseum.org/collection/object/A_1981-0403-0-5",
+      "sha256": "fa466a27273661d26087806124683c0c9216a17386fb1e5838cf2a01fd942ed6"
+    },
+    {
+      "oldId": "992323f7-1fd4-489d-9659-d7553f9e0d37",
+      "oldTitle": "步行城市的細節",
+      "title": "茶樓點心車的記憶",
+      "language": "chinese",
+      "category": "文化",
+      "style": "Cultural narrative",
+      "min": 495,
+      "max": 510,
+      "verification": "light",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [
+        {
+          "url": "https://www.icho.hk/tc/web/icho/taste_of_ICH_2.html",
+          "note": "香港非物質文化遺產辦事處把茶樓點心製作技藝列入本地飲食文化展覽；來源只用於香港茶樓點心的文化背景，文中外婆與家庭場景為原創虛構敘事。"
+        },
+        {
+          "url": "https://www.lcsd.gov.hk/clpss/tc/webApp/NewsDetails.do?id=18460",
+          "note": "康樂及文化事務署的展覽記錄明列茶樓點心製作技藝為香港飲食文化的非物質文化遺產項目；來源只用於香港茶樓點心的文化背景，文中外婆與家庭場景為原創虛構敘事。"
+        }
+      ],
+      "content": "外婆記得的茶樓，總是先有聲音，後有味道。她說那年一家人擠在靠柱的圓桌旁，瓷杯相碰，水滾的壺蓋輕響，伙計捧着茶壺穿過狹窄通道。點心車從大堂另一端靠近，細輪碾過地磚縫，發出一下一下的咯噔聲。車上疊着竹蒸籠，掌車的姨姨掀起一角，白氣便遮住半張臉。蝦餃薄皮透出淡紅，燒賣頂端留着一點黃，叉燒包裂開柔軟的白口。外婆拿着那張點心紙，聽姨姨逐籠介紹；舅父伸長脖子查看，小孩子則跟着甜點車轉頭。選好一籠，紙上添了一個印記，熱碟隨即放到桌中央。不同點心沒有排好次序。腸粉剛吃完，牛肉球才從遠處轉彎；大人添過兩輪茶，蛋撻仍未經過。\n\n姨姨再推近一點，外婆把茶壺挪開，替蒸籠騰出位置。表弟急着揭蓋，被她按住手，等熱氣散去。那個小動作，她隔了多年仍說得清楚。等待的空檔充滿叫賣、問答和蒸氣，桌邊每個人都在留意下一個轉角。外婆最記得一次錯過馬拉糕。她看見車子駛向另一行桌，便叫舅父去問，舅父卻在半路遇見熟人，站着聊了很久。等他回來，大家已分完最後一隻蝦餃，只留下空蒸籠和一杯暖茶。多年後，外婆偶爾再看見舊式推車，目光仍會跟着它走。她懷念的未必是某一款點心；細輪聲一響，靠柱的圓桌、杯蓋撥開茶葉的動作，以及幾張如今空出的座位，便一同回到眼前。",
+      "newId": "53a7e24b-6f72-51c5-9984-29560e91dfdf",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 香港非物質文化遺產辦事處把茶樓點心製作技藝列入本地飲食文化展覽；來源只用於香港茶樓點心的文化背景，文中外婆與家庭場景為原創虛構敘事。 https://www.icho.hk/tc/web/icho/taste_of_ICH_2.html | 康樂及文化事務署的展覽記錄明列茶樓點心製作技藝為香港飲食文化的非物質文化遺產項目；來源只用於香港茶樓點心的文化背景，文中外婆與家庭場景為原創虛構敘事。 https://www.lcsd.gov.hk/clpss/tc/webApp/NewsDetails.do?id=18460",
+      "sha256": "ffcaf80c184fdf1505a9eaf44985717e5c3a65e5e5e072e0980fe92ad2af663d"
+    },
+    {
+      "oldId": "f6c067cd-0fbf-4d46-9530-87fa968f69a1",
+      "oldTitle": "減廢要從設計開始",
+      "title": "古地圖上的海岸線",
+      "language": "chinese",
+      "category": "文化",
+      "style": "Cultural/history",
+      "min": 505,
+      "max": 525,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.hkmapservice.gov.hk/OneStopSystem/faqMapProductOrdering",
+          "note": "地政總署地圖服務列明現行及部分封存版紙本地圖、數碼正射影像與航空照片的種類，可供核對不同年代地貌記錄的性質。"
+        },
+        {
+          "url": "https://www.nauticalcharts.noaa.gov/learn/nautical-cartography.html",
+          "note": "美國海岸測量辦公室說明海圖會呈現水深、岸線與地標，並因比例尺作取捨及簡化；風暴、沉積和港口設施亦會改變岸線。"
+        }
+      ],
+      "content": "一幅古地圖攤在桌上，海岸線常是最先抓住目光的部分。墨線沿着海灣轉折，忽粗忽幼，小島有時只是一點，淺灘則以短線或淡色表示。它看似在描摹一條固定邊界，其實同時記下測量工具、繪圖尺度與製圖者判斷所能抵達的精度。有些地圖還以測深數字、航道符號或着色方式區分近岸水域。這些記號提醒讀者，海岸線從來不是孤立圖形，而與周圍的水深和用途互相連接。\n\n早期測量多從陸上可見的岬角、山峰和建築物建立位置關係，再把船上觀察接到同一套網絡。遇上曲折水道，少量位置誤差便會改變海灣形狀；縮小比例時，製圖者也必須省略細碎礁石，讓主要輪廓保持清楚。因此，兩幅年代相近的地圖並排，線條未必完全重合。真正的地貌也會移動。河口泥沙堆積，風浪削去鬆軟岸邊，人們築起碼頭或把低窪水面填成陸地，都會令後來的海岸出現在不同位置。\n\n辨讀時若只看一條線，容易把測量差異當成地形變化；若連同圖例、比例、出版年份和附近道路一起比較，變化的層次才會逐一浮現。紙張的摺痕又增添另一種時間。藍色褪成灰綠，鉛筆註記留在港灣旁，某段墨線被手指磨得發亮。古地圖不只是舊日地面的縮影，也是一次觀看與整理空間的成果。今天的人沿着那條線緩慢移動目光，既能追索海陸的前後，也能看見測量者如何把廣闊風景收進有限紙面。",
+      "newId": "416063e6-cacb-538e-8a08-d24ddbd9bb57",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 地政總署地圖服務列明現行及部分封存版紙本地圖、數碼正射影像與航空照片的種類，可供核對不同年代地貌記錄的性質。 https://www.hkmapservice.gov.hk/OneStopSystem/faqMapProductOrdering | 美國海岸測量辦公室說明海圖會呈現水深、岸線與地標，並因比例尺作取捨及簡化；風暴、沉積和港口設施亦會改變岸線。 https://www.nauticalcharts.noaa.gov/learn/nautical-cartography.html",
+      "sha256": "40167ff5c3c9beef3dd4764d56b99df49e9e61c047c088a0582d26a60b754d26"
+    },
+    {
+      "oldId": "dcfa0d17-e079-42e2-8abe-cd654a88fc84",
+      "oldTitle": "無障礙出行是基本需要",
+      "title": "博物館如何為器物造支架",
+      "language": "chinese",
+      "category": "文化",
+      "style": "Cultural/technical",
+      "min": 515,
+      "max": 540,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://b.asp.si.edu/explore/collections/conservation",
+          "note": "史密森尼博物館保護部門說明展陳支架須按個別器物設計、製作及安裝，以支承結構弱點並降低外來風險。"
+        },
+        {
+          "url": "https://exhibits.si.edu/invisible-artwork-the-mount-making-dilemma/",
+          "note": "史密森尼展覽部門記錄客製支架的量度、試裝、拍攝與相容物料選擇流程。"
+        }
+      ],
+      "content": "展櫃裡的器物看來像穩穩停在半空，真正承托它的支架卻往往退到視線之外。製作開始前，保護人員先記錄器物的尺寸、重量、重心和脆弱位置。裂紋、舊修補、活動接縫與容易磨損的表面都要標出，因為支點不能只求牢固，還要避開無法承受壓力的部分。支架師把外形轉成紙樣或立體模型，再試算底座與支臂的位置。\n\n陶碗可能需要環形托座，紡織品需要較大的均勻承托面，形狀不對稱的木雕則可能依靠幾個細小支點分散重量。金屬骨架完成後，接觸器物的位置通常加上合適的緩衝層；所用物料也要經評估，以免日後釋出物質、染色或刮傷表面。支架與器物之間亦要留出足夠空間，既不遮住重要細節，也讓保護人員能從展櫃外察看有沒有滑移、變形或新的裂痕。\n\n第一次試裝只是檢查的開端。工作人員從正面、側面和展櫃高度觀察，確認器物姿態自然，支架沒有把重量推向一處。他們輕微測試穩定度，核對搬運路徑，並拍下支點與扣件的位置，方便日後按同樣方式拆裝。若支臂在燈光下太顯眼，顏色可以調整，但遮掩不能妨礙檢查。\n\n完成的支架像為一件器物量身做成的安靜骨骼。觀眾看到的是輪廓、紋飾和歲月留下的痕跡，背後卻有一連串量度、試驗與取捨。它不替器物增加故事，只在不搶眼的位置托住原有形態，讓展示與保存能在同一個小空間裡取得平衡。",
+      "newId": "ae0b2077-6860-5bfa-a835-8517370af7f0",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 史密森尼博物館保護部門說明展陳支架須按個別器物設計、製作及安裝，以支承結構弱點並降低外來風險。 https://b.asp.si.edu/explore/collections/conservation | 史密森尼展覽部門記錄客製支架的量度、試裝、拍攝與相容物料選擇流程。 https://exhibits.si.edu/invisible-artwork-the-mount-making-dilemma/",
+      "sha256": "3e9b5233ffa1d89194a698595073e5ebacc0ba3783450d72314369d8d32a5cc5"
+    },
+    {
+      "oldId": "149df133-3975-4039-ba3c-0c0335243eb8",
+      "oldTitle": "照顧者也需要被照顧",
+      "title": "竹篾如何編成一盞燈",
+      "language": "chinese",
+      "category": "文化",
+      "style": "Cultural/history",
+      "min": 515,
+      "max": 540,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.ntcri.gov.tw/home/zh-tw/encyclopedia/5933",
+          "note": "國立臺灣工藝研究發展中心說明竹管加工成薄窄竹篾後，可運用粗細、色澤與多種編法形成器物及對比紋理。"
+        },
+        {
+          "url": "https://tcdbdata.ntcri.gov.tw/upload/file/2024-05-13/d4a2b33a-b98d-490d-9537-287d9079d0de/CraftingTaiwan100YearsAndMore_ExhibitionGuidebook.pdf",
+          "note": "國立臺灣工藝研究發展中心展覽圖錄記錄一九六〇年代以竹材共同設計並量產外銷的菠蘿燈罩，直接確認竹編燈罩作為現代竹工藝器形。"
+        }
+      ],
+      "content": "一根竹子要成為燈罩，先從圓管變成可編織的細篾。工匠順着纖維剖開竹身，再逐層分片，削去過厚之處，反覆修整寬度。手指從篾條兩端摸過，可以找到毛刺和厚薄不一的位置。竹篾的粗細、色澤與韌度會影響編紋，材料準備已是造形的一部分。\n\n編織從幾條篾片交疊開始。經線與緯線一上一下穿過，慢慢鎖成網面；挑起與壓下的次序改變，表面便出現斜紋、方格或更密的圖案。製作者一面編，一面轉動作品，查看間距是否忽寬忽窄。遇上急彎時，她放慢手勢，讓竹篾沿着弧線轉向，避免在同一點硬折。網面逐漸圍成中空外形，開口邊緣以回折或另加細篾收束。\n\n國立臺灣工藝研究發展中心的展覽資料記錄，竹材曾被設計成菠蘿燈罩等外銷產品，顯示燈罩也是現代竹工藝曾採用的器形。製作者保留幾段未編竹篾作比較：平直材料的紋理清楚，進入弧面後則隨交點轉向。兩種狀態並排，更容易看懂柔韌竹片如何累積成穩定外形。眼前這一盞採用較疏的網目，亮燈後投下清楚影子；較密處顏色沉，較疏處透出細碎光片。\n\n這是完成品呈現的視覺效果，無須把編織部分當作電氣結構來解釋。竹篾原有的色差、纖維與節痕仍留在表面，光線只是讓它們更加醒目。從剖分、修整、交錯到收邊，製作痕跡沿着每一圈紋理延續。燈未亮時，人先看見竹的輪廓；燈亮之後，牆上的明暗把同一套編法展開成另一幅圖。",
+      "newId": "c69f5691-41dc-58f8-b02e-f69efdf2f7d8",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 國立臺灣工藝研究發展中心說明竹管加工成薄窄竹篾後，可運用粗細、色澤與多種編法形成器物及對比紋理。 https://www.ntcri.gov.tw/home/zh-tw/encyclopedia/5933 | 國立臺灣工藝研究發展中心展覽圖錄記錄一九六〇年代以竹材共同設計並量產外銷的菠蘿燈罩，直接確認竹編燈罩作為現代竹工藝器形。 https://tcdbdata.ntcri.gov.tw/upload/file/2024-05-13/d4a2b33a-b98d-490d-9537-287d9079d0de/CraftingTaiwan100YearsAndMore_ExhibitionGuidebook.pdf",
+      "sha256": "e24811797792ee5623bccc0e0145c1a7a11daa365d4bd3109bbfefc5b67d1d54"
+    },
+    {
+      "oldId": "a0504f2a-92c2-4576-b13a-996ba93f00b6",
+      "oldTitle": "物價上升下的家庭選擇",
+      "title": "潮池一天兩次的變化",
+      "language": "chinese",
+      "category": "環境",
+      "style": "Descriptive",
+      "min": 505,
+      "max": 525,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://oceanservice.noaa.gov/facts/tide-pool.html",
+          "note": "美國國家海洋服務說明潮池位於潮間帶，退潮後留存海水；池中生物在低潮時面對日照、溫度與含氧量變化。"
+        },
+        {
+          "url": "https://oceanservice.noaa.gov/facts/tidefrequency.html",
+          "note": "美國國家海洋服務說明許多海岸在一個太陰日經歷兩次高潮與兩次低潮，週期約二十四小時五十分。"
+        }
+      ],
+      "content": "清晨的潮水剛退，岩岸凹處留下大大小小的水鏡。靠外海的潮池仍被浪花越過，較高位置的池子已與海面分開。池邊濕亮，石縫裡的螺和小蟹開始移動；藤壺緊閉硬殼，海葵縮成柔軟小團。相隔不遠的兩個池，因深度、陰影和浪濺不同，已呈現各自的節奏。潮池邊緣還有清楚的高度分帶。長時間浸水處與只受浪花濺濕的位置，能停留的生物種類各有不同，退潮後承受乾燥的時間也不一樣。太陽升高後，淺池變化最快。水分蒸發，雨水或浪沫又可能突然加入，溫度與鹽度因而不斷微調。海藻在水中舒展，露出水面的部分則貼伏岩面。\n\n小魚藏進較深的縫隙，寄居蟹沿池底搜尋碎屑。看似靜止的一汪水，其實正受光、風和生物活動共同改寫。午後潮頭回來，先有零星浪花濺入，接着水面一次比一次抬高。原本分隔的池子重新連成海的一部分，新鮮海水帶來懸浮微粒，也讓魚蝦能短暫進出。浪流掃過時，附着牢固的生物留在原處，較輕的殼屑與沙粒則被搬到另一角落。稍後潮水再退，同一幕會以不同光線重演，但細節不會完全相同。一撮海藻換了方向，一隻螺爬過昨夜沒有的水痕，池底多出一片細沙。潮池在海與陸之間日復一日交換水、養分、溫度與來客，規律潮汐由此逐次展開水位、鹽度、熱量和生物活動的許多細密而具體變化。",
+      "newId": "ab26c623-44f3-5537-8d68-f31746fc58e0",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國家海洋服務說明潮池位於潮間帶，退潮後留存海水；池中生物在低潮時面對日照、溫度與含氧量變化。 https://oceanservice.noaa.gov/facts/tide-pool.html | 美國國家海洋服務說明許多海岸在一個太陰日經歷兩次高潮與兩次低潮，週期約二十四小時五十分。 https://oceanservice.noaa.gov/facts/tidefrequency.html",
+      "sha256": "f8c88cb27d89b0794ca8baba48709c522ac44fa29cfa81c84cf377ff4e0e3213"
+    },
+    {
+      "oldId": "eb069953-d22c-4507-bca8-4a93f5489e81",
+      "oldTitle": "社區設施要配合人口",
+      "title": "候鳥如何找到中途站",
+      "language": "chinese",
+      "category": "環境",
+      "style": "Science/technical",
+      "min": 520,
+      "max": 540,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://nationalzoo.si.edu/migratory-birds/neotropical-migratory-bird-faqs",
+          "note": "史密森尼候鳥資料綜合實驗結果，指出鳥類會因物種及環境而配合星空、太陽、地磁、地貌與風向等多種線索。"
+        },
+        {
+          "url": "https://www.afcd.gov.hk/tc_chi/conservation/hkbiodiversity/speciesgroup/speciesgroup_birds.html",
+          "note": "漁護署資料確認香港位處東亞至澳大利西亞遷飛路線，米埔一帶濕地為遷徙涉禽補充能量的停棲地。"
+        }
+      ],
+      "content": "候鳥離開繁殖地後，並不是沿一條看得見的空中道路直飛終點。牠們帶着先天形成的遷徙方向，也在途中讀取多種線索。白天的太陽、夜空的星群、地球磁場的方向，以及河谷、海岸和山脈的形狀，都可能成為不同物種校正航向的參照；雲層、風勢與經驗又會改變每一段飛行。中途站的選擇同樣不是認出一個固定標誌。鳥在空中可看到水面反光、植被邊界或連續泥灘，接近地面後，再以食物、遮蔽和干擾程度判斷是否停留。\n\n有些個體沿熟悉路線回到曾經使用的濕地，首次遷徙的幼鳥則更多依靠內在方向與沿途環境，逐步建立自己的空間記憶。牠們到達低空後還會繞飛或轉換落點，像是在同時比較幾個選項。前一夜的能量消耗，也可能令原本只是路標的地方變成臨時休息站。降落只代表一次暫停。\n\n長途飛行消耗能量，涉禽會在泥灘尋找小型無脊椎動物，林鳥在樹冠與灌叢間覓食，另一些鳥趁白天休息，等待夜色與合適的順風。停留可能只有數小時，也可能延續數日；食物是否充足、身體狀態與前方天氣，都會影響再度起飛的時刻。香港的濕地位於重要遷飛路線上，春秋可見不少過境鳥短暫補給。從地面望去，牠們像偶然落在同一片水邊；從整段旅程來看，這片泥灘卻是許多線索交會的結果。候鳥沿途結合多種線索，導航方式亦隨物種、年齡、天候和地景調整。",
+      "newId": "92322cd0-d137-5792-a98c-3f013721de08",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 史密森尼候鳥資料綜合實驗結果，指出鳥類會因物種及環境而配合星空、太陽、地磁、地貌與風向等多種線索。 https://nationalzoo.si.edu/migratory-birds/neotropical-migratory-bird-faqs | 漁護署資料確認香港位處東亞至澳大利西亞遷飛路線，米埔一帶濕地為遷徙涉禽補充能量的停棲地。 https://www.afcd.gov.hk/tc_chi/conservation/hkbiodiversity/speciesgroup/speciesgroup_birds.html",
+      "sha256": "57f26eef83dd1e375457b8955521f1267db048b3340a3d3da5632960283489a3"
+    },
+    {
+      "oldId": "5b9ec5d4-0be7-461f-86ca-833906372911",
+      "oldTitle": "科技產品的維修權",
+      "title": "榕樹氣根的生長",
+      "language": "chinese",
+      "category": "環境",
+      "style": "Science/technical",
+      "min": 505,
+      "max": 525,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://hos.ifas.ufl.edu/woody/aerial-roots.shtml",
+          "note": "佛羅里達大學農業推廣資料說明榕屬樹木的氣根可由伸長枝條長向土壤，着地後協助支承枝幹與樹冠。"
+        },
+        {
+          "url": "https://repository.hku.hk/handle/10722/215014",
+          "note": "香港大學收錄的實地研究量度細葉榕氣根全年伸長，確認高濕度與生長的關聯，並記錄氣根着地後形成吸水根系及逐步增粗支承枝條。"
+        }
+      ],
+      "content": "榕樹枝下垂着細長的褐線，遠看像雨絲停在半空。那是從枝幹長出的氣根。剛出現時，它們幼細而柔軟，根尖朝濕度較高的下方延伸。風把根條吹向一側，乾燥日子令生長放慢；在溫暖潮濕的空氣中，一些根則能逐寸接近地面。雨季來臨時，尚未着地的根會加快伸長，表面也保持柔韌；乾季留下的細根則可能停止生長。\n\n於是同一棵樹上，可同時看見新根、枯根和已木質化的支柱。懸空階段並不穩定。有的氣根在抵達泥土前乾枯，有的被枝葉磨斷，只有部分找到可持續吸收水分的位置。根尖碰到土壤後，周圍組織開始增厚，顏色由淺轉深，表面也逐漸粗糙。\n\n原來像線的根不再只向下伸，而會在地下分枝，把水分與礦物質送回樹體。隨年月過去，着地氣根可以變成柱狀支根。它與上方橫枝相連，分擔枝條和葉冠的重量，使樹冠能向外鋪展。多條支根靠近生長時，外層可能彼此貼合，看來像一根有溝紋的新樹幹。老榕因此常沒有單一而清楚的中心，主幹、支根與枝條共同形成一個寬闊架構。\n\n氣根也記錄周圍的小氣候。背陰處的根較容易保持濕潤，當風通過建築縫隙，根條會偏向一邊；若下方是石面，它們可能沿裂隙轉折。從枝上的一點萌生，到接觸土地並逐漸木質化，過程往往以年計算。人站在樹蔭下看到的密集柱列，正是許多細根各自尋路後留下的立體時間。",
+      "newId": "8416032f-e834-513e-8d3a-4264fe293c9c",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 佛羅里達大學農業推廣資料說明榕屬樹木的氣根可由伸長枝條長向土壤，着地後協助支承枝幹與樹冠。 https://hos.ifas.ufl.edu/woody/aerial-roots.shtml | 香港大學收錄的實地研究量度細葉榕氣根全年伸長，確認高濕度與生長的關聯，並記錄氣根着地後形成吸水根系及逐步增粗支承枝條。 https://repository.hku.hk/handle/10722/215014",
+      "sha256": "a1345e4c0ae2cf45c532352b2516a4d9f3fa8cebb3fe9385812ed849afe5dc59"
+    },
+    {
+      "oldId": "f0e1855d-1489-4e37-a18d-51ea79a18f9a",
+      "oldTitle": "租務市場需要穩定",
+      "title": "珊瑚礁裡的夜班生物",
+      "language": "chinese",
+      "category": "環境",
+      "style": "Descriptive",
+      "min": 555,
+      "max": 575,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://floridakeys.noaa.gov/corals/coralreefs.html",
+          "note": "美國國家海洋保護區資料說明珊瑚是動物，珊瑚蟲常在夜間伸出觸手捕捉水中微小生物。"
+        },
+        {
+          "url": "https://www.coris.noaa.gov/activities/resourceCD/resources/day_night_sa.pdf",
+          "note": "美國國家海洋及大氣管理局珊瑚礁教育資料比較礁區晝夜群落，確認不少魚類與無脊椎動物在夜間覓食。"
+        }
+      ],
+      "content": "夕陽穿過水面時，珊瑚礁的顏色先變暗，白天巡游的魚也陸續靠近洞穴。牠們把身體藏進枝狀珊瑚之間，或停在岩縫深處，只露出緩慢轉動的眼睛。這不是礁區沉睡的時刻，而是兩批生物交接。當最後一層藍光退去，白天不顯眼的活動便從陰影裡展開。許多珊瑚蟲在夜間伸出觸手。白天看似平滑的群體表面，逐漸變成一圈圈細小花冠，等待水流送來浮游生物和有機微粒。觸手上的刺細胞能協助捕捉獵物，纖毛與黏液再把食物移向口部。整座礁石沒有真的移動，表面卻像在同時張開無數微小網兜。沙地上，海參緩慢翻動沉積物；某些蝦蟹從洞口探出長鬚，以觸覺和氣味搜尋碎屑。夜行魚離開白天的藏身處，有的啃食底棲小動物，有的沿礁緣伏擊。手電筒若掃過水中，只會照亮短短一段：一對反光眼睛忽然消失，一條細長腕足又從另一個洞口伸出。夜班並非毫無秩序。潮流決定氣味與食物從哪邊抵達，月光和水色改變可見距離，捕食者的出現令小動物立刻收回觸角。到了天將亮時，許多夜行者返回縫隙，珊瑚蟲也逐步收攏；日行魚從藏身處游出，重新佔據水層。晨光由水面逐步推向礁底，淺處的日行魚先游出，較深洞穴仍保留片刻夜色。同一片珊瑚礁因光線轉換而像換了住客，其實所有生物一直共享有限空間。白天與夜晚的分工減少部分競逐，也讓覓食、躲藏和清理沉積物的活動接連不斷。黑暗降臨後，觸鬚、氣味與水流成為礁區活動的重要線索，另一套夜間生活隨即展開。",
+      "newId": "e328c5d7-3382-5988-abf3-a693fc414869",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國家海洋保護區資料說明珊瑚是動物，珊瑚蟲常在夜間伸出觸手捕捉水中微小生物。 https://floridakeys.noaa.gov/corals/coralreefs.html | 美國國家海洋及大氣管理局珊瑚礁教育資料比較礁區晝夜群落，確認不少魚類與無脊椎動物在夜間覓食。 https://www.coris.noaa.gov/activities/resourceCD/resources/day_night_sa.pdf",
+      "sha256": "90b382594c92d2d930366dedbf99261f5d74b9c2b998c9f351881d0b493c5966"
+    },
+    {
+      "oldId": "3d86e024-fc94-4515-8799-bf2f047beaf5",
+      "oldTitle": "稅制的公平不只看稅率",
+      "title": "雲層如何預告午後驟雨",
+      "language": "chinese",
+      "category": "環境",
+      "style": "Science/technical",
+      "min": 500,
+      "max": 518,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.hko.gov.hk/tc/education/weather/folklore/00081-the-kind-of-cloud-brings-the-kind-of-rain.html",
+          "note": "香港天文台說明日間地面受熱會引發對流並形成積雲；積雲持續向上發展後可帶來範圍局限、時間較短的驟雨。"
+        }
+      ],
+      "content": "夏日早上的天空可能只有幾團白色積雲。它們底部較平，頂端像棉花般隆起，彼此之間仍留着大片藍天。陽光持續加熱地面，近地面的暖濕空氣上升，升到較冷高度後，水汽凝結成細小水滴。\n\n若周圍大氣不穩定，這股上升運動便會繼續為雲朵增添高度。接近中午，值得留意的不是雲色單獨變深，而是輪廓是否迅速向上堆疊。雲頂由圓鈍小丘變成高聳塔狀，邊緣在陽光下明亮，底部因厚度增加而顯灰。\n\n幾分鐘前仍分散的雲塊也可能互相連接，表示對流正在一個較集中的區域發展。從地面觀察，雲底若開始垂下模糊雨腳，表示降水已在遠處形成；雨腳落地或在途中蒸發，仍要看下層空氣的濕度。遠方灰幕逐漸靠近時，風向與溫度也常隨之改變。當雲內水滴碰合長大，上升氣流再也托不住它們，雨便從雲底落下。\n\n驟雨的雨區通常跟着雲塊移動，因此一條街被雨幕遮住，稍遠處仍可能有陽光。若雲體繼續長成積雨雲，頂端可向外展開，並伴隨更強降雨、陣風，甚至雷電。雲層顯示正在發生的變化，卻無法給出精確倒數。\n\n海風匯聚、地形抬升、空氣濕度和高空風都會改變雲的去向與壽命。有些塔狀積雲很快消散，有些則在午後迅速成熟。從平底小雲到高大暗底的雲塔，形態變化把看不見的熱力與水汽運動，逐步畫在天空上。",
+      "newId": "6e2b0aa8-a51d-5608-9d2f-b21e85c31d87",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 香港天文台說明日間地面受熱會引發對流並形成積雲；積雲持續向上發展後可帶來範圍局限、時間較短的驟雨。 https://www.hko.gov.hk/tc/education/weather/folklore/00081-the-kind-of-cloud-brings-the-kind-of-rain.html",
+      "sha256": "1be3c35025c463226215d04b5ca1c5e50cdc1e5bf262c49b028dbc4f4da1dc24"
+    },
+    {
+      "oldId": "50842194-f1ff-42f8-a5b1-ae15207e6432",
+      "oldTitle": "積極養老需要選擇",
+      "title": "森林地面的分解者",
+      "language": "chinese",
+      "category": "環境",
+      "style": "Science/technical",
+      "min": 510,
+      "max": 535,
+      "verification": "yes",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.nps.gov/subjects/biodiversity/services-provided-by-biodiversity.htm",
+          "note": "美國國家公園管理局說明細菌、真菌、蚯蚓與昆蟲等參與分解，令碳、氮、磷等物質重新進入生態循環。"
+        }
+      ],
+      "content": "森林地面鋪着落葉、斷枝、果殼和動物留下的碎屑。新落下的葉仍保留葉脈，較舊的一層已褪色變軟，再往下翻，材料逐漸碎成難以辨認的深色顆粒。這個轉變不是單靠雨水把東西沖散，而是許多大小不同的生物共同工作。潮濕葉片首先成為真菌與細菌的棲身處。真菌的菌絲伸入組織，分解植物細胞中較複雜的成分；細菌則利用各種可取得的有機物。它們的活動受到溫度、水分、酸鹼度和氧氣影響，所以同一片森林裡，陰濕凹地與乾爽坡面的腐葉速度可以很不一樣。較大的參與者把材料切得更細。蚯蚓吞入混有泥土的碎屑，馬陸、潮蟲和昆蟲幼體咬開葉面，增加微生物可接觸的邊緣。\n\n牠們不是把物質變得憑空消失，而是改變形狀與化學組成；呼吸作用會釋出二氧化碳，部分養分則留在土壤，供植物根系和其他生物再次利用。微小動物的糞粒又成為下一批微生物的材料，使碎屑多次通過不同身體。正因反覆處理，養分釋放不是一次完成，而會隨季節形成快慢不一的脈衝。翻開腐木時，看見的白色菌絲、細小孔道與鬆散木屑，都是不同階段留下的痕跡。硬枝可能多年才逐步瓦解，柔軟葉片則在一季之內失去原貌。分解者把死亡材料接回生長循環，也慢慢改變土壤的結構與保水能力。森林最安靜的一層，始終進行着細密的拆解、搬運和重新組合。",
+      "newId": "096fb2b1-a13b-526d-afb0-cffd3e3a8102",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國家公園管理局說明細菌、真菌、蚯蚓與昆蟲等參與分解，令碳、氮、磷等物質重新進入生態循環。 https://www.nps.gov/subjects/biodiversity/services-provided-by-biodiversity.htm",
+      "sha256": "7312de916bcfe161e62f92ca169ec7cf1c8f2168fce42338193dc0b7e2966dd3"
+    },
+    {
+      "oldId": "dd27c608-a41a-4f01-b1a7-7b2c4a47797f",
+      "oldTitle": "精神健康需要早期支援",
+      "title": "內耳如何幫助保持平衡",
+      "language": "chinese",
+      "category": "健康",
+      "style": "Explanatory",
+      "min": 510,
+      "max": 530,
+      "verification": "yes medical",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.nidcd.nih.gov/health/balance-disorders",
+          "note": "美國國家聾聽與其他溝通障礙研究所詳述半規管、橢圓囊與球囊如何感受旋轉、重力及直線運動，並與視覺和本體感覺共同維持平衡。"
+        }
+      ],
+      "content": "人轉頭、彎腰或從椅子站起時，身體能迅速知道頭部移動的方向，內耳的前庭系統在其中扮演重要角色。它位於耳蝸旁邊，包括三條大致互成直角的半規管，以及橢圓囊和球囊。這些微小結構把機械位移轉成神經訊號，交給腦部整合。半規管內有液體，管道末端的感覺毛細胞被膠狀組織覆蓋。\n\n頭部旋轉時，管壁跟着移動，液體因慣性稍為滯後，令膠狀組織彎曲，感覺毛也隨之偏轉。三條管道朝向不同平面，因此能對俯仰、左右轉動和側傾作出不同組合的反應。當頭部停止轉動，管內液體仍可能短暫延續運動，毛細胞訊號因而需要一點時間回穩。快速旋轉後的餘動感，便能顯示這種慣性效應。\n\n橢圓囊和球囊較擅長感受直線加速與頭部相對重力的位置。感覺毛上方的膠層帶有細小碳酸鈣晶體；當人前進、升降或傾斜，晶體的重量牽動膠層，改變毛細胞輸出的訊號。它們與半規管提供的旋轉資料互相補足。平衡並非只由內耳單獨完成。\n\n眼睛提供周圍景物是否移動的線索，肌肉、關節和皮膚感受身體各部分的位置。腦部比較這些訊息，再調節眼球與姿勢肌肉，使視線在走動時仍能相對穩定。當列車開動而人尚未移步，那種短暫搖晃感，正顯示不同感覺來源需要片刻重新對齊。整個過程通常沒有被察覺，卻在每次轉身與踏步中持續運作。",
+      "newId": "9fbfd85d-a6a8-544f-b93b-0c5380c66076",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國家聾聽與其他溝通障礙研究所詳述半規管、橢圓囊與球囊如何感受旋轉、重力及直線運動，並與視覺和本體感覺共同維持平衡。 https://www.nidcd.nih.gov/health/balance-disorders",
+      "sha256": "839d4f8ab51a0cc3b081effe0f71362fa9fd36725c42ad7c0cf2cf5536d9068e"
+    },
+    {
+      "oldId": "6b7b5814-bedb-4225-a0c1-f43e9d8aee97",
+      "oldTitle": "結果為本的公共開支",
+      "title": "肌肉在熱身時發生甚麼",
+      "language": "chinese",
+      "category": "健康",
+      "style": "Explanatory",
+      "min": 500,
+      "max": 512,
+      "verification": "yes medical",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/26590591/",
+          "note": "收錄於美國國家醫學圖書館的實驗研究量度單車熱身後股外側肌不同深度的溫度上升及恢復期降溫，支持肌溫變化描述。"
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/41336260/",
+          "note": "收錄於美國國家醫學圖書館的實驗研究以光學方法量度活動肌肉，發現重複熱身後的後續運動伴隨肌肉血流增加。"
+        }
+      ],
+      "content": "一項單車熱身研究找來十名男性單車手，讓他們完成十五分鐘的間歇衝刺熱身。研究人員在股外側肌的三個深度放置溫度探頭，分別量度熱身前、熱身後及三十分鐘恢復期內的變化。這種安排不以皮膚感覺推斷整塊肌肉，而是把表層、中層和深層的讀數分開比較。\n\n熱身結束時，三個深度的肌溫都比開始時高約三攝氏度。較深位置的溫度原本較高，升幅卻與其他位置相近。停止踩踏後，各層讀數逐漸下降，研究人員也同步量度腿部血流，藉此分析恢復期的降溫。結果呈現的是特定運動安排下、隨時間改變的量度值，並非人人完成任何熱身都會得到同一數字。\n\n另一項重複熱身研究使用近紅外線光譜等方法觀察活動肌肉。參加者先後完成多次熱身與膝伸展運動；研究記錄顯示，重複熱身後的後續運動伴隨較高的肌肉血流。比較這類結果時，必須連同運動次數、強度、休息長短、量度位置與時間點理解，不能把血流增加這個概括脫離實驗條件。\n\n兩項研究採用不同動作和儀器，回答的問題也不完全相同：前者把肌溫按深度及恢復時間拆開，後者比較重複熱身前後的局部血流。它們共同支持一個較審慎的描述：熱身期間可觀察到肌溫與肌肉血流的變化，但變化幅度和時間軌跡取決於具體測試安排、受試者狀況與量度方法。",
+      "newId": "dd43ec5e-52a4-5e39-8e48-d44c18d34615",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 收錄於美國國家醫學圖書館的實驗研究量度單車熱身後股外側肌不同深度的溫度上升及恢復期降溫，支持肌溫變化描述。 https://pubmed.ncbi.nlm.nih.gov/26590591/ | 收錄於美國國家醫學圖書館的實驗研究以光學方法量度活動肌肉，發現重複熱身後的後續運動伴隨肌肉血流增加。 https://pubmed.ncbi.nlm.nih.gov/41336260/",
+      "sha256": "f6ff48bb9aa8795f3028876318f83d86db4a0022f1d255dbbac6c70e0314cf3e"
+    },
+    {
+      "oldId": "53c5d974-9cf5-4cbb-8ef5-a07f716a9bcd",
+      "oldTitle": "職安需要日常制度",
+      "title": "呼吸節奏與長跑步幅",
+      "language": "chinese",
+      "category": "健康",
+      "style": "Explanatory",
+      "min": 495,
+      "max": 510,
+      "verification": "yes sports science",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/23950997/",
+          "note": "人體跑步實驗量度呼吸與踏步的相位關係，發現跑者可呈現多種步頻對呼吸頻率比例，且常偏好減少兩者機械干擾的配合方式。"
+        }
+      ],
+      "content": "長跑開始後，腳步與呼吸各有節拍，卻不完全彼此獨立。每次腳掌着地，身體承受短暫衝擊，軀幹和腹腔也隨跑姿週期移動；吸氣與呼氣則改變胸腹壓力。當兩種週期在某些相位相遇，跑者可能自然形成幾步一吸、幾步一呼的重複模式。這種配合稱為運動與呼吸耦合，但它不是人人相同的固定拍子。研究記錄到不同的步數與呼吸比例，有些人一段時間保持規律，轉速、坡度或疲勞改變後又轉成另一個比例。人類以雙足跑動，呼吸受到步態的機械限制較少，因此也能在沒有明顯同步的情況下前進。相位關係只是群體趨勢，某個比例並非人人採用；個體習慣和當下速度各有影響。\n\n步幅和步頻共同決定跑速。步幅拉長時，騰空、着地和軀幹旋轉的時間關係會變；步頻提高時，每一個呼吸週期可能容納更多或更少腳步。另一方面，運動強度上升令身體需要更大通氣量，呼吸深度與頻率也隨之調整。兩套節奏因此不斷互相試探，而非由其中一方單向指揮。從旁聽一名跑者，往往先聽到鞋底均勻落地，之後才察覺呼氣在若干步之間反覆出現。這個聲音圖案可能維持數分鐘，也可能在上坡、轉彎或加速時重新排列。呼吸節奏與步幅的關係，反映神經控制、胸腹運動和地面衝擊如何在持續奔跑中暫時協調，並隨環境與速度保持可變。",
+      "newId": "3b71dba7-a7ac-51f5-9f50-460c7ef6edb9",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 人體跑步實驗量度呼吸與踏步的相位關係，發現跑者可呈現多種步頻對呼吸頻率比例，且常偏好減少兩者機械干擾的配合方式。 https://pubmed.ncbi.nlm.nih.gov/23950997/",
+      "sha256": "d67ab5e62174cf49c197e0bb6a0fdba175a0d3a325759f5b4f8c4da3689a4ed2"
+    },
+    {
+      "oldId": "421de059-fe71-4427-b33d-98080f4da631",
+      "oldTitle": "職業教育需要新形象",
+      "title": "眼睛如何適應黑暗",
+      "language": "chinese",
+      "category": "健康",
+      "style": "Explanatory",
+      "min": 505,
+      "max": 525,
+      "verification": "yes medical",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.nei.nih.gov/research-and-training/research-news/scientists-shine-light-how-eyes-adapt-dark",
+          "note": "美國國家眼科研究所說明視網膜在不同光度下調節敏感度，錐狀細胞適合明亮環境，桿狀細胞在昏暗環境較活躍。"
+        }
+      ],
+      "content": "從陽光下走進昏暗房間，最初只看見模糊輪廓，過一會兒，桌角和門框才慢慢浮現。這段變化不是房內愈來愈亮，而是眼睛與視覺系統調高了對微弱光線的敏感度。瞳孔會先擴大，讓更多光進入；真正持續較久的調整則發生在視網膜感光細胞。\n\n視網膜主要有錐狀與桿狀感光細胞。錐狀細胞在明亮環境下工作良好，能分辨顏色和細節；桿狀細胞對弱光較敏感，卻不提供同樣鮮明的色彩。強光會使桿狀系統暫時降低敏感度，進入黑暗後，相關感光分子與細胞內訊號逐步回到適合低光的狀態。\n\n兩眼的適應程度也可暫時不同。若一隻眼曾受亮光照射，重新睜開時，它看見的暗景可能比另一隻眼淡，稍待片刻後才逐漸接近原狀。適應並非瞬間完成。\n\n最初數分鐘常由較快的調整改善視野，之後桿狀細胞的敏感度繼續上升，暗處物件才顯得更清楚。此時用視線正中央盯着一顆微弱星點，它有時反而不及稍微移開目光明顯，因為視網膜中央最精細的位置以錐狀細胞為主。黑暗中的視覺也會犧牲部分精確度。\n\n物件邊緣較粗，顏色淡去，移動和明暗差異卻仍能被察覺。若突然亮起一盞燈，感光系統再次調低敏感度，眼前會有短暫刺亮。由亮入暗和由暗入亮，是同一套視覺機制在不同光量之間重新分工，使有限光子仍能形成可用的空間訊息。",
+      "newId": "359f64dc-4d4c-5bba-9ae1-558b4aefa9ff",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國家眼科研究所說明視網膜在不同光度下調節敏感度，錐狀細胞適合明亮環境，桿狀細胞在昏暗環境較活躍。 https://www.nei.nih.gov/research-and-training/research-news/scientists-shine-light-how-eyes-adapt-dark",
+      "sha256": "c42311e6803ff8ec8c28ee5e2b04ee1e50561b30bc4f2d657cfc8496d0746a49"
+    },
+    {
+      "oldId": "9ab36034-97e9-440f-8ffc-7b4b48a9a35e",
+      "oldTitle": "能源轉型需要公平",
+      "title": "味覺與嗅覺如何合作",
+      "language": "chinese",
+      "category": "健康",
+      "style": "Explanatory",
+      "min": 500,
+      "max": 520,
+      "verification": "yes medical",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.nidcd.nih.gov/health/statistics/what-numbers-mean-epidemiological-perspective-taste-smell",
+          "note": "美國國家聾聽與其他溝通障礙研究所說明食物風味由基本味覺、香氣、質感與溫度共同構成，咀嚼產生的香氣可經咽喉上方通道到達嗅覺區。"
+        }
+      ],
+      "content": "咬下一片橙，舌頭先接觸汁液中的酸與甜，但人感受到的橙味遠比兩種基本味道豐富。咀嚼時，揮發性分子從口腔後方向上進入鼻腔，刺激嗅覺受體。腦部把這些香氣訊號，連同舌頭、溫度和口感資料合在一起，才形成完整的風味印象。味蕾能分辨甜、酸、鹹、苦和鮮等基本味質，卻不會單獨辨認咖啡、薄荷或烤麵包的複雜特徵。鼻腔中的嗅覺受體可以回應大量不同分子組合。\n\n食物仍在口內時，香氣由後鼻途徑抵達嗅覺區，人往往把它誤認為全是舌頭嘗到的結果。嗅覺訊號還具有明顯的適應現象。同一香氣持續存在時，感受可能逐漸變弱；換到另一種氣味，注意又會重新被喚起。捏住鼻子吃東西，基本味道和質感仍在，細緻香氣卻會明顯減少。鼻腔不通暢時也有相似現象：食物沒有改變，香氣通道受阻，風味便顯得單薄。\n\n相反，一種氣味在入口前從鼻孔吸入，和咀嚼後從口腔後方到達，感受也可能略有差別。其他感覺同樣參與。辣椒帶來的灼熱、薄荷的清涼，主要屬於口鼻中的化學刺激；脆裂聲、黏度與食物溫度又為腦部增加線索。過往經驗把這些訊號與名稱、場合和記憶連接，令人能在下一次迅速辨認。味覺與嗅覺連同細緻的口腔觸感、食物溫度和眼前色澤，在腦中組成通常被統稱為味道的豐富完整經驗。",
+      "newId": "2bc0aad6-73c4-5879-9a33-de24ddada4d9",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國家聾聽與其他溝通障礙研究所說明食物風味由基本味覺、香氣、質感與溫度共同構成，咀嚼產生的香氣可經咽喉上方通道到達嗅覺區。 https://www.nidcd.nih.gov/health/statistics/what-numbers-mean-epidemiological-perspective-taste-smell",
+      "sha256": "8443eec0b697b81923a8b32b4578b522b6854dedc18681819b6aa867d92bdff5"
+    },
+    {
+      "oldId": "0177a027-de1e-47cc-8ea8-4ee6cf8d41f5",
+      "oldTitle": "自動化與工作轉型",
+      "title": "睡眠週期中的不同階段",
+      "language": "chinese",
+      "category": "健康",
+      "style": "Explanatory",
+      "min": 505,
+      "max": 525,
+      "verification": "yes medical",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.nhlbi.nih.gov/health/sleep/stages-of-sleep",
+          "note": "美國國家心肺血液研究所說明睡眠由非快速動眼期三個階段與快速動眼期組成，通常每八十至一百分鐘循環一次，一夜約四至六輪。"
+        }
+      ],
+      "content": "一夜睡眠不是從清醒一路沉到底，再在早上直線返回。腦部活動、眼球運動和肌肉張力會呈現幾種可辨認的模式，組成非快速動眼睡眠與快速動眼睡眠。這些階段以週期反覆，一輪通常約八十至一百分鐘，但每輪長短和比例並不完全相同。睡眠研究會同時記錄腦電、眼動和肌肉活動，再依共同出現的特徵劃分階段。\n\n階段名稱指的是可觀察模式，不代表整個腦在同一刻只做一件事。非快速動眼睡眠的第一階段是清醒與入睡之間的過渡。思緒開始鬆散，外界聲音仍可能被察覺，身體偶爾出現短促抽動。進入第二階段後，人已穩定入睡，腦電活動可見短暫而有組織的波形，心跳與呼吸一般較清醒時慢，體溫也逐步下降。\n\n第三階段常稱慢波或深睡眠，腦電波變得較慢而幅度較大。這一階段通常在前半夜佔較多時間，外界需要較強刺激才容易把人喚醒。之後睡眠會轉回較淺層，再進入快速動眼期；此時腦部活動較活躍，眼球快速移動，多數骨骼肌的張力明顯降低，夢境也常較鮮明。\n\n天亮前的幾輪，深睡比例往往減少，快速動眼期則可能延長。階段交界偶爾伴隨很短的清醒，但人未必留下記憶。年齡、作息、環境和身體狀態都會改變整夜結構，因此週期不是精密鐘擺。睡着看似一段空白，實際上腦與身體在多種狀態間有序轉換，每一輪都以略有不同的方式重組整晚。",
+      "newId": "6e9f808b-7d74-5cac-a637-e288a2218c4c",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 美國國家心肺血液研究所說明睡眠由非快速動眼期三個階段與快速動眼期組成，通常每八十至一百分鐘循環一次，一夜約四至六輪。 https://www.nhlbi.nih.gov/health/sleep/stages-of-sleep",
+      "sha256": "ef160c5d8620a1d6b388e403c40c83d797d412ab8ebc43e8ccd3672ab7c45b01"
+    },
+    {
+      "oldId": "ee7927b3-10f4-44c0-8fb2-d7554e356cfa",
+      "oldTitle": "舊區重建的兩難",
+      "title": "香港花崗岩山徑的紋理",
+      "language": "chinese",
+      "category": "香港",
+      "style": "Descriptive",
+      "min": 560,
+      "max": 585,
+      "verification": "yes local geology",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://hkss.cedd.gov.hk/hkss/en/publications-and-resources/educational-materials/hong-kong-geology/chapter-9/index.html",
+          "note": "土木工程拓展署地質教材說明香港花崗岩較易受亞熱帶風化，常形成圓渾丘陵、厚砂質風化層與圓形核心石。"
+        },
+        {
+          "url": "https://www.cedd.gov.hk/eng/about-us/organisation/geo/pub_info/memoirs/geology/vol/klb/index.html",
+          "note": "香港地質調查資料描述畢拿山一帶細至中粒花崗岩的露頭、色澤與顆粒特徵。"
+        }
+      ],
+      "content": "走上香港一條花崗岩山徑，腳下最先出現的未必是完整岩面，而是帶砂感的淺色泥土。花崗岩中的長石經長期風化可變成黏土成分，較耐久的石英則留下硬顆粒。雨水把細料移走後，小徑表面便露出粗糙砂粒，在鞋底下發出乾脆摩擦聲。岩石本身常可辨出深淺相間的晶粒。石英帶半透明灰色，長石偏白、粉紅或乳色，黑雲母像散落的深色薄片；顆粒大小會隨不同岩體而變。新鮮破面輪廓清楚，長久暴露的表面則失去光澤，邊角逐步變鈍，裂隙旁還可能染上鐵鏽般的黃褐色。花崗岩受節理切割成岩塊，水沿裂隙滲入，風化往往先侵蝕角和邊。埋在風化層中的岩塊因而逐漸圓化，周圍較鬆物質被沖走後，圓渾巨石便突出坡面。\n\n有些表層沿着弧形薄片剝落，像石頭慢慢卸下一層外殼；石縫裡積存的泥與落葉，又為苔蘚和細根提供位置。山徑旁偶爾可見人工切面，把原來藏在地下的風化剖面直立展示：上方泥土較鬆，向下逐漸保留岩石結構，最後接到較新鮮的岩體。同一路段在乾濕天氣下呈現不同觸感。乾時砂粒鬆脆，細裂紋和晶體反光清楚；雨後岩面顏色加深，水沿節理聚成亮線，低窪處的分解顆粒變得柔軟。坡度也改變材料分布，陡處常露出較完整岩面，緩處較容易積聚風化土。山徑的紋理因此不是單一石種的花紋，而是結晶、裂隙、亞熱帶風化與流水搬運疊成的表面。遠望時，花崗岩地形多是較低而圓順的丘陵；低頭細看，卻能在幾步之內讀到晶粒、砂土、剝片和根系各自留下的尺度。",
+      "newId": "f0a8ee39-d04d-572b-8ff2-f52f9609213e",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 土木工程拓展署地質教材說明香港花崗岩較易受亞熱帶風化，常形成圓渾丘陵、厚砂質風化層與圓形核心石。 https://hkss.cedd.gov.hk/hkss/en/publications-and-resources/educational-materials/hong-kong-geology/chapter-9/index.html | 香港地質調查資料描述畢拿山一帶細至中粒花崗岩的露頭、色澤與顆粒特徵。 https://www.cedd.gov.hk/eng/about-us/organisation/geo/pub_info/memoirs/geology/vol/klb/index.html",
+      "sha256": "e1f8ce1f330763251016dda8abda078ee03f85606a6dc7ec1d382cebf2bc49b5"
+    },
+    {
+      "oldId": "eafc4d4a-98bb-443f-bdaa-c7389aa699b1",
+      "oldTitle": "街市與社區生活",
+      "title": "維港潮水一天的進退",
+      "language": "chinese",
+      "category": "香港",
+      "style": "Descriptive/scientific",
+      "min": 500,
+      "max": 515,
+      "verification": "yes local geography",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.hko.gov.hk/en/tide/enotes.htm",
+          "note": "香港天文台潮汐說明列出維多利亞港平均潮差約一米，並說明每日高潮與低潮時間、高度及氣象偏差。"
+        }
+      ],
+      "content": "維多利亞港的潮水進退，不像一道清楚水線同時向兩岸移動。潮位在數小時內緩慢升降，海旁梯級、碼頭柱腳和石壁水痕逐一顯示變化。漲潮時，原本露出的濕黑石面被水覆蓋；退潮後，附着其上的藤壺、蠔殼與藻類又重新出現。在狹窄海旁位置，牆面上的綠藻帶和貝殼分布像較長期的水位紀錄。它們不標示某一刻潮高，卻反映不同高度被海水浸潤的頻率。清晨和晚間的光斜照柱身，乾濕界線便尤其清楚。港內潮汐主要隨外海潮波而來，月球與太陽引力形成可預測的週期。香港天文台以調和方法計算各站的高潮、低潮時間和高度，維港的平均潮差約一米。不過每天兩次漲退並非完全等高、等距，高潮時刻也會逐日移後，形成不斷移動的節奏。實際水位還會受風和氣壓影響。持續吹向岸邊的風可能把水推高，反方向的風則有不同效果；低氣壓和海面波動也可令觀察值偏離純天文預測。船隻通過帶來的短浪疊在潮位上，使欄杆旁的水面時而拍高，但那不是整個港口突然漲潮。從渡輪上看，潮流會改變漂浮物和水紋方向；靠近岸邊，排水口離水面的高度則悄悄改變。一天之內，城市天際線幾乎不動，港水卻以很慢的幅度重新安排海與石岸的接觸位置。潮汐表把變化寫成數字，碼頭上的濕痕則把同一過程留成一圈圈短暫刻度。",
+      "newId": "cb8692ce-e59d-527b-9040-4dc3ae0232c7",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 香港天文台潮汐說明列出維多利亞港平均潮差約一米，並說明每日高潮與低潮時間、高度及氣象偏差。 https://www.hko.gov.hk/en/tide/enotes.htm",
+      "sha256": "2c2d39502cc71a27b05457acf3839b0957fea4e35599c5ccce63f4aa4a499e53"
+    },
+    {
+      "oldId": "7dc8bfdd-a81b-47dc-87e8-31c0bf6a3d95",
+      "oldTitle": "認知障礙友善社區",
+      "title": "電車駛過彎路時的聲音",
+      "language": "chinese",
+      "category": "香港",
+      "style": "Descriptive",
+      "min": 520,
+      "max": 545,
+      "verification": "light technical",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.info.gov.hk/gia/general/200110/17/1017174.htm",
+          "note": "香港政府資料把電車急彎及不平路軌列為行車聲音來源，並記錄平滑接縫等處理與聲響變化的關係。"
+        },
+        {
+          "url": "https://www.hktramways.com/en/our-story/",
+          "note": "香港電車公司歷史頁記錄電車自一九〇四年通車初期已使用車鈴，支持聲景中的鈴聲背景。"
+        }
+      ],
+      "content": "直路上的電車聲音多半平穩：車輪與鋼軌連成低沉滾動，車身輕微震動，偶爾在接縫處敲出短促一聲。接近彎路時，聲景先由速度改變。摩打聲稍降，木質車廂與金屬部件的細碎震響變得清楚，乘客也能感到車身把重量慢慢移向外側。\n\n車廂內外聽到的版本不同。玻璃削弱部分高音，地板則把低頻震動傳到乘客腳下。車輪沿彎軌前進，左右輪的行走條件不再完全相同。\n\n輪緣與軌面之間出現細小滑動和摩擦，有時拉成尖亮的長音，有時只是低啞刮聲。彎度、速度、輪軌表面狀態與濕度都會改變聲音，所以同一個街角在乾燥午後和雨後清晨，未必發出相同音色。路軌接縫和平整度提供另一層節拍。車輪越過細微高低差，衝擊沿轉向架傳進車廂，先在地板下響起，再由窗框和扶手回應。\n\n若彎位旁有高樓，聲音在牆面之間反射，短短的摩擦音便顯得更長；開闊路口則讓它很快散去。司機踏響車鈴時，清脆的叮聲落在這些機械聲之上。它與路軌摩擦沒有相同來源，卻常在進站、路口或轉彎前後相遇，成為人們熟悉的組合。\n\n車尾離開後，尖聲先斷，低沉滾動逐漸遠去，最後只剩街道原有的談話和引擎聲。彎路不過幾十米，卻像一段短小樂句：減速是起拍，輪軌摩擦拉出主音，接縫敲擊標出節奏，車鈴忽然穿透其間。每次經過的速度與環境不同，這段城市聲音也會有略微不同的演奏。",
+      "newId": "0fc60c19-8ed3-5a66-9140-0c1181bfe7dc",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 香港政府資料把電車急彎及不平路軌列為行車聲音來源，並記錄平滑接縫等處理與聲響變化的關係。 https://www.info.gov.hk/gia/general/200110/17/1017174.htm | 香港電車公司歷史頁記錄電車自一九〇四年通車初期已使用車鈴，支持聲景中的鈴聲背景。 https://www.hktramways.com/en/our-story/",
+      "sha256": "8a16beb1a850390f45296a24b94f130bdf70bd9e59b647734b9d732eaf43f9fa"
+    },
+    {
+      "oldId": "bb9a6b36-0b39-4dca-bf0a-7f6d11809f64",
+      "oldTitle": "輪候時間背後的流程",
+      "title": "唐樓樓梯間的光影",
+      "language": "chinese",
+      "category": "香港",
+      "style": "Cultural/descriptive",
+      "min": 505,
+      "max": 525,
+      "verification": "yes architecture",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.amo.gov.hk/filemanager/amo/common/form/Blue-House-Cluster-HIA.pdf",
+          "note": "古物古蹟辦事處相關保育報告記錄早期唐樓的磚牆木樓板、共用木樓梯、平台、窗洞、花磚與欄杆等構件。"
+        }
+      ],
+      "content": "推開唐樓臨街的窄門，樓梯間往往比街上暗一個層次。入口光線被門框切成直長亮面，落在第一段石級或花磚上；再向上走，光源轉為樓梯平台的小窗、天井或後巷反射。每層方向不同，亮暗便跟着梯段折返，沒有一盞燈能一次照遍全程。不同年代的改建也會重畫光路。\n\n加裝的門扇遮去一角天光，新開的小窗又在牆上投下陌生亮斑；即使格局相同，季節和使用方式仍令它每天不同。早期唐樓常把店舖放在地面，居住空間疊在上方，共用樓梯因地段狹長而顯得緊湊。木梯的踏板吸收光，磨亮的前緣卻會反出淡淡光帶；水磨石或瓷磚表面較亮，窗格影子便清楚投在其上。扶手、欄杆與晾掛物又把大片光切成更細的線。\n\n日照角度改變，樓梯間像一枚緩慢轉動的時鐘。上午的光停在高處牆角，中午可能沿天井落到底層，傍晚則由臨街窗戶染上一點暖色。灰塵在斜光中飄動，牆面修補過的不同質地也忽然顯現：舊灰泥較啞，新油漆平滑，潮濕位置留下不規則深痕。\n\n腳步經過時，人的影子先爬上轉角，再縮回身旁。開門的一瞬會漏出室內燈色，門關上後，空間又恢復原本層次。唐樓樓梯間的光影並非刻意佈置，而是窄地、樓高、窗洞、材料與日常使用共同形成。它把外面的天氣帶進室內，也在每次上落之間，短暫照亮建築的年歲。",
+      "newId": "f81d1af4-1fc4-5c34-9ef8-93daff6eb9c7",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 古物古蹟辦事處相關保育報告記錄早期唐樓的磚牆木樓板、共用木樓梯、平台、窗洞、花磚與欄杆等構件。 https://www.amo.gov.hk/filemanager/amo/common/form/Blue-House-Cluster-HIA.pdf",
+      "sha256": "7ef55c8249132d04f5e0d655e2e5a1b1bff1107b1a57fb71d4cdade338b24102"
+    },
+    {
+      "oldId": "387db5d7-2377-46aa-bbf6-53b2c8ba9e4f",
+      "oldTitle": "退休保障的跨代平衡",
+      "title": "大澳棚屋的木構細節",
+      "language": "chinese",
+      "category": "香港",
+      "style": "Cultural/history",
+      "min": 500,
+      "max": 515,
+      "verification": "yes local history/architecture",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.islands.gov.hk/en/explores-tai-o-tai-o-stilt-houses.php",
+          "note": "離島民政處專題介紹大澳棚屋由木柱與木板步道相連，棚頭兼作露台、通道及聚集空間，並設小梯接近水面。"
+        },
+        {
+          "url": "https://www.amo.gov.hk/filemanager/amo/common/form/HIA_Report_Old_Tai_O_Police_Station.pdf",
+          "note": "古物古蹟辦事處保育報告記錄大澳漁民過往居於艇上或棚屋，以及聚落與漁業生活的歷史背景。"
+        }
+      ],
+      "content": "大澳水道兩旁的棚屋把居住空間抬離潮水，最先承受重量的是插入泥灘或水底的柱。柱列從岸邊向外伸展，上方以橫樑連接，再鋪出地台。從遠處看，細柱像零散直線；走近才會看到粗幼不一、接駁位置和斜撐，共同把屋身的重量傳到下方。柱與樑交接處最能看出做法。\n\n木件相疊後以釘、栓或夾件固定，受力方向不同的位置再加斜撐，避免狹長平台左右晃動。細小接點連在一起，才形成遠看輕巧的整體。木構不只支承室內。屋外的棚頭既像露台，也是相鄰空間之間的通道。\n\n木板順着柱樑鋪排，板縫讓雨水落下，也會因日曬、潮氣和腳步磨損呈現不同色澤。小梯從平台降到水面，潮高時只露幾級，退潮後則顯得更長，連繫住屋與小艇。棚屋群之間常以木樁和板道相接，轉角位置會因水道、舊屋邊界和後來增建而略有偏折。樑柱上的金屬扣件、補上的短木和新舊板材，顯示結構在使用中持續維修。\n\n部分外牆採用較輕材料，屋頂坡度把雨水引向兩旁，重量仍主要落回下方木架。潮水每天改變柱腳周圍的反光，也把鹽分和濕氣留在材料表面。近水部分顏色較深，乾濕交界常有明顯痕跡；上層木材則受風與陽光慢慢褪色。柱、樑、斜撐、平台和小梯因應水邊生活逐段組合，棚屋木構遂留下潮水環境、長期修補與日常使用共同塑成的手感。",
+      "newId": "158c3d51-55f9-5695-8ec4-2429c5456181",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 離島民政處專題介紹大澳棚屋由木柱與木板步道相連，棚頭兼作露台、通道及聚集空間，並設小梯接近水面。 https://www.islands.gov.hk/en/explores-tai-o-tai-o-stilt-houses.php | 古物古蹟辦事處保育報告記錄大澳漁民過往居於艇上或棚屋，以及聚落與漁業生活的歷史背景。 https://www.amo.gov.hk/filemanager/amo/common/form/HIA_Report_Old_Tai_O_Police_Station.pdf",
+      "sha256": "05682f82d30044a08d22e6d2006b35902c85d2d6e85025b50e8dd5ae80005c83"
+    },
+    {
+      "oldId": "000859cf-6702-4d88-b909-530f0cebd4c6",
+      "oldTitle": "道路收費與選擇",
+      "title": "山城斜路上的城市視角",
+      "language": "chinese",
+      "category": "香港",
+      "style": "Descriptive",
+      "min": 525,
+      "max": 550,
+      "verification": "yes local geography",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.pland.gov.hk/studies/landscape/landscape_final/ch6.htm",
+          "note": "規劃署景觀研究描述香港地形崎嶇、平地有限，港島北部舊區街道沿山坡蜿蜒，高地與填海低地構成層疊城市景觀。"
+        }
+      ],
+      "content": "在山城斜路上，城市不是平鋪在眼前，而是一層層被坡度揭開。站在路口向下望，近處招牌遮住半條街，稍遠的屋頂與天橋從樓縫出現，最底才是一線水面。向上回望時，同一批建築只剩外牆和窗戶，山脊則忽然越過簷角，佔據天空。香港地形多山，舊區不少街道沿坡面向上，另一些橫街貼着等高方向伸展。兩者交會，便形成階梯、擋土牆、架高入口和高低兩層店面。某棟樓在下街看似有十多層，轉到上街，入口可能已接近其中一層平台；地面的概念隨步行位置改變。斜路還讓樓層之間產生意外對望。上坡行人的視線可能正對遠樓天台，下坡巴士的上層乘客則短暫越過圍牆，看見平日被遮住的後院。坡度也改寫距離感。\n\n地圖上相隔不遠的兩點，實際路線可能要繞過陡壁，或以長梯直上。人走得慢，視線卻變得活躍：每升高幾米，欄杆後多露出一排窗，遠處道路從巴士頂上展開，原本被大樓遮住的港面又出現一角。光線沿斜坡移動時，城市表面更顯立體。下午陽光照亮高處外牆，低處街谷已落入陰影；雨後水沿梯級和路緣向下，反光把坡向畫得清楚。車聲從下面傳來，經牆壁折返，聽起來比實際位置更近。這種視角沒有唯一觀景點。它存在於轉彎、停步和回頭的連續變化中。山、樓、街與海不斷互相遮擋，又在下一段斜路重新排列。走過同一條路的人，因身高、方向和停留位置不同，會帶走略有差異的城市剖面。",
+      "newId": "2962b4b7-04b1-5b4c-846a-4f5135bc4048",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 規劃署景觀研究描述香港地形崎嶇、平地有限，港島北部舊區街道沿山坡蜿蜒，高地與填海低地構成層疊城市景觀。 https://www.pland.gov.hk/studies/landscape/landscape_final/ch6.htm",
+      "sha256": "0a900b553485cdf6766739c49754053619d8eda8e2f098af2ddb4ebf4ca5c368"
+    },
+    {
+      "oldId": "379fd277-c697-4ba3-a219-eaa7f75e80e2",
+      "oldTitle": "醫療數據與私隱",
+      "title": "合唱團如何找到同一個呼吸",
+      "language": "chinese",
+      "category": "社會",
+      "style": "Explanatory",
+      "min": 500,
+      "max": 520,
+      "verification": "light music",
+      "unit": "characters",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3177845/",
+          "note": "由美國國家醫學圖書館收錄的合唱實驗發現，歌唱時團員呼吸相位同步高於安靜狀態，齊唱時又高於多聲部演唱。"
+        }
+      ],
+      "content": "合唱團準備唱第一個音時，真正同時發生的往往不是發聲，而是吸氣。指揮抬手，肩膊與手腕給出速度和力度的預備，歌者看見動作，也從身旁極輕的吸氣聲與身體起伏取得線索。眾人未必在完全相同的一瞬吸入同樣空氣，卻能把發聲起點收束到共同拍點。熟練之後，團員不必每次抬肩或做出明顯動作。細小的肋骨擴張、眼神與指揮落拍已足以傳遞準備，呼吸便藏在整體聲音裡。\n\n樂句本身決定呼吸位置。短句可以一起換氣，長句若所有人同時停聲，旋律會出現缺口，因此同一聲部可能把換氣分散在不同音符之間。有人先吸氣，旁邊的人延長半拍，聲線便能接續。這種錯開呼吸不等於失去協調，而是以不同時刻共同維持完整聲部。節奏、子音和母音也提供同步框架。清楚的子音像小刻度，讓歌者校正拍子；持續母音則要求氣流與音高穩定。\n\n當速度轉慢、力度變弱，吸氣的幅度和時間常隨之改變。排練中，指揮會以手勢標出句首、延長線和收音，團員則透過聆聽不斷修正。生理量度顯示，合唱時不同歌者的呼吸節律可以出現同步，齊唱尤其明顯；多聲部因旋律錯開，關係會更複雜。所謂同一個呼吸，因此既有身體層面的節奏靠近，也有音樂上的共同意圖。觀眾聽到的是一句連貫聲音，背後卻包含一起吸氣、交錯換氣和彼此補位三種不同的合作。",
+      "newId": "9c67ac3a-c778-591c-99a0-642e4c8ea6af",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: 由美國國家醫學圖書館收錄的合唱實驗發現，歌唱時團員呼吸相位同步高於安靜狀態，齊唱時又高於多聲部演唱。 https://pmc.ncbi.nlm.nih.gov/articles/PMC3177845/",
+      "sha256": "73a93ba8cb6841aab4b76757964191b81ffff73be6f2d03c8fe7a6bf0ebcefcc"
+    },
+    {
+      "oldId": "a639f6ef-4b3a-4b90-9dda-bceb2ad9a995",
+      "oldTitle": "閱讀能力如何建立",
+      "title": "社區廚房的一次晚餐準備",
+      "language": "chinese",
+      "category": "社會",
+      "style": "Narrative",
+      "min": 500,
+      "max": 520,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [],
+      "content": "下午四時，社區廚房的鐵閘剛拉起，阿澄便把白板靠到工作桌旁。今晚有四十份晚餐，菜單是番茄炆雞、炒椰菜和白飯。她逐項讀出份量，志叔核對雪櫃裡的雞肉，小芬把兩袋番茄倒進水槽。抽氣扇還未開，室內只有水聲和膠籃碰桌的輕響。\n\n第一輪工作從清洗開始。菜葉拆開後分成三盆，泥沙沉到底部；番茄擦乾，沿桌面傳到切配區。新來的俊文切得太慢，阿澄沒有催他，把雞肉交給他處理，接過大小不一的蔬菜。刀聲逐漸有了節拍，砧板旁的廚餘盒也一點點裝滿。\n\n五時，兩口大鍋同時加熱。薑片先落油，香氣一冒起，談話便被鍋鏟聲蓋過。志叔把雞肉分批煎香，避免一口氣倒入後出水；小芬在另一邊翻炒椰菜，數着每盤大約能裝多少。阿澄記下第一鍋開始炆煮的時間，又把飯煲次序貼在牆上。\n\n臨近六時，長桌改成分餐線。飯盒依次放好，先添飯，再放菜和雞肉，最後擦去盒邊醬汁。有人發現數量少了兩個，俊文從櫃底找到黏在一起的空盒，眾人這才鬆一口氣。最後一盒扣上蓋時，牆鐘剛過六時十分。\n\n門外傳來取餐車的輪聲，廚房內卻沒有立即安靜。鍋子要浸水，刀具要點算，白板上的數字也得逐一抹去。俊文洗完自己的砧板，回頭看見長桌已恢復空白。晚餐準備像一次短促接力，每個人只守着一小段，熱飯卻在這些交接之間完整抵達門口。",
+      "newId": "6f54a416-317f-5a8a-8a6a-d8832b3dff03",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "c30d995626d1740f3d527830b10c29ec5796e3abd9a099f3bcb00442422e820e"
+    },
+    {
+      "oldId": "1f1611df-787f-4359-8cab-d7b0e5b2469b",
+      "oldTitle": "院舍質素如何衡量",
+      "title": "博物館義工的開館早晨",
+      "language": "chinese",
+      "category": "社會",
+      "style": "Narrative",
+      "min": 520,
+      "max": 545,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [],
+      "content": "早上九時十五分，慧姨從員工入口走進博物館。她在義工簿簽名，領取名牌和小型通訊器，先到服務台查看當日安排。第一場導賞十時半開始，在那之前，她負責巡看二樓展廳與補齊摺頁。玻璃門尚未開放，館內的聲音格外清楚。空調低鳴，保安員的鞋跟在石地上留下短短回音。\n\n慧姨按清單逐個展區查看：互動屏幕停在首頁，長椅沒有遺留物，展櫃旁的文字牌端正。她不碰展品，只把一張被風吹歪的活動卡移回架內。走到陶器展區時，她發現角落的感應燈沒有隨腳步亮起，便用通訊器報上位置和編號。技術員尚未到，她在平面圖畫一個小圈，提醒稍後導賞時繞到另一側。回到服務台，箱內的中文版摺頁只餘十份，她從儲物櫃補上一疊，再把不同語言分開排齊。\n\n九時五十五分，入口外開始有人等候。一名小孩隔着玻璃數吊在大堂頂部的模型，兩位旅客低頭看地圖。慧姨整理名牌，試讀今天導賞的第一段，確認幾個年代沒有記錯。閘門開啟後，外面的談話聲一下湧進寬闊大堂。\n\n第一位訪客問洗手間方向，第二位想知道寄物櫃在哪裡。慧姨逐一指路，又把適合家庭使用的活動紙交給小孩。幾分鐘前仍像靜止佈景的博物館，很快被腳步填滿。她站在服務台旁，看見技術員朝二樓走去，便擦掉圖上的小圈，翻到下一項工作。開館的早晨沒有隆重訊號，只由許多細小確認把一座安靜建築轉成可被使用的空間。",
+      "newId": "a3e16626-0541-53a9-9276-9aae5a264361",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "32e575beaa6c9a66794b2e27e286e51290ea6e2a7b50afec4016ee384351128f"
+    },
+    {
+      "oldId": "6b528975-1f6f-46e4-9ef7-9aaa623f18c4",
+      "oldTitle": "零工經濟的保障缺口",
+      "title": "棋會裡的一盤慢棋",
+      "language": "chinese",
+      "category": "社會",
+      "style": "Narrative",
+      "min": 500,
+      "max": 522,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [],
+      "content": "星期六下午，棋會最靠窗的一桌只坐了兩個人。老何把木棋子逐枚排好，對面的卓琳則把計時鐘推到棋盤中央。他們約定不用快棋時限，只在記錄紙上寫下每一步，看看一盤棋能走得多仔細。開局十多步平穩得像照着熟路散步。卓琳先移中央兵，老何以騎士回應，雙方很快完成部署。到了第一個岔口，她伸手摸到主教，又停在半空。窗外巴士駛過，玻璃輕震一下，她把手收回，重新計算交換後留下的兵形。老何沒有催促。他望着棋盤邊緣，偶爾在記錄紙畫小點。鄰桌已下完兩局，有人起身斟茶，有人圍過來看。他們都保持安靜，只在卓琳終於落子後輕輕挪動位置。\n\n那一步沒有吃子，卻封住老何原本準備的進路。中局變得擁擠，棋子互相保護，也互相阻礙。老何用一隻兵引開守衛，換得開放直線；卓琳寧願退後一步，讓主力保留防守。每次輪到自己，他們先看對方剛改變了甚麼，再看原有計畫是否仍成立。桌上的茶由熱變暖，日光也從棋盤左邊移到右邊。接近黃昏，雙方各剩一車和幾隻兵。老何本可嘗試冒險突破，最後卻把王移回安全格。卓琳看了一會兒，伸手表示和棋。他們沒有立即收子，而是從關鍵位置倒着重走，找出哪一步令局面失去勝機。棋會開始疊椅時，那盤棋才真正結束。慢並沒有讓答案自動出現，卻讓每一次猶豫都有機會留下形狀。",
+      "newId": "1a5509f9-f750-5892-9b1a-c360b0fbc181",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "af25ec98d3639a5a2ceb3f5fbc2d88d632db9aa25831cc2a00e07d0ffb7e878c"
+    },
+    {
+      "oldId": "938e88b7-ffd7-4233-870b-2d8340621f62",
+      "oldTitle": "青年置業與流動選擇",
+      "title": "失物招領桌上的紅雨傘",
+      "language": "chinese",
+      "category": "社會",
+      "style": "Narrative",
+      "min": 550,
+      "max": 575,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [],
+      "content": "紅雨傘被送到失物招領桌時，傘尖還在滴水。值班的嘉敏先把它撐在膠墊上晾乾，再在標籤寫下時間和地點：下午三時四十分，二樓自修室門外。傘柄掛着一條褪色藍繩，沒有姓名，也沒有任何能立刻辨認主人的記號。那天驟雨來得急，桌上很快多了水樽、摺帽和一隻兒童雨靴。幾個人先後來問雨傘，說出的卻都是黑色或格子款。嘉敏每次都請對方描述把手、尺寸和遺失位置，然後才查看架上的物件。紅傘一直留在角落，布面乾後顯出一小塊像月牙的淡痕。\n\n傍晚，一名穿校服的男生跑來，喘着氣說不見了母親的傘。他記得是紅色，卻說不出品牌。嘉敏沒有立即遞給他，只問傘柄有甚麼特別。男生摸摸書包帶，想了一會兒，說藍繩末端打了兩個結，因為原本的腕帶斷過。嘉敏取下雨傘，藍繩果然有一大一小兩個結。男生又指出傘面近邊緣有一道淺色彎痕，是去年被單車籃夾過留下的。\n\n資料吻合，他在登記簿寫下姓名和聯絡號碼，雙手接過傘，卻沒有馬上離開。他把每一節傘骨檢查一遍，像在確認一件借來的東西是否完整。門外雨勢已弱，屋簷仍不時落下大水滴。男生撐開紅傘，藍繩在手腕旁晃了兩下，轉身走進灰亮街道。桌上空出一個濕潤圓印，嘉敏用布擦乾，把標籤劃去。其餘失物仍排在架上，各自等待一個足夠具體的描述。她忽然明白，招領要靠一連串細節替物件找到真正記得它的人，醒目顏色只可作為最初的辨認起點。",
+      "newId": "7cac264f-0e5f-5d14-a919-9b5d0ddb98d0",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "5d9e4fadeb62b75a72cc6413d0cbdf6c62cf46e877cd2c1f4954039e7e1e2810"
+    },
+    {
+      "oldId": "7e1946cb-0769-4253-b7f3-36dc3bbfbfdb",
+      "oldTitle": "預防醫學的投資回報",
+      "title": "小型樂團排練前的十分鐘",
+      "language": "chinese",
+      "category": "社會",
+      "style": "Narrative",
+      "min": 500,
+      "max": 515,
+      "verification": "no",
+      "unit": "characters",
+      "fictional": true,
+      "sources": [],
+      "content": "離排練還有十分鐘，房間裡先響起互不相干的聲音。小提琴手拉一條長音，停下來微調弦軸；單簧管手把哨片對着燈看，再用指腹抹去多餘水分。鋼琴旁的阿朗翻譜，用鉛筆圈出要重練的兩處轉拍。大提琴手最後到達。\n\n他向眾人點頭，把琴盒平放，依次取出琴弓、止滑墊和譜架。椅子高度不合，他換了角落那張較低的。移動時，椅腳在木地板擦出短聲，其他人不約而同停了一下，隨即又回到自己的音階。還有七分鐘，四人第一次用同一個音校準。\n\n鋼琴給出基準，小提琴先接上，單簧管的音在空氣中稍微浮動，片刻後靠近中心。大提琴的低音加入，房間像忽然有了地面。阿朗聽完沒有評論，只再彈一次，這回每個聲部更快找到位置。剩下四分鐘，他們核對開頭速度。\n\n第二段有一處休止後齊入，大家沒有正式演奏，只從前兩小節走到入口。第一次，單簧管早了半拍；第二次，四個聲音同時落下。小提琴手在譜上畫一條向上的小箭嘴，提醒自己先看呼吸，再看拍子。牆上秒針走完最後一圈，門外仍有人說話。\n\n阿朗關掉節拍器，問大家是否準備好。剛才散落的長音、翻頁聲和椅腳摩擦全部停住，短暫安靜反而成為最清楚的信號。他抬起手，四個人同時吸氣。正式排練尚未奏出第一音，樂團已在這十分鐘裡把各自的速度整理成一個共同起點。",
+      "newId": "dc1145f6-f7f9-5629-962c-f88c371f8388",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "c0604e82c14109b2fd8019b009300558db8aff3d8fd98eaa73cb46188d0bc3b5"
+    },
+    {
+      "oldId": "9bce4cff-5c6e-4780-a9ae-78a11e57af71",
+      "oldTitle": "A Constructive Response to Public Consultation",
+      "title": "Coordinating the Return of a Travelling Exhibition",
+      "language": "english",
+      "category": "Business communication",
+      "style": "Professional email/memo",
+      "min": 355,
+      "max": 375,
+      "verification": "no",
+      "unit": "words",
+      "fictional": true,
+      "sources": [],
+      "content": "To: Exhibition, Collections, and Facilities teams\n\nSubject: Return schedule for the North Coast travelling exhibition\n\nThe exhibition closes at Harbour Gallery on Sunday evening, and the return vehicle is booked for Thursday at 08:30. This note confirms the sequence between those dates and identifies the decisions that still need owners. Our aim is to hand every object back with a complete condition trail while clearing the gallery before its next installation begins.\n\nOn Monday morning, Mei and Daniel will compare each display against the outward packing list. They will photograph any change in condition before an object is moved, then attach the new image reference to its record. Small works can be placed in their numbered transit crates once both checks are complete. The three framed textiles must remain on the wall until the specialist handlers arrive on Tuesday, because their travel frames require a different lifting method.\n\nFacilities will isolate the display lighting at 17:00 on Monday and remove the temporary barriers after the final visitor route has closed. Please leave the loading-bay door and freight lift available from 07:45 on Thursday. The driver has the vehicle dimensions, but the carrier still needs written confirmation that the bay can accept the tail lift without blocking the fire exit. Arun, could you obtain that confirmation by Tuesday noon?\n\nThe lender requested updated condition reports within two working days of arrival. I have created a shared checklist with one line for each object, crate, seal, and document. Record the seal number at packing and again at unloading; do not mark an item complete simply because its crate is present. If a discrepancy appears, pause that item, photograph the seal, and call me before the vehicle departs. The rest of the load may continue if the handler confirms that separation is safe.\n\nPlease add final staff names and mobile numbers to the checklist by Wednesday at 15:00. I will issue the carrier pack that afternoon and remain the escalation contact until the lender signs the return receipt. The registrar will then securely archive the signed reports, courier receipt, and final checklist beside the original outward loan file.",
+      "newId": "e263c323-5df5-5018-bb61-edd7e65d4ae0",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "1898e4757fe97d6705e7ba3ac77af485fafef690cd432d32425b958434dd974d"
+    },
+    {
+      "oldId": "d7591888-42b6-4f9b-89cc-ed5c8ab7d3d2",
+      "oldTitle": "Housing Affordability and Secure Renting",
+      "title": "How a Suspension Bridge Shares Its Load",
+      "language": "english",
+      "category": "Articles",
+      "style": "Technical explanatory",
+      "min": 345,
+      "max": 365,
+      "verification": "yes engineering",
+      "unit": "words",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://www.fhwa.dot.gov/bridge/pubs/if11045.pdf",
+          "note": "FHWA inspection primer identifies the deck, vertical suspenders, main cables, tower saddles, and end anchor blocks in a typical suspension bridge."
+        }
+      ],
+      "content": "A suspension bridge can look almost weightless from a distance, yet its slender outline is a carefully connected route for force. Traffic first presses on the deck. Floor beams and stiffening members spread that changing load so it does not remain concentrated beneath a single wheel. The deck passes the force into many vertical suspenders, the narrow cables or rods that hang at regular intervals along the span.\n\nEach suspender pulls on a main cable. Unlike a straight beam, the main cable carries its load mainly through tension, so it settles into a curved profile between supports. A heavier patch of traffic changes the local pull, while the connected deck and cable distribute part of that effect along the span. The large cable rises over saddles at the tops of the towers and continues towards the ends of the bridge.\n\nAt each tower, the cable presses down as well as pulling sideways. The tower carries the downward component through its legs into the foundations. The sideways pull does not simply disappear at the tower: the main cable continues to a massive anchorage, where its ends are secured. In an earth-anchored bridge, these anchorages resist the cable tension and transfer it into the ground. The result is a continuous path from deck to suspenders, from suspenders to main cables, and from cables to towers, anchorages, foundations, and earth.\n\nThe parts also control shape. A very flexible deck could twist or rise in gusts, so its structure provides stiffness while still allowing ordinary movement from traffic and temperature. Joints and bearings accommodate designed changes in length. Engineers therefore examine the bridge as a system, not as a row of independent pieces. Corrosion in a cable wire, looseness at a connection, or damage to a deck member matters partly because it can alter how load finds its route.\n\nWhen a lorry crosses the centre, no single tower lifts the whole vehicle. Thousands of connected elements share the task, each suited to tension, compression, bending, or transfer under changing traffic and weather. The graceful curve records that hidden cooperation.",
+      "newId": "a03e38ea-88df-5a86-bf53-c105296340db",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: FHWA inspection primer identifies the deck, vertical suspenders, main cables, tower saddles, and end anchor blocks in a typical suspension bridge. https://www.fhwa.dot.gov/bridge/pubs/if11045.pdf",
+      "sha256": "7beb3e1092d7bf02feda703ce483256f4eb3f88a581d072610564eeb597cb686"
+    },
+    {
+      "oldId": "cb49ecbe-b752-481f-8a53-b4742085bd99",
+      "oldTitle": "Keeping Digital Records Useful",
+      "title": "A Practical Naming System for Field Photographs",
+      "language": "english",
+      "category": "Business communication",
+      "style": "Concise procedural",
+      "min": 200,
+      "max": 220,
+      "verification": "no",
+      "unit": "words",
+      "fictional": false,
+      "sources": [],
+      "content": "Copy every field photograph from the memory card into a dated ingest folder before renaming any file. Record the card identifier, camera, operator, and transfer time in the image log. Keep the source card write-protected while the transfer is checked.\n\nVerify the transfer before changing the working set. Compare file counts and total bytes, then use checksums when the ingest tool provides them. Open the first and last image and sample files between them. Record any missing or unreadable sequence without closing the gap.\n\nOnce verification passes, preserve one read-only ingest master with the original camera filenames and extensions. Create a separate working copy for description and delivery. Rename only the working copies, using project code, date, location, and sequence number in the same order. For project ORCH on 8 April 2031 at plot C, use ORCH_2031-04-08_C_001. Add operator initials when two cameras share a location.\n\nPut observations such as damaged wall or possible nest in the image log, where they can be corrected without renaming files. Derivative crops may add detail or web after the complete working name. Before clearing the card, confirm that the verified master exists in primary storage and backup, and that the log links each working name to its original camera file.",
+      "newId": "3d058f53-13e0-5acb-9a6c-712b3a769e8b",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; no external factual verification required.",
+      "sha256": "25d6326a8431f94d99abb02ead2317015ad50fbf79f5e670ef9b0e206df7cdac"
+    },
+    {
+      "oldId": "d800ba7c-e99a-420b-b141-becb16ed2c76",
+      "oldTitle": "Keeping Long-Term Commitments Affordable",
+      "title": "Caring for a Wooden Sailing Vessel Through the Seasons",
+      "language": "english",
+      "category": "Articles",
+      "style": "Technical narrative",
+      "min": 370,
+      "max": 390,
+      "verification": "yes maritime conservation",
+      "unit": "words",
+      "fictional": true,
+      "sources": [
+        {
+          "url": "https://www.nps.gov/articles/000/nepe-canoes-slowing-the-flow-of-time.htm",
+          "note": "NPS wooden-artifact conservation account supports careful cleaning, custom supports, monitoring, moisture control, and preserving historic wear rather than erasing it."
+        },
+        {
+          "url": "https://home.nps.gov/safr/learn/historyculture/c-a-thayer.htm",
+          "note": "NPS history of the wooden sailing vessel C. A. Thayer documents recurring inspection and major repair of frames, hull, and deck."
+        }
+      ],
+      "content": "In early spring, the yard crew removes the winter cover from the sailing vessel Alder and begins with notebooks rather than tools. Mara walks the deck slowly, comparing seams, fastenings, and painted surfaces with photographs from autumn. A dark mark may be harmless dirt, a trace of trapped moisture, or the first visible edge of decay. She records its position before anyone cleans it, because the pattern matters as much as the spot.\n\nWood moves as moisture and temperature change. Planks swell and shrink; coatings weather; joints that were quiet in October may open by March. The crew keeps rainwater moving towards clear drains and checks that ventilation reaches enclosed spaces. Loose dust is lifted gently, not scrubbed into a fragile surface. Where the vessel rests on shore, shaped supports spread its weight across strong parts of the hull rather than forcing an old plank to carry a new point load.\n\nSummer brings visitors, longer light, and repeated movement across the deck. The daily check is brief: water where it should not be, a chafed line, a lifted paint edge, or an unfamiliar sound underfoot. Small observations enter the same log, with dated photographs taken from marked positions. This consistency lets the shipwright distinguish a stable scar from a crack that is growing. Wear from the vessel's working life is not automatically removed. Tool marks, repairs, and softened edges are evidence, so cleaning and treatment aim to slow loss without making the hull look newly built.\n\nAutumn is the season for planned work. The crew opens accessible areas, tests suspect fastenings, and replaces a failed piece only after documenting what it reveals. New timber is shaped to support the surviving structure, not to hide every irregularity. Paint is renewed where it forms a protective barrier, while drainage and airflow are checked again before wet weather.\n\nBy winter, Alder appears still beneath her cover, but care continues. Humidity readings, storms, pests, and support points are reviewed after each inspection. Quiet checks guide the heavier work planned for spring. The seasonal cycle does not promise permanence. It creates a chain of modest, recorded decisions so that a future crew can tell what changed, why it changed, and how much original vessel remains.",
+      "newId": "15384e8c-3c80-5627-9de0-a96c3351c1a6",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: NPS wooden-artifact conservation account supports careful cleaning, custom supports, monitoring, moisture control, and preserving historic wear rather than erasing it. https://www.nps.gov/articles/000/nepe-canoes-slowing-the-flow-of-time.htm | NPS history of the wooden sailing vessel C. A. Thayer documents recurring inspection and major repair of frames, hull, and deck. https://home.nps.gov/safr/learn/historyculture/c-a-thayer.htm",
+      "sha256": "d7ae2f7939e9652720bcdb02741d2b9fcd4f9b8ae8ed8a7b83df806a27732a0e"
+    },
+    {
+      "oldId": "bc9cc109-e666-4b1b-ad25-60a134a6a3ab",
+      "oldTitle": "Preparing Public Services for an Ageing Population",
+      "title": "How Migratory Birds Navigate Across Seasons",
+      "language": "english",
+      "category": "Articles",
+      "style": "Science narrative",
+      "min": 355,
+      "max": 375,
+      "verification": "yes ornithology",
+      "unit": "words",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://nationalzoo.si.edu/migratory-birds/neotropical-migratory-bird-faqs",
+          "note": "Smithsonian summary describes migratory birds combining celestial, magnetic, landscape, wind, and polarized-light cues, with reliance varying by species and conditions."
+        },
+        {
+          "url": "https://nationalzoo.si.edu/migratory-birds/news/stellar-migrant",
+          "note": "Smithsonian account of indigo bunting experiments supports learned star-pattern orientation and the use of multiple alternative cues."
+        }
+      ],
+      "content": "A young migratory bird does not carry a tiny map of every river bend between its summer and winter ranges. Its journey emerges from inherited tendencies, learning, bodily timing, and several kinds of information available along the route. The balance differs among species, and even one bird may change cues when clouds, winds, or unfamiliar terrain make its usual reference less useful.\n\nBefore departure, changes in daylight help organise seasonal behaviour. The bird becomes restless, feeds differently, and begins moving in a broadly appropriate direction. That inherited heading can be enough for a first journey in some species, but it is not the whole story. Older birds may refine a route through experience, recognising productive stopping places and avoiding barriers encountered before. Travelling with companions can add another source of information.\n\nThe sky provides more than one compass. Day-flying birds can use the sun while accounting for its movement across the hours. Some night migrants orient by the rotating pattern of stars rather than by following a single bright point. Light scattered near sunset can provide directional information even when the sun itself is low. Experiments with indigo buntings showed that young birds need experience of the night sky to learn the star pattern they later use.\n\nEarth's magnetic field offers a cue when visible landmarks are scarce or the sky is obscured. Coastlines, mountain chains, rivers, smells, and prevailing winds can also shape a route. These signals do not behave like separate buttons. A bird may compare them, give one more weight under particular conditions, and correct its course as the landscape changes. Researchers still investigate exactly how different senses combine.\n\nNavigation also includes deciding when to stop. A small migrant arriving after a long flight must find shelter and food, rebuild its reserves, and wait if conditions ahead are poor. The remembered or detected quality of these sites can influence survival as strongly as compass direction.\n\nAcross seasons, the route is therefore both old and newly made: an inherited programme starts the movement, environmental cues steady it, and experience adds detail. The remarkable result is not perfect straight-line travel, but repeated correction over a journey filled with shifting information.",
+      "newId": "db72ae0b-16a5-5ac6-b03d-30b1581da76c",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: Smithsonian summary describes migratory birds combining celestial, magnetic, landscape, wind, and polarized-light cues, with reliance varying by species and conditions. https://nationalzoo.si.edu/migratory-birds/neotropical-migratory-bird-faqs | Smithsonian account of indigo bunting experiments supports learned star-pattern orientation and the use of multiple alternative cues. https://nationalzoo.si.edu/migratory-birds/news/stellar-migrant",
+      "sha256": "c7017e2b81ba7711c3cc0152bd505c9e825dd2627a71a1d47b40ddf885adbe3e"
+    },
+    {
+      "oldId": "fd2dd1c5-a220-4e9b-955a-7e7d1588ec56",
+      "oldTitle": "Responsible Land Use for a Dense City",
+      "title": "Reading the Layers of an Archaeological Trench",
+      "language": "english",
+      "category": "Articles",
+      "style": "Historical explanatory",
+      "min": 340,
+      "max": 360,
+      "verification": "yes archaeology",
+      "unit": "words",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://historicengland.org.uk/research/methods/archaeology/excavation/",
+          "note": "Historic England defines excavation as controlled examination of buried deposits and features, with finds and spatial records documented during removal."
+        },
+        {
+          "url": "https://historicengland.org.uk/whats-new/research/back-issues/the-matrix-using-archaeological-stratigraphic-data/",
+          "note": "Historic England explains that stratigraphic records sequence units and preserve primary evidence of excavation order and interpretation."
+        }
+      ],
+      "content": "The wall of an archaeological trench is not a simple calendar with the oldest date printed at the bottom. It is a record of deposits, cuts, structures, and disturbances, each produced by an event. Reading that record begins with careful observation before soil is removed. Colour, texture, inclusions, and boundaries may reveal that one layer differs from the next, but the relationship between them provides the sequence.\n\nImagine a dark occupation deposit lying over pale natural subsoil. A narrow pit cuts through the dark layer and is later filled with loose earth. Above both sits a spread of rubble from a collapsed wall. The pit fill may be physically low in the trench, yet it is later than the layer it cuts. The rubble is later again if it covers the filled pit without being disturbed by it. Archaeologists describe each distinct deposit, cut, wall, or fill as a context and record which contexts lie above, below, or through others.\n\nExcavation tests this interpretation while also destroying the original arrangement. Once a layer has been lifted, it cannot be put back with every grain in place. Plans, section drawings, photographs, measurements, samples, and written context records therefore become essential evidence. Finds receive labels that connect them to the context in which they were recovered. A pottery fragment without that connection may still be interesting, but it can no longer date a particular event reliably.\n\nThe sequence is often represented as a stratigraphic matrix. Each context occupies a position linked to those earlier or later than it. The matrix does not assign a calendar year by itself. Dating evidence may come from objects, scientific analysis, documents, or comparison, and one intrusive find must be considered carefully.\n\nAs the trench deepens, interpretations can change. A straight edge first thought to be a foundation may become the side of a drain; two similar soils may prove to belong to separate episodes. Good recording preserves those revisions. The final account is thus not a treasure list but a reasoned history of actions: ground prepared, surface used, pit dug, wall fallen, and earth accumulated again.",
+      "newId": "4b7684ba-20a8-556b-a268-7a97a6279eab",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: Historic England defines excavation as controlled examination of buried deposits and features, with finds and spatial records documented during removal. https://historicengland.org.uk/research/methods/archaeology/excavation/ | Historic England explains that stratigraphic records sequence units and preserve primary evidence of excavation order and interpretation. https://historicengland.org.uk/whats-new/research/back-issues/the-matrix-using-archaeological-stratigraphic-data/",
+      "sha256": "8bb1362b90ea8d2bb2123e8ee6aa0b0a1bb8fa383eaa3a71cc9b9c9d4c332aa9"
+    },
+    {
+      "oldId": "64f6857d-fa40-4c71-87be-b133810dd9c9",
+      "oldTitle": "Strengthening Primary Healthcare Capacity",
+      "title": "How a Telescope Turns Faint Light into an Image",
+      "language": "english",
+      "category": "Articles",
+      "style": "Science/technical",
+      "min": 355,
+      "max": 375,
+      "verification": "yes astronomy/optics",
+      "unit": "words",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://science.nasa.gov/universe/telescopes-101/",
+          "note": "NASA overview supports the roles of mirrors and lenses in gathering and focusing light and the relation between aperture and faint-object sensitivity."
+        },
+        {
+          "url": "https://science.nasa.gov/mission/hubble/observatory/design/optics/",
+          "note": "NASA Hubble optics page traces light from primary mirror to secondary mirror, focal point, and detector instruments."
+        }
+      ],
+      "content": "Light from a distant star arrives at a telescope as an extremely sparse stream of photons. The telescope does not pull more light out of the sky; it intercepts light that is already travelling through its opening. A larger primary mirror presents a greater collecting area, so during the same exposure it can gather more photons from a faint object than a smaller mirror.\n\nIn a reflecting telescope, those photons strike a precisely curved primary mirror. Rays arriving from the same distant point are redirected so that they converge. Many designs use a smaller secondary mirror to send the narrowing beam towards an instrument, sometimes through an opening in the primary mirror. The focal plane is where the optical system forms an image: light from different directions in the sky lands at different positions, preserving the scene rather than mixing everything into one bright spot.\n\nA detector placed at that plane divides the image into pixels. When photons interact with a pixel, the detector builds an electrical signal. The signal from a faint source may be small, so the instrument accumulates light over time. Longer exposure can reveal more of the source, but it also gathers unwanted light and detector noise. Astronomers take calibration frames and process the measurements to separate stable instrument effects from features in the sky.\n\nImage sharpness depends on more than brightness. The mirrors must hold the intended shape and alignment; a slight error spreads a point of light across the detector. The atmosphere can blur ground-based observations because moving air bends incoming light unevenly. Even a perfect optical surface faces diffraction, the natural spreading associated with waves passing through a finite opening. Aperture, wavelength, focus, tracking, and detector sampling all influence the detail finally recorded.\n\nThe familiar finished picture is therefore the end of a chain. A mirror gathers and directs faint light, optics bring it to focus, a detector counts its arrival, and software calibrates the resulting numbers. Colour may be reconstructed from separate exposures through different filters. What looks like a luminous cloud on a screen began as individual packets of light, collected patiently and assigned to positions in an image.",
+      "newId": "3a8bdaba-c09d-5809-b412-8eb21c0b0662",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: NASA overview supports the roles of mirrors and lenses in gathering and focusing light and the relation between aperture and faint-object sensitivity. https://science.nasa.gov/universe/telescopes-101/ | NASA Hubble optics page traces light from primary mirror to secondary mirror, focal point, and detector instruments. https://science.nasa.gov/mission/hubble/observatory/design/optics/",
+      "sha256": "52ef0e18f625845a2279dd4cbd10149787a78857774f3b0e4bed34ebed20f8a7"
+    },
+    {
+      "oldId": "f895f26e-2be2-5816-aa91-ca3e20dda07b",
+      "oldTitle": "The Journeys Hidden in a Mixed Street",
+      "title": "The Geometry Hidden in a Folded Map",
+      "language": "english",
+      "category": "Articles",
+      "style": "Compact explanatory",
+      "min": 225,
+      "max": 245,
+      "verification": "yes mathematics",
+      "unit": "words",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://nrich.maths.org/problems/map-folding",
+          "note": "NRICH map-folding activity demonstrates that crease layout constrains the possible stacking orders of labelled rectangular panels."
+        }
+      ],
+      "content": "Open a street map flat and its creases form a rectangular grid. The lines look like simple hinges, but together they impose a geometric puzzle. Each panel has fixed neighbours, every fold reverses the orientation of part of the sheet, and layers cannot pass through one another. A final packet may be reachable by folding sequences but not by others.\n\nConsider a strip of four panels labelled in order. Folding the left panel over changes which printed face points upward. Folding the doubled section again moves two panels as a unit and reverses their order in the stack. If the same creases are used from the opposite end, the visible top panel and internal sequence may differ. Writing the labels from top to bottom records the result as a permutation, but not every imagined permutation must be physically possible.\n\nA two-dimensional map adds intersections. Horizontal folds alter long rows; vertical folds then move columns containing several layers. The thickness of real paper limits sharp turns, while the mathematical version often treats the sheet as having no thickness. Even in that ideal model, panels connected across a crease must remain connected, which sharply restricts the stack.\n\nThis is why refolding a map can feel harder than flattening it. The crease pattern stores local instructions, yet the order of operations controls the global result. By marking panels, predicting a stack, and testing a sequence, an everyday sheet becomes a small laboratory for symmetry, orientation, adjacency, and combinatorics.",
+      "newId": "15b4495c-a889-53e9-b0d9-24d0598495ea",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: NRICH map-folding activity demonstrates that crease layout constrains the possible stacking orders of labelled rectangular panels. https://nrich.maths.org/problems/map-folding",
+      "sha256": "68d47283a61bcca5f20e4fb7b7943a269b501a17e3451344a1503f128bd8e062"
+    },
+    {
+      "oldId": "dc9063ba-e555-56b4-b6e6-c67d38481859",
+      "oldTitle": "The Promise Inside a Service Standard",
+      "title": "What a Recipe Measures—and What It Leaves to Judgement",
+      "language": "english",
+      "category": "Articles",
+      "style": "Reflective explanatory",
+      "min": 225,
+      "max": 245,
+      "verification": "light culinary",
+      "unit": "words",
+      "fictional": false,
+      "sources": [
+        {
+          "url": "https://opentextbooks.library.arizona.edu/culinarymedicine/chapter/chapter-2-kitchen/",
+          "note": "University of Arizona culinary text distinguishes weight from volume and explains that equal volumes of different ingredients do not imply equal weights."
+        },
+        {
+          "url": "https://www.ndsu.edu/agriculture/extension/publications/now-youre-cookin-well-measured-recipes",
+          "note": "NDSU Extension describes accurate measurement as a basis for repeatability while distinguishing techniques for dry and liquid ingredients."
+        }
+      ],
+      "content": "A recipe translates experience into quantities: grams of flour, millilitres of water, minutes in the oven. These measurements make a dish repeatable, but they do not remove judgement. A cup describes volume rather than mass, so the same cup can hold different weights of loosely spooned or tightly packed flour. A scale reduces that variation; it cannot tell whether this particular flour absorbed slightly more water on a humid afternoon.\n\nTime is equally precise and incomplete. Ten minutes gives the cook a shared starting point, yet pans conduct heat differently, ovens cycle, and pieces are rarely identical. The useful instruction often pairs a number with an observable change: simmer for ten minutes, until the sauce coats the spoon. The clock protects against guesswork while the second phrase asks the cook to look.\n\nEven salt reveals the boundary. A measured amount establishes proportion, especially in dough or a large batch. Final seasoning still depends on the salt already present in stock, the concentration caused by evaporation, and the other flavours. Tasting is not a rejection of measurement; it is another form of information.\n\nA well-written recipe therefore separates what must be controlled from what must be noticed. Weight, volume, temperature, and time provide a structure that another cook can follow. Texture, aroma, colour, and sound help that cook respond to ingredients and equipment that are never perfectly uniform. The recipe is both record and conversation: exact where precision matters, descriptive where attention must finish the work.",
+      "newId": "01aa3db7-d042-5281-ae34-4dde3e97e3ff",
+      "sourceType": "synthetic",
+      "riskClassification": "A",
+      "reviewStatus": "approved",
+      "reviewedAt": "2026-08-22T10:00:00.000Z",
+      "reviewNotes": "Original neutral replacement; factual claims checked against: University of Arizona culinary text distinguishes weight from volume and explains that equal volumes of different ingredients do not imply equal weights. https://opentextbooks.library.arizona.edu/culinarymedicine/chapter/chapter-2-kitchen/ | NDSU Extension describes accurate measurement as a basis for repeatability while distinguishing techniques for dry and liquid ingredients. https://www.ndsu.edu/agriculture/extension/publications/now-youre-cookin-well-measured-recipes",
+      "sha256": "08602bef7d66a2ec1d8aa4b5088f819160d2372ac7e60792ef51eb904b90f0e0"
+    }
+  ]
+}

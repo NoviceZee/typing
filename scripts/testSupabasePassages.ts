@@ -2,29 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-
-type SupabasePassageInsert = {
-  title: string;
-  category?: string | null;
-  style?: string | null;
-  content: string;
-  is_active?: boolean;
-  is_public?: boolean;
-  created_by?: string | null;
-};
-
-type SupabasePassageRow = {
-  id: string;
-  title: string;
-  category: string | null;
-  style: string | null;
-  content: string;
-  is_active: boolean;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-  created_by: string | null;
-};
+import type { SupabasePassageInsert, SupabasePassageRow, SupabasePassageUpdate } from "../lib/supabasePassageTypes";
 
 const TEST_TITLE = "Typing Station Supabase CRUD Test";
 const UPDATED_TITLE = "Typing Station Supabase CRUD Test Updated";
@@ -41,7 +19,7 @@ let deleteSupabasePassageRow: (id: string, client?: any) => Promise<void>;
 let getSupabasePassageRowById: (id: string, client?: any) => Promise<SupabasePassageRow | null>;
 let updateSupabasePassageRow: (
   id: string,
-  payload: Partial<SupabasePassageInsert>,
+  payload: SupabasePassageUpdate,
   client?: any
 ) => Promise<SupabasePassageRow>;
 
@@ -70,13 +48,90 @@ async function main() {
     insertedPassageId = insertedPassage.id;
     logResult(`Inserted ${insertedPassage.id}: ${insertedPassage.title}`);
 
-    logStep("Fetching inserted passage");
+    logStep("Confirming safe draft defaults");
     const fetchedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseCrudClient);
     assertPassage(fetchedPassage, "Inserted passage was not readable after insert.");
-    logResult(`Fetched ${fetchedPassage.id}: ${fetchedPassage.title}`);
+    assertReviewState(fetchedPassage, {
+      risk_classification: null,
+      review_status: "draft",
+      reviewed_at: null,
+      is_active: false,
+      is_public: false
+    });
+    logResult(`Fetched safe draft ${fetchedPassage.id}: ${fetchedPassage.title}`);
 
-    logStep("Updating test passage");
-    const updatedPassage = await updateSupabasePassageRow(
+    logStep("Rejecting invalid activation with nullable risk");
+    await expectUpdateRejected(
+      insertedPassage.id,
+      {
+        risk_classification: null,
+        review_status: "approved",
+        reviewed_at: new Date().toISOString(),
+        is_active: true,
+        is_public: true
+      },
+      "Invalid activation with null risk was accepted"
+    );
+
+    logStep("Approving risk-A passage atomically");
+    const approvedPassage = await updateSupabasePassageRow(
+      insertedPassage.id,
+      {
+        risk_classification: "A",
+        source_type: "original",
+        fictional: false,
+        review_notes: "Integration approval.",
+        review_status: "approved",
+        reviewed_at: new Date().toISOString(),
+        is_active: true,
+        is_public: true
+      },
+      supabaseCrudClient
+    );
+    assertReviewState(approvedPassage, {
+      risk_classification: "A",
+      review_status: "approved",
+      is_active: true,
+      is_public: true
+    });
+
+    const { error: anonymousNotesError } = await createAnonClient()
+      .from("passages")
+      .select("review_notes")
+      .limit(1);
+    if (!anonymousNotesError) {
+      throw new Error("Anonymous review_notes was directly selectable");
+    }
+
+    logStep("Resetting approval after a risk downgrade");
+    const riskDowngraded = await updateSupabasePassageRow(
+      insertedPassage.id,
+      { risk_classification: "B" },
+      supabaseCrudClient
+    );
+    if (
+      riskDowngraded.review_status !== "pending_review" ||
+      riskDowngraded.reviewed_at !== null ||
+      riskDowngraded.is_active ||
+      riskDowngraded.is_public
+    ) {
+      throw new Error("Risk downgrade did not reset approval");
+    }
+
+    await updateSupabasePassageRow(
+      insertedPassage.id,
+      {
+        risk_classification: "A",
+        review_status: "approved",
+        reviewed_at: new Date().toISOString(),
+        is_active: true,
+        is_public: true
+      },
+      supabaseCrudClient
+    );
+
+    logStep("Resetting approval after a material edit");
+    const materiallyEdited = await updateSupabasePassageRow(
       insertedPassage.id,
       {
         title: UPDATED_TITLE,
@@ -84,47 +139,78 @@ async function main() {
       },
       supabaseCrudClient
     );
-    logResult(`Updated ${updatedPassage.id}: ${updatedPassage.title}`);
-
-    logStep("Fetching updated passage");
-    const refetchedPassage = await getSupabasePassageRowById(insertedPassage.id, supabaseCrudClient);
-    assertPassage(refetchedPassage, "Updated passage was not readable after update.");
-
-    if (refetchedPassage.title !== UPDATED_TITLE) {
-      throw new Error(`Update verification failed. Expected "${UPDATED_TITLE}", got "${refetchedPassage.title}".`);
+    if (
+      materiallyEdited.review_status !== "pending_review" ||
+      materiallyEdited.reviewed_at !== null ||
+      materiallyEdited.is_active ||
+      materiallyEdited.is_public
+    ) {
+      throw new Error("Material edit did not reset approval");
     }
 
-    logResult(`Confirmed update for ${refetchedPassage.id}`);
-
-    logStep("Toggling test passage inactive");
-    const inactivePassage = await updateSupabasePassageRow(
+    logStep("Persisting complete submitted draft");
+    const submittedPassage = await updateSupabasePassageRow(
       insertedPassage.id,
       {
-        is_active: false
+        title: "Typing Station Submitted Draft",
+        content: "Submitted draft content persisted atomically.",
+        risk_classification: "B",
+        source_type: "licensed",
+        fictional: true,
+        review_notes: "Submitted draft notes.",
+        review_status: "pending_review",
+        reviewed_at: null,
+        is_active: false,
+        is_public: false
+      },
+      supabaseCrudClient
+    );
+    if (
+      submittedPassage.title !== "Typing Station Submitted Draft" ||
+      submittedPassage.review_notes !== "Submitted draft notes." ||
+      submittedPassage.source_type !== "licensed" ||
+      submittedPassage.review_status !== "pending_review"
+    ) {
+      throw new Error("Submitted draft fields were not persisted");
+    }
+
+    await updateSupabasePassageRow(
+      insertedPassage.id,
+      {
+        risk_classification: "A",
+        review_status: "approved",
+        reviewed_at: new Date().toISOString(),
+        is_active: true,
+        is_public: true
       },
       supabaseCrudClient
     );
 
-    if (inactivePassage.is_active) {
-      throw new Error(`Inactive toggle verification failed. Passage ${insertedPassage.id} is still active.`);
-    }
-
-    logResult(`Confirmed inactive toggle for ${inactivePassage.id}`);
-
-    logStep("Toggling test passage active");
-    const activePassage = await updateSupabasePassageRow(
+    logStep("Persisting complete rejected draft from an approved row");
+    const rejectedPassage = await updateSupabasePassageRow(
       insertedPassage.id,
       {
-        is_active: true
+        title: "Typing Station Rejected Draft",
+        content: "Rejected draft content persisted atomically.",
+        risk_classification: "C",
+        source_type: "public_domain",
+        fictional: false,
+        review_notes: "Rejected draft notes.",
+        review_status: "rejected",
+        reviewed_at: null,
+        is_active: false,
+        is_public: false
       },
       supabaseCrudClient
     );
-
-    if (!activePassage.is_active) {
-      throw new Error(`Active toggle verification failed. Passage ${insertedPassage.id} is still inactive.`);
+    if (
+      rejectedPassage.title !== "Typing Station Rejected Draft" ||
+      rejectedPassage.review_notes !== "Rejected draft notes." ||
+      rejectedPassage.source_type !== "public_domain" ||
+      rejectedPassage.review_status !== "rejected"
+    ) {
+      throw new Error("Rejected approved draft fields were not persisted");
     }
-
-    logResult(`Confirmed active toggle for ${activePassage.id}`);
 
     logStep("Deleting test passage");
     await deleteSupabasePassageRow(insertedPassage.id, supabaseCrudClient);
@@ -137,21 +223,42 @@ async function main() {
 
     logResult("Deleted test passage and confirmed it is no longer readable.");
 
-    logStep("Importing active public test passages");
+    logStep("Importing safe private draft passages");
     const importedPassages = await insertSupabasePassageRows(
       IMPORT_TEST_TITLES.map((title, index) => ({
         title,
         category: "News article",
         style: "Simple",
         content: `Typing Station Supabase import verification content ${index + 1}.`,
-        is_active: true,
-        is_public: true,
         created_by: authContext.userId
       })),
       supabaseCrudClient
     );
     importedPassageIds = importedPassages.map((passage) => passage.id);
-    logResult(`Imported ${importedPassageIds.length} active public passage rows.`);
+    for (const passage of importedPassages) {
+      assertReviewState(passage, { review_status: "draft", is_active: false, is_public: false });
+    }
+    logResult(`Imported ${importedPassageIds.length} private draft passage rows.`);
+
+    const publicBeforeApproval = await getPublicActiveImportedPassages();
+    if (publicBeforeApproval.length !== 0) {
+      throw new Error("Draft imports were visible through the public active passage filter.");
+    }
+
+    logStep("Approving imported passages atomically");
+    for (const passage of importedPassages) {
+      await updateSupabasePassageRow(
+        passage.id,
+        {
+          risk_classification: "A",
+          review_status: "approved",
+          reviewed_at: new Date().toISOString(),
+          is_active: true,
+          is_public: true
+        },
+        supabaseCrudClient
+      );
+    }
 
     logStep("Reading imported passages through public active query");
     const publicImportedPassages = await getPublicActiveImportedPassages();
@@ -278,22 +385,23 @@ async function insertSupabasePassageRows(
   payloads: SupabasePassageInsert[],
   client: any
 ): Promise<SupabasePassageRow[]> {
-  const { data, error } = await client.from("passages").insert(payloads).select("*");
+  const { data, error } = await client.from("passages").insert(payloads).select("id");
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  const insertedIds = new Set((data ?? []).map((row: { id: string }) => row.id));
+  const { data: adminPassages, error: adminError } = await client.rpc("get_admin_passages");
+  if (adminError) throw adminError;
+  return (adminPassages ?? []).filter((row: SupabasePassageRow) => insertedIds.has(row.id));
 }
 
 async function getPublicActiveImportedPassages(): Promise<Array<{ id: string; title: string }>> {
   const anonClient = createAnonClient();
   const { data, error } = await anonClient
-    .from("passages")
+    .from("public_passages")
     .select("id,title")
-    .eq("is_public", true)
-    .eq("is_active", true)
     .in("title", IMPORT_TEST_TITLES);
 
   if (error) {
@@ -309,8 +417,10 @@ function makeTestPassage(): SupabasePassageInsert {
     category: "News article",
     style: "Simple",
     content: "Typing Station Supabase CRUD verification content.",
-    is_active: true,
-    is_public: true
+    source_type: "original",
+    fictional: false,
+    is_active: false,
+    is_public: false
   };
 }
 
@@ -403,6 +513,27 @@ function assertPassage(passage: SupabasePassageRow | null, message: string): ass
   if (!passage) {
     throw new Error(message);
   }
+}
+
+function assertReviewState(passage: SupabasePassageRow, expected: Partial<SupabasePassageRow>) {
+  for (const [key, value] of Object.entries(expected)) {
+    if (passage[key as keyof SupabasePassageRow] !== value) {
+      throw new Error(
+        `Review-state verification failed for ${key}. Expected ${String(value)}, got ${String(
+          passage[key as keyof SupabasePassageRow]
+        )}.`
+      );
+    }
+  }
+}
+
+async function expectUpdateRejected(id: string, payload: SupabasePassageUpdate, failureMessage: string) {
+  try {
+    await updateSupabasePassageRow(id, payload, supabaseCrudClient);
+  } catch {
+    return;
+  }
+  throw new Error(failureMessage);
 }
 
 function logStep(message: string) {

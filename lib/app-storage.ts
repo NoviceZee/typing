@@ -15,6 +15,7 @@ import {
   safeSetStorageItem
 } from "./storageSafety";
 import { dispatchLocalAccountSettingsMutation } from "./settingsEvents";
+import { sanitizePassagePublication } from "./passageReviewPolicy";
 import {
   ENGLISH_PASSAGE_CATEGORIES,
   normalizeCategoryFilter,
@@ -118,6 +119,11 @@ export type StoredPassage = {
 };
 
 export type PassageSource = "generated" | "pasted" | "uploaded";
+export type PassageRiskClassification = "A" | "B" | "C" | null;
+// Provenance values intentionally stay small so review and migration tooling
+// share one stable vocabulary.
+export type PassageSourceType = "original" | "synthetic" | "public_domain" | "licensed" | "user_submitted";
+export type PassageReviewStatus = "draft" | "pending_review" | "approved" | "rejected";
 export type PassageLanguage = "english" | "chinese";
 export type PassageSelectionMode = "specific" | "random";
 export type CategoryFilter = typeof ALL_FILTER | PracticeCategory;
@@ -135,7 +141,14 @@ export type LibraryPassage = {
   updatedAt: string;
   wordCount: number;
   characterCount: number;
+  riskClassification: PassageRiskClassification;
+  sourceType: PassageSourceType;
+  fictional: boolean;
+  reviewedAt: string | null;
+  reviewNotes: string | null;
+  reviewStatus: PassageReviewStatus;
   isActive: boolean;
+  isPublic: boolean;
 };
 
 export type PreviousPaceTimelinePoint = {
@@ -713,7 +726,10 @@ export function mergeImportedPassages(
 
 export function addPassagesToLibrary(passages: LibraryPassage[]) {
   const currentLibrary = readPassageLibrary();
-  writePassageLibrary([...passages, ...currentLibrary]);
+  const safeNewPassages = passages
+    .map((passage) => normaliseLibraryPassage(passage))
+    .map((passage) => sanitizePassagePublication(passage));
+  writePassageLibrary([...safeNewPassages, ...currentLibrary]);
 }
 
 export function deleteLibraryPassage(id: string) {
@@ -824,7 +840,14 @@ export function createLibraryPassage({
     updatedAt: now,
     wordCount: countWords(cleanContent),
     characterCount: cleanContent.length,
-    isActive: true
+    riskClassification: null,
+    sourceType: source === "generated" ? "synthetic" : "user_submitted",
+    fictional: false,
+    reviewedAt: null,
+    reviewNotes: null,
+    reviewStatus: "draft",
+    isActive: false,
+    isPublic: false
   };
 }
 
@@ -926,6 +949,10 @@ export function filterLibraryPassagesByLanguage(
 }
 
 export function withBuiltInSamplePassages(library: LibraryPassage[]): LibraryPassage[] {
+  if (library.some((passage) => (passage.language ?? "english") === "chinese")) {
+    return library;
+  }
+
   const passageIds = new Set(library.map((passage) => passage.id));
   return [...library, ...CHINESE_STARTER_PASSAGES.filter((passage) => !passageIds.has(passage.id))];
 }
@@ -1063,16 +1090,17 @@ function isPreviousTypingResult(value: unknown): value is PreviousTypingResult {
 }
 
 export function updateLibraryPassage(updatedPassage: LibraryPassage) {
+  const safeUpdatedPassage = sanitizePassagePublication(normaliseLibraryPassage(updatedPassage));
   const nextLibrary = readPassageLibrary().map((passage) =>
     passage.id === updatedPassage.id
       ? {
-          ...updatedPassage,
-          content: updatedPassage.content.trim(),
-          title: updatedPassage.title.trim() || "Untitled passage",
+          ...safeUpdatedPassage,
+          content: safeUpdatedPassage.content.trim(),
+          title: safeUpdatedPassage.title.trim() || "Untitled passage",
           updatedAt: new Date().toISOString(),
-          wordCount: countWords(updatedPassage.content),
-          characterCount: updatedPassage.content.trim().length,
-          isActive: updatedPassage.isActive
+          wordCount: countWords(safeUpdatedPassage.content),
+          characterCount: safeUpdatedPassage.content.trim().length,
+          isActive: safeUpdatedPassage.isActive
         }
       : passage
   );
@@ -1214,7 +1242,14 @@ function makeStarterChinesePassage(
     updatedAt: createdAt,
     wordCount: countWords(content),
     characterCount: content.length,
-    isActive: true
+    riskClassification: "A",
+    sourceType: "original",
+    fictional: false,
+    reviewedAt: createdAt,
+    reviewNotes: "Built-in starter passage.",
+    reviewStatus: "approved",
+    isActive: true,
+    isPublic: true
   };
 }
 
@@ -1454,7 +1489,14 @@ function normaliseImportedLibraryPassage(item: unknown): LibraryPassage | null {
     updatedAt: typeof item.updatedAt === "string" && item.updatedAt.trim() ? item.updatedAt : createdAt,
     wordCount: typeof item.wordCount === "number" ? item.wordCount : countWords(content),
     characterCount: typeof item.characterCount === "number" ? item.characterCount : content.length,
-    isActive: typeof item.isActive === "boolean" ? item.isActive : true
+    riskClassification: null,
+    sourceType: toPassageSourceType(item.sourceType, source),
+    fictional: item.fictional === true,
+    reviewedAt: null,
+    reviewNotes: typeof item.reviewNotes === "string" && item.reviewNotes.trim() ? item.reviewNotes : null,
+    reviewStatus: "draft",
+    isActive: false,
+    isPublic: false
   });
 }
 
@@ -1477,8 +1519,37 @@ function normaliseLibraryPassage(passage: LibraryPassage): LibraryPassage {
     updatedAt: passage.updatedAt ?? createdAt,
     wordCount: typeof passage.wordCount === "number" ? passage.wordCount : countWords(content),
     characterCount: typeof passage.characterCount === "number" ? passage.characterCount : content.length,
-    isActive: passage.isActive ?? true
+    riskClassification: toPassageRiskClassification(passage.riskClassification),
+    sourceType: toPassageSourceType(passage.sourceType, passage.source),
+    fictional: passage.fictional === true,
+    reviewedAt: passage.reviewedAt ?? null,
+    reviewNotes: passage.reviewNotes?.trim() || null,
+    reviewStatus: toPassageReviewStatus(passage.reviewStatus),
+    // Preserve explicit legacy activation locally, but never infer publication.
+    isActive: passage.isActive ?? true,
+    isPublic: passage.isPublic ?? false
   };
+}
+
+function toPassageRiskClassification(value: unknown): PassageRiskClassification {
+  return value === "A" || value === "B" || value === "C" ? value : null;
+}
+
+function toPassageSourceType(value: unknown, source: PassageSource): PassageSourceType {
+  if (
+    value === "original" ||
+    value === "synthetic" ||
+    value === "public_domain" ||
+    value === "licensed" ||
+    value === "user_submitted"
+  ) {
+    return value;
+  }
+  return source === "generated" ? "synthetic" : "user_submitted";
+}
+
+function toPassageReviewStatus(value: unknown): PassageReviewStatus {
+  return value === "pending_review" || value === "approved" || value === "rejected" ? value : "draft";
 }
 
 function toPassageLanguage(value: string | null | undefined): PassageLanguage {

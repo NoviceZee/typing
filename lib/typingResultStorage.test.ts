@@ -56,6 +56,7 @@ describe("typingResultStorage", () => {
       client_attempt_id: "attempt-business-1",
       passage_id: null,
       passage_title: "Generated business email practice",
+      passage_category: "Business communication",
       duration_seconds: 60,
       mode_duration_seconds: 60,
       elapsed_seconds: 30,
@@ -221,6 +222,7 @@ describe("typingResultStorage", () => {
       client_attempt_id: "attempt-numbers-1",
       passage_id: null,
       passage_title: "Numbers training",
+      passage_category: "training_numbers",
       duration_seconds: 60,
       mode_duration_seconds: 60,
       elapsed_seconds: 60,
@@ -280,6 +282,7 @@ describe("typingResultStorage", () => {
       client_attempt_id: "attempt-symbols-1",
       passage_id: null,
       passage_title: "Symbols training",
+      passage_category: "training_symbols",
       duration_seconds: 60,
       mode_duration_seconds: 60,
       elapsed_seconds: 60,
@@ -299,6 +302,7 @@ describe("typingResultStorage", () => {
         {
           id: "result-1",
           passage_title: "Board memo",
+          passage_category: "Business email",
           duration_seconds: 60,
           elapsed_seconds: 20,
           completion_reason: "text_completed",
@@ -308,12 +312,13 @@ describe("typingResultStorage", () => {
           correct_chars: 360,
           typed_chars: 365,
           created_at: "2026-06-19T00:00:00.000Z",
-          passages: { category: "Business email" }
+          passages: null
         },
         {
           id: "result-2",
           passage_id: "443f564d-7b45-4008-a0b3-6ae275ca9f9f",
           passage_title: "Legacy memo",
+          passage_category: "Articles",
           duration_seconds: 300,
           wpm: 61,
           accuracy: 99,
@@ -418,7 +423,7 @@ describe("typingResultStorage", () => {
     ]);
     expect(from).toHaveBeenCalledWith("typing_results");
     expect(select).toHaveBeenCalledWith(
-      "id,passage_id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)"
+      "id,passage_id,passage_title,passage_category,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at"
     );
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
     expect(order).toHaveBeenCalledWith("created_at", { ascending: false });

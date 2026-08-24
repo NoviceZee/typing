@@ -18,6 +18,7 @@ export type SupabaseTypingResultInsert = {
   client_attempt_id: string;
   passage_id: string | null;
   passage_title: string;
+  passage_category: string;
   duration_seconds: number;
   mode_duration_seconds: number | null;
   elapsed_seconds: number;
@@ -104,6 +105,7 @@ export function toSupabaseTypingResultInsert({
     client_attempt_id: attemptId,
     passage_id: isUuid(supabasePassageId) ? supabasePassageId : null,
     passage_title: passage.title?.trim() || "Untitled passage",
+    passage_category: normalizePassageCategory(result.category ?? passage.category),
     duration_seconds: getLegacyDurationBucket(result),
     mode_duration_seconds: result.modeDurationSeconds,
     elapsed_seconds: result.elapsedSeconds,
@@ -250,7 +252,7 @@ export async function getSupabaseOwnTypingResults(
 
   const { data, error } = await supabase
     .from("typing_results")
-    .select("id,passage_id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
+    .select("id,passage_id,passage_title,passage_category,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -269,7 +271,7 @@ export async function getSupabaseAnalyticsTypingResults(
 ): Promise<SupabaseAnalyticsTypingResultRow[]> {
   const { data, error } = await client
     .from("typing_results")
-    .select("id,passage_id,passage_title,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at,passages(category)")
+    .select("id,passage_id,passage_title,passage_category,metric_domain,duration_seconds,mode_duration_seconds,elapsed_seconds,completion_reason,is_rankable,wpm,accuracy,correct_chars,typed_chars,created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -315,9 +317,8 @@ function requireSupabaseClient(): any {
 }
 
 function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingResultRow {
-  const passage = Array.isArray(row.passages) ? row.passages[0] : row.passages;
   const duration = resolveResultDuration(row);
-  const passageCategory = passage?.category ?? row.passage_category ?? getLegacyDeactivatedPassageCategory(row.passage_id);
+  const passageCategory = row.passage_category ?? getLegacyDeactivatedPassageCategory(row.passage_id);
 
   return {
     id: row.id,
@@ -338,9 +339,8 @@ function toSupabaseAnalyticsTypingResultRow(row: any): SupabaseAnalyticsTypingRe
 }
 
 function toSupabaseOwnTypingResultRow(row: any): SupabaseOwnTypingResultRow {
-  const passage = Array.isArray(row.passages) ? row.passages[0] : row.passages;
   const duration = resolveResultDuration(row);
-  const passageCategory = passage?.category ?? row.passage_category ?? getLegacyDeactivatedPassageCategory(row.passage_id);
+  const passageCategory = row.passage_category ?? getLegacyDeactivatedPassageCategory(row.passage_id);
 
   return {
     id: row.id,

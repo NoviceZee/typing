@@ -25,7 +25,9 @@ import {
   writePassageLibrary,
   writeStoredPassage,
   writeThemeSettings,
-  writePreviousResult
+  writePreviousResult,
+  withBuiltInSamplePassages,
+  CHINESE_STARTER_PASSAGES
 } from "./app-storage";
 import type { StoredPassage } from "./app-storage";
 import type { TypingResult } from "./typing-engine";
@@ -279,6 +281,27 @@ describe("readPracticePassageFromLibrary", () => {
 
     expect(selected).toBeNull();
     expect(storage.get(ACTIVE_PASSAGE_ID_STORAGE_KEY)).toBeUndefined();
+  });
+});
+
+describe("withBuiltInSamplePassages", () => {
+  it("keeps a healthy remote bilingual corpus exact without appending local fallback passages", () => {
+    const english = makePassage("remote-en", "Remote English", "Business email", "Formal");
+    const chinese = {
+      ...makePassage("remote-zh", "遠端中文", "生活", "一般"),
+      language: "chinese" as const
+    };
+
+    expect(withBuiltInSamplePassages([english, chinese])).toEqual([english, chinese]);
+  });
+
+  it("adds local Chinese starters only when the available corpus has no Chinese passage", () => {
+    const english = makePassage("remote-en", "Remote English", "Business email", "Formal");
+
+    const merged = withBuiltInSamplePassages([english]);
+
+    expect(merged).toHaveLength(1 + CHINESE_STARTER_PASSAGES.length);
+    expect(merged[0]).toBe(english);
   });
 });
 
@@ -642,7 +665,11 @@ describe("mergeImportedPassages", () => {
       category: "Uncategorised",
       style: "General",
       source: "uploaded",
-      isActive: true
+      riskClassification: null,
+      sourceType: "user_submitted",
+      reviewStatus: "draft",
+      isActive: false,
+      isPublic: false
     });
   });
 });
@@ -659,7 +686,14 @@ function makePassage(id: string, title: string, category: LibraryPassage["catego
     updatedAt: "2026-05-31T00:00:00.000Z",
     wordCount: 4,
     characterCount: 20,
-    isActive: true
+    riskClassification: "A",
+    sourceType: "original",
+    fictional: false,
+    reviewedAt: "2026-05-31T00:00:00.000Z",
+    reviewNotes: null,
+    reviewStatus: "approved",
+    isActive: true,
+    isPublic: true
   };
 }
 

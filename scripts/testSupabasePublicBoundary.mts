@@ -28,14 +28,23 @@ async function main() {
   }
 
   const { data: passages, error: passagesError } = await client
-    .from("passages")
-    .select("id,is_active,is_public")
+    .from("public_passages")
+    .select("*")
     .limit(500);
   if (passagesError) throw passagesError;
   if ((passages ?? []).some((row) => row.is_active !== true || row.is_public !== true)) {
     throw new Error("Anonymous passage read exposed an inactive or private row.");
   }
+  if ((passages ?? []).some((row) => "review_notes" in row || "created_by" in row)) {
+    throw new Error("Public passage projection exposed internal editorial metadata.");
+  }
   checks.push({ label: "anon:passages", detail: `${passages?.length ?? 0} active public rows` });
+
+  const { error: reviewNotesError } = await client.from("passages").select("review_notes").limit(1);
+  if (!reviewNotesError) {
+    throw new Error("Anonymous review_notes was directly selectable.");
+  }
+  checks.push({ label: "anon:review_notes", detail: "column access denied" });
 
   const { data: profiles, error: profilesError } = await client
     .from("public_profiles")

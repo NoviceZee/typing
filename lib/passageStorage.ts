@@ -26,15 +26,25 @@ import {
 } from "./app-storage";
 import { supabase } from "./supabaseClient";
 import {
+  applyPassageReviewUpdate,
+  isPassageApprovalValid,
+  sanitizePassagePublication
+} from "./passageReviewPolicy";
+import {
   SupabasePassageInsert,
   SupabasePassageUpdate,
   libraryPassageToSupabaseInsert,
+  libraryPassageToSupabaseUpdate,
+  supabasePublicPassageRowToLibraryPassage,
   supabasePassageRowToLibraryPassage
 } from "./supabasePassageTypes";
 
 export type PassageUpdates = Partial<Omit<LibraryPassage, "id" | "createdAt">>;
+export { isPassageApprovalValid };
 
 export const PUBLIC_PASSAGE_LIBRARY_CACHE_TTL_MS = 60_000;
+export const PUBLIC_PASSAGE_SELECT =
+  "id,title,category,style,content,language,is_active,is_public,created_at,updated_at";
 
 let publicPassageLibraryCache: { passages: LibraryPassage[]; fetchedAt: number } | null = null;
 let publicPassageLibraryRequest: Promise<LibraryPassage[]> | null = null;
@@ -54,7 +64,23 @@ export function getPassageLibrary(): LibraryPassage[] {
 }
 
 export function savePassageLibrary(passages: LibraryPassage[]) {
-  writePassageLibrary(passages);
+  const currentById = new Map(readPassageLibrary().map((passage) => [passage.id, passage]));
+  const safePassages = passages.map((passage) => {
+    const current = currentById.get(passage.id);
+    if (!current) {
+      return sanitizeNewLocalPassage(passage);
+    }
+    if (passagesHaveSameStoredState(current, passage)) {
+      return passage;
+    }
+    return applyPassageReviewUpdate(current, {
+      ...current,
+      ...passage,
+      id: current.id,
+      createdAt: current.createdAt
+    });
+  });
+  writePassageLibrary(safePassages);
   invalidatePublicPassageLibraryCache();
 }
 
@@ -134,12 +160,14 @@ export function updatePassage(id: string, updates: PassageUpdates): LibraryPassa
     return null;
   }
 
-  const nextPassage = {
+  const requestedPassage = {
     ...currentPassage,
     ...updates,
     id: currentPassage.id,
     createdAt: currentPassage.createdAt
   };
+
+  const nextPassage = applyPassageReviewUpdate(currentPassage, requestedPassage);
 
   updateLibraryPassage(nextPassage);
   invalidatePublicPassageLibraryCache();
@@ -149,6 +177,35 @@ export function updatePassage(id: string, updates: PassageUpdates): LibraryPassa
 export function deletePassage(id: string) {
   deleteLibraryPassage(id);
   invalidatePublicPassageLibraryCache();
+}
+
+function sanitizeNewLocalPassage(passage: LibraryPassage): LibraryPassage {
+  return sanitizePassagePublication(passage);
+}
+
+function passagesHaveSameStoredState(left: LibraryPassage, right: LibraryPassage): boolean {
+  const keys: Array<keyof LibraryPassage> = [
+    "id",
+    "title",
+    "category",
+    "style",
+    "language",
+    "content",
+    "source",
+    "createdAt",
+    "updatedAt",
+    "wordCount",
+    "characterCount",
+    "riskClassification",
+    "sourceType",
+    "fictional",
+    "reviewedAt",
+    "reviewNotes",
+    "reviewStatus",
+    "isActive",
+    "isPublic"
+  ];
+  return keys.every((key) => left[key] === right[key]);
 }
 
 // Public screens share the active/public request and short-lived result here;
@@ -189,10 +246,8 @@ export function getSupabasePassageLibrary(client: any = supabase): Promise<Libra
 
 async function loadSupabasePublicPassageLibrary(client: any): Promise<LibraryPassage[]> {
   const { data, error } = await client
-    .from("passages")
-    .select("*")
-    .eq("is_public", true)
-    .eq("is_active", true)
+    .from("public_passages")
+    .select(PUBLIC_PASSAGE_SELECT)
     .order("updated_at", { ascending: false });
 
   if (error) {
@@ -201,7 +256,7 @@ async function loadSupabasePublicPassageLibrary(client: any): Promise<LibraryPas
 
   return (data ?? [])
     .filter((row: { is_public: boolean; is_active: boolean }) => row.is_public && row.is_active)
-    .map(supabasePassageRowToLibraryPassage);
+    .map(supabasePublicPassageRowToLibraryPassage);
 }
 
 export async function getSupabaseAdminPassageLibrary(client: any = supabase): Promise<LibraryPassage[]> {
@@ -209,7 +264,7 @@ export async function getSupabaseAdminPassageLibrary(client: any = supabase): Pr
     return [];
   }
 
-  const { data, error } = await client.from("passages").select("*").order("updated_at", { ascending: false });
+  const { data, error } = await client.rpc("get_admin_passages");
 
   if (error) {
     throw error;
@@ -223,13 +278,17 @@ export async function getSupabasePassageById(id: string): Promise<LibraryPassage
     return null;
   }
 
-  const { data, error } = await supabase.from("passages").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabase
+    .from("public_passages")
+    .select(PUBLIC_PASSAGE_SELECT)
+    .eq("id", id)
+    .maybeSingle();
 
   if (error) {
     throw error;
   }
 
-  return data ? supabasePassageRowToLibraryPassage(data) : null;
+  return data ? supabasePublicPassageRowToLibraryPassage(data) : null;
 }
 
 export async function addSupabasePassage(
@@ -243,13 +302,16 @@ export async function addSupabasePassage(
     throw new Error("Supabase is not configured yet.");
   }
 
-  const { data, error } = await client.from("passages").insert(insertPayload).select("*").single();
+  const { data, error } = await client.from("passages").insert(insertPayload).select("id").single();
 
   if (error) {
     throw error;
   }
 
-  const addedPassage = supabasePassageRowToLibraryPassage(data);
+  const addedPassage = await getSupabaseAdminPassageById(data.id, client);
+  if (!addedPassage) {
+    throw new Error("Inserted passage was not returned by the admin passage reader.");
+  }
   invalidatePublicPassageLibraryCache();
   return addedPassage;
 }
@@ -265,21 +327,102 @@ export async function updateSupabasePassage(
     style: updates.style,
     language: updates.language,
     content: updates.content,
-    is_active: updates.isActive,
-    is_public: true
+    risk_classification: updates.riskClassification,
+    source_type: updates.sourceType,
+    fictional: updates.fictional,
+    review_notes: updates.reviewNotes
   };
+
+  if (updates.reviewStatus === "approved" && updates.riskClassification !== "A") {
+    Object.assign(updatePayload, {
+      review_status: "pending_review",
+      reviewed_at: null,
+      is_active: false,
+      is_public: false
+    } satisfies SupabasePassageUpdate);
+  }
+
+  return mutateSupabasePassage(id, updatePayload, client);
+}
+
+export async function submitSupabasePassageForReview(
+  id: string,
+  passage: LibraryPassage,
+  client: any = supabase
+): Promise<LibraryPassage> {
+  return mutateSupabasePassage(
+    id,
+    {
+      ...libraryPassageToSupabaseUpdate(passage),
+      review_status: "pending_review",
+      reviewed_at: null,
+      is_active: false,
+      is_public: false
+    },
+    client
+  );
+}
+
+export async function approveSupabasePassage(
+  id: string,
+  passage: LibraryPassage,
+  client: any = supabase
+): Promise<LibraryPassage> {
+  if (passage.riskClassification !== "A") {
+    throw new Error("Risk classification A is required before approval.");
+  }
+
+  return mutateSupabasePassage(
+    id,
+    {
+      ...libraryPassageToSupabaseUpdate(passage),
+      review_status: "approved",
+      reviewed_at: new Date().toISOString(),
+      is_active: true,
+      is_public: true
+    },
+    client
+  );
+}
+
+export async function rejectSupabasePassage(
+  id: string,
+  passage: LibraryPassage,
+  client: any = supabase
+): Promise<LibraryPassage> {
+  return mutateSupabasePassage(
+    id,
+    {
+      ...libraryPassageToSupabaseUpdate(passage),
+      review_status: "rejected",
+      reviewed_at: null,
+      is_active: false,
+      is_public: false
+    },
+    client
+  );
+}
+
+async function mutateSupabasePassage(
+  id: string,
+  updatePayload: SupabasePassageUpdate,
+  client: any
+): Promise<LibraryPassage> {
 
   if (!client) {
     throw new Error("Supabase is not configured yet.");
   }
 
-  const { data, error } = await client.from("passages").update(updatePayload).eq("id", id).select("*").single();
+  const { error } = await client.from("passages").update(updatePayload).eq("id", id).select("id").single();
 
   if (error) {
     throw error;
   }
 
-  const updatedPassage = supabasePassageRowToLibraryPassage(data);
+  const updatedPassage = await getSupabaseAdminPassageById(id, client);
+  if (!updatedPassage) {
+    throw new Error("Updated passage was not returned by the admin passage reader.");
+  }
   invalidatePublicPassageLibraryCache();
   return updatedPassage;
 }
@@ -312,15 +455,33 @@ export async function importSupabasePassageLibrary(
   }
 
   const insertPayload = passages.map((passage) => libraryPassageToSupabaseInsert(passage, createdBy));
-  const { data, error } = await client.from("passages").insert(insertPayload).select("*");
+  const { data, error } = await client.from("passages").insert(insertPayload).select("id");
 
   if (error) {
     throw error;
   }
 
-  const importedPassages = (data ?? []).map(supabasePassageRowToLibraryPassage);
+  const insertedIds = new Set((data ?? []).map((row: { id: string }) => row.id));
+  const importedPassages = (await getSupabaseAdminPassageLibrary(client)).filter((passage) =>
+    insertedIds.has(passage.id)
+  );
   if (passages.length > 0) {
     invalidatePublicPassageLibraryCache();
   }
   return importedPassages;
+}
+
+async function getSupabaseAdminPassageById(
+  id: string,
+  client: any
+): Promise<LibraryPassage | null> {
+  const { data, error } = await client
+    .rpc("get_admin_passage", { target_passage_id: id })
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? supabasePassageRowToLibraryPassage(data) : null;
 }

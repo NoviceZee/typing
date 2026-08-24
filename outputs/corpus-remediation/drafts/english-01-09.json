@@ -1,0 +1,192 @@
+[
+  {
+    "oldId": "9bce4cff-5c6e-4780-a9ae-78a11e57af71",
+    "oldTitle": "A Constructive Response to Public Consultation",
+    "title": "Coordinating the Return of a Travelling Exhibition",
+    "language": "english",
+    "category": "Business communication",
+    "style": "Professional email/memo",
+    "min": 355,
+    "max": 375,
+    "verification": "no",
+    "unit": "words",
+    "fictional": true,
+    "sources": [],
+    "content": "To: Exhibition, Collections, and Facilities teams\n\nSubject: Return schedule for the North Coast travelling exhibition\n\nThe exhibition closes at Harbour Gallery on Sunday evening, and the return vehicle is booked for Thursday at 08:30. This note confirms the sequence between those dates and identifies the decisions that still need owners. Our aim is to hand every object back with a complete condition trail while clearing the gallery before its next installation begins.\n\nOn Monday morning, Mei and Daniel will compare each display against the outward packing list. They will photograph any change in condition before an object is moved, then attach the new image reference to its record. Small works can be placed in their numbered transit crates once both checks are complete. The three framed textiles must remain on the wall until the specialist handlers arrive on Tuesday, because their travel frames require a different lifting method.\n\nFacilities will isolate the display lighting at 17:00 on Monday and remove the temporary barriers after the final visitor route has closed. Please leave the loading-bay door and freight lift available from 07:45 on Thursday. The driver has the vehicle dimensions, but the carrier still needs written confirmation that the bay can accept the tail lift without blocking the fire exit. Arun, could you obtain that confirmation by Tuesday noon?\n\nThe lender requested updated condition reports within two working days of arrival. I have created a shared checklist with one line for each object, crate, seal, and document. Record the seal number at packing and again at unloading; do not mark an item complete simply because its crate is present. If a discrepancy appears, pause that item, photograph the seal, and call me before the vehicle departs. The rest of the load may continue if the handler confirms that separation is safe.\n\nPlease add final staff names and mobile numbers to the checklist by Wednesday at 15:00. I will issue the carrier pack that afternoon and remain the escalation contact until the lender signs the return receipt. The registrar will then securely archive the signed reports, courier receipt, and final checklist beside the original outward loan file."
+  },
+  {
+    "oldId": "d7591888-42b6-4f9b-89cc-ed5c8ab7d3d2",
+    "oldTitle": "Housing Affordability and Secure Renting",
+    "title": "How a Suspension Bridge Shares Its Load",
+    "language": "english",
+    "category": "Articles",
+    "style": "Technical explanatory",
+    "min": 345,
+    "max": 365,
+    "verification": "yes engineering",
+    "unit": "words",
+    "fictional": false,
+    "sources": [
+      {
+        "url": "https://www.fhwa.dot.gov/bridge/pubs/if11045.pdf",
+        "note": "FHWA inspection primer identifies the deck, vertical suspenders, main cables, tower saddles, and end anchor blocks in a typical suspension bridge."
+      }
+    ],
+    "content": "A suspension bridge can look almost weightless from a distance, yet its slender outline is a carefully connected route for force. Traffic first presses on the deck. Floor beams and stiffening members spread that changing load so it does not remain concentrated beneath a single wheel. The deck passes the force into many vertical suspenders, the narrow cables or rods that hang at regular intervals along the span.\n\nEach suspender pulls on a main cable. Unlike a straight beam, the main cable carries its load mainly through tension, so it settles into a curved profile between supports. A heavier patch of traffic changes the local pull, while the connected deck and cable distribute part of that effect along the span. The large cable rises over saddles at the tops of the towers and continues towards the ends of the bridge.\n\nAt each tower, the cable presses down as well as pulling sideways. The tower carries the downward component through its legs into the foundations. The sideways pull does not simply disappear at the tower: the main cable continues to a massive anchorage, where its ends are secured. In an earth-anchored bridge, these anchorages resist the cable tension and transfer it into the ground. The result is a continuous path from deck to suspenders, from suspenders to main cables, and from cables to towers, anchorages, foundations, and earth.\n\nThe parts also control shape. A very flexible deck could twist or rise in gusts, so its structure provides stiffness while still allowing ordinary movement from traffic and temperature. Joints and bearings accommodate designed changes in length. Engineers therefore examine the bridge as a system, not as a row of independent pieces. Corrosion in a cable wire, looseness at a connection, or damage to a deck member matters partly because it can alter how load finds its route.\n\nWhen a lorry crosses the centre, no single tower lifts the whole vehicle. Thousands of connected elements share the task, each suited to tension, compression, bending, or transfer under changing traffic and weather. The graceful curve records that hidden cooperation."
+  },
+  {
+    "oldId": "cb49ecbe-b752-481f-8a53-b4742085bd99",
+    "oldTitle": "Keeping Digital Records Useful",
+    "title": "A Practical Naming System for Field Photographs",
+    "language": "english",
+    "category": "Business communication",
+    "style": "Concise procedural",
+    "min": 200,
+    "max": 220,
+    "verification": "no",
+    "unit": "words",
+    "fictional": false,
+    "sources": [],
+    "content": "Copy every field photograph from the memory card into a dated ingest folder before renaming any file. Record the card identifier, camera, operator, and transfer time in the image log. Keep the source card write-protected while the transfer is checked.\n\nVerify the transfer before changing the working set. Compare file counts and total bytes, then use checksums when the ingest tool provides them. Open the first and last image and sample files between them. Record any missing or unreadable sequence without closing the gap.\n\nOnce verification passes, preserve one read-only ingest master with the original camera filenames and extensions. Create a separate working copy for description and delivery. Rename only the working copies, using project code, date, location, and sequence number in the same order. For project ORCH on 8 April 2031 at plot C, use ORCH_2031-04-08_C_001. Add operator initials when two cameras share a location.\n\nPut observations such as damaged wall or possible nest in the image log, where they can be corrected without renaming files. Derivative crops may add detail or web after the complete working name. Before clearing the card, confirm that the verified master exists in primary storage and backup, and that the log links each working name to its original camera file."
+  },
+  {
+    "oldId": "d800ba7c-e99a-420b-b141-becb16ed2c76",
+    "oldTitle": "Keeping Long-Term Commitments Affordable",
+    "title": "Caring for a Wooden Sailing Vessel Through the Seasons",
+    "language": "english",
+    "category": "Articles",
+    "style": "Technical narrative",
+    "min": 370,
+    "max": 390,
+    "verification": "yes maritime conservation",
+    "unit": "words",
+    "fictional": true,
+    "sources": [
+      {
+        "url": "https://www.nps.gov/articles/000/nepe-canoes-slowing-the-flow-of-time.htm",
+        "note": "NPS wooden-artifact conservation account supports careful cleaning, custom supports, monitoring, moisture control, and preserving historic wear rather than erasing it."
+      },
+      {
+        "url": "https://home.nps.gov/safr/learn/historyculture/c-a-thayer.htm",
+        "note": "NPS history of the wooden sailing vessel C. A. Thayer documents recurring inspection and major repair of frames, hull, and deck."
+      }
+    ],
+    "content": "In early spring, the yard crew removes the winter cover from the sailing vessel Alder and begins with notebooks rather than tools. Mara walks the deck slowly, comparing seams, fastenings, and painted surfaces with photographs from autumn. A dark mark may be harmless dirt, a trace of trapped moisture, or the first visible edge of decay. She records its position before anyone cleans it, because the pattern matters as much as the spot.\n\nWood moves as moisture and temperature change. Planks swell and shrink; coatings weather; joints that were quiet in October may open by March. The crew keeps rainwater moving towards clear drains and checks that ventilation reaches enclosed spaces. Loose dust is lifted gently, not scrubbed into a fragile surface. Where the vessel rests on shore, shaped supports spread its weight across strong parts of the hull rather than forcing an old plank to carry a new point load.\n\nSummer brings visitors, longer light, and repeated movement across the deck. The daily check is brief: water where it should not be, a chafed line, a lifted paint edge, or an unfamiliar sound underfoot. Small observations enter the same log, with dated photographs taken from marked positions. This consistency lets the shipwright distinguish a stable scar from a crack that is growing. Wear from the vessel's working life is not automatically removed. Tool marks, repairs, and softened edges are evidence, so cleaning and treatment aim to slow loss without making the hull look newly built.\n\nAutumn is the season for planned work. The crew opens accessible areas, tests suspect fastenings, and replaces a failed piece only after documenting what it reveals. New timber is shaped to support the surviving structure, not to hide every irregularity. Paint is renewed where it forms a protective barrier, while drainage and airflow are checked again before wet weather.\n\nBy winter, Alder appears still beneath her cover, but care continues. Humidity readings, storms, pests, and support points are reviewed after each inspection. Quiet checks guide the heavier work planned for spring. The seasonal cycle does not promise permanence. It creates a chain of modest, recorded decisions so that a future crew can tell what changed, why it changed, and how much original vessel remains."
+  },
+  {
+    "oldId": "bc9cc109-e666-4b1b-ad25-60a134a6a3ab",
+    "oldTitle": "Preparing Public Services for an Ageing Population",
+    "title": "How Migratory Birds Navigate Across Seasons",
+    "language": "english",
+    "category": "Articles",
+    "style": "Science narrative",
+    "min": 355,
+    "max": 375,
+    "verification": "yes ornithology",
+    "unit": "words",
+    "fictional": false,
+    "sources": [
+      {
+        "url": "https://nationalzoo.si.edu/migratory-birds/neotropical-migratory-bird-faqs",
+        "note": "Smithsonian summary describes migratory birds combining celestial, magnetic, landscape, wind, and polarized-light cues, with reliance varying by species and conditions."
+      },
+      {
+        "url": "https://nationalzoo.si.edu/migratory-birds/news/stellar-migrant",
+        "note": "Smithsonian account of indigo bunting experiments supports learned star-pattern orientation and the use of multiple alternative cues."
+      }
+    ],
+    "content": "A young migratory bird does not carry a tiny map of every river bend between its summer and winter ranges. Its journey emerges from inherited tendencies, learning, bodily timing, and several kinds of information available along the route. The balance differs among species, and even one bird may change cues when clouds, winds, or unfamiliar terrain make its usual reference less useful.\n\nBefore departure, changes in daylight help organise seasonal behaviour. The bird becomes restless, feeds differently, and begins moving in a broadly appropriate direction. That inherited heading can be enough for a first journey in some species, but it is not the whole story. Older birds may refine a route through experience, recognising productive stopping places and avoiding barriers encountered before. Travelling with companions can add another source of information.\n\nThe sky provides more than one compass. Day-flying birds can use the sun while accounting for its movement across the hours. Some night migrants orient by the rotating pattern of stars rather than by following a single bright point. Light scattered near sunset can provide directional information even when the sun itself is low. Experiments with indigo buntings showed that young birds need experience of the night sky to learn the star pattern they later use.\n\nEarth's magnetic field offers a cue when visible landmarks are scarce or the sky is obscured. Coastlines, mountain chains, rivers, smells, and prevailing winds can also shape a route. These signals do not behave like separate buttons. A bird may compare them, give one more weight under particular conditions, and correct its course as the landscape changes. Researchers still investigate exactly how different senses combine.\n\nNavigation also includes deciding when to stop. A small migrant arriving after a long flight must find shelter and food, rebuild its reserves, and wait if conditions ahead are poor. The remembered or detected quality of these sites can influence survival as strongly as compass direction.\n\nAcross seasons, the route is therefore both old and newly made: an inherited programme starts the movement, environmental cues steady it, and experience adds detail. The remarkable result is not perfect straight-line travel, but repeated correction over a journey filled with shifting information."
+  },
+  {
+    "oldId": "fd2dd1c5-a220-4e9b-955a-7e7d1588ec56",
+    "oldTitle": "Responsible Land Use for a Dense City",
+    "title": "Reading the Layers of an Archaeological Trench",
+    "language": "english",
+    "category": "Articles",
+    "style": "Historical explanatory",
+    "min": 340,
+    "max": 360,
+    "verification": "yes archaeology",
+    "unit": "words",
+    "fictional": false,
+    "sources": [
+      {
+        "url": "https://historicengland.org.uk/research/methods/archaeology/excavation/",
+        "note": "Historic England defines excavation as controlled examination of buried deposits and features, with finds and spatial records documented during removal."
+      },
+      {
+        "url": "https://historicengland.org.uk/whats-new/research/back-issues/the-matrix-using-archaeological-stratigraphic-data/",
+        "note": "Historic England explains that stratigraphic records sequence units and preserve primary evidence of excavation order and interpretation."
+      }
+    ],
+    "content": "The wall of an archaeological trench is not a simple calendar with the oldest date printed at the bottom. It is a record of deposits, cuts, structures, and disturbances, each produced by an event. Reading that record begins with careful observation before soil is removed. Colour, texture, inclusions, and boundaries may reveal that one layer differs from the next, but the relationship between them provides the sequence.\n\nImagine a dark occupation deposit lying over pale natural subsoil. A narrow pit cuts through the dark layer and is later filled with loose earth. Above both sits a spread of rubble from a collapsed wall. The pit fill may be physically low in the trench, yet it is later than the layer it cuts. The rubble is later again if it covers the filled pit without being disturbed by it. Archaeologists describe each distinct deposit, cut, wall, or fill as a context and record which contexts lie above, below, or through others.\n\nExcavation tests this interpretation while also destroying the original arrangement. Once a layer has been lifted, it cannot be put back with every grain in place. Plans, section drawings, photographs, measurements, samples, and written context records therefore become essential evidence. Finds receive labels that connect them to the context in which they were recovered. A pottery fragment without that connection may still be interesting, but it can no longer date a particular event reliably.\n\nThe sequence is often represented as a stratigraphic matrix. Each context occupies a position linked to those earlier or later than it. The matrix does not assign a calendar year by itself. Dating evidence may come from objects, scientific analysis, documents, or comparison, and one intrusive find must be considered carefully.\n\nAs the trench deepens, interpretations can change. A straight edge first thought to be a foundation may become the side of a drain; two similar soils may prove to belong to separate episodes. Good recording preserves those revisions. The final account is thus not a treasure list but a reasoned history of actions: ground prepared, surface used, pit dug, wall fallen, and earth accumulated again."
+  },
+  {
+    "oldId": "64f6857d-fa40-4c71-87be-b133810dd9c9",
+    "oldTitle": "Strengthening Primary Healthcare Capacity",
+    "title": "How a Telescope Turns Faint Light into an Image",
+    "language": "english",
+    "category": "Articles",
+    "style": "Science/technical",
+    "min": 355,
+    "max": 375,
+    "verification": "yes astronomy/optics",
+    "unit": "words",
+    "fictional": false,
+    "sources": [
+      {
+        "url": "https://science.nasa.gov/universe/telescopes-101/",
+        "note": "NASA overview supports the roles of mirrors and lenses in gathering and focusing light and the relation between aperture and faint-object sensitivity."
+      },
+      {
+        "url": "https://science.nasa.gov/mission/hubble/observatory/design/optics/",
+        "note": "NASA Hubble optics page traces light from primary mirror to secondary mirror, focal point, and detector instruments."
+      }
+    ],
+    "content": "Light from a distant star arrives at a telescope as an extremely sparse stream of photons. The telescope does not pull more light out of the sky; it intercepts light that is already travelling through its opening. A larger primary mirror presents a greater collecting area, so during the same exposure it can gather more photons from a faint object than a smaller mirror.\n\nIn a reflecting telescope, those photons strike a precisely curved primary mirror. Rays arriving from the same distant point are redirected so that they converge. Many designs use a smaller secondary mirror to send the narrowing beam towards an instrument, sometimes through an opening in the primary mirror. The focal plane is where the optical system forms an image: light from different directions in the sky lands at different positions, preserving the scene rather than mixing everything into one bright spot.\n\nA detector placed at that plane divides the image into pixels. When photons interact with a pixel, the detector builds an electrical signal. The signal from a faint source may be small, so the instrument accumulates light over time. Longer exposure can reveal more of the source, but it also gathers unwanted light and detector noise. Astronomers take calibration frames and process the measurements to separate stable instrument effects from features in the sky.\n\nImage sharpness depends on more than brightness. The mirrors must hold the intended shape and alignment; a slight error spreads a point of light across the detector. The atmosphere can blur ground-based observations because moving air bends incoming light unevenly. Even a perfect optical surface faces diffraction, the natural spreading associated with waves passing through a finite opening. Aperture, wavelength, focus, tracking, and detector sampling all influence the detail finally recorded.\n\nThe familiar finished picture is therefore the end of a chain. A mirror gathers and directs faint light, optics bring it to focus, a detector counts its arrival, and software calibrates the resulting numbers. Colour may be reconstructed from separate exposures through different filters. What looks like a luminous cloud on a screen began as individual packets of light, collected patiently and assigned to positions in an image."
+  },
+  {
+    "oldId": "f895f26e-2be2-5816-aa91-ca3e20dda07b",
+    "oldTitle": "The Journeys Hidden in a Mixed Street",
+    "title": "The Geometry Hidden in a Folded Map",
+    "language": "english",
+    "category": "Articles",
+    "style": "Compact explanatory",
+    "min": 225,
+    "max": 245,
+    "verification": "yes mathematics",
+    "unit": "words",
+    "fictional": false,
+    "sources": [
+      {
+        "url": "https://nrich.maths.org/problems/map-folding",
+        "note": "NRICH map-folding activity demonstrates that crease layout constrains the possible stacking orders of labelled rectangular panels."
+      }
+    ],
+    "content": "Open a street map flat and its creases form a rectangular grid. The lines look like simple hinges, but together they impose a geometric puzzle. Each panel has fixed neighbours, every fold reverses the orientation of part of the sheet, and layers cannot pass through one another. A final packet may be reachable by folding sequences but not by others.\n\nConsider a strip of four panels labelled in order. Folding the left panel over changes which printed face points upward. Folding the doubled section again moves two panels as a unit and reverses their order in the stack. If the same creases are used from the opposite end, the visible top panel and internal sequence may differ. Writing the labels from top to bottom records the result as a permutation, but not every imagined permutation must be physically possible.\n\nA two-dimensional map adds intersections. Horizontal folds alter long rows; vertical folds then move columns containing several layers. The thickness of real paper limits sharp turns, while the mathematical version often treats the sheet as having no thickness. Even in that ideal model, panels connected across a crease must remain connected, which sharply restricts the stack.\n\nThis is why refolding a map can feel harder than flattening it. The crease pattern stores local instructions, yet the order of operations controls the global result. By marking panels, predicting a stack, and testing a sequence, an everyday sheet becomes a small laboratory for symmetry, orientation, adjacency, and combinatorics."
+  },
+  {
+    "oldId": "dc9063ba-e555-56b4-b6e6-c67d38481859",
+    "oldTitle": "The Promise Inside a Service Standard",
+    "title": "What a Recipe Measures—and What It Leaves to Judgement",
+    "language": "english",
+    "category": "Articles",
+    "style": "Reflective explanatory",
+    "min": 225,
+    "max": 245,
+    "verification": "light culinary",
+    "unit": "words",
+    "fictional": false,
+    "sources": [
+      {
+        "url": "https://opentextbooks.library.arizona.edu/culinarymedicine/chapter/chapter-2-kitchen/",
+        "note": "University of Arizona culinary text distinguishes weight from volume and explains that equal volumes of different ingredients do not imply equal weights."
+      },
+      {
+        "url": "https://www.ndsu.edu/agriculture/extension/publications/now-youre-cookin-well-measured-recipes",
+        "note": "NDSU Extension describes accurate measurement as a basis for repeatability while distinguishing techniques for dry and liquid ingredients."
+      }
+    ],
+    "content": "A recipe translates experience into quantities: grams of flour, millilitres of water, minutes in the oven. These measurements make a dish repeatable, but they do not remove judgement. A cup describes volume rather than mass, so the same cup can hold different weights of loosely spooned or tightly packed flour. A scale reduces that variation; it cannot tell whether this particular flour absorbed slightly more water on a humid afternoon.\n\nTime is equally precise and incomplete. Ten minutes gives the cook a shared starting point, yet pans conduct heat differently, ovens cycle, and pieces are rarely identical. The useful instruction often pairs a number with an observable change: simmer for ten minutes, until the sauce coats the spoon. The clock protects against guesswork while the second phrase asks the cook to look.\n\nEven salt reveals the boundary. A measured amount establishes proportion, especially in dough or a large batch. Final seasoning still depends on the salt already present in stock, the concentration caused by evaporation, and the other flavours. Tasting is not a rejection of measurement; it is another form of information.\n\nA well-written recipe therefore separates what must be controlled from what must be noticed. Weight, volume, temperature, and time provide a structure that another cook can follow. Texture, aroma, colour, and sound help that cook respond to ingredients and equipment that are never perfectly uniform. The recipe is both record and conversation: exact where precision matters, descriptive where attention must finish the work."
+  }
+]

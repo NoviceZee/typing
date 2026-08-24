@@ -13,6 +13,9 @@ import {
   CATEGORIES,
   CategoryFilter,
   LibraryPassage,
+  PassageReviewStatus,
+  PassageRiskClassification,
+  PassageSourceType,
   STYLES,
   StyleFilter,
   createLibraryPassage,
@@ -25,6 +28,7 @@ import {
 import {
   addPassages,
   addSupabasePassage,
+  approveSupabasePassage,
   deletePassage as deleteStoredPassage,
   deleteSupabasePassage,
   exportPassageLibrary,
@@ -32,6 +36,8 @@ import {
   getSupabaseAdminPassageLibrary,
   importPassageLibrary,
   importSupabasePassageLibrary,
+  rejectSupabasePassage,
+  submitSupabasePassageForReview,
   updateSupabasePassage,
   updatePassage
 } from "@/lib/passageStorage";
@@ -158,6 +164,37 @@ function ManagePassages() {
       setMessage("Passage saved.");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Passage save failed.";
+      setMessage(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  async function reviewPassage(passage: LibraryPassage, action: "submit" | "approve" | "reject") {
+    try {
+      if (action === "approve" && passage.riskClassification !== "A") {
+        throw new Error("Risk classification A is required before approval.");
+      }
+
+      if (storageMode === "supabase") {
+        if (action === "submit") await submitSupabasePassageForReview(passage.id, passage);
+        if (action === "approve") await approveSupabasePassage(passage.id, passage);
+        if (action === "reject") await rejectSupabasePassage(passage.id, passage);
+      } else {
+        const reviewedAt = action === "approve" ? new Date().toISOString() : null;
+        updatePassage(passage.id, {
+          ...passage,
+          reviewStatus: action === "submit" ? "pending_review" : action === "approve" ? "approved" : "rejected",
+          reviewedAt,
+          isActive: action === "approve",
+          isPublic: action === "approve"
+        });
+      }
+
+      setEditingPassage(null);
+      await refreshLibrary();
+      setMessage(action === "submit" ? "Passage submitted for review." : action === "approve" ? "Passage approved and published." : "Passage rejected.");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Passage review action failed.";
       setMessage(errorMessage);
       throw new Error(errorMessage);
     }
@@ -569,7 +606,7 @@ function ManagePassages() {
                       </span>
                     </div>
                     <p className="mt-2 font-mono text-utility text-paper/45">
-                      {passage.category} · {passage.style} · {passage.source} · {formatPassageLength(passage)}
+                      {passage.category} · {passage.style} · {passage.sourceType} · {passage.reviewStatus} · Risk {passage.riskClassification ?? "unclassified"} · {formatPassageLength(passage)}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -610,7 +647,12 @@ function ManagePassages() {
       </section>
 
       {editingPassage && (
-        <EditPassageModal passage={editingPassage} onCancel={() => setEditingPassage(null)} onSave={savePassage} />
+        <EditPassageModal
+          passage={editingPassage}
+          onCancel={() => setEditingPassage(null)}
+          onSave={savePassage}
+          onReview={reviewPassage}
+        />
       )}
       {previewPassage && <PreviewModal passage={previewPassage} onClose={() => setPreviewPassage(null)} />}
       {isNormalizeDialogOpen && (
@@ -747,7 +789,8 @@ function toLibraryPassageFromImport(item: unknown): LibraryPassage | null {
 
   return {
     ...passage,
-    isActive: true
+    isActive: false,
+    isPublic: false
   };
 }
 
@@ -760,14 +803,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function EditPassageModal({
+export function EditPassageModal({
   passage,
   onCancel,
-  onSave
+  onSave,
+  onReview
 }: {
   passage: LibraryPassage;
   onCancel: () => void;
   onSave: (passage: LibraryPassage) => Promise<void>;
+  onReview: (passage: LibraryPassage, action: "submit" | "approve" | "reject") => Promise<void>;
 }) {
   const [draft, setDraft] = useState<LibraryPassage>(passage);
   const [isSaving, setIsSaving] = useState(false);
@@ -793,6 +838,22 @@ function EditPassageModal({
     }
   }
 
+  async function handleReview(action: "submit" | "approve" | "reject") {
+    if (!draft.title.trim() || !draft.content.trim()) {
+      setSaveError("Title and content are required.");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError("");
+    try {
+      await onReview({ ...draft, title: draft.title.trim(), content: draft.content.trim() }, action);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Passage review action failed. Please try again.");
+      setIsSaving(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4 backdrop-blur">
       <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="edit-passage-title" className="max-h-[calc(100vh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg border border-brass/30 bg-ink-900 p-5 shadow-glow md:p-6">
@@ -801,14 +862,7 @@ function EditPassageModal({
             <p className="font-mono text-utility uppercase text-brass">Edit</p>
             <h2 id="edit-passage-title" className="mt-1 text-page font-semibold text-paper">Passage details</h2>
           </div>
-          <label className="flex items-center gap-2 font-mono text-body text-paper/70">
-            <input
-              type="checkbox"
-              checked={draft.isActive}
-              onChange={(event) => setDraft({ ...draft, isActive: event.target.checked })}
-            />
-            Active
-          </label>
+          <p className="font-mono text-utility uppercase text-paper/45">Review status: {draft.reviewStatus}</p>
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -820,6 +874,34 @@ function EditPassageModal({
             options={CATEGORIES}
           />
           <TextInput label="Style" value={draft.style} onChange={(value) => setDraft({ ...draft, style: value })} />
+          <Select
+            label="Risk classification"
+            value={draft.riskClassification ?? ""}
+            onChange={(value) => setDraft({ ...draft, riskClassification: (value || null) as PassageRiskClassification })}
+            options={["", "A", "B", "C"]}
+          />
+          <Select
+            label="Source type"
+            value={draft.sourceType}
+            onChange={(value) => setDraft({ ...draft, sourceType: value as PassageSourceType })}
+            options={["original", "synthetic", "public_domain", "licensed", "user_submitted"]}
+          />
+          <label className="flex items-center gap-2 self-end pb-2 font-mono text-body text-paper/70">
+            <input
+              type="checkbox"
+              checked={draft.fictional}
+              onChange={(event) => setDraft({ ...draft, fictional: event.target.checked })}
+            />
+            Fictional
+          </label>
+          <label className="block">
+            <span className="font-mono text-utility uppercase text-paper/45">Review status</span>
+            <input
+              value={formatReviewStatus(draft.reviewStatus)}
+              readOnly
+              className="mt-2 w-full rounded-md border border-paper/10 bg-ink-950 px-3 py-2 font-mono text-control text-paper/45 outline-none"
+            />
+          </label>
         </div>
 
         <label className="mt-4 block">
@@ -829,6 +911,16 @@ function EditPassageModal({
             onChange={(event) => setDraft({ ...draft, content: event.target.value })}
             rows={12}
             className="mt-2 w-full resize-y rounded-md border border-paper/10 bg-ink-950 px-4 py-4 font-mono text-control leading-6 text-paper/80 outline-none transition focus:border-brass"
+          />
+        </label>
+
+        <label className="mt-4 block">
+          <span className="font-mono text-utility uppercase text-paper/45">Review notes</span>
+          <textarea
+            value={draft.reviewNotes ?? ""}
+            onChange={(event) => setDraft({ ...draft, reviewNotes: event.target.value || null })}
+            rows={3}
+            className="mt-2 w-full resize-y rounded-md border border-paper/10 bg-ink-950 px-4 py-3 font-mono text-control leading-6 text-paper/80 outline-none transition focus:border-brass"
           />
         </label>
 
@@ -849,6 +941,30 @@ function EditPassageModal({
           </button>
           <button
             type="button"
+            onClick={() => handleReview("reject")}
+            disabled={isSaving}
+            className="rounded-md border border-ember/30 bg-ember/10 px-4 py-2 font-mono text-control text-ember transition hover:bg-ember/15 disabled:opacity-50"
+          >
+            Reject
+          </button>
+          <button
+            type="button"
+            onClick={() => handleReview("submit")}
+            disabled={isSaving}
+            className="rounded-md border border-paper/10 bg-ink-800 px-4 py-2 font-mono text-control text-paper/70 transition hover:border-paper/20 disabled:opacity-50"
+          >
+            Submit for review
+          </button>
+          <button
+            type="button"
+            onClick={() => handleReview("approve")}
+            disabled={isSaving || draft.riskClassification !== "A"}
+            className="rounded-md border border-mint/30 bg-mint/10 px-4 py-2 font-mono text-control text-mint transition hover:bg-mint/15 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Approve
+          </button>
+          <button
+            type="button"
             onClick={handleSave}
             disabled={isSaving}
             className="rounded-md border border-brass/35 bg-brass/10 px-4 py-2 font-mono text-control text-brass transition hover:bg-brass/15 disabled:cursor-wait disabled:opacity-60"
@@ -859,6 +975,10 @@ function EditPassageModal({
       </section>
     </div>
   );
+}
+
+function formatReviewStatus(status: PassageReviewStatus) {
+  return status.replace("_", " ");
 }
 
 function PreviewModal({ passage, onClose }: { passage: LibraryPassage; onClose: () => void }) {

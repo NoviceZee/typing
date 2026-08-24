@@ -3152,7 +3152,14 @@ function makePassage(
     updatedAt: "2026-06-19T00:00:00.000Z",
     wordCount: content.split(/\s+/).filter(Boolean).length,
     characterCount: content.length,
-    isActive: true
+    riskClassification: "A",
+    sourceType: "original",
+    fictional: false,
+    reviewedAt: "2026-06-19T00:00:00.000Z",
+    reviewNotes: null,
+    reviewStatus: "approved",
+    isActive: true,
+    isPublic: true
   };
 }
 

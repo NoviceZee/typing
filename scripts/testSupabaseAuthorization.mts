@@ -248,6 +248,15 @@ async function assertPassageAuthorization(userA: TestPrincipal, admin: TestPrinc
     .insert({ ...passage, created_by: userA.user.id });
   assert(Boolean(nonAdminError), "A non-admin inserted a passage.");
 
+  const { error: directNotesError } = await userA.client
+    .from("passages")
+    .select("review_notes")
+    .limit(1);
+  assert(Boolean(directNotesError), "Authenticated review_notes was directly selectable.");
+
+  const { error: nonAdminRpcError } = await userA.client.rpc("get_admin_passages");
+  assert(Boolean(nonAdminRpcError), "A non-admin read editorial passage metadata through the admin RPC.");
+
   let passageId: string | null = null;
   try {
     const { data, error } = await admin.client
@@ -257,6 +266,22 @@ async function assertPassageAuthorization(userA: TestPrincipal, admin: TestPrinc
       .single();
     if (error) throw error;
     passageId = data.id;
+
+    const { error: updateError } = await admin.client
+      .from("passages")
+      .update({ review_notes: "Authorization audit internal source https://example.invalid/internal" })
+      .eq("id", passageId)
+      .select("id")
+      .single();
+    if (updateError) throw updateError;
+
+    const { data: adminRows, error: adminReadError } = await admin.client.rpc("get_admin_passages");
+    if (adminReadError) throw adminReadError;
+    const adminPassage = adminRows?.find((row: { id: string }) => row.id === passageId);
+    assert(
+      adminPassage?.review_notes === "Authorization audit internal source https://example.invalid/internal",
+      "Admin UI RPC could not read updated review notes."
+    );
   } finally {
     if (passageId) {
       const { error } = await admin.client.from("passages").delete().eq("id", passageId);

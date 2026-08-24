@@ -18,7 +18,8 @@
     "test:supabase-leaderboard": "node --experimental-strip-types scripts/testSupabaseLeaderboard.ts",
     "test:supabase-own-results": "node --experimental-strip-types scripts/testSupabaseOwnResults.ts",
     "test:supabase-public-boundary": "node --experimental-strip-types scripts/testSupabasePublicBoundary.mts",
-    "test:supabase-authorization": "node --experimental-strip-types scripts/testSupabaseAuthorization.mts"
+    "test:supabase-authorization": "node --experimental-strip-types scripts/testSupabaseAuthorization.mts",
+    "verify:postgres-corpus-remediation": "node scripts/verifyCorpusRemediationPostgres.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",

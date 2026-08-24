@@ -267,6 +267,13 @@ function makePassage(
     updatedAt: "2026-05-31T00:00:00.000Z",
     wordCount: 6,
     characterCount: 32,
-    isActive: true
+    riskClassification: "A",
+    sourceType: "original",
+    fictional: false,
+    reviewedAt: "2026-05-31T00:00:00.000Z",
+    reviewNotes: null,
+    reviewStatus: "approved",
+    isActive: true,
+    isPublic: true
   };
 }
