@@ -28,14 +28,21 @@ const forbiddenPatterns = [
 const requiredFeedbackPatterns = [
   ["feedback semantic main content", /<main\b/],
   ["feedback h1", /<h1\b[^>]*>[^]*?Send us feedback\./],
+  ["feedback form", /<form\b/],
+  ["feedback category field", /<select\b[^>]*name="category"/],
+  ["feedback required message field", /<textarea\b[^>]*name="message"[^>]*required/],
+  ["feedback optional reply field", /<input\b[^>]*type="email"[^>]*name="replyEmail"/],
+  ["feedback submit action", />Send feedback</],
   ["feedback email address", /feedback@typingstation\.app/],
   ["feedback copy action", />Copy email address</],
   ["feedback noindex directive", /name="robots" content="noindex, nofollow"/]
 ];
 
 const forbiddenFeedbackPatterns = [
+  ["temporary coming-later copy", /built-in feedback form is coming later/i],
   ["feedback mailto navigation", /mailto:/],
-  ["feedback window.open dispatch", /window\.open/]
+  ["feedback window.open dispatch", /window\.open/],
+  ["server-only Resend key", /RESEND_API_KEY/]
 ];
 
 const missing = requiredPatterns
