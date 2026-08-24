@@ -112,7 +112,7 @@ describe("AppShell account dropdown", () => {
     expect(footerLinks.contains(feedback)).toBe(true);
     expect(screen.getByRole("link", { name: "FAQ" }).getAttribute("href")).toBe("/faq");
     expect(feedback.getAttribute("href")).toBe("mailto:feedback@typingstation.app");
-    expect(feedback.getAttribute("target")).toBeNull();
+    expect(feedback.getAttribute("target")).toBe("_blank");
     expect(screen.getByText(`© ${new Date().getFullYear()} Typing Station`)).toBeTruthy();
   });
 
