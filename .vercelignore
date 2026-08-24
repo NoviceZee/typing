@@ -10,6 +10,7 @@ tippy-pet-run/
 tippy-orange-cat-run/
 docs/
 supabase/
-scripts/
+scripts/*
+!scripts/verifyHomepageHtml.mjs
 **/*.test.ts
 **/*.test.tsx
