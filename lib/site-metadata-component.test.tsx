@@ -19,7 +19,9 @@ describe("SiteMetadata", () => {
     expect(container.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe("index, follow");
     expect(container.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://typing.example.com/practice");
     expect(container.querySelector('meta[property="og:url"]')?.getAttribute("content")).toBe("https://typing.example.com/practice");
+    expect(container.querySelector('meta[property="og:image"]')?.getAttribute("content")).toBe("https://typing.example.com/typingstation-share.png");
     expect(container.querySelector('meta[name="twitter:title"]')?.getAttribute("content")).toContain("Typing Practice");
+    expect(container.querySelector('meta[name="twitter:image"]')?.getAttribute("content")).toBe("https://typing.example.com/typingstation-share.png");
   });
 
   it("renders noindex without a canonical for private routes", () => {

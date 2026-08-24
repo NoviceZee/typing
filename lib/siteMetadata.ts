@@ -69,7 +69,7 @@ export function getSiteUrl(configuredUrl = process.env.NEXT_PUBLIC_SITE_URL): st
 }
 
 export function getShareImageUrl(configuredUrl = process.env.NEXT_PUBLIC_SITE_URL): string {
-  return `${getSiteUrl(configuredUrl)}/formaltype-share.png`;
+  return `${getSiteUrl(configuredUrl)}/typingstation-share.png`;
 }
 
 function normalizePath(pathname: string): string {

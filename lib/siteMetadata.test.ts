@@ -14,13 +14,13 @@ import {
 describe("site metadata URLs", () => {
   it("uses the production fallback when no public site URL is configured", () => {
     expect(getSiteUrl("")).toBe("https://typingstation.app");
-    expect(getShareImageUrl("")).toBe("https://typingstation.app/formaltype-share.png");
+    expect(getShareImageUrl("")).toBe("https://typingstation.app/typingstation-share.png");
   });
 
   it("normalizes a configured URL before building absolute metadata URLs", () => {
     expect(getSiteUrl(" https://typing.example.com/// ")).toBe("https://typing.example.com");
     expect(getShareImageUrl("https://typing.example.com/"))
-      .toBe("https://typing.example.com/formaltype-share.png");
+      .toBe("https://typing.example.com/typingstation-share.png");
   });
 });
 

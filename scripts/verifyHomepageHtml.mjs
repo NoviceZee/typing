@@ -12,15 +12,30 @@ const requiredPatterns = [
   ["Practice link", /href="\/practice"/],
   ["Training link", /href="\/training"/],
   ["Library link", /href="\/passages"/],
-  ["Leaderboard link", /href="\/leaderboard"/]
+  ["Leaderboard link", /href="\/leaderboard"/],
+  ["Typing Station share image", /https:\/\/typingstation\.app\/typingstation-share\.png/],
+  ["feedback email link", /href="mailto:feedback@typingstation\.app"/],
+  ["current copyright year", new RegExp(`©\\s*(?:<!-- -->)?${new Date().getFullYear()}(?:<!-- -->)?\\s*Typing Station`)]
+];
+
+const forbiddenPatterns = [
+  ["legacy FormalType share image", /formaltype-share\.png/]
 ];
 
 const missing = requiredPatterns
   .filter(([, pattern]) => !pattern.test(html))
   .map(([label]) => label);
 
-if (missing.length > 0) {
-  throw new Error(`Generated homepage HTML is missing: ${missing.join(", ")}`);
+const forbidden = forbiddenPatterns
+  .filter(([, pattern]) => pattern.test(html))
+  .map(([label]) => label);
+
+if (missing.length > 0 || forbidden.length > 0) {
+  const details = [
+    missing.length > 0 ? `missing: ${missing.join(", ")}` : "",
+    forbidden.length > 0 ? `contains: ${forbidden.join(", ")}` : ""
+  ].filter(Boolean).join("; ");
+  throw new Error(`Generated homepage HTML verification failed (${details})`);
 }
 
 console.log(`Verified pre-rendered homepage HTML at ${homepagePath}`);
