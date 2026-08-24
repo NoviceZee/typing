@@ -40,6 +40,7 @@ describe("route search metadata", () => {
   it.each([
     "/login",
     "/settings",
+    "/feedback",
     "/profile",
     "/profile/friends",
     "/passages/manage",
@@ -49,6 +50,14 @@ describe("route search metadata", () => {
   ])("keeps private, utility, dynamic profile, and unknown routes out of the index: %s", (pathname) => {
     expect(getRouteSeoMetadata(pathname).indexable).toBe(false);
     expect(getCanonicalUrl(pathname, "https://typing.example.com")).toBeNull();
+  });
+
+  it("gives the feedback utility page accurate noindex metadata", () => {
+    expect(getRouteSeoMetadata("/feedback")).toEqual({
+      title: "Feedback | Typing Station",
+      description: "Contact Typing Station with feedback, bug reports, or suggestions.",
+      indexable: false
+    });
   });
 
   it("canonicalizes filter and selection query variants to the clean public route", () => {

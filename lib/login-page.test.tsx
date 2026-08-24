@@ -12,6 +12,7 @@ const mockState = vi.hoisted(() => ({
   isLoading: false,
   routerReplace: vi.fn(),
   routerPush: vi.fn(),
+  signUp: vi.fn().mockResolvedValue({ needsConfirmation: true }),
   sendPasswordReset: vi.fn().mockResolvedValue({}),
   query: { redirectTo: "/leaderboard" } as Record<string, string>
 }));
@@ -26,7 +27,7 @@ vi.mock("@/components/AuthProvider", () => ({
     isLoading: mockState.isLoading,
     isConfigured: true,
     signIn: vi.fn(),
-    signUp: vi.fn(),
+    signUp: mockState.signUp,
     sendPasswordReset: mockState.sendPasswordReset
   })
 }));
@@ -52,6 +53,8 @@ describe("LoginPage handle redirects", () => {
     mockState.query = { redirectTo: "/leaderboard" };
     mockState.routerReplace.mockClear();
     mockState.routerPush.mockClear();
+    mockState.signUp.mockClear();
+    mockState.signUp.mockResolvedValue({ needsConfirmation: true });
     mockState.sendPasswordReset.mockClear();
     mockedGetSupabaseProfile.mockClear();
     mockedGetSupabaseProfile.mockResolvedValue({ display_name: "Formal Typist", handle: null } as any);
@@ -101,6 +104,28 @@ describe("LoginPage handle redirects", () => {
       expect(mockState.sendPasswordReset).toHaveBeenCalledWith("typist@example.com");
     });
     expect(screen.getByText(/If an account exists/)).toBeTruthy();
+  });
+
+  it("uses product-facing confirmation copy after signup", async () => {
+    mockState.user = null;
+    render(<LoginPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Email" }), {
+      target: { value: "new@example.com" }
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "correct-horse" }
+    });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(
+        "Check your email to confirm your address and finish setting up your account."
+      );
+    });
+    expect(screen.getByRole("status").textContent).not.toContain("Supabase");
   });
 
   it("opens recovery mode from an expired-link action", () => {

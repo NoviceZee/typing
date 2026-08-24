@@ -81,7 +81,7 @@ export default function LoginPage() {
 
       if (authMode === "signup" && result.needsConfirmation) {
         setMessageKind("status");
-        setMessage("Account created. Check your email if Supabase requires confirmation, then log in.");
+        setMessage("Check your email to confirm your address and finish setting up your account.");
         return;
       }
 

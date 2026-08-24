@@ -13,7 +13,7 @@ export default function App({ Component, pageProps, router }: AppProps) {
       <SiteMetadata pathname={router.pathname} />
       <SiteTelemetry />
       <AuthProvider>
-        <AccountSettingsProvider renderChildrenWhileHydrating={router.pathname === "/"}>
+        <AccountSettingsProvider renderChildrenWhileHydrating={router.pathname === "/" || router.pathname === "/feedback"}>
           <ThemeProvider>
           <AppErrorBoundary><Component {...pageProps} /></AppErrorBoundary>
           </ThemeProvider>

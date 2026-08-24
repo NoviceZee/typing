@@ -12,41 +12,27 @@ describe("FeedbackButton", () => {
     vi.restoreAllMocks();
   });
 
-  it("opens one mailto per explicit activation and never retries on lifecycle events", () => {
-    vi.useFakeTimers();
+  it("is a normal same-origin link with no external-protocol dispatch", () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     render(<FeedbackButton />);
     const feedback = screen.getByRole("link", { name: "Feedback" });
 
+    expect(feedback.getAttribute("href")).toBe("/feedback");
+    expect(feedback.getAttribute("target")).toBeNull();
+    expect(feedback.getAttribute("href")).not.toContain("mailto:");
+
+    feedback.addEventListener("click", (event) => event.preventDefault());
     fireEvent.click(feedback);
 
-    expect(open).toHaveBeenCalledTimes(1);
-    expect(open).toHaveBeenLastCalledWith(
-      "mailto:feedback@typingstation.app",
-      "_blank",
-      "noopener,noreferrer"
-    );
-
-    vi.runAllTimers();
-    window.dispatchEvent(new Event("blur"));
-    window.dispatchEvent(new Event("focus"));
-    document.dispatchEvent(new Event("visibilitychange"));
-    vi.runAllTimers();
-
-    expect(open).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(feedback);
-
-    expect(open).toHaveBeenCalledTimes(2);
+    expect(open).not.toHaveBeenCalled();
   });
 
-  it("remains a keyboard-focusable mailto link", () => {
+  it("remains keyboard focusable", () => {
     render(<FeedbackButton />);
     const feedback = screen.getByRole("link", { name: "Feedback" });
 
     feedback.focus();
 
     expect(document.activeElement).toBe(feedback);
-    expect(feedback.getAttribute("href")).toBe("mailto:feedback@typingstation.app");
   });
 });

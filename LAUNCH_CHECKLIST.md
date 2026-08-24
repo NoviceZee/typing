@@ -13,7 +13,7 @@
 ## Connect before beta
 
 - [x] Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS production origin (`https://typingstation.app`)
-- [x] Set Feedback to `mailto:feedback@typingstation.app` and verify the address receives mail
+- [x] Link Feedback to `/feedback` and verify `feedback@typingstation.app` receives mail
 - [ ] Set `NEXT_PUBLIC_GA_MEASUREMENT_ID` and verify page views in analytics realtime view
 - [ ] Choose an error tracker and connect it to the `formaltype:error` browser event
 - [ ] Add AdSense client and slot values only after the site is approved; verify layout on mobile and desktop

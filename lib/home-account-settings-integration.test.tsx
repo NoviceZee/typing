@@ -14,6 +14,7 @@ import {
   supabaseAccountSettingsRepository
 } from "@/lib/accountSettings";
 import Home from "@/pages/index";
+import FeedbackPage from "@/pages/feedback";
 
 const authState = vi.hoisted(() => ({
   user: null as { id: string } | null,
@@ -41,14 +42,14 @@ function PageProbe({ pathname }: { pathname: string }) {
           ? `${accountSettings.settings.appearance.themePreset}:${accountSettings.settings.appearance.accentColor}:${accountSettings.settings.appearance.appFont}`
           : "settings-unavailable"}
       </span>
-      {pathname === "/" ? <Home /> : <main>Authenticated route</main>}
+      {pathname === "/" ? <Home /> : pathname === "/feedback" ? <FeedbackPage /> : <main>Authenticated route</main>}
     </>
   );
 }
 
 function AppHarness({ pathname }: { pathname: string }) {
   return (
-    <AccountSettingsProvider renderChildrenWhileHydrating={pathname === "/"}>
+    <AccountSettingsProvider renderChildrenWhileHydrating={pathname === "/" || pathname === "/feedback"}>
       <ThemeProvider>
         <PageProbe pathname={pathname} />
       </ThemeProvider>
@@ -106,6 +107,22 @@ describe("homepage account-settings integration", () => {
     view.rerender(<AppHarness pathname="/" />);
 
     await expectHydratedAppearance();
+    expect(pageProbeMounts).toBe(1);
+  });
+
+  it("renders the feedback utility during hydration and recovers settings without remounting", async () => {
+    const view = render(<AppHarness pathname="/feedback" />);
+
+    expect(screen.getByTestId("settings-context").textContent).toBe("settings-unavailable");
+    expect(screen.getByRole("heading", { name: "Send us feedback." })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copy email address" })).toBeTruthy();
+
+    authState.isLoading = false;
+    view.rerender(<AppHarness pathname="/feedback" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("settings-context").textContent).not.toBe("settings-unavailable");
+    });
     expect(pageProbeMounts).toBe(1);
   });
 

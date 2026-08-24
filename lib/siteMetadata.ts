@@ -49,6 +49,7 @@ const PUBLIC_ROUTE_METADATA: Record<string, Omit<RouteSeoMetadata, "indexable" |
 const PRIVATE_ROUTE_METADATA: Record<string, Omit<RouteSeoMetadata, "indexable">> = {
   "/login": { title: "Log in | Typing Station", description: "Log in to save and review your Typing Station progress." },
   "/logout": { title: "Log out | Typing Station", description: "End your current Typing Station session." },
+  "/feedback": { title: "Feedback | Typing Station", description: "Contact Typing Station with feedback, bug reports, or suggestions." },
   "/settings": { title: "Settings | Typing Station", description: "Adjust your private Typing Station preferences." },
   "/profile": { title: "Your Profile | Typing Station", description: "Review your private Typing Station activity and progress." },
   "/profile/friends": { title: "Friends | Typing Station", description: "Manage your Typing Station friends and requests." },
