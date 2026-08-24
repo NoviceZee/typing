@@ -6,7 +6,8 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AccountSettingsProvider,
-  useAccountSettings
+  useAccountSettings,
+  useOptionalAccountSettings
 } from "@/components/AccountSettingsProvider";
 import {
   createDefaultAccountSettings,
@@ -52,12 +53,34 @@ function Probe() {
   );
 }
 
+function OptionalProbe() {
+  const accountSettings = useOptionalAccountSettings();
+  return (
+    <span data-testid="optional-settings-state">
+      {accountSettings ? accountSettings.settings.appearance.themePreset : "settings-unavailable"}
+    </span>
+  );
+}
+
 describe("AccountSettingsProvider", () => {
   beforeEach(() => {
     window.localStorage.clear();
     authState.user = { id: "user-1" };
     authState.isLoading = false;
     vi.restoreAllMocks();
+  });
+
+  it("can render deterministic public children while auth and settings hydrate", () => {
+    authState.user = null;
+    authState.isLoading = true;
+
+    render(
+      <AccountSettingsProvider renderChildrenWhileHydrating>
+        <OptionalProbe />
+      </AccountSettingsProvider>
+    );
+
+    expect(screen.getByTestId("optional-settings-state").textContent).toBe("settings-unavailable");
   });
 
   it("waits for authenticated cloud hydration and applies cloud values", async () => {

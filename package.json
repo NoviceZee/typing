@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/verifyHomepageHtml.mjs",
     "lint": "eslint pages components lib scripts next.config.js --ext .js,.ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

@@ -7,6 +7,7 @@ import {
   getRouteSeoMetadata,
   getShareImageUrl,
   getSiteUrl,
+  getWebsiteStructuredData,
   getWebApplicationStructuredData
 } from "./siteMetadata";
 
@@ -90,5 +91,17 @@ describe("crawl discovery documents", () => {
     expect(data.featureList).toContain("English and Chinese typing practice");
     expect(data).not.toHaveProperty("aggregateRating");
     expect(data).not.toHaveProperty("offers");
+  });
+
+  it("creates the exact WebSite site-name signal for the canonical homepage", () => {
+    const data = getWebsiteStructuredData("https://typingstation.app/");
+
+    expect(data).toEqual({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Typing Station",
+      url: "https://typingstation.app/"
+    });
+    expect(data).not.toHaveProperty("alternateName");
   });
 });

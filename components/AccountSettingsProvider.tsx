@@ -36,7 +36,15 @@ type AccountSettingsContextValue = {
 
 const AccountSettingsContext = createContext<AccountSettingsContextValue | null>(null);
 
-export function AccountSettingsProvider({ children }: { children: ReactNode }) {
+interface AccountSettingsProviderProps {
+  children: ReactNode;
+  renderChildrenWhileHydrating?: boolean;
+}
+
+export function AccountSettingsProvider({
+  children,
+  renderChildrenWhileHydrating = false
+}: AccountSettingsProviderProps) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const [settings, setSettings] = useState<AccountSettingsV1 | null>(null);
   const [hydratedAccountKey, setHydratedAccountKey] = useState<string | null>(null);
@@ -189,7 +197,9 @@ export function AccountSettingsProvider({ children }: { children: ReactNode }) {
   // Authenticated cloud values must be resolved before application pages read
   // legacy local adapters; this prevents a default/local flash and overwrite.
   if (!value || isAuthLoading) {
-    return null;
+    return renderChildrenWhileHydrating
+      ? <AccountSettingsContext.Provider value={null}>{children}</AccountSettingsContext.Provider>
+      : null;
   }
 
   return <AccountSettingsContext.Provider value={value}>{children}</AccountSettingsContext.Provider>;

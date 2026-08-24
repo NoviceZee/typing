@@ -30,15 +30,34 @@ describe("SiteMetadata", () => {
     expect(container.querySelector('meta[property="og:url"]')).toBeNull();
   });
 
-  it("includes valid WebApplication structured data only on the homepage", () => {
+  it("includes valid WebApplication and WebSite structured data only on the homepage", () => {
     const home = render(<SiteMetadata pathname="/" siteUrl="https://typing.example.com" />);
-    const script = home.container.querySelector('script[type="application/ld+json"]');
+    const scripts = Array.from(home.container.querySelectorAll('script[type="application/ld+json"]'));
+    const structuredData = scripts.map((script) => JSON.parse(script.textContent || "{}"));
 
-    expect(script).not.toBeNull();
-    expect(JSON.parse(script?.textContent || "{}")["@type"]).toBe("WebApplication");
+    expect(structuredData.map((data) => data["@type"])).toEqual(["WebApplication", "WebSite"]);
+    expect(structuredData[1]).toEqual(expect.objectContaining({
+      name: "Typing Station",
+      url: "https://typing.example.com/"
+    }));
 
     home.unmount();
     const practice = render(<SiteMetadata pathname="/practice" siteUrl="https://typing.example.com" />);
     expect(practice.container.querySelector('script[type="application/ld+json"]')).toBeNull();
+  });
+
+  it("publishes standards-based favicon and manifest links", () => {
+    const { container } = render(<SiteMetadata pathname="/" siteUrl="https://typing.example.com" />);
+
+    expect(container.querySelector('link[rel="icon"][type="image/png"][sizes="48x48"]')?.getAttribute("href"))
+      .toBe("/favicon-48x48.png");
+    expect(container.querySelector('link[rel="icon"][type="image/svg+xml"]')?.getAttribute("href"))
+      .toBe("/favicon.svg");
+    expect(container.querySelector('link[rel="shortcut icon"]')?.getAttribute("href"))
+      .toBe("/favicon.ico");
+    expect(container.querySelector('link[rel="apple-touch-icon"][sizes="180x180"]')?.getAttribute("href"))
+      .toBe("/apple-touch-icon.png");
+    expect(container.querySelector('link[rel="manifest"]')?.getAttribute("href"))
+      .toBe("/site.webmanifest");
   });
 });

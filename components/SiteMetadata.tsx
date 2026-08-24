@@ -4,6 +4,7 @@ import {
   getCanonicalUrl,
   getRouteSeoMetadata,
   getShareImageUrl,
+  getWebsiteStructuredData,
   getWebApplicationStructuredData
 } from "@/lib/siteMetadata";
 import { supabaseOrigin } from "@/lib/supabaseClient";
@@ -18,8 +19,11 @@ export function SiteMetadata({ pathname, siteUrl }: SiteMetadataProps) {
   const canonicalUrl = getCanonicalUrl(pathname, siteUrl);
   const shareImageUrl = getShareImageUrl(siteUrl);
   const isHomepage = metadata.canonicalPath === "/";
-  const structuredData = isHomepage
+  const webApplicationStructuredData = isHomepage
     ? JSON.stringify(getWebApplicationStructuredData(siteUrl)).replace(/</g, "\\u003c")
+    : null;
+  const websiteStructuredData = isHomepage
+    ? JSON.stringify(getWebsiteStructuredData(siteUrl)).replace(/</g, "\\u003c")
     : null;
 
   return (
@@ -44,8 +48,13 @@ export function SiteMetadata({ pathname, siteUrl }: SiteMetadataProps) {
       {canonicalUrl && <meta name="twitter:description" content={metadata.description} />}
       {canonicalUrl && <meta name="twitter:image" content={shareImageUrl} />}
       {supabaseOrigin && <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />}
-      <link rel="icon" href="/favicon.svg" />
-      {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />}
+      <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
+      <link rel="icon" href="/favicon-48x48.png" type="image/png" sizes="48x48" />
+      <link rel="shortcut icon" href="/favicon.ico" />
+      <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+      <link rel="manifest" href="/site.webmanifest" />
+      {webApplicationStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: webApplicationStructuredData }} />}
+      {websiteStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: websiteStructuredData }} />}
     </Head>
   );
 }

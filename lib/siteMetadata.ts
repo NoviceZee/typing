@@ -130,6 +130,15 @@ export function getWebApplicationStructuredData(configuredUrl = process.env.NEXT
   };
 }
 
+export function getWebsiteStructuredData(configuredUrl = process.env.NEXT_PUBLIC_SITE_URL) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Typing Station",
+    url: `${getSiteUrl(configuredUrl)}/`
+  };
+}
+
 export function buildSitemapXml(configuredUrl = process.env.NEXT_PUBLIC_SITE_URL): string {
   const urls = INDEXABLE_SITE_ROUTES.map((route) => {
     const location = route === "/" ? getSiteUrl(configuredUrl) : `${getSiteUrl(configuredUrl)}${route}`;
