@@ -1,12 +1,12 @@
 import React from "react";
 import { PublicSiteHeader, ReturnToPracticeLink, SITE_FRAME_CLASS, SiteFooter } from "@/components/SiteChrome";
 
-export function LegalLayout({ title, summary, children }: React.PropsWithChildren<{ title: string; summary: string }>) {
+export function LegalLayout({ title, summary, effectiveDate = "12 July 2026", children }: React.PropsWithChildren<{ title: string; summary: string; effectiveDate?: string }>) {
   return <>
     <main className="min-h-screen bg-ink-950 px-5 py-5 text-paper md:px-8">
       <div className={SITE_FRAME_CLASS}>
         <PublicSiteHeader><ReturnToPracticeLink /></PublicSiteHeader>
-        <article className="legal-document mx-auto max-w-4xl py-12 md:py-16"><p className="font-mono text-utility uppercase tracking-[0.22em] text-brass">Legal & trust</p><h1 className="mt-4 text-page font-semibold tracking-tight">{title}</h1><p className="mt-5 max-w-2xl text-body leading-7 text-paper/55">{summary}</p><p className="mt-3 font-mono text-utility text-paper/30">Effective 12 July 2026 · Beta version</p><div className="mt-12 space-y-10">{children}</div></article>
+        <article className="legal-document mx-auto max-w-4xl py-12 md:py-16"><p className="font-mono text-utility uppercase tracking-[0.22em] text-brass">Legal & trust</p><h1 className="mt-4 text-page font-semibold tracking-tight">{title}</h1><p className="mt-5 max-w-2xl text-body leading-7 text-paper/55">{summary}</p><p className="mt-3 font-mono text-utility text-paper/30">Effective {effectiveDate} · Beta version</p><div className="mt-12 space-y-10">{children}</div></article>
         <SiteFooter />
       </div>
     </main>

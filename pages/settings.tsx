@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, Palette, SlidersHorizontal, Volume2, type LucideIcon } from "lucide-react";
+import { Keyboard, Palette, ShieldCheck, SlidersHorizontal, Volume2, type LucideIcon } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { AnalyticsConsentPreference } from "@/components/AnalyticsConsentControls";
 import { useOptionalAccountSettings } from "@/components/AccountSettingsProvider";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { FilterControl, SecondaryToolbar } from "@/components/SecondaryNavigation";
@@ -472,6 +473,20 @@ export default function SettingsPage() {
                 />
               </div>
             </section>
+
+            <section
+              id="privacy"
+              className="formaltype-settings-card order-5 scroll-mt-5 rounded-lg border border-paper/[0.07] bg-ink-950/45 p-5"
+            >
+              <SectionHeading
+                eyebrow="Privacy"
+                title="Privacy"
+                description="Manage the same device-level analytics choice available on the Privacy Policy page."
+              />
+              <div className="mt-5">
+                <AnalyticsConsentPreference />
+              </div>
+            </section>
           </div>
         </div>
       </PageContainer>
@@ -896,5 +911,6 @@ const SETTINGS_NAV_ITEMS: Array<{ id: string; label: string; icon: LucideIcon }>
   { id: "behavior", label: "Behavior", icon: SlidersHorizontal },
   { id: "personalization", label: "Appearance", icon: Palette },
   { id: "typing", label: "Typing", icon: Keyboard },
-  { id: "sound", label: "Sound", icon: Volume2 }
+  { id: "sound", label: "Sound", icon: Volume2 },
+  { id: "privacy", label: "Privacy", icon: ShieldCheck }
 ];

@@ -4,6 +4,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AnalyticsConsentProvider } from "@/components/AnalyticsConsentProvider";
 import SettingsPage from "../pages/settings";
 
 const SOUND_PACK_OPTIONS = [
@@ -74,6 +75,19 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
     expect(screen.getByRole("link", { name: /login/i })).toBeTruthy();
     expect(mockState.routerReplace).not.toHaveBeenCalled();
+  });
+
+  it("offers the shared analytics preference as a signed-in convenience", async () => {
+    mockState.user = { id: "user-1" };
+    render(
+      <AnalyticsConsentProvider reload={vi.fn()}>
+        <SettingsPage />
+      </AnalyticsConsentProvider>
+    );
+
+    expect(await screen.findByRole("heading", { name: "Privacy" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Allow analytics" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Decline analytics" })).toBeTruthy();
   });
 
   it("announces that preference changes are saved automatically", () => {

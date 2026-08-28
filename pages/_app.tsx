@@ -5,11 +5,13 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { SiteMetadata } from "@/components/SiteMetadata";
 import { SiteTelemetry } from "@/components/SiteTelemetry";
+import { AnalyticsConsentProvider } from "@/components/AnalyticsConsentProvider";
+import { AnalyticsConsentNotice } from "@/components/AnalyticsConsentControls";
 import "@/styles/globals.css";
 
 export default function App({ Component, pageProps, router }: AppProps) {
   return (
-    <>
+    <AnalyticsConsentProvider>
       <SiteMetadata pathname={router.pathname} />
       <SiteTelemetry />
       <AuthProvider>
@@ -19,6 +21,7 @@ export default function App({ Component, pageProps, router }: AppProps) {
           </ThemeProvider>
         </AccountSettingsProvider>
       </AuthProvider>
-    </>
+      <AnalyticsConsentNotice />
+    </AnalyticsConsentProvider>
   );
 }
