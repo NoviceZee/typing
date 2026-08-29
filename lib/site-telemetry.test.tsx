@@ -258,6 +258,17 @@ describe("SiteTelemetry lifecycle", () => {
     expect(JSON.stringify(window.dataLayer)).not.toContain("private");
   });
 
+  it("queues gtag commands as Arguments objects instead of ordinary arrays", async () => {
+    window.gtag = undefined;
+    window.dataLayer = [];
+
+    renderTelemetry();
+
+    await waitFor(() => expect(window.dataLayer.length).toBeGreaterThan(0));
+    expect(window.dataLayer.every((command) => Object.prototype.toString.call(command) === "[object Arguments]")).toBe(true);
+    expect(window.dataLayer.some(Array.isArray)).toBe(false);
+  });
+
   it("sends one safe event per completed allowlisted route and suppresses unknown routes", async () => {
     renderTelemetry();
     await waitFor(() => expect(window.gtag).toHaveBeenCalledWith("event", "page_view", expect.any(Object)));

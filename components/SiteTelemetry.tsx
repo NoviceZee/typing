@@ -14,7 +14,7 @@ import {
 
 declare global {
   interface Window {
-    dataLayer: unknown[][];
+    dataLayer: unknown[];
     gtag?: (...args: unknown[]) => void;
   }
 }
@@ -34,8 +34,8 @@ type SafeAnalyticsContext = {
 function ensureGoogleTagQueue() {
   window.dataLayer = window.dataLayer || [];
   if (!window.gtag) {
-    window.gtag = (...args: unknown[]) => {
-      window.dataLayer.push(args);
+    window.gtag = function gtag() {
+      window.dataLayer.push(arguments);
     };
   }
 }
