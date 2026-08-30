@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useOptionalAnalyticsConsent } from "@/components/AnalyticsConsentProvider";
 
 const CHOICE_LABELS = {
@@ -26,7 +27,7 @@ function ChoiceButtons({ compact = false }: { compact?: boolean }) {
         onClick={analytics.allowAnalytics}
         className={`${sharedClassName} ${analytics.consent === "granted" ? "border-brass/70 bg-brass/15 text-brass" : "border-paper/15 bg-paper/[0.04] text-paper/70 hover:border-brass/45 hover:text-paper"}`}
       >
-        Allow analytics
+        {compact ? "Allow" : "Allow analytics"}
       </button>
       <button
         type="button"
@@ -35,7 +36,7 @@ function ChoiceButtons({ compact = false }: { compact?: boolean }) {
         onClick={analytics.declineAnalytics}
         className={`${sharedClassName} ${analytics.consent === "denied" ? "border-brass/70 bg-brass/15 text-brass" : "border-paper/15 bg-paper/[0.04] text-paper/70 hover:border-brass/45 hover:text-paper"}`}
       >
-        Decline analytics
+        {compact ? "Decline" : "Decline analytics"}
       </button>
     </div>
   );
@@ -66,16 +67,22 @@ export function AnalyticsConsentNotice() {
     <aside
       role="region"
       aria-label="Analytics privacy notice"
-      className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-3xl rounded-lg border border-brass/35 bg-ink-950/95 p-4 shadow-2xl backdrop-blur sm:inset-x-5 sm:flex sm:items-center sm:justify-between sm:gap-5"
+      className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-5xl rounded-lg border border-brass/35 bg-ink-950/95 p-3 shadow-2xl backdrop-blur sm:inset-x-5 sm:flex sm:items-center sm:gap-4"
     >
-      <div>
-        <p className="font-mono text-control uppercase tracking-wide text-brass">Optional analytics</p>
-        <p className="mt-1 max-w-2xl text-body text-paper/70">
-          Help improve Typing Station by allowing privacy-limited Google Analytics. We do not send typed content, account identifiers, query strings or advertising signals.
+      <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
+        <p className="shrink-0 font-mono text-control uppercase tracking-wide text-brass">Optional analytics</p>
+        <p className="mt-1 text-body text-paper/70 sm:mt-0">
+          Help improve Typing Station with privacy-limited analytics.
         </p>
       </div>
-      <div className="mt-3 shrink-0 sm:mt-0">
+      <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-0 sm:shrink-0 sm:flex-nowrap">
         <ChoiceButtons compact />
+        <Link
+          href="/privacy"
+          className="font-mono text-control text-paper/50 underline decoration-paper/25 underline-offset-4 outline-none transition hover:text-paper focus-visible:ring-2 focus-visible:ring-brass/60"
+        >
+          Privacy
+        </Link>
       </div>
     </aside>
   );

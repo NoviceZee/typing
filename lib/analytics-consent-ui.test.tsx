@@ -153,8 +153,15 @@ describe("shared analytics consent controls", () => {
 
     const notice = await screen.findByRole("region", { name: "Analytics privacy notice" });
     expect(notice).toBeTruthy();
+    expect(screen.getByText("Optional analytics")).toBeTruthy();
+    expect(screen.getByText("Help improve Typing Station with privacy-limited analytics.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Privacy" }).getAttribute("href")).toBe("/privacy");
+    expect(screen.getByText("Allow")).toBeTruthy();
+    expect(screen.getByText("Decline")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Allow analytics" })[0].getAttribute("aria-pressed")).toBe("false");
     expect(screen.getAllByRole("button", { name: "Decline analytics" })[0].getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getAllByRole("button", { name: "Allow analytics" })[1].textContent).toBe("Allow analytics");
+    expect(screen.getAllByRole("button", { name: "Decline analytics" })[1].textContent).toBe("Decline analytics");
   });
 
   it("hides the notice after a choice while the shared preference reports and changes it", async () => {
