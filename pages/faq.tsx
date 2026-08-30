@@ -119,6 +119,11 @@ export default function FaqPage() {
                         <ChevronDown className="icon-inline text-brass transition-transform duration-300 group-open:rotate-180" aria-hidden="true" />
                       </summary>
                       <p className="max-w-2xl pb-6 pr-8 text-body leading-7 text-paper/52">{answer}</p>
+                      {question === "Does Chinese input work with an IME?" && (
+                        <Link href="/chinese-typing" lang="zh-Hant" className="-mt-3 mb-6 inline-flex font-mono text-control text-brass transition hover:text-paper">
+                          中文打字練習指南
+                        </Link>
+                      )}
                     </details>
                   ))}
                 </div>

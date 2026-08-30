@@ -52,6 +52,7 @@ export default function Home() {
               <Link href="/training" className="transition hover:text-paper">Typing training</Link>
               <Link href="/passages" className="transition hover:text-paper">Passage library</Link>
               <Link href="/leaderboard" className="transition hover:text-paper">Typing leaderboard</Link>
+              <Link href="/chinese-typing" lang="zh-Hant" className="transition hover:text-paper">中文打字練習</Link>
             </nav>
           </div>
 

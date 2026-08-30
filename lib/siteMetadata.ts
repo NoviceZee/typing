@@ -24,6 +24,10 @@ const PUBLIC_ROUTE_METADATA: Record<string, Omit<RouteSeoMetadata, "indexable" |
     title: "English & Chinese Typing Passages | Typing Station",
     description: "Browse curated English and Chinese typing passages by language and category, then open any passage for a timed or untimed practice session."
   },
+  "/chinese-typing": {
+    title: "中文打字練習 | Chinese Typing Practice | Typing Station",
+    description: "繁體中文打字練習，可選一、五、十分鐘或不限時模式，並瀏覽中文文章及詞語訓練。支援輸入法組字，完成後查看中文輸入速度、準確度、穩定度和錯誤。"
+  },
   "/leaderboard": {
     title: "Typing Speed Leaderboard | Typing Station",
     description: "Compare qualifying English, Chinese, and code typing results by speed and accuracy across time, duration, and category filters."

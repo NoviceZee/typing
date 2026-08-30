@@ -38,6 +38,22 @@ const indexableRouteRequirements = [
     ]
   },
   {
+    route: "/chinese-typing",
+    file: "chinese-typing.html",
+    patterns: [
+      ["semantic main content", /<main\b/],
+      ["Traditional Chinese content language", /<article\b[^>]*lang="zh-Hant"/],
+      ["visible Traditional Chinese h1", /<h1\b(?![^>]*\bsr-only\b)[^>]*>繁體中文打字練習<\/h1>/],
+      ["Traditional Chinese introduction", /選擇計時或不限時練習，使用你慣用的中文輸入法完成文章；毋須登入即可開始。/],
+      ["one-minute Chinese practice link", /href="\/practice\?language=chinese&amp;mode=1m"/],
+      ["infinite Chinese practice link", /href="\/practice\?language=chinese&amp;mode=infinite"/],
+      ["Chinese passages link", /href="\/passages\?language=chinese"/],
+      ["Chinese training link", /href="\/training\?content=chinese"/],
+      ["IME guidance", /組字和選字期間，Typing Station 會等待文字確認後才與目標內容比對/],
+      ["results explanation", /可查看輸入速度、準確度、穩定度和錯誤/]
+    ]
+  },
+  {
     route: "/leaderboard",
     file: "leaderboard.html",
     patterns: [
@@ -71,6 +87,7 @@ const requiredPatterns = [
   ["Training link", /href="\/training"/],
   ["Library link", /href="\/passages"/],
   ["Leaderboard link", /href="\/leaderboard"/],
+  ["Traditional Chinese typing guide link", /href="\/chinese-typing"[^>]*>中文打字練習<\/a>/],
   ["Typing Station share image", /https:\/\/typingstation\.app\/typingstation-share\.png/],
   ["feedback page link", /href="\/feedback"/],
   ["current copyright year", new RegExp(`©\\s*(?:<!-- -->)?${new Date().getFullYear()}(?:<!-- -->)?\\s*Typing Station`)]
@@ -141,4 +158,4 @@ if (
   throw new Error(`Generated public HTML verification failed (${details})`);
 }
 
-console.log(`Verified pre-rendered public HTML for /, /practice, /training, /passages, /leaderboard, /faq, and /feedback`);
+console.log(`Verified pre-rendered public HTML for /, /practice, /training, /passages, /chinese-typing, /leaderboard, /faq, and /feedback`);

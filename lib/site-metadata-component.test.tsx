@@ -32,6 +32,19 @@ describe("SiteMetadata", () => {
     expect(container.querySelector('meta[property="og:url"]')).toBeNull();
   });
 
+  it("renders canonical indexable metadata for the Chinese typing page without page JSON-LD", () => {
+    const { container } = render(<SiteMetadata pathname="/chinese-typing" siteUrl="https://typing.example.com" />);
+
+    expect(container.querySelector("title")?.textContent).toBe("中文打字練習 | Chinese Typing Practice | Typing Station");
+    expect(container.querySelector('meta[name="description"]')?.getAttribute("content")).toBe(
+      "繁體中文打字練習，可選一、五、十分鐘或不限時模式，並瀏覽中文文章及詞語訓練。支援輸入法組字，完成後查看中文輸入速度、準確度、穩定度和錯誤。"
+    );
+    expect(container.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe("index, follow");
+    expect(container.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://typing.example.com/chinese-typing");
+    expect(container.querySelector('script[type="application/ld+json"]')).toBeNull();
+    expect(container.innerHTML).not.toContain("hreflang");
+  });
+
   it("includes valid WebApplication and WebSite structured data only on the homepage", () => {
     const home = render(<SiteMetadata pathname="/" siteUrl="https://typing.example.com" />);
     const scripts = Array.from(home.container.querySelectorAll('script[type="application/ld+json"]'));

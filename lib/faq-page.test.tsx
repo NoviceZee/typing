@@ -15,6 +15,7 @@ describe("FaqPage", () => {
     expect(container.querySelectorAll("details")).toHaveLength(11);
     expect(screen.getByText("Do I need an account to start typing?")).toBeTruthy();
     expect(screen.getByText("Does Chinese input work with an IME?")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "中文打字練習指南" }).getAttribute("href")).toBe("/chinese-typing");
     expect(screen.getByRole("link", { name: /Start practicing/i }).getAttribute("href")).toBe("/practice");
     expect(container.textContent).not.toMatch(/practis/i);
   });

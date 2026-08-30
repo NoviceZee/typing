@@ -7,6 +7,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PREVIOUS_RESULTS_STORAGE_KEY, PreviousTypingResult } from "@/lib/app-storage";
 import TrainingPage from "../pages/training";
 
+const mockRouter = vi.hoisted(() => ({
+  isReady: true,
+  query: {} as Record<string, string | string[] | undefined>
+}));
+
+vi.mock("next/router", () => ({
+  useRouter: () => mockRouter
+}));
+
 vi.mock("@/components/AppShell", () => ({
   AppShell: ({
     children,
@@ -45,6 +54,8 @@ describe("TrainingPage", () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    mockRouter.isReady = true;
+    mockRouter.query = {};
   });
 
   afterEach(() => {
@@ -66,6 +77,34 @@ describe("TrainingPage", () => {
     fireEvent.click(within(contentGroup).getByRole("button", { name: "Words" }));
 
     expect(within(contentGroup).getByRole("button", { name: "Words" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("applies the exact Chinese content preset with existing defaults", async () => {
+    mockRouter.query = { content: "chinese" };
+
+    render(<TrainingPage />);
+    const contentGroup = screen.getByRole("group", { name: "Content" });
+
+    await waitFor(() => expect(within(contentGroup).getByRole("button", { name: "Chinese" }).getAttribute("aria-pressed")).toBe("true"));
+    expect(within(contentGroup).getByRole("button", { name: "Words" }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("button", { name: "Time" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "60" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Intermediate" }).getAttribute("aria-pressed")).toBe("true");
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toMatch(/[\u3400-\u9fff]/));
+  });
+
+  it.each([
+    {},
+    { content: "words" },
+    { content: ["chinese"] }
+  ])("keeps normal Training defaults for a missing or invalid preset: %j", async (query) => {
+    mockRouter.query = query;
+
+    render(<TrainingPage />);
+    const contentGroup = screen.getByRole("group", { name: "Content" });
+
+    await waitFor(() => expect(within(contentGroup).getByRole("button", { name: "Words" }).getAttribute("aria-pressed")).toBe("true"));
+    expect(within(contentGroup).getByRole("button", { name: "Chinese" }).getAttribute("aria-pressed")).toBe("false");
   });
 
   it("renders text-only controls without visible section labels or control chrome", () => {

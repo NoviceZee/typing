@@ -52,6 +52,17 @@ describe("route search metadata", () => {
     }));
   });
 
+  it("publishes the approved Traditional Chinese route metadata", () => {
+    expect(getRouteSeoMetadata("/chinese-typing")).toEqual({
+      title: "中文打字練習 | Chinese Typing Practice | Typing Station",
+      description: "繁體中文打字練習，可選一、五、十分鐘或不限時模式，並瀏覽中文文章及詞語訓練。支援輸入法組字，完成後查看中文輸入速度、準確度、穩定度和錯誤。",
+      indexable: true,
+      canonicalPath: "/chinese-typing"
+    });
+    expect(getCanonicalUrl("/chinese-typing?source=home", "https://typing.example.com/"))
+      .toBe("https://typing.example.com/chinese-typing");
+  });
+
   it.each([
     "/login",
     "/settings",
@@ -76,9 +87,11 @@ describe("route search metadata", () => {
   });
 
   it("canonicalizes filter and selection query variants to the clean public route", () => {
-    expect(getCanonicalUrl("/practice?category=Articles&passage=42", "https://typing.example.com/"))
+    expect(getCanonicalUrl("/practice?language=chinese&mode=1m", "https://typing.example.com/"))
       .toBe("https://typing.example.com/practice");
-    expect(getCanonicalUrl("/passages/?search=contract#results", "https://typing.example.com"))
+    expect(getCanonicalUrl("/training?content=chinese", "https://typing.example.com/"))
+      .toBe("https://typing.example.com/training");
+    expect(getCanonicalUrl("/passages/?language=chinese#results", "https://typing.example.com"))
       .toBe("https://typing.example.com/passages");
     expect(getCanonicalUrl("/?duration=60", "https://typing.example.com"))
       .toBe("https://typing.example.com");
@@ -97,6 +110,7 @@ describe("crawl discovery documents", () => {
     expect(xml).not.toContain("/settings");
     expect(xml).not.toContain("/profile");
     expect(xml).not.toContain("/passages/manage");
+    expect(xml).toContain("<loc>https://typing.example.com/chinese-typing</loc>");
     expect(Array.from(xml.matchAll(/<loc>(.*?)<\/loc>/g), (match) => match[1]).every((url) => !url.includes("?"))).toBe(true);
   });
 

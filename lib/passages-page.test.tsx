@@ -249,6 +249,16 @@ describe("PassagesPage", () => {
     expect(screen.getByText(/32 chars$/).textContent).not.toContain("words");
   });
 
+  it("opens directly in Chinese for the existing exact language query preset", async () => {
+    mockRouter.query = { language: "chinese" };
+
+    render(<PassagesPage />);
+
+    expect(await screen.findByText("忙碌生活中的休息")).toBeTruthy();
+    expect(screen.queryByText("Email brief")).toBeNull();
+    expect(screen.getByRole("button", { name: "Chinese language" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("has no fixed/minimum-width or horizontal-scroll-only mobile layout contract", () => {
     const source = readFileSync("pages/passages.tsx", "utf8");
 

@@ -4,6 +4,7 @@ import React, { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, us
 import { BookOpenText, Clock3, ImageIcon, KeyboardIcon, Languages, RefreshCw, RotateCcw, Shuffle, X } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { AdPlaceholder, AppShell } from "@/components/AppShell";
 import { useAuth } from "@/components/AuthProvider";
 import {
@@ -111,6 +112,7 @@ import { saveSupabaseTypingAttemptDetail } from "@/lib/typingAttemptStorage";
 import { SessionReview } from "@/components/practice/SessionReview";
 import { PassagePicker } from "@/components/PassagePicker";
 import { Button, IconButton } from "@/components/Controls";
+import { parsePracticeRoutePreset } from "@/lib/routePresets";
 
 export type PracticeTrainingMode = {
   pageTitle: string;
@@ -202,7 +204,39 @@ function useTouchFirstInput() {
   return isTouchFirstInput;
 }
 
-export default function PracticePage({ trainingMode }: { trainingMode?: PracticeTrainingMode } = {}) {
+type PracticePageProps = { trainingMode?: PracticeTrainingMode };
+
+type PracticeRouteState = {
+  isReady: boolean;
+  language: string | string[] | undefined;
+  mode: string | string[] | undefined;
+};
+
+export default function PracticePage(props: PracticePageProps = {}) {
+  if (props.trainingMode) {
+    return <PracticeExperience {...props} routeState={{ isReady: true, language: undefined, mode: undefined }} />;
+  }
+
+  return <PracticeRoute />;
+}
+
+function PracticeRoute() {
+  const router = useRouter();
+
+  return (
+    <PracticeExperience
+      routeState={{
+        isReady: router.isReady,
+        language: router.query.language,
+        mode: router.query.mode
+      }}
+    />
+  );
+}
+
+function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { routeState: PracticeRouteState }) {
+  const routeLanguageQuery = routeState.language;
+  const routeModeQuery = routeState.mode;
   const { user } = useAuth();
   const isTouchFirstInput = useTouchFirstInput();
   const [rules, setRules] = useState<TypingRules>(DEFAULT_RULES);
@@ -290,6 +324,7 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   const sessionCoordinatorRef = useRef<TypingSessionCoordinator | null>(null);
   const completedAttemptSnapshotRef = useRef<CompletedAttemptSnapshot | null>(null);
   const repeatedAttemptSnapshotRef = useRef<CompletedAttemptSnapshot | null>(null);
+  const initializedPracticeRouteRef = useRef<string | null>(null);
 
   const isRunning = status === "running";
   const isFinished = status === "finished";
@@ -605,6 +640,25 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
         return;
       }
 
+      if (!routeState.isReady) {
+        return;
+      }
+
+      const routeInitializationKey = JSON.stringify([routeLanguageQuery, routeModeQuery]);
+      if (initializedPracticeRouteRef.current === routeInitializationKey) {
+        return;
+      }
+      initializedPracticeRouteRef.current = routeInitializationKey;
+
+      const routePreset = parsePracticeRoutePreset({
+        language: routeLanguageQuery,
+        mode: routeModeQuery
+      });
+      const initialMode = getPracticeMode(routePreset.mode);
+      const initialIsTimedMode = isTimedPracticeMode(initialMode);
+      const initialDurationSeconds = initialIsTimedMode ? initialMode.seconds : 60;
+      const initialTextMode: StoredPassageTextMode = initialIsTimedMode ? "timed" : "single";
+
       const activeLibrary = await loadActivePassageLibrary();
 
       if (!isMounted) {
@@ -612,15 +666,20 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
       }
 
       setAvailableLibrary(activeLibrary);
-      const initialLanguage = getSelectedLanguage();
+      const initialLanguage = routePreset.language ?? getSelectedLanguage();
       const initialCategory = getInitialCategory(activeLibrary, initialLanguage);
+      if (routePreset.language) {
+        setSelectedLanguage(routePreset.language);
+      }
+      setPracticeModeId(routePreset.mode);
+      setRemainingSeconds(initialIsTimedMode ? initialDurationSeconds : 0);
       setPracticeLanguage(initialLanguage);
       setSelectedCategoryState(initialCategory);
       choosePracticePassage({
         library: activeLibrary,
         category: initialCategory,
-        duration: durationSeconds,
-        textMode: passageTextMode,
+        duration: initialDurationSeconds,
+        textMode: initialTextMode,
         language: initialLanguage,
         preferredPassageId: getPassageSelectionMode() === "random" ? RANDOM_PASSAGE_ID : getActivePassageId()
       });
@@ -636,7 +695,17 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
     return () => {
       isMounted = false;
     };
-  }, [choosePracticePassage, durationSeconds, passageTextMode, previousResultScope, resetActiveSessionState, trainingMode]);
+  }, [
+    choosePracticePassage,
+    durationSeconds,
+    passageTextMode,
+    previousResultScope,
+    resetActiveSessionState,
+    routeState.isReady,
+    routeLanguageQuery,
+    routeModeQuery,
+    trainingMode
+  ]);
 
   useEffect(() => {
     typedTextRef.current = typedText;

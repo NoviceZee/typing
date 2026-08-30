@@ -40,6 +40,7 @@ describe("Home authentication routing", () => {
     expect(screen.getByRole("link", { name: "Typing training" }).getAttribute("href")).toBe("/training");
     expect(screen.getByRole("link", { name: "Passage library" }).getAttribute("href")).toBe("/passages");
     expect(screen.getByRole("link", { name: "Typing leaderboard" }).getAttribute("href")).toBe("/leaderboard");
+    expect(screen.getByRole("link", { name: "中文打字練習" }).getAttribute("href")).toBe("/chinese-typing");
     expect(mockState.routerReplace).not.toHaveBeenCalled();
   });
 

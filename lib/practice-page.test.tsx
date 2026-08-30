@@ -21,6 +21,16 @@ import { getSupabaseAnalyticsTypingResults, saveSupabaseTypingResult } from "@/l
 import { readTypingAttemptDetails } from "@/lib/typingStatistics";
 import { getResultAnalyticsDomain } from "@/lib/analyticsDomain";
 
+const mockRouter = vi.hoisted(() => ({
+  isReady: true,
+  query: {} as Record<string, string | string[] | undefined>,
+  asPath: "/practice"
+}));
+
+vi.mock("next/router", () => ({
+  useRouter: () => mockRouter
+}));
+
 vi.mock("@/components/AppShell", () => ({
   AppShell: ({
     children,
@@ -153,6 +163,9 @@ describe("PracticePage passage loading", () => {
     mockedGetSupabasePassageLibrary.mockReset();
     mockedGetSupabaseAnalyticsTypingResults.mockClear();
     mockedSaveSupabaseTypingResult.mockClear();
+    mockRouter.isReady = true;
+    mockRouter.query = {};
+    mockRouter.asPath = "/practice";
   });
 
   afterEach(() => {
@@ -169,6 +182,82 @@ describe("PracticePage passage loading", () => {
     const heading = screen.getByRole("heading", { level: 1, name: "Typing practice and speed test" });
     expect(heading.className).not.toContain("sr-only");
     expect(screen.getByText("Choose English or Chinese, select a timed or infinite session, and begin. No account is required.")).toBeTruthy();
+  });
+
+  it.each([
+    ["1m", "1m"],
+    ["infinite", "Infinite"]
+  ])("atomically initializes Chinese Practice with the %s route preset", async (mode, selectedModeLabel) => {
+    mockRouter.query = { language: "chinese", mode };
+    mockRouter.asPath = `/practice?language=chinese&mode=${mode}`;
+    window.localStorage.setItem(SELECTED_LANGUAGE_STORAGE_KEY, "english");
+    mockedGetSupabasePassageLibrary.mockResolvedValue([
+      makePassage("english-route", "English route", "English content must never become active.", "english"),
+      makePassage("chinese-route", "中文路線", "中文預設內容", "chinese", "生活", "一般")
+    ]);
+
+    const { container } = render(<PracticePage />);
+    const observedText: string[] = [];
+    const observer = new MutationObserver(() => observedText.push(container.textContent ?? ""));
+    observer.observe(container, { childList: true, subtree: true, characterData: true });
+
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("中文預設內容"));
+    observer.disconnect();
+
+    expect(screen.getByRole("button", { name: "Chinese" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: selectedModeLabel }).getAttribute("aria-pressed")).toBe("true");
+    expect(observedText.some((text) => text.includes("English content must never become active."))).toBe(false);
+    expect(window.localStorage.getItem(SELECTED_LANGUAGE_STORAGE_KEY)).toBe("chinese");
+  });
+
+  it("supports an explicit English preset over a stored Chinese preference", async () => {
+    mockRouter.query = { language: "english", mode: "5m" };
+    mockRouter.asPath = "/practice?language=english&mode=5m";
+    window.localStorage.setItem(SELECTED_LANGUAGE_STORAGE_KEY, "chinese");
+    mockedGetSupabasePassageLibrary.mockResolvedValue([
+      makePassage("english-route", "English route", "English preset content.", "english"),
+      makePassage("chinese-route", "中文路線", "中文預設內容", "chinese", "生活", "一般")
+    ]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("English preset content."));
+    expect(screen.getByRole("button", { name: "English" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "5m" }).getAttribute("aria-pressed")).toBe("true");
+    expect(window.localStorage.getItem(SELECTED_LANGUAGE_STORAGE_KEY)).toBe("english");
+  });
+
+  it("rejects repeated presets while preserving stored language and the 1m default", async () => {
+    mockRouter.query = { language: ["english", "chinese"], mode: ["infinite"] };
+    mockRouter.asPath = "/practice?language=english&language=chinese&mode=infinite";
+    window.localStorage.setItem(SELECTED_LANGUAGE_STORAGE_KEY, "chinese");
+    mockedGetSupabasePassageLibrary.mockResolvedValue([
+      makePassage("english-route", "English route", "English preset content.", "english"),
+      makePassage("chinese-route", "中文路線", "保留中文偏好", "chinese", "生活", "一般")
+    ]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("保留中文偏好"));
+    expect(screen.getByRole("button", { name: "Chinese" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "1m" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("waits for router readiness before resolving a stored Practice language", async () => {
+    mockRouter.isReady = false;
+    window.localStorage.setItem(SELECTED_LANGUAGE_STORAGE_KEY, "chinese");
+    mockedGetSupabasePassageLibrary.mockResolvedValue([
+      makePassage("chinese-route", "中文路線", "路由準備完成", "chinese", "生活", "一般")
+    ]);
+
+    const view = render(<PracticePage />);
+    expect(mockedGetSupabasePassageLibrary).not.toHaveBeenCalled();
+
+    mockRouter.isReady = true;
+    view.rerender(<PracticePage />);
+
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toContain("路由準備完成"));
+    expect(screen.getByRole("button", { name: "Chinese" }).getAttribute("aria-pressed")).toBe("true");
   });
 
   it("shows a quiet reserved placeholder until Supabase passage resolution finishes", async () => {

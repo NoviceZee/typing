@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import { Gauge, Hash, Keyboard, Timer } from "lucide-react";
 import PracticePage, { PracticeTrainingMode } from "./practice";
 import { FilterControl, SecondaryToolbar, ToolbarGroup, ToolbarSeparator } from "@/components/SecondaryNavigation";
@@ -8,6 +9,7 @@ import {
   TrainingWordDifficulty,
   buildTrainingPassage
 } from "@/lib/trainingText";
+import { parseTrainingRoutePreset } from "@/lib/routePresets";
 
 const CONTENT_OPTIONS: Array<{ value: TrainingContentType; label: string }> = [
   { value: "words", label: "Words" },
@@ -27,6 +29,8 @@ const DIFFICULTY_OPTIONS: Array<{ value: TrainingWordDifficulty; label: string }
 ];
 
 export default function TrainingPage() {
+  const router = useRouter();
+  const routeContentQuery = router.query.content;
   const [contentTypes, setContentTypes] = useState<TrainingContentType[]>(["words"]);
   const [mode, setMode] = useState<TrainingMode>("time");
   const [durationSeconds, setDurationSeconds] = useState(60);
@@ -34,6 +38,17 @@ export default function TrainingPage() {
   const [wordDifficulty, setWordDifficulty] = useState<TrainingWordDifficulty>("intermediate");
   const isCodeActive = contentTypes.includes("code");
   const activeMode: TrainingMode = isCodeActive ? "time" : mode;
+
+  useEffect(() => {
+    if (!router.isReady || parseTrainingRoutePreset({ content: routeContentQuery }) !== "chinese") {
+      return;
+    }
+
+    setContentTypes(["chinese"]);
+    setMode("time");
+    setDurationSeconds(60);
+    setWordDifficulty("intermediate");
+  }, [routeContentQuery, router.isReady]);
 
   const toggleContentType = useCallback((contentType: TrainingContentType) => {
     if (contentType === "code" || contentType === "chinese") {
