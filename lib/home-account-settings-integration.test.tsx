@@ -138,7 +138,7 @@ describe("homepage account-settings integration", () => {
 
     await expectHydratedAppearance();
     expect(screen.getByRole("link", { name: "Profile" }).getAttribute("href")).toBe("/profile");
-    expect(screen.getByRole("link", { name: /Continue practising/i }).getAttribute("href")).toBe("/practice");
+    expect(screen.getByRole("link", { name: /Continue practicing/i }).getAttribute("href")).toBe("/practice");
     expect(pageProbeMounts).toBe(1);
   });
 

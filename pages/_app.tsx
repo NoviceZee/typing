@@ -7,6 +7,7 @@ import { SiteMetadata } from "@/components/SiteMetadata";
 import { SiteTelemetry } from "@/components/SiteTelemetry";
 import { AnalyticsConsentProvider } from "@/components/AnalyticsConsentProvider";
 import { AnalyticsConsentNotice } from "@/components/AnalyticsConsentControls";
+import { shouldRenderRouteWhileSettingsHydrate } from "@/lib/publicRouteRendering";
 import "@/styles/globals.css";
 
 export default function App({ Component, pageProps, router }: AppProps) {
@@ -15,7 +16,7 @@ export default function App({ Component, pageProps, router }: AppProps) {
       <SiteMetadata pathname={router.pathname} />
       <SiteTelemetry />
       <AuthProvider>
-        <AccountSettingsProvider renderChildrenWhileHydrating={router.pathname === "/" || router.pathname === "/feedback"}>
+        <AccountSettingsProvider renderChildrenWhileHydrating={shouldRenderRouteWhileSettingsHydrate(router.pathname)}>
           <ThemeProvider>
           <AppErrorBoundary><Component {...pageProps} /></AppErrorBoundary>
           </ThemeProvider>

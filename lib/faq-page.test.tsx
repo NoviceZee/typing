@@ -10,11 +10,12 @@ describe("FaqPage", () => {
   it("renders grouped, expandable answers and useful routes", () => {
     const { container } = render(<FaqPage />);
 
-    expect(screen.getByRole("heading", { name: /Find your rhythm/i })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /Typing Station FAQ/i })).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "FAQ categories" })).toBeTruthy();
     expect(container.querySelectorAll("details")).toHaveLength(11);
     expect(screen.getByText("Do I need an account to start typing?")).toBeTruthy();
     expect(screen.getByText("Does Chinese input work with an IME?")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Start practising/i }).getAttribute("href")).toBe("/practice");
+    expect(screen.getByRole("link", { name: /Start practicing/i }).getAttribute("href")).toBe("/practice");
+    expect(container.textContent).not.toMatch(/practis/i);
   });
 });

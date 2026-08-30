@@ -56,7 +56,8 @@ describe("TrainingPage", () => {
     render(<TrainingPage />);
     const contentGroup = screen.getByRole("group", { name: "Content" });
 
-    expect(screen.getAllByRole("heading", { level: 1, name: "Training" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("heading", { level: 1, name: "Focused typing training" }).length).toBeGreaterThan(0);
+    expect(screen.getByText("Choose the content, session length, and difficulty you want to isolate.")).toBeTruthy();
     expect(within(contentGroup).getByRole("button", { name: "Words" }).getAttribute("aria-pressed")).toBe("true");
     expect(within(contentGroup).getByRole("button", { name: "Numbers" }).getAttribute("aria-pressed")).toBe("false");
     expect(within(contentGroup).getByRole("button", { name: "Symbols" }).getAttribute("aria-pressed")).toBe("false");

@@ -43,7 +43,7 @@ export default function Home() {
               英文及中文打字練習，支援計時測試、文章練習，以及速度與準確度記錄。
             </p>
             <div className="landing-reveal landing-delay-3 mt-9 flex flex-wrap gap-3">
-              <Link href="/practice" className="landing-button-primary">{user ? "Continue practising" : "Start a one-minute test"} <ArrowRight className="icon-control" /></Link>
+              <Link href="/practice" className="landing-button-primary">{user ? "Continue practicing" : "Start a one-minute test"} <ArrowRight className="icon-control" /></Link>
               <Link href="/training" className="landing-button-secondary"><BookOpenText className="icon-control" /> Explore training</Link>
             </div>
             <p className="landing-reveal landing-delay-3 mt-4 font-mono text-utility uppercase tracking-[0.15em] text-paper/30">No account required to begin</p>
@@ -87,7 +87,7 @@ export default function Home() {
         <section className="mx-auto max-w-4xl px-5 py-24 text-center md:px-8 md:py-32">
           <Sparkles className="icon-prominent mx-auto text-brass" />
           <h2 className="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">One minute is enough to begin.</h2>
-          <p className="mx-auto mt-4 max-w-lg leading-7 text-paper/50">Choose a passage, settle into the rhythm, and let each session show you what to practise next.</p>
+          <p className="mx-auto mt-4 max-w-lg leading-7 text-paper/50">Choose a passage, settle into the rhythm, and let each session show you what to practice next.</p>
           <Link href="/practice" className="landing-button-primary mt-8">Enter the practice room <ArrowRight className="icon-control" /></Link>
         </section>
 

@@ -14,13 +14,13 @@ describe("SiteMetadata", () => {
   it("renders route-specific canonical and social metadata for public pages", () => {
     const { container } = render(<SiteMetadata pathname="/practice?category=Articles" siteUrl="https://typing.example.com/" />);
 
-    expect(container.querySelector("title")?.textContent).toBe("Typing Practice — English & Chinese | Typing Station");
-    expect(container.querySelector('meta[name="description"]')?.getAttribute("content")).toContain("timed or infinite");
+    expect(container.querySelector("title")?.textContent).toBe("Typing Practice & Typing Test | Typing Station");
+    expect(container.querySelector('meta[name="description"]')?.getAttribute("content")).toContain("one-, five-, and ten-minute tests");
     expect(container.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe("index, follow");
     expect(container.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://typing.example.com/practice");
     expect(container.querySelector('meta[property="og:url"]')?.getAttribute("content")).toBe("https://typing.example.com/practice");
     expect(container.querySelector('meta[property="og:image"]')?.getAttribute("content")).toBe("https://typing.example.com/typingstation-share.png");
-    expect(container.querySelector('meta[name="twitter:title"]')?.getAttribute("content")).toContain("Typing Practice");
+    expect(container.querySelector('meta[name="twitter:title"]')?.getAttribute("content")).toContain("Typing Practice & Typing Test");
     expect(container.querySelector('meta[name="twitter:image"]')?.getAttribute("content")).toBe("https://typing.example.com/typingstation-share.png");
   });
 

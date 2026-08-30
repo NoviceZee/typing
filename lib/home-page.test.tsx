@@ -58,6 +58,6 @@ describe("Home authentication routing", () => {
     expect(mockState.routerPush).not.toHaveBeenCalled();
     expect(screen.queryByRole("link", { name: "Log in" })).toBeNull();
     expect(screen.getByRole("link", { name: "Profile" }).getAttribute("href")).toBe("/profile");
-    expect(screen.getByRole("link", { name: /Continue practising/i }).getAttribute("href")).toBe("/practice");
+    expect(screen.getByRole("link", { name: /Continue practicing/i }).getAttribute("href")).toBe("/practice");
   });
 });

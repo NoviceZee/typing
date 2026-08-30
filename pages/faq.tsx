@@ -94,8 +94,8 @@ export default function FaqPage() {
           <section className="grid gap-10 py-12 md:grid-cols-[minmax(0,1fr)_15rem] md:items-end md:py-20">
             <div>
               <p className="font-mono text-utility uppercase tracking-[0.24em] text-brass">Quick answers / {String(questionCount).padStart(2, "0")}</p>
-              <h1 className="mt-5 max-w-3xl text-5xl font-semibold leading-[0.95] tracking-[-0.045em] md:text-7xl">Find your rhythm.<br /><span className="text-paper/35">Keep moving.</span></h1>
-              <p className="mt-7 max-w-2xl text-body leading-7 text-paper/55">Straight answers about practising, understanding results and controlling your account—without interrupting a good typing session.</p>
+              <h1 className="mt-5 max-w-3xl text-5xl font-semibold leading-[0.95] tracking-[-0.045em] md:text-7xl">Typing Station FAQ.<br /><span className="text-paper/35">Find your rhythm. Keep moving.</span></h1>
+              <p className="mt-7 max-w-2xl text-body leading-7 text-paper/55">Straight answers about practicing, understanding results and controlling your account—without interrupting a good typing session.</p>
             </div>
             <nav aria-label="FAQ categories" className="border-l border-brass/25 pl-5 font-mono text-control uppercase tracking-[0.15em] text-paper/40">
               {FAQ_GROUPS.map((group) => <a key={group.id} href={`#${group.id}`} className="flex items-center justify-between border-b border-paper/10 py-3 transition hover:border-brass/35 hover:text-brass"><span>{group.title}</span><span>{group.number}</span></a>)}
@@ -128,7 +128,7 @@ export default function FaqPage() {
 
           <section className="mb-16 grid gap-6 border border-brass/20 bg-brass/[0.045] p-6 shadow-glow sm:grid-cols-[1fr_auto] sm:items-center md:p-8">
             <div><p className="font-mono text-utility uppercase tracking-[0.2em] text-brass">Still curious?</p><h2 className="mt-2 text-section font-semibold tracking-tight">The fastest answer may be one session away.</h2></div>
-            <Link href="/practice" className="inline-flex items-center justify-center gap-2 rounded-md bg-brass px-4 py-3 font-mono text-control font-semibold uppercase tracking-wide text-ink-950 transition hover:bg-paper">Start practising <ArrowRight className="icon-control" /></Link>
+            <Link href="/practice" className="inline-flex items-center justify-center gap-2 rounded-md bg-brass px-4 py-3 font-mono text-control font-semibold uppercase tracking-wide text-ink-950 transition hover:bg-paper">Start practicing <ArrowRight className="icon-control" /></Link>
           </section>
           </div>
 

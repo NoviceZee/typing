@@ -37,6 +37,21 @@ describe("route search metadata", () => {
     expect(metadata[3].description).toContain("passages");
   });
 
+  it("assigns the approved generic-search metadata to the primary typing routes", () => {
+    expect(getRouteSeoMetadata("/practice")).toEqual(expect.objectContaining({
+      title: "Typing Practice & Typing Test | Typing Station",
+      description: "Practice English or Chinese typing with one-, five-, and ten-minute tests or an infinite mode. Review speed, accuracy, consistency, and mistakes."
+    }));
+    expect(getRouteSeoMetadata("/training")).toEqual(expect.objectContaining({
+      title: "Typing Training — Words, Numbers, Symbols & Code | Typing Station",
+      description: "Build control with focused typing drills for words, numbers, symbols, code, and Chinese. Choose timed or word-count sessions and difficulty."
+    }));
+    expect(getRouteSeoMetadata("/passages")).toEqual(expect.objectContaining({
+      title: "English & Chinese Typing Passages | Typing Station",
+      description: "Browse curated English and Chinese typing passages by language and category, then open any passage for a timed or untimed practice session."
+    }));
+  });
+
   it.each([
     "/login",
     "/settings",

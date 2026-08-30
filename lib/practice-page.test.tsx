@@ -161,6 +161,16 @@ describe("PracticePage passage loading", () => {
     vi.useRealTimers();
   });
 
+  it("renders a restrained visible heading and introduction before passage effects resolve", () => {
+    mockedGetSupabasePassageLibrary.mockReturnValue(new Promise(() => {}));
+
+    render(<PracticePage />);
+
+    const heading = screen.getByRole("heading", { level: 1, name: "Typing practice and speed test" });
+    expect(heading.className).not.toContain("sr-only");
+    expect(screen.getByText("Choose English or Chinese, select a timed or infinite session, and begin. No account is required.")).toBeTruthy();
+  });
+
   it("shows a quiet reserved placeholder until Supabase passage resolution finishes", async () => {
     let resolveSupabaseLibrary: (library: LibraryPassage[]) => void = () => {};
     mockedGetSupabasePassageLibrary.mockReturnValue(

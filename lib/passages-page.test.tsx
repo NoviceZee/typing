@@ -89,6 +89,16 @@ describe("PassagesPage", () => {
     ]);
   });
 
+  it("renders a descriptive heading and concise introduction before library effects resolve", () => {
+    mockPassageStorage.getSupabasePassageLibrary.mockReturnValue(new Promise(() => {}));
+
+    render(<PassagesPage />);
+
+    const heading = screen.getByRole("heading", { level: 1, name: "English and Chinese typing passages" });
+    expect(heading.className).not.toContain("sr-only");
+    expect(screen.getByText("Browse by language and category, then open any passage in Practice.")).toBeTruthy();
+  });
+
   it("keeps search, Language, and data-derived Category controls without public Style filtering", async () => {
     const { container } = render(<PassagesPage />);
 

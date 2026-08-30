@@ -119,7 +119,11 @@ export default function PassagesPage() {
   return (
     <AppShell sideAd={false}>
       <PageContainer>
-        <PageHeader eyebrow="Library" title="Passage library" />
+        <PageHeader
+          eyebrow="Library"
+          title="English and Chinese typing passages"
+          description="Browse by language and category, then open any passage in Practice."
+        />
 
         <SectionStack>
           {message && <StatusMessage tone="success">{message}</StatusMessage>}

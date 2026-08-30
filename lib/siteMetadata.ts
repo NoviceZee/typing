@@ -10,19 +10,19 @@ export interface RouteSeoMetadata {
 const PUBLIC_ROUTE_METADATA: Record<string, Omit<RouteSeoMetadata, "indexable" | "canonicalPath">> = {
   "/": {
     title: "Typing Station — English & Chinese Typing Practice",
-    description: "Practise English and Chinese typing with timed tests, focused training, curated passages, and clear speed, accuracy, and progress feedback."
+    description: "Practice English and Chinese typing with timed tests, focused training, curated passages, and clear speed, accuracy, and progress feedback."
   },
   "/practice": {
-    title: "Typing Practice — English & Chinese | Typing Station",
-    description: "Take timed or infinite English and Chinese typing tests with curated passages, IME support, speed, accuracy, and pace feedback."
+    title: "Typing Practice & Typing Test | Typing Station",
+    description: "Practice English or Chinese typing with one-, five-, and ten-minute tests or an infinite mode. Review speed, accuracy, consistency, and mistakes."
   },
   "/training": {
-    title: "Typing Training — Words, Numbers & Symbols | Typing Station",
-    description: "Build typing control with focused drills for words, numbers, symbols, code, and Chinese in timed or finite training modes."
+    title: "Typing Training — Words, Numbers, Symbols & Code | Typing Station",
+    description: "Build control with focused typing drills for words, numbers, symbols, code, and Chinese. Choose timed or word-count sessions and difficulty."
   },
   "/passages": {
-    title: "Typing Practice Passages | Typing Station",
-    description: "Browse curated English and Chinese typing passages, filter by category, search, and open any passage for practice."
+    title: "English & Chinese Typing Passages | Typing Station",
+    description: "Browse curated English and Chinese typing passages by language and category, then open any passage for a timed or untimed practice session."
   },
   "/leaderboard": {
     title: "Typing Speed Leaderboard | Typing Station",

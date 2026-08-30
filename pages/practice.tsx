@@ -114,6 +114,7 @@ import { Button, IconButton } from "@/components/Controls";
 
 export type PracticeTrainingMode = {
   pageTitle: string;
+  pageDescription?: string;
   passageId: string;
   configKey?: string;
   controls?: ReactNode;
@@ -1916,11 +1917,29 @@ export default function PracticePage({ trainingMode }: { trainingMode?: Practice
   }
 
   const isCompactPractice = !trainingMode;
+  const pageTitle = trainingMode?.pageTitle ?? "Typing practice and speed test";
+  const pageDescription = trainingMode?.pageDescription ?? (
+    trainingMode
+      ? null
+      : "Choose English or Chinese, select a timed or infinite session, and begin. No account is required."
+  );
 
   return (
     <AppShell topAd={false} sideAd={false} focusMode={isFocusMode} compact={isCompactPractice}>
       <section className="mx-auto min-w-0 w-[calc(100vw-2.5rem)] max-w-6xl overflow-x-hidden sm:w-full">
-        <h1 className="sr-only">{trainingMode?.pageTitle ?? "Practice"}</h1>
+        <header
+          className={clsx(
+            "mx-auto mb-2 max-w-5xl text-center",
+            isFocusMode && "invisible pointer-events-none"
+          )}
+        >
+          <h1 className="text-body font-semibold leading-6 text-paper/70">{pageTitle}</h1>
+          {pageDescription && (
+            <p className="mx-auto mt-0.5 max-w-2xl text-secondary leading-5 text-paper/40">
+              {pageDescription}
+            </p>
+          )}
+        </header>
 
         {passageNotice && (
           <div className={clsx("mb-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-body text-brass", isFocusMode && "invisible pointer-events-none")}>
