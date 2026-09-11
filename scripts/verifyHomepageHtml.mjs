@@ -60,6 +60,10 @@ const indexableRouteRequirements = [
       ["semantic main content", /<main\b/],
       ["leaderboard h1", /<h1\b[^>]*>Daily Leaderboard<\/h1>/],
       ["leaderboard explanation", /Ranked by WPM, then accuracy\. Only public handles are shown\./],
+      ["durable qualifying-results guidance", /Only qualifying typing results appear on this leaderboard\./],
+      ["durable filter guidance", /Filter rankings by time range and typing domain or category\./],
+      ["durable earlier-results guidance", /Use Week, Month, Year, or All Time to browse earlier results\./],
+      ["durable public-identity guidance", /Public handles are shown instead of email identities\./],
       ["leaderboard filters", /Leaderboard filters/]
     ]
   },

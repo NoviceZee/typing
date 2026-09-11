@@ -4,7 +4,7 @@ import Link from "next/link";
 import { BookOpen, CalendarDays, Clock, Languages } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
-import { SegmentedControl } from "@/components/Controls";
+import { Button, SegmentedControl } from "@/components/Controls";
 import { DataSurface, EmptyState, PageSection, SectionStack, StatusMessage } from "@/components/Surface";
 import { useAuth } from "@/components/AuthProvider";
 import { ANALYTICS_DOMAIN_OPTIONS, AnalyticsDomain } from "@/lib/analyticsDomain";
@@ -157,6 +157,18 @@ export default function LeaderboardPage() {
         />
 
         <SectionStack>
+          <PageSection
+            aria-label="About the leaderboard"
+            className="rounded-[var(--ui-radius-surface)] border border-[color:var(--ui-border-subtle)] px-4 py-4 md:px-5"
+          >
+            <h2 className="font-mono text-[length:var(--ui-type-label-size)] uppercase leading-[var(--ui-type-label-leading)] text-[color:var(--ui-text-muted)]">
+              How rankings work
+            </h2>
+            <p className="mt-2 max-w-4xl text-[length:var(--ui-type-body-size)] leading-[var(--ui-type-body-leading)] text-[color:var(--ui-text-secondary)]">
+              Only qualifying typing results appear on this leaderboard. Filter rankings by time range and typing domain or category. Use Week, Month, Year, or All Time to browse earlier results. Public handles are shown instead of email identities.
+            </p>
+          </PageSection>
+
           <PageSection aria-label="Leaderboard filters">
             <div data-testid="leaderboard-filters" className="grid min-w-0 gap-2 md:flex md:flex-wrap md:items-start md:gap-x-4 md:gap-y-2">
               <SegmentedControl
@@ -209,9 +221,20 @@ export default function LeaderboardPage() {
 
                 {!isLoading && results.length === 0 && !message && (
                   <EmptyState label="No leaderboard results">
-                    {leaderboardDomain === "english"
-                      ? "No saved typing results match this time range."
-                      : `No saved ${leaderboardDomain} typing results match this time range.`}
+                    <div className="mx-auto flex max-w-xl flex-col items-center gap-4">
+                      <p>
+                        {timeRange === "today"
+                          ? "No qualifying results have been posted today yet. Choose Week, Month, Year, or All Time to browse earlier rankings."
+                          : leaderboardDomain === "english"
+                            ? "No saved typing results match this time range."
+                            : `No saved ${leaderboardDomain} typing results match this time range.`}
+                      </p>
+                      {timeRange === "today" && (
+                        <Button size="compact" onClick={() => setTimeRange("all_time")}>
+                          View All Time
+                        </Button>
+                      )}
+                    </div>
                   </EmptyState>
                 )}
 

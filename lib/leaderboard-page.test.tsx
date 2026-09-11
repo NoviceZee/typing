@@ -108,6 +108,22 @@ describe("LeaderboardPage", () => {
     });
   });
 
+  it("keeps durable leaderboard guidance visible while results are loading", async () => {
+    mockedGetSupabaseLeaderboardResults.mockImplementationOnce(() => new Promise(() => undefined));
+
+    const view = render(<LeaderboardPage />);
+
+    const guidance = screen.getByRole("region", { name: "About the leaderboard" });
+    expect(guidance.textContent).toContain("qualifying typing results");
+    expect(guidance.textContent).toContain("time range");
+    expect(guidance.textContent).toContain("typing domain or category");
+    expect(guidance.textContent).toContain("Week, Month, Year, or All Time");
+    expect(guidance.textContent).toContain("Public handles are shown instead of email identities");
+    expect(screen.getByRole("status", { name: "Loading leaderboard" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Business email category" })).toBeTruthy();
+    view.unmount();
+  });
+
   it("exposes named filter groups with selected-state and focus contracts", async () => {
     render(<LeaderboardPage />);
 
@@ -156,7 +172,7 @@ describe("LeaderboardPage", () => {
       });
     }
 
-    expect(screen.getByText("No saved typing results match this time range.")).toBeTruthy();
+    expect(screen.getByText(/No qualifying results have been posted today yet/)).toBeTruthy();
     expect(screen.queryByText("typist@example.com")).toBeNull();
   });
 
@@ -174,9 +190,27 @@ describe("LeaderboardPage", () => {
 
     mockedGetSupabaseLeaderboardResults.mockResolvedValueOnce([]);
     render(<LeaderboardPage />);
-    expect((await screen.findByRole("status", { name: "No leaderboard results" })).textContent).toContain(
-      "No saved typing results match this time range."
-    );
+    const emptyState = await screen.findByRole("status", { name: "No leaderboard results" });
+    expect(emptyState.textContent).toContain("No qualifying results have been posted today yet.");
+    expect(emptyState.textContent).toContain("Choose Week, Month, Year, or All Time to browse earlier rankings.");
+    expect(within(emptyState).getByRole("button", { name: "View All Time" })).toBeTruthy();
+  });
+
+  it("uses the empty Today action to select the existing All Time filter", async () => {
+    mockedGetSupabaseLeaderboardResults.mockResolvedValue([]);
+
+    render(<LeaderboardPage />);
+
+    const emptyState = await screen.findByRole("status", { name: "No leaderboard results" });
+    fireEvent.click(within(emptyState).getByRole("button", { name: "View All Time" }));
+
+    expect(screen.getByRole("heading", { name: "All Time Leaderboard" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All Time" }).getAttribute("aria-pressed")).toBe("true");
+    await waitFor(() => {
+      expect(mockedGetSupabaseLeaderboardResults).toHaveBeenLastCalledWith(
+        expect.objectContaining({ timeRange: "all_time" })
+      );
+    });
   });
 
   it("renders a mobile stacked list and a desktop table without fixed mobile width", async () => {
@@ -189,6 +223,7 @@ describe("LeaderboardPage", () => {
     expect(within(desktopResults).getByRole("columnheader", { name: "Rank" })).toBeTruthy();
     expect(mobileResults.getAttribute("data-responsive-layout")).toBe("stacked");
     expect(mobileResults.querySelector('[style*="min-width"]')).toBeNull();
+    expect(screen.queryByRole("button", { name: "View All Time" })).toBeNull();
   });
 
   it("keeps an authenticated user's row visibly identified with the You cue", async () => {
