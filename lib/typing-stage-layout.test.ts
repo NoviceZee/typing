@@ -60,7 +60,8 @@ describe("shared Practice and Training stage spacing", () => {
   it("uses a wider independent responsive canvas instead of the controls width", () => {
     expect(globalStyles).toMatch(/@media\s*\(min-width:\s*768px\)[\s\S]*?\.formaltype-typing-width-comfortable\s*\{[^}]*max-width:\s*76rem;/);
     expect(globalStyles).toMatch(/\.formaltype-typing-canvas\s*\{[^}]*max-width:\s*80rem;/);
-    expect(globalStyles).toMatch(/\.formaltype-workspace-root\s*\{[^}]*padding-inline:\s*clamp\(0\.75rem,\s*1\.7vw,\s*1\.5rem\);/);
+    expect(appShellSource).toContain('min-h-screen px-4 py-4 text-paper md:px-6');
+    expect(globalStyles).not.toMatch(/\.formaltype-workspace-root\s*\{[^}]*(?:padding-block|padding-inline):/);
     expect(practiceSource).toContain("formaltype-typing-experience");
     expect(practiceSource).toContain("formaltype-typing-canvas");
     expect(practiceSource).not.toMatch(/formaltype-typing-experience[^\n]*max-w-6xl/);
@@ -69,7 +70,7 @@ describe("shared Practice and Training stage spacing", () => {
     expect(practiceSource).toContain("typingWorkspace");
     expect(appShellSource).toContain("formaltype-workspace-frame");
     expect(appShellSource).toContain("formaltype-workspace-content");
-    expect(appShellSource).toContain("formaltype-workspace-brand");
+    expect(appShellSource).toContain('data-testid="site-chrome-row"');
   });
 
   it("keeps the controls, canvas, and hints in one compact non-centred interaction group", () => {
@@ -99,7 +100,10 @@ describe("shared Practice and Training stage spacing", () => {
     expect(globalStyles).toMatch(/\.formaltype-typing-size-small\s*\{[^}]*--formaltype-typing-line-height:\s*clamp\(/);
     expect(globalStyles).toMatch(/\.formaltype-typing-size-medium\s*\{[^}]*--formaltype-typing-line-height:\s*clamp\(/);
     expect(globalStyles).toMatch(/\.formaltype-typing-size-large\s*\{[^}]*--formaltype-typing-line-height:\s*clamp\(/);
-    expect(globalStyles).toMatch(/\.formaltype-workspace-header > div\s*\{[^}]*height:\s*2\.75rem;/);
+    expect(globalStyles).toMatch(/\.site-chrome-row\s*\{[^}]*height:\s*2\.75rem;/);
+    expect(globalStyles).not.toMatch(/\.formaltype-workspace-header > div\s*\{/);
+    expect(globalStyles).not.toMatch(/\.formaltype-workspace-brand\s*\{/);
+    expect(appShellSource).not.toContain('compact={!typingWorkspace}');
   });
 
   it("centres keyboard guidance independently beneath the typing canvas", () => {

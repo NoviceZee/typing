@@ -252,6 +252,54 @@ describe("AppShell account dropdown", () => {
     expect(document.activeElement).toBe(menuButton);
   });
 
+  it("uses one five-item icon navigation contract in the full row and compact sheet", () => {
+    mockState.user = null;
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    const fullNavigation = screen.getByRole("navigation", { name: "Primary navigation" });
+    expect(fullNavigation.getAttribute("data-navigation-layout")).toBe("full");
+
+    const fullItems = Array.from(fullNavigation.querySelectorAll("[data-primary-nav-item]"));
+    expect(fullItems).toHaveLength(5);
+    for (const item of fullItems) {
+      expect(item.className).toContain("site-primary-nav-item");
+      expect(item.querySelector("svg")?.classList.contains("site-primary-nav-icon")).toBe(true);
+      expect(item.querySelector(".site-primary-nav-label")).toBeTruthy();
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    const compactNavigation = screen.getByRole("navigation", { name: "Mobile navigation" });
+    expect(compactNavigation.getAttribute("data-navigation-layout")).toBe("compact");
+    expect(compactNavigation.className).toContain("site-compact-navigation-sheet");
+
+    const compactItems = Array.from(compactNavigation.querySelectorAll("[data-primary-nav-item]"));
+    expect(compactItems).toHaveLength(5);
+    for (const item of compactItems) {
+      expect(item.className).toContain("site-primary-nav-item");
+      expect(item.className).toContain("site-primary-nav-item-compact");
+      expect(item.querySelector("svg")?.classList.contains("site-primary-nav-icon")).toBe(true);
+      expect(item.querySelector(".site-primary-nav-label")).toBeTruthy();
+    }
+  });
+
+  it("keeps the same SiteChrome geometry for typing workspaces", () => {
+    mockState.user = null;
+    const { rerender } = render(<AppShell sideAd={false}>Content</AppShell>);
+
+    const standardHeader = screen.getByTestId("site-chrome-header");
+    const standardRow = screen.getByTestId("site-chrome-row");
+    const standardBrand = screen.getByRole("link", { name: "Typing Station" });
+    expect(standardHeader.className).toContain("site-chrome-header");
+    expect(standardRow.className).toContain("site-chrome-row");
+    expect(standardBrand.className).toContain("text-wordmark-compact");
+
+    rerender(<AppShell sideAd={false} typingWorkspace>Content</AppShell>);
+
+    expect(screen.getByTestId("site-chrome-header").className).toBe(standardHeader.className);
+    expect(screen.getByTestId("site-chrome-row").className).toBe(standardRow.className);
+    expect(screen.getByRole("link", { name: "Typing Station" }).className).toBe(standardBrand.className);
+  });
+
   it("dismisses the mobile navigation when clicking outside its overlay", () => {
     mockState.user = null;
     render(<AppShell sideAd={false}>Content</AppShell>);

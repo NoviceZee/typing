@@ -64,7 +64,7 @@ export function AppShell({
   }, [isMobileNavOpen]);
 
   return (
-    <div className={`${typingWorkspace ? "formaltype-workspace-root " : ""}min-h-screen px-4 py-3 text-paper md:px-6 md:py-4`}>
+    <div className={`${typingWorkspace ? "formaltype-workspace-root " : ""}min-h-screen px-4 py-4 text-paper md:px-6`}>
       {process.env.NEXT_PUBLIC_ADSENSE_CLIENT && <Script async strategy="afterInteractive" crossOrigin="anonymous" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT}`} />}
       <a
         href="#main-content"
@@ -73,11 +73,18 @@ export function AppShell({
         Skip to main content
       </a>
       <div className={`${typingWorkspace ? "formaltype-workspace-frame " : ""}${SITE_FRAME_CLASS}`}>
-        <header className={`${focusMode ? "invisible " : ""}${typingWorkspace ? "formaltype-workspace-header " : ""}relative border-b border-paper/[0.07] pb-2`}>
-          <div className="flex h-8 items-center justify-between gap-3">
-            <SiteBrand href="/practice" compact={!typingWorkspace} className={typingWorkspace ? "formaltype-workspace-brand" : ""} />
+        <header
+          data-testid="site-chrome-header"
+          className={`${focusMode ? "invisible " : ""}site-chrome-header relative border-b border-paper/[0.07] pb-2`}
+        >
+          <div data-testid="site-chrome-row" className="site-chrome-row flex items-center justify-between gap-3">
+            <SiteBrand href="/practice" compact />
             <div className="flex min-w-0 items-center gap-2 md:gap-3">
-              <nav aria-label="Primary navigation" className="hidden gap-1 font-mono text-control text-paper/60 lg:flex">
+              <nav
+                aria-label="Primary navigation"
+                data-navigation-layout="full"
+                className="site-primary-navigation-full"
+              >
                 {NAV_ITEMS.map((item) => (
                   <MainNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} />
                 ))}
@@ -92,7 +99,7 @@ export function AppShell({
                 aria-controls="mobile-navigation"
                 onClick={() => setIsMobileNavOpen((current) => !current)}
                 title={isMobileNavOpen ? "Close navigation" : "Open navigation"}
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-paper/55 transition hover:bg-paper/[0.06] hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass/70 lg:hidden"
+                className="site-compact-navigation-trigger h-8 w-8 shrink-0 place-items-center rounded-md text-paper/55 transition hover:bg-paper/[0.06] hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass/70"
               >
                 {isMobileNavOpen ? <X className="icon-control" strokeWidth={1.75} aria-hidden="true" /> : <Menu className="icon-control" strokeWidth={1.75} aria-hidden="true" />}
               </button>
@@ -103,10 +110,11 @@ export function AppShell({
               ref={mobileNavRef}
               id="mobile-navigation"
               aria-label="Mobile navigation"
-              className="absolute right-0 top-full z-50 mt-2 grid w-[min(22rem,calc(100vw-2rem))] grid-cols-2 gap-1 rounded-lg border border-paper/[0.1] bg-card/95 p-2 font-mono text-control shadow-2xl backdrop-blur-md sm:grid-cols-2 lg:hidden"
+              data-navigation-layout="compact"
+              className="site-compact-navigation-sheet absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-paper/[0.1] bg-card/95 p-2 shadow-2xl backdrop-blur-md"
             >
               {NAV_ITEMS.map((item) => (
-                <MainNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} onClick={() => setIsMobileNavOpen(false)} />
+                <MainNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} compact onClick={() => setIsMobileNavOpen(false)} />
               ))}
             </nav>
           )}
@@ -356,7 +364,19 @@ export function AdPlaceholder({ variant }: { variant: "banner" | "sidebar" | "mo
   );
 }
 
-export function MainNavItem({ href, label, icon: Icon, onClick }: { href: string; label: string; icon: LucideIcon; onClick?: () => void }) {
+export function MainNavItem({
+  href,
+  label,
+  icon: Icon,
+  compact = false,
+  onClick
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  compact?: boolean;
+  onClick?: () => void;
+}) {
   const router = useRouter();
   const active =
     router.pathname === href ||
@@ -369,13 +389,14 @@ export function MainNavItem({ href, label, icon: Icon, onClick }: { href: string
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
+      data-primary-nav-item
       onClick={onClick}
-      className={`flex min-h-8 items-center gap-1.5 rounded-md px-2 py-1 outline-none transition focus-visible:ring-2 focus-visible:ring-brass/60 ${
+      className={`site-primary-nav-item ${compact ? "site-primary-nav-item-compact " : ""}rounded-md outline-none transition focus-visible:ring-2 focus-visible:ring-brass/60 ${
         active ? "bg-paper/[0.07] text-brass" : "text-paper/45 hover:bg-paper/[0.05] hover:text-paper/80"
       }`}
     >
-      <Icon className="icon-control" strokeWidth={1.75} aria-hidden />
-      {label}
+      <Icon className="site-primary-nav-icon" strokeWidth={1.75} aria-hidden="true" />
+      <span className="site-primary-nav-label">{label}</span>
     </Link>
   );
 }
