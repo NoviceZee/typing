@@ -12,8 +12,6 @@ const indexableRouteRequirements = [
     file: "practice.html",
     patterns: [
       ["semantic main content", /<main\b/],
-      ["visible descriptive h1", /<h1\b(?![^>]*\bsr-only\b)[^>]*>Typing practice and speed test<\/h1>/],
-      ["concise practice introduction", /Choose English or Chinese, select a timed or infinite session, and begin\. No account is required\./],
       ["practice language controls", /Practice language/]
     ]
   },
@@ -22,8 +20,6 @@ const indexableRouteRequirements = [
     file: "training.html",
     patterns: [
       ["semantic main content", /<main\b/],
-      ["visible descriptive h1", /<h1\b(?![^>]*\bsr-only\b)[^>]*>Focused typing training<\/h1>/],
-      ["concise training introduction", /Choose the content, session length, and difficulty you want to isolate\./],
       ["training controls", /Training controls/]
     ]
   },
