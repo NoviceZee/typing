@@ -5,11 +5,8 @@ export type TypingViewportMeasurement = {
   viewportTop: number;
   activeTop: number;
   activeBottom: number;
+  lineHeight: number;
 };
-
-const VIEWPORT_TRIGGER_START = 0.28;
-const VIEWPORT_TRIGGER_END = 0.72;
-const VIEWPORT_TARGET = 0.5;
 
 export function calculateTypingViewportScrollTop({
   scrollTop,
@@ -17,22 +14,30 @@ export function calculateTypingViewportScrollTop({
   clientHeight,
   viewportTop,
   activeTop,
-  activeBottom
+  activeBottom,
+  lineHeight
 }: TypingViewportMeasurement): number {
-  if (scrollHeight <= clientHeight || clientHeight <= 0) {
-    return scrollTop;
-  }
-
-  const triggerTop = viewportTop + clientHeight * VIEWPORT_TRIGGER_START;
-  const triggerBottom = viewportTop + clientHeight * VIEWPORT_TRIGGER_END;
-  if (activeTop >= triggerTop && activeBottom <= triggerBottom) {
+  if (scrollHeight <= clientHeight || clientHeight <= 0 || lineHeight <= 0) {
     return scrollTop;
   }
 
   const activeCenter = activeTop + (activeBottom - activeTop) / 2;
-  const targetCenter = viewportTop + clientHeight * VIEWPORT_TARGET;
-  const nextScrollTop = scrollTop + activeCenter - targetCenter;
+  const visibleRow = Math.floor((activeCenter - viewportTop) / lineHeight);
+
+  // At startup, let the caret use rows one and two naturally. Once it enters
+  // row three, movement happens in whole visual-line increments so the active
+  // line returns to row two.
+  if (scrollTop <= 0 && visibleRow <= 1) {
+    return scrollTop;
+  }
+
+  const rowDelta = visibleRow - 1;
+  if (rowDelta === 0) {
+    return scrollTop;
+  }
+
+  const nextScrollTop = scrollTop + rowDelta * lineHeight;
   const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
 
-  return Math.max(0, Math.min(maxScrollTop, Math.round(nextScrollTop)));
+  return Math.max(0, Math.min(maxScrollTop, nextScrollTop));
 }

@@ -5,11 +5,11 @@ import { FeedbackButton } from "@/components/FeedbackButton";
 export const SITE_FRAME_CLASS = "mx-auto w-full max-w-7xl";
 export const SITE_PAGE_GUTTERS_CLASS = "px-5 md:px-8";
 
-export function SiteBrand({ href = "/", compact = false }: { href?: string; compact?: boolean }) {
+export function SiteBrand({ href = "/", compact = false, className = "" }: { href?: string; compact?: boolean; className?: string }) {
   return (
     <Link
       href={href}
-      className={`${compact ? "text-wordmark-compact tracking-[0.16em]" : "text-wordmark tracking-[0.18em]"} shrink-0 font-mono font-semibold text-paper`}
+      className={`${compact ? "text-wordmark-compact tracking-[0.16em]" : "text-wordmark tracking-[0.18em]"} shrink-0 font-mono font-semibold text-paper ${className}`.trim()}
     >
       Typing Station
     </Link>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { useRouter } from "next/router";
 import React, { ReactNode, useEffect, useRef, useState } from "react";
+import { clsx } from "clsx";
 import { BookOpenText, ChevronDown, GraduationCap, Keyboard, LogIn, LogOut, Menu, Settings, Trophy, UserCircle, X, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { SupabaseProfile, getProfileDisplayLabel, getSupabaseProfile } from "@/lib/profileStorage";
@@ -20,17 +21,19 @@ export function AppShell({
   children,
   sideAd = true,
   topAd = true,
-  focusMode = false
+  focusMode = false,
+  typingWorkspace = false
 }: {
   children: ReactNode;
   sideAd?: boolean;
   topAd?: boolean;
   focusMode?: boolean;
-  compact?: boolean;
+  typingWorkspace?: boolean;
 }) {
   const router = useRouter();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const mobileNavButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileNavRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setIsMobileNavOpen(false);
@@ -45,12 +48,23 @@ export function AppShell({
       mobileNavButtonRef.current?.focus();
     }
 
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (mobileNavRef.current?.contains(target) || mobileNavButtonRef.current?.contains(target)) return;
+      setIsMobileNavOpen(false);
+    }
+
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
   }, [isMobileNavOpen]);
 
   return (
-    <div className="min-h-screen px-4 py-3 text-paper md:px-6 md:py-4">
+    <div className={`${typingWorkspace ? "formaltype-workspace-root " : ""}min-h-screen px-4 py-3 text-paper md:px-6 md:py-4`}>
       {process.env.NEXT_PUBLIC_ADSENSE_CLIENT && <Script async strategy="afterInteractive" crossOrigin="anonymous" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT}`} />}
       <a
         href="#main-content"
@@ -58,10 +72,10 @@ export function AppShell({
       >
         Skip to main content
       </a>
-      <div className={SITE_FRAME_CLASS}>
-        <header className={`${focusMode ? "invisible " : ""}border-b border-paper/[0.07] pb-2`}>
+      <div className={`${typingWorkspace ? "formaltype-workspace-frame " : ""}${SITE_FRAME_CLASS}`}>
+        <header className={`${focusMode ? "invisible " : ""}${typingWorkspace ? "formaltype-workspace-header " : ""}relative border-b border-paper/[0.07] pb-2`}>
           <div className="flex h-8 items-center justify-between gap-3">
-            <SiteBrand href="/practice" compact />
+            <SiteBrand href="/practice" compact={!typingWorkspace} className={typingWorkspace ? "formaltype-workspace-brand" : ""} />
             <div className="flex min-w-0 items-center gap-2 md:gap-3">
               <nav aria-label="Primary navigation" className="hidden gap-1 font-mono text-control text-paper/60 lg:flex">
                 {NAV_ITEMS.map((item) => (
@@ -86,9 +100,10 @@ export function AppShell({
           </div>
           {isMobileNavOpen && (
             <nav
+              ref={mobileNavRef}
               id="mobile-navigation"
               aria-label="Mobile navigation"
-              className="mt-2 grid grid-cols-2 gap-1 border-t border-paper/[0.07] pt-2 font-mono text-control sm:grid-cols-3 lg:hidden"
+              className="absolute right-0 top-full z-50 mt-2 grid w-[min(22rem,calc(100vw-2rem))] grid-cols-2 gap-1 rounded-lg border border-paper/[0.1] bg-card/95 p-2 font-mono text-control shadow-2xl backdrop-blur-md sm:grid-cols-2 lg:hidden"
             >
               {NAV_ITEMS.map((item) => (
                 <MainNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} onClick={() => setIsMobileNavOpen(false)} />
@@ -103,8 +118,8 @@ export function AppShell({
           </div>
         )}
 
-        <div className={sideAd ? "mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]" : "mt-4"}>
-          <main id="main-content" tabIndex={-1} className="min-w-0 outline-none">{children}</main>
+        <div className={`${typingWorkspace ? "formaltype-workspace-content " : ""}${sideAd ? "mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]" : "mt-4"}`}>
+          <main id="main-content" tabIndex={-1} className={`${typingWorkspace ? "formaltype-workspace-main " : ""}min-w-0 outline-none`}>{children}</main>
           {sideAd && (
             <aside className="hidden xl:block">
               <AdPlaceholder variant="sidebar" />
@@ -117,7 +132,14 @@ export function AppShell({
             <AdPlaceholder variant="mobile" />
           </div>
         )}
-        {!focusMode && <SiteFooter className="mt-10" />}
+        {(!focusMode || typingWorkspace) && (
+          <SiteFooter
+            className={clsx(
+              typingWorkspace ? "formaltype-workspace-footer mt-10" : "mt-10",
+              focusMode && typingWorkspace && "invisible pointer-events-none"
+            )}
+          />
+        )}
       </div>
     </div>
   );

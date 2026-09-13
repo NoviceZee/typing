@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpenText, Clock3, ImageIcon, KeyboardIcon, Languages, RefreshCw, RotateCcw, Shuffle, X } from "lucide-react";
+import { BookOpenText, Clock3, ImageIcon, KeyboardIcon, Languages, RefreshCw, RotateCcw, Shuffle, SlidersHorizontal, X } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -116,7 +116,6 @@ import { parsePracticeRoutePreset } from "@/lib/routePresets";
 
 export type PracticeTrainingMode = {
   pageTitle: string;
-  pageDescription?: string;
   passageId: string;
   configKey?: string;
   controls?: ReactNode;
@@ -267,6 +266,7 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
   const [selectedCategory, setSelectedCategoryState] = useState<CategoryFilter>(ALL_FILTER);
   const [selectedPassageId, setSelectedPassageId] = useState(RANDOM_PASSAGE_ID);
   const [isPassagePickerOpen, setIsPassagePickerOpen] = useState(false);
+  const [isPracticeSettingsOpen, setIsPracticeSettingsOpen] = useState(false);
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(DEFAULT_THEME_SETTINGS);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const chineseImeInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -274,6 +274,8 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
   const typingTextRef = useRef<HTMLDivElement>(null);
   const resultPanelRestartButtonRef = useRef<HTMLButtonElement>(null);
   const passagePickerButtonRef = useRef<HTMLButtonElement>(null);
+  const practiceSettingsButtonRef = useRef<HTMLButtonElement>(null);
+  const practiceSettingsPanelRef = useRef<HTMLDivElement>(null);
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
   const previousActiveCaretRectRef = useRef<DOMRect | null>(null);
   const terminalCaretRef = useRef<HTMLSpanElement | null>(null);
@@ -326,6 +328,11 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
   const repeatedAttemptSnapshotRef = useRef<CompletedAttemptSnapshot | null>(null);
   const initializedPracticeRouteRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    document.documentElement.classList.add("formaltype-typing-page");
+    return () => document.documentElement.classList.remove("formaltype-typing-page");
+  }, []);
+
   const isRunning = status === "running";
   const isFinished = status === "finished";
   const isFocusMode = isInputActivated && !isFinished;
@@ -348,9 +355,39 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
       ? `${trainingSession.seconds}s`
       : `${trainingSession.wordCount} words`
     : practiceMode.label;
+  const practiceSettingsSummary = `${practiceLanguage === "english" ? "English" : "Chinese"} · ${selectedPassageId === RANDOM_PASSAGE_ID ? "Random" : "Passage"} · ${practiceMode.label}`;
   const shouldShowPracticeHeader =
     !trainingMode?.hideMetadata || !trainingMode?.hidePassageControls || !trainingMode?.hidePracticeModeControls;
   const shouldShowTypingHeader = Boolean(trainingMode?.controls) || shouldShowPracticeHeader;
+
+  useEffect(() => {
+    if (!isPracticeSettingsOpen) return;
+
+    if (isFocusMode) {
+      setIsPracticeSettingsOpen(false);
+      return;
+    }
+
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setIsPracticeSettingsOpen(false);
+      practiceSettingsButtonRef.current?.focus();
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (practiceSettingsPanelRef.current?.contains(target) || practiceSettingsButtonRef.current?.contains(target)) return;
+      setIsPracticeSettingsOpen(false);
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isFocusMode, isPracticeSettingsOpen]);
   const canonicalTarget = useMemo(
     () =>
       createCanonicalTypingTarget({
@@ -1336,13 +1373,21 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
 
       const containerBounds = scrollContainer.getBoundingClientRect();
       const characterBounds = activeCharacter.getBoundingClientRect();
+      const typingText = typingTextRef.current;
+      const measuredLineHeight = typingText
+        ? Number.parseFloat(window.getComputedStyle(typingText).lineHeight)
+        : Number.NaN;
+      const lineHeight = Number.isFinite(measuredLineHeight) && measuredLineHeight > 0
+        ? measuredLineHeight
+        : scrollContainer.clientHeight / 3;
       scrollContainer.scrollTop = calculateTypingViewportScrollTop({
         scrollTop: scrollContainer.scrollTop,
         scrollHeight: scrollContainer.scrollHeight,
         clientHeight: scrollContainer.clientHeight,
         viewportTop: containerBounds.top,
         activeTop: characterBounds.top,
-        activeBottom: characterBounds.bottom
+        activeBottom: characterBounds.bottom,
+        lineHeight
       });
     });
 
@@ -1986,30 +2031,10 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
   }
 
   const isCompactPractice = !trainingMode;
-  const pageTitle = trainingMode?.pageTitle ?? "Typing practice and speed test";
-  const pageDescription = trainingMode?.pageDescription ?? (
-    trainingMode
-      ? null
-      : "Choose English or Chinese, select a timed or infinite session, and begin. No account is required."
-  );
 
   return (
-    <AppShell topAd={false} sideAd={false} focusMode={isFocusMode} compact={isCompactPractice}>
-      <section className="mx-auto min-w-0 w-[calc(100vw-2.5rem)] max-w-6xl overflow-x-hidden sm:w-full">
-        <header
-          className={clsx(
-            "mx-auto mb-2 max-w-5xl text-center",
-            isFocusMode && "invisible pointer-events-none"
-          )}
-        >
-          <h1 className="text-body font-semibold leading-6 text-paper/70">{pageTitle}</h1>
-          {pageDescription && (
-            <p className="mx-auto mt-0.5 max-w-2xl text-secondary leading-5 text-paper/40">
-              {pageDescription}
-            </p>
-          )}
-        </header>
-
+    <AppShell topAd={false} sideAd={false} focusMode={isFocusMode} typingWorkspace>
+      <section className="formaltype-typing-experience mx-auto min-w-0 w-full overflow-x-hidden">
         {passageNotice && (
           <div className={clsx("mb-5 rounded-md border border-brass/25 bg-brass/10 px-4 py-3 font-mono text-body text-brass", isFocusMode && "invisible pointer-events-none")}>
             {passageNotice}
@@ -2031,10 +2056,41 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
 
               {shouldShowPracticeHeader && (
                 <>
-                  <div
-                    data-testid="practice-controls"
-                    className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-control"
-                  >
+                  <div className="formaltype-practice-settings relative mx-auto max-w-5xl">
+                    {!trainingMode && (
+                      <div className="formaltype-practice-settings-compact mx-auto min-w-0 items-center justify-center gap-2 font-mono text-control">
+                        <button
+                          ref={practiceSettingsButtonRef}
+                          data-testid="practice-settings-trigger"
+                          type="button"
+                          aria-label="Test settings"
+                          aria-expanded={isPracticeSettingsOpen}
+                          aria-controls="practice-test-settings"
+                          onClick={() => setIsPracticeSettingsOpen((current) => !current)}
+                          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-paper/55 outline-none transition hover:bg-paper/[0.06] hover:text-paper focus-visible:ring-1 focus-visible:ring-brass/60"
+                        >
+                          <SlidersHorizontal className="icon-control" aria-hidden="true" />
+                          <span className="formaltype-practice-settings-label">Test settings</span>
+                        </button>
+                        <span
+                          data-testid="practice-settings-summary"
+                          className="formaltype-practice-settings-summary min-w-0 text-paper/45"
+                          title={practiceSettingsSummary}
+                        >
+                          {practiceSettingsSummary}
+                        </span>
+                      </div>
+                    )}
+
+                    <div
+                      ref={practiceSettingsPanelRef}
+                      id="practice-test-settings"
+                      data-testid="practice-controls"
+                      className={clsx(
+                        "formaltype-practice-settings-panel mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-control",
+                        isPracticeSettingsOpen && "formaltype-practice-settings-panel-open"
+                      )}
+                    >
                     {!trainingMode && (
                       <TextChoiceGroup label="Practice language" icon={<Languages className="icon-control" />}>
                         {(["english", "chinese"] as const).map((language) => (
@@ -2066,7 +2122,10 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
                             buttonRef={passagePickerButtonRef}
                             selected={selectedPassageId !== RANDOM_PASSAGE_ID}
                             disabled={isRunning || isPassageLoading}
-                            onClick={() => setIsPassagePickerOpen(true)}
+                            onClick={() => {
+                              setIsPracticeSettingsOpen(false);
+                              setIsPassagePickerOpen(true);
+                            }}
                             icon={<BookOpenText className="icon-control" />}
                           >
                             Passage
@@ -2092,6 +2151,7 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
                         </TextChoiceGroup>
                       </>
                     )}
+                    </div>
                   </div>
 
                   {!trainingMode?.hideMetadata && (
@@ -2106,34 +2166,41 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
           </section>
         )}
 
-        <div
-          tabIndex={0}
-          className={clsx(
-            "formaltype-practice-shell formaltype-typing-stage relative mx-auto flex w-full flex-col overflow-hidden outline-none transition-all duration-300 focus:ring-brass/30",
-            isCompactPractice
-              ? "h-[64vh] h-[64dvh] max-h-[64vh] max-h-[64dvh] max-w-5xl px-2 pb-2 md:h-[72vh] md:h-[72dvh] md:max-h-[76vh] md:max-h-[76dvh] md:px-3 md:pb-3"
-              : "h-[60vh] h-[60dvh] max-h-[60vh] max-h-[60dvh] max-w-5xl rounded-lg bg-paper/[0.025] px-3 pb-3 md:h-[68vh] md:h-[68dvh] md:max-h-[72vh] md:max-h-[72dvh] md:px-5 md:pb-5"
-          )}
-          data-focus-mode={isFocusMode ? "true" : "false"}
-        >
+        <div className="formaltype-typing-center">
           <div
-            data-testid="typing-timer-region"
-            className="formaltype-typing-timer-region mx-auto w-full max-w-5xl"
+            tabIndex={0}
+            className={clsx(
+              "formaltype-practice-shell formaltype-typing-stage formaltype-typing-canvas relative mx-auto flex w-full flex-col outline-none transition-all duration-300 focus:ring-brass/30",
+              isCompactPractice
+                ? "px-2 pb-2 md:px-2 md:pb-3 xl:px-3"
+                : "rounded-lg bg-paper/[0.025] px-3 pb-3 md:px-3 md:pb-5 xl:px-5"
+            )}
+            data-focus-mode={isFocusMode ? "true" : "false"}
           >
-            {isFocusMode && <TypingTimer value={formatTime(clockSeconds)} />}
-          </div>
+          {isFocusMode && (
+            <div
+              data-testid="typing-timer-region"
+              className="formaltype-typing-timer-region mx-auto w-full"
+            >
+              <TypingTimer value={formatTime(clockSeconds)} />
+            </div>
+          )}
           <div
             ref={typingWindowRef}
             data-testid={shouldUseChineseImeSink ? "chinese-target-viewport" : "typing-viewport"}
+            data-visible-lines="3"
             className={clsx(
-              "typing-scrollbar mx-auto h-full min-h-0 w-full max-w-5xl flex-1 overflow-y-auto overscroll-contain transition",
-              isCompactPractice ? "px-2 py-2 md:px-4 md:py-4" : "rounded-md px-3 py-3 md:px-6 md:py-5"
+              "formaltype-typing-viewport typing-scrollbar mx-auto min-h-0 w-full flex-none transition",
+              `formaltype-typing-size-${themeSettings.typingTextSize}`,
+              isCompactPractice
+                ? "formaltype-typing-viewport-practice px-2 md:px-3 xl:px-4"
+                : "formaltype-typing-viewport-training rounded-md px-3 md:px-3 xl:px-6"
             )}
           >
             <div
               ref={typingTextRef}
               className={clsx(
-                "relative mx-auto",
+                "formaltype-typing-track relative mx-auto",
                 `formaltype-typing-size-${themeSettings.typingTextSize}`,
                 passage?.displayTokens?.length ? "w-fit max-w-full" : `formaltype-typing-width-${themeSettings.typingWidth}`
               )}
@@ -2240,7 +2307,7 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
           </div>
 
           {shouldUseChineseImeSink ? (
-            <div data-testid="chinese-input-area" className="mx-auto w-full max-w-5xl flex-none pt-3">
+            <div data-testid="chinese-input-area" className="mx-auto w-full max-w-6xl flex-none pt-3">
               <textarea
                 ref={(node) => {
                   chineseImeInputRef.current = node;
@@ -2318,24 +2385,25 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
               spellCheck={false}
             />
           )}
-        </div>
-
-        {(status === "idle" || isFocusMode) && (
-          <div className={clsx("flex flex-wrap items-center font-mono text-paper/30", isCompactPractice ? "mt-2 gap-2 text-secondary" : "mt-3 gap-3 text-utility")}>
-            {isCompactPractice && <KeyboardIcon className="icon-inline text-paper/25" aria-hidden="true" />}
-            {status === "idle" || !shouldUseChineseImeSink ? (
-              isTouchFirstInput ? (
-                <span>Tap to start</span>
-              ) : (
-                <>
-                  <span>Tab = start</span>
-                  <span>Tab + Enter = restart</span>
-                  <span>Esc = finish</span>
-                </>
-              )
-            ) : <span>Timer running</span>}
           </div>
-        )}
+
+          {(status === "idle" || isFocusMode) && (
+            <div className={clsx("formaltype-typing-hints flex w-full flex-wrap items-center font-mono text-paper/30", isCompactPractice ? "mt-3 gap-2 text-secondary" : "mt-4 gap-3 text-utility")}>
+              {isCompactPractice && <KeyboardIcon className="icon-inline text-paper/25" aria-hidden="true" />}
+              {status === "idle" || !shouldUseChineseImeSink ? (
+                isTouchFirstInput ? (
+                  <span>Tap to start</span>
+                ) : (
+                  <>
+                    <span>Tab = start</span>
+                    <span>Tab + Enter = restart</span>
+                    <span>Esc = finish</span>
+                  </>
+                )
+              ) : <span>Timer running</span>}
+            </div>
+          )}
+        </div>
 
         <div
           data-testid={trainingMode ? "training-ad-slot" : "practice-ad-slot"}

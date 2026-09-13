@@ -67,8 +67,8 @@ describe("TrainingPage", () => {
     render(<TrainingPage />);
     const contentGroup = screen.getByRole("group", { name: "Content" });
 
-    expect(screen.getAllByRole("heading", { level: 1, name: "Focused typing training" }).length).toBeGreaterThan(0);
-    expect(screen.getByText("Choose the content, session length, and difficulty you want to isolate.")).toBeTruthy();
+    expect(screen.queryByText("Focused typing training")).toBeNull();
+    expect(screen.queryByText("Choose the content, session length, and difficulty you want to isolate.")).toBeNull();
     expect(within(contentGroup).getByRole("button", { name: "Words" }).getAttribute("aria-pressed")).toBe("true");
     expect(within(contentGroup).getByRole("button", { name: "Numbers" }).getAttribute("aria-pressed")).toBe("false");
     expect(within(contentGroup).getByRole("button", { name: "Symbols" }).getAttribute("aria-pressed")).toBe("false");
@@ -1192,12 +1192,12 @@ describe("TrainingPage", () => {
     expect(screen.getByTestId("chinese-input-area").contains(input)).toBe(true);
     expect(screen.getByTestId("chinese-input-area").className).toContain("mx-auto");
     expect(screen.getByTestId("chinese-input-area").className).toContain("w-full");
-    expect(screen.getByTestId("chinese-input-area").className).toContain("max-w-5xl");
+    expect(screen.getByTestId("chinese-input-area").className).toContain("max-w-6xl");
     expect(screen.getByTestId("chinese-input-area").className).not.toMatch(/fit|max-content|max-w-3xl/);
     expect(input.className).toContain("w-full");
     expect(input.className).toContain("min-h-[104px]");
     expect(screen.getByTestId("chinese-target-viewport").className).toContain("mx-auto");
-    expect(screen.getByTestId("chinese-target-viewport").className).toContain("flex-1");
+    expect(screen.getByTestId("chinese-target-viewport").className).toContain("flex-none");
     expect(screen.getByTestId("typing-text-container").className).toContain("w-fit");
     expect(screen.getByTestId("chinese-target-viewport").contains(input)).toBe(false);
   });
@@ -1207,26 +1207,30 @@ describe("TrainingPage", () => {
 
     const stage = document.querySelector(".formaltype-practice-shell");
     const viewport = screen.getByTestId("typing-viewport");
-    const timerRegion = screen.getByTestId("typing-timer-region");
 
     expect(stage?.className).toContain("mx-auto");
     expect(stage?.className).toContain("flex");
-    expect(stage?.className).toContain("max-w-");
+    expect(stage?.className).toContain("formaltype-typing-canvas");
     expect(stage?.className).not.toContain("ring-1");
     expect(stage?.className).not.toContain("ring-paper/5");
     expect(stage?.className).not.toContain("side");
     expect(viewport.className).toContain("mx-auto");
-    expect(viewport.className).toContain("h-full");
-    expect(viewport.className).toContain("flex-1");
+    expect(viewport.className).not.toContain("h-full");
+    expect(viewport.className).toContain("flex-none");
     expect(viewport.className).not.toContain("h-[340px]");
-    expect(timerRegion.className).toContain("formaltype-typing-timer-region");
-    expect(timerRegion.compareDocumentPosition(viewport) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(viewport.className).toContain("formaltype-typing-viewport");
+    expect(screen.getByTestId("typing-text-container").className).toContain("formaltype-typing-track");
+    expect(viewport.getAttribute("data-visible-lines")).toBe("3");
+    expect((screen.getByTestId("typing-character-layer").textContent ?? "").length).toBeGreaterThan(500);
     expect(screen.queryByTestId("typing-timer")).toBeNull();
+    expect(screen.queryByTestId("typing-timer-region")).toBeNull();
     expect(screen.queryByTestId("typing-timer-overlay")).toBeNull();
 
     fireEvent.keyDown(stage as Element, { key: "Tab" });
     const timer = screen.getByTestId("typing-timer");
+    const timerRegion = screen.getByTestId("typing-timer-region");
     expect(timerRegion.contains(timer)).toBe(true);
+    expect(timerRegion.compareDocumentPosition(viewport) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(timer.parentElement?.className).toContain("formaltype-typing-timer");
     expect(timer.parentElement?.className).not.toMatch(/text-lg|text-xl|text-2xl|text-\[/);
     expect(stage?.contains(timer)).toBe(true);
@@ -1242,15 +1246,15 @@ describe("TrainingPage", () => {
   });
 
   it.each([
-    ["English", "small", 344, 370, 107],
-    ["English", "medium", 336, 370, 103],
-    ["English", "large", 324, 370, 97],
-    ["Chinese", "small", 342, 370, 106],
-    ["Chinese", "medium", 332, 370, 101],
-    ["Chinese", "large", 320, 370, 95]
+    ["English", "small", 44.8],
+    ["English", "medium", 52],
+    ["English", "large", 59.2],
+    ["Chinese", "small", 44.8],
+    ["Chinese", "medium", 52],
+    ["Chinese", "large", 59.2]
   ] as const)(
-    "scrolls %s Training across a wrapped %s visual line from rendered DOM bounds",
-    async (language, size, activeTop, activeBottom, expectedScrollTop) => {
+    "steps %s Training by one rendered %s visual line when the caret enters row three",
+    async (language, size, lineHeight) => {
       window.localStorage.setItem(
         "formaltype.theme.v1",
         JSON.stringify({
@@ -1288,17 +1292,17 @@ describe("TrainingPage", () => {
 
       const viewport = screen.getByTestId(language === "Chinese" ? "chinese-target-viewport" : "typing-viewport");
       Object.defineProperties(viewport, {
-        clientHeight: { configurable: true, value: 300 },
+        clientHeight: { configurable: true, value: lineHeight * 3 },
         scrollHeight: { configurable: true, value: 900 }
       });
       viewport.scrollTop = 0;
 
       vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
         if (this === viewport) {
-          return makeDomRect(100, 400);
+          return makeDomRect(100, 100 + lineHeight * 3);
         }
         if (this.getAttribute("data-typing-caret") === "true") {
-          return makeDomRect(activeTop, activeBottom);
+          return makeDomRect(100 + lineHeight * 2 + 4, 100 + lineHeight * 2 + 34);
         }
         return makeDomRect(0, 0);
       });
@@ -1327,9 +1331,10 @@ describe("TrainingPage", () => {
       });
 
       expect(screen.getByTestId("typing-character-layer").className).toContain(`formaltype-typing-size-${size}`);
-      expect(viewport.scrollTop).toBe(expectedScrollTop);
-      expect(activeTop - viewport.scrollTop).toBeGreaterThan(100);
-      expect(activeBottom - viewport.scrollTop).toBeLessThan(400);
+      expect(viewport.scrollTop).toBeCloseTo(lineHeight);
+      const activeCenterAfterScroll = 100 + lineHeight * 2 + 19 - viewport.scrollTop;
+      expect(activeCenterAfterScroll).toBeGreaterThanOrEqual(100 + lineHeight);
+      expect(activeCenterAfterScroll).toBeLessThan(100 + lineHeight * 2);
     }
   );
 

@@ -142,7 +142,6 @@ export default function TrainingPage() {
   const trainingMode = useMemo<PracticeTrainingMode>(
     () => ({
       pageTitle: "Focused typing training",
-      pageDescription: "Choose the content, session length, and difficulty you want to isolate.",
       passageId: `training-${contentTypes.join("-")}`,
       configKey: `${contentTypes.join("-")}-${activeMode}-${durationSeconds}-${wordCount}-${wordDifficulty}`,
       controls,

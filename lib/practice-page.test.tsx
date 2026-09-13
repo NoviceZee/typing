@@ -174,14 +174,13 @@ describe("PracticePage passage loading", () => {
     vi.useRealTimers();
   });
 
-  it("renders a restrained visible heading and introduction before passage effects resolve", () => {
+  it("does not render visible introductory copy inside the Practice workspace", () => {
     mockedGetSupabasePassageLibrary.mockReturnValue(new Promise(() => {}));
 
     render(<PracticePage />);
 
-    const heading = screen.getByRole("heading", { level: 1, name: "Typing practice and speed test" });
-    expect(heading.className).not.toContain("sr-only");
-    expect(screen.getByText("Choose English or Chinese, select a timed or infinite session, and begin. No account is required.")).toBeTruthy();
+    expect(screen.queryByText("Typing practice and speed test")).toBeNull();
+    expect(screen.queryByText("Choose English or Chinese, select a timed or infinite session, and begin. No account is required.")).toBeNull();
   });
 
   it.each([
@@ -358,6 +357,41 @@ describe("PracticePage passage loading", () => {
     expect(screen.queryByLabelText("Passage")).toBeNull();
   });
 
+  it("exposes compact test settings as a non-flow overlay without changing the active target", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("local", "Local active", "Local fallback body text.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+
+    render(<PracticePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toContain("Local fallback body text.");
+    });
+
+    const targetBeforeOpening = screen.getByTestId("typing-character-layer").textContent;
+    const trigger = screen.getByRole("button", { name: "Test settings" });
+    const panel = screen.getByTestId("practice-controls");
+
+    expect(screen.getByTestId("practice-settings-summary").textContent).toBe("English · Random · 1m");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(panel.className).toContain("formaltype-practice-settings-panel");
+
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(panel.className).toContain("formaltype-practice-settings-panel-open");
+    expect(screen.getByTestId("typing-character-layer").textContent).toBe(targetBeforeOpening);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(trigger);
+
+    fireEvent.click(trigger);
+    fireEvent.pointerDown(document.body);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("loads an explicitly selected passage even when the stored Random category conflicts", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
@@ -472,20 +506,19 @@ describe("PracticePage passage loading", () => {
 
     const shell = container.querySelector(".formaltype-practice-shell");
     const viewport = screen.getByTestId("typing-viewport");
-    const timerRegion = screen.getByTestId("typing-timer-region");
     expect(screen.queryByTestId("typing-timer")).toBeNull();
+    expect(screen.queryByTestId("typing-timer-region")).toBeNull();
     expect(screen.queryByTestId("typing-timer-overlay")).toBeNull();
-    expect(shell?.contains(timerRegion)).toBe(true);
-    expect(timerRegion.compareDocumentPosition(viewport) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(timerRegion.className).toContain("formaltype-typing-timer-region");
 
     fireEvent.keyDown(window, { key: "Tab" });
     const timer = screen.getByTestId("typing-timer");
+    const timerRegion = screen.getByTestId("typing-timer-region");
     expect(timer.textContent).toBe("1:00");
     expect(timer.parentElement?.className).toContain("formaltype-typing-timer");
     expect(timer.parentElement?.className).not.toMatch(/text-lg|text-xl|text-2xl|text-\[/);
     expect(shell?.contains(timer)).toBe(true);
     expect(timerRegion.contains(timer)).toBe(true);
+    expect(timerRegion.compareDocumentPosition(viewport) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(viewport.contains(timer)).toBe(false);
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
@@ -561,16 +594,17 @@ describe("PracticePage passage loading", () => {
   });
 
   it("keeps the English Practice target layout stable when typing starts", async () => {
+    const longTarget = "Local fallback body text for stable rolling layout. ".repeat(24).trim();
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
-      JSON.stringify([makePassage("local", "Local active", "Local fallback body text for stable layout.")])
+      JSON.stringify([makePassage("local", "Local active", longTarget)])
     );
     mockedGetSupabasePassageLibrary.mockResolvedValue([]);
 
     const { container } = render(<PracticePage />);
 
     await waitFor(() => {
-      expect(container.textContent).toContain("Local fallback body text for stable layout.");
+      expect(container.textContent).toContain(longTarget);
     });
 
     const shell = container.querySelector(".formaltype-practice-shell") as HTMLElement;
@@ -583,8 +617,14 @@ describe("PracticePage passage loading", () => {
     expect(idleShellClassName).toContain("flex");
     expect(idleShellClassName).not.toContain("ring-1");
     expect(idleShellClassName).not.toContain("ring-paper/5");
-    expect(idleViewportClassName).toContain("h-full");
+    expect(idleViewportClassName).toContain("flex-none");
+    expect(idleViewportClassName).not.toContain("h-full");
     expect(idleViewportClassName).not.toContain("h-[340px]");
+    expect(idleViewportClassName).toContain("formaltype-typing-viewport");
+    expect(idleTextContainerClassName).toContain("formaltype-typing-track");
+    expect(viewport.getAttribute("data-visible-lines")).toBe("3");
+    expect(screen.getByTestId("typing-character-layer").textContent).toBe(longTarget);
+    expect(longTarget.length).toBeGreaterThan(1_000);
 
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
@@ -628,7 +668,7 @@ describe("PracticePage passage loading", () => {
     const idleTextContainerClassName = textContainer.className;
 
     expect(inputArea.className).toContain("w-full");
-    expect(inputArea.className).toContain("max-w-5xl");
+    expect(inputArea.className).toContain("max-w-6xl");
     expect(inputArea.className).not.toMatch(/fit|max-content|max-w-3xl/);
     expect(input.className).toContain("w-full");
     expect(input.className).toContain("min-h-[104px]");

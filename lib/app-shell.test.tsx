@@ -243,9 +243,24 @@ describe("AppShell account dropdown", () => {
     const menuButton = screen.getByRole("button", { name: "Open navigation" });
     expect(menuButton.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(menuButton);
-    expect(screen.getByRole("navigation", { name: "Mobile navigation" })).toBeTruthy();
+    const mobileNavigation = screen.getByRole("navigation", { name: "Mobile navigation" });
+    expect(mobileNavigation).toBeTruthy();
+    expect(mobileNavigation.className).toContain("absolute");
     expect(screen.getByRole("button", { name: "Close navigation" }).getAttribute("aria-expanded")).toBe("true");
     fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("navigation", { name: "Mobile navigation" })).toBeNull();
+    expect(document.activeElement).toBe(menuButton);
+  });
+
+  it("dismisses the mobile navigation when clicking outside its overlay", () => {
+    mockState.user = null;
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("navigation", { name: "Mobile navigation" })).toBeTruthy();
+
+    fireEvent.pointerDown(document.body);
+
     expect(screen.queryByRole("navigation", { name: "Mobile navigation" })).toBeNull();
   });
 
