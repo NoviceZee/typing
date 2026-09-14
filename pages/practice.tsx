@@ -2155,7 +2155,7 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
                   </div>
 
                   {!trainingMode?.hideMetadata && (
-                    <p className="mx-auto mt-1 max-w-4xl truncate px-1 font-mono text-secondary text-paper/40" data-testid="practice-passage-metadata">
+                    <p className="formaltype-practice-metadata-slot mx-auto max-w-4xl truncate px-1 font-mono text-secondary text-paper/40" data-testid="practice-passage-metadata">
                       {passage ? `${formatPassageResultMetadata(passage)} · ${modeLabel}` : "Resolving passage..."}
                     </p>
                   )}

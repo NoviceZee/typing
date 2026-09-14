@@ -1,6 +1,7 @@
 import Link from "next/link";
 import React, { ReactNode } from "react";
 import { FeedbackButton } from "@/components/FeedbackButton";
+import { TypingStationMark } from "@/components/TypingStationMark";
 
 export const SITE_FRAME_CLASS = "mx-auto w-full max-w-7xl";
 export const SITE_PAGE_GUTTERS_CLASS = "px-5 md:px-8";
@@ -9,9 +10,10 @@ export function SiteBrand({ href = "/", compact = false, className = "" }: { hre
   return (
     <Link
       href={href}
-      className={`${compact ? "text-wordmark-compact tracking-[0.16em]" : "text-wordmark tracking-[0.18em]"} shrink-0 font-mono font-semibold text-paper ${className}`.trim()}
+      className={`site-brand ${compact ? "text-wordmark-compact tracking-[0.16em]" : "text-wordmark tracking-[0.18em]"} shrink-0 font-mono font-semibold text-paper ${className}`.trim()}
     >
-      Typing Station
+      <TypingStationMark />
+      <span>Typing Station</span>
     </Link>
   );
 }

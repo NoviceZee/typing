@@ -66,8 +66,7 @@ describe("SiteMetadata", () => {
 
     expect(container.querySelector('link[rel="icon"][type="image/png"][sizes="48x48"]')?.getAttribute("href"))
       .toBe("/favicon-48x48.png");
-    expect(container.querySelector('link[rel="icon"][type="image/svg+xml"]')?.getAttribute("href"))
-      .toBe("/favicon.svg");
+    expect(container.querySelector('link[rel="icon"][type="image/svg+xml"]')).toBeNull();
     expect(container.querySelector('link[rel="shortcut icon"]')?.getAttribute("href"))
       .toBe("/favicon.ico");
     expect(container.querySelector('link[rel="apple-touch-icon"][sizes="180x180"]')?.getAttribute("href"))

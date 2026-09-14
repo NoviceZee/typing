@@ -84,6 +84,20 @@ describe("shared Practice and Training stage spacing", () => {
     expect(practiceSource).toContain("max-w-4xl truncate");
   });
 
+  it("keeps Practice metadata visible in a reserved overlay without changing the shared canvas anchor", () => {
+    expect(practiceSource).toContain("formaltype-practice-metadata-slot");
+    expect(practiceSource).toContain('data-testid="practice-passage-metadata"');
+    expect(globalStyles).toMatch(
+      /\.formaltype-practice-metadata-slot\s*\{[^}]*position:\s*absolute;[^}]*top:\s*100%;/
+    );
+    expect(globalStyles).toMatch(
+      /\.formaltype-typing-experience > \[data-testid="practice-header"\]\s*\{[^}]*min-height:\s*2\.75rem;[^}]*position:\s*relative;/
+    );
+    expect(globalStyles).toMatch(
+      /@media\s*\(max-width:\s*1023px\)[\s\S]*?\.formaltype-typing-experience > \[data-testid="practice-header"\]\s*\{[^}]*min-height:\s*5rem;/
+    );
+  });
+
   it("keeps responsive navigation and Practice settings overlays out of document flow", () => {
     expect(appShellSource).toMatch(/mobile-navigation[\s\S]{0,300}?className="[^"]*absolute/);
     expect(practiceSource).toContain("formaltype-practice-settings-compact");

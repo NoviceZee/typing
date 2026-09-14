@@ -1103,6 +1103,40 @@ textarea {
   height: 2.75rem;
 }
 
+.site-brand {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.site-brand-mark {
+  display: block;
+  flex: none;
+  height: 1.75rem;
+  position: relative;
+  width: 2.625rem;
+}
+
+.site-brand-mark-image {
+  height: 100%;
+  inset: 0;
+  object-fit: contain;
+  position: absolute;
+  width: 100%;
+}
+
+.site-brand-mark-image-light {
+  display: none;
+}
+
+:root[data-theme="light"] .site-brand-mark-image-light {
+  display: block;
+}
+
+:root[data-theme="light"] .site-brand-mark-image-dark {
+  display: none;
+}
+
 .site-primary-navigation-full {
   align-items: center;
   display: none;
@@ -1203,7 +1237,17 @@ textarea {
 
 .formaltype-typing-experience > [data-testid="practice-header"] {
   flex: none;
+  min-height: 2.75rem;
   padding-top: 0.75rem;
+  position: relative;
+}
+
+.formaltype-practice-metadata-slot {
+  height: 1rem;
+  inset-inline: 0;
+  line-height: 1rem;
+  position: absolute;
+  top: 100%;
 }
 
 .formaltype-typing-canvas {
@@ -1278,6 +1322,10 @@ textarea {
 }
 
 @media (max-width: 1023px) {
+  .formaltype-typing-experience > [data-testid="practice-header"] {
+    min-height: 5rem;
+  }
+
   .formaltype-practice-settings-compact {
     display: flex;
     height: 1.75rem;

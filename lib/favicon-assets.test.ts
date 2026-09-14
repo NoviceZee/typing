@@ -35,7 +35,6 @@ describe("favicon assets", () => {
       name: "Typing Station",
       short_name: "Typing Station",
       icons: [
-        { src: "/favicon.svg", sizes: "any", type: "image/svg+xml" },
         { src: "/favicon-192x192.png", sizes: "192x192", type: "image/png" }
       ]
     });

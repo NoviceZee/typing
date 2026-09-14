@@ -102,6 +102,34 @@ describe("AppShell account dropdown", () => {
     expect(screen.getByRole("link", { name: "Typing Station" }).getAttribute("href")).toBe("/practice");
   });
 
+  it("renders the transparent brand mark beside the wordmark without changing header geometry", async () => {
+    render(<AppShell sideAd={false}>Content</AppShell>);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /account menu/i })).toBeTruthy();
+    });
+
+    const brand = screen.getByRole("link", { name: "Typing Station" });
+    const mark = screen.getByTestId("typing-station-mark");
+
+    expect(brand.className).toContain("site-brand");
+    expect(mark.tagName.toLowerCase()).toBe("span");
+    expect(mark.getAttribute("aria-hidden")).toBe("true");
+    expect(mark.classList.contains("site-brand-mark")).toBe(true);
+    const variants = Array.from(mark.querySelectorAll("img"));
+    expect(variants.map((image) => image.getAttribute("src"))).toEqual([
+      "/typing-station-mark-light.png",
+      "/typing-station-mark-dark.png"
+    ]);
+    for (const image of variants) {
+      expect(image.getAttribute("alt")).toBe("");
+      expect(image.getAttribute("width")).toBe("42");
+      expect(image.getAttribute("height")).toBe("28");
+      expect(image.getAttribute("loading")).toBe("eager");
+    }
+    expect(screen.getByTestId("site-chrome-row").className).toContain("site-chrome-row");
+  });
+
   it("keeps feedback with the footer links instead of overlaying page content", async () => {
     render(<AppShell sideAd={false}>Content</AppShell>);
 
