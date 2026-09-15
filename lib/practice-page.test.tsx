@@ -1097,6 +1097,54 @@ describe("PracticePage passage loading", () => {
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.completionReason).toBe("text_completed");
   });
 
+  it("finishes an apostrophe-terminated Infinite passage once and freezes later input", async () => {
+    const text = "The question is, 'what they can still become?'";
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("infinite-final-apostrophe", "Final apostrophe", text, "english")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    authState.user = { id: "user-1" };
+
+    render(<PracticePage />);
+    await waitFor(() => expect(screen.getByTestId("typing-character-layer").textContent).toBe(text));
+    fireEvent.click(screen.getByRole("button", { name: "Infinite" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("practice-passage-metadata").textContent).toContain("Infinite");
+    });
+
+    const input = screen.getByLabelText("Typing input") as HTMLTextAreaElement;
+    fireEvent.keyDown(window, { key: "Tab" });
+    enterPracticeText(input, text.slice(0, -1), "english");
+    expect(screen.queryByRole("dialog", { name: /Session ended/i })).toBeNull();
+
+    fireEvent.change(input, { target: { value: text.slice(0, -2) } });
+    expect(input.value).toBe(text.slice(0, -2));
+    expect(screen.queryByRole("dialog", { name: /Session ended/i })).toBeNull();
+
+    fireEvent.change(input, { target: { value: text.slice(0, -1) } });
+    fireEvent.change(input, { target: { value: text } });
+
+    expect(await screen.findAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+    expect(mockedSaveSupabaseTypingResult.mock.calls[0][0]).toMatchObject({
+      typedCharacters: text.length,
+      result: { completionReason: "text_completed", modeDurationSeconds: null }
+    });
+    expect(input.disabled).toBe(true);
+
+    const completedLayerHtml = screen.getByTestId("typing-character-layer").innerHTML;
+    fireEvent.keyDown(input, { key: "Backspace" });
+    fireEvent.change(input, { target: { value: text.slice(0, -1) } });
+    fireEvent.keyDown(input, { key: "Delete" });
+    fireEvent.change(input, { target: { value: `${text}x` } });
+
+    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("typing-character-layer").innerHTML).toBe(completedLayerHtml);
+    expect(screen.getByTestId("typing-character-layer").querySelectorAll(".formaltype-typed-wrong")).toHaveLength(0);
+  });
+
   it("finishes Chinese Infinite Practice when the full target is typed", async () => {
     const text = "客戶測試確認";
     window.localStorage.setItem(
