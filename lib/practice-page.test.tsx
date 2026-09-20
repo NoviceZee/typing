@@ -20,16 +20,41 @@ import { getSupabasePassageLibrary } from "@/lib/passageStorage";
 import { getSupabaseAnalyticsTypingResults, saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 import { readTypingAttemptDetails } from "@/lib/typingStatistics";
 import { getResultAnalyticsDomain } from "@/lib/analyticsDomain";
+import {
+  appendResultReturnQuery,
+  readResultPageSnapshot,
+  writeResultReturnAction
+} from "@/lib/resultPageStorage";
 
 const mockRouter = vi.hoisted(() => ({
   isReady: true,
   query: {} as Record<string, string | string[] | undefined>,
-  asPath: "/practice"
+  asPath: "/practice",
+  push: vi.fn().mockResolvedValue(true),
+  replace: vi.fn().mockResolvedValue(true)
 }));
 
-vi.mock("next/router", () => ({
-  useRouter: () => mockRouter
+const mockRouterStore = vi.hoisted(() => ({
+  version: 0,
+  listeners: new Set<() => void>()
 }));
+
+vi.mock("next/router", async () => {
+  const React = await import("react");
+  return {
+    useRouter: () => {
+      React.useSyncExternalStore(
+        (listener) => {
+          mockRouterStore.listeners.add(listener);
+          return () => mockRouterStore.listeners.delete(listener);
+        },
+        () => mockRouterStore.version,
+        () => mockRouterStore.version
+      );
+      return mockRouter;
+    }
+  };
+});
 
 vi.mock("@/components/AppShell", () => ({
   AppShell: ({
@@ -158,6 +183,7 @@ function mockTouchFirstInput(initialMatches: boolean) {
 describe("PracticePage passage loading", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.sessionStorage.clear();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
     authState.user = null;
     mockedGetSupabasePassageLibrary.mockReset();
@@ -166,6 +192,10 @@ describe("PracticePage passage loading", () => {
     mockRouter.isReady = true;
     mockRouter.query = {};
     mockRouter.asPath = "/practice";
+    mockRouter.push.mockClear();
+    mockRouter.replace.mockClear();
+    mockRouterStore.version = 0;
+    mockRouterStore.listeners.clear();
   });
 
   afterEach(() => {
@@ -735,7 +765,7 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(60_500);
     });
 
-    expect(screen.getAllByRole("dialog", { name: /Time up/i })).toHaveLength(1);
+    expectResultNavigation("time_up");
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].typedCharacters).toBe(0);
   });
@@ -763,7 +793,7 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(60_250);
     });
 
-    expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
+    expectResultNavigation("time_up");
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("typing-timer")).toBeNull();
     expect(screen.getByTestId("typing-character-layer").querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
@@ -804,7 +834,7 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(1_000);
     });
 
-    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expectResultNavigation();
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
   });
 
@@ -835,7 +865,7 @@ describe("PracticePage passage loading", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getAllByRole("dialog", { name: /Time up/i })).toHaveLength(1);
+    expectResultNavigation("time_up");
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].typedCharacters).toBe(target.length - 1);
   });
@@ -865,7 +895,7 @@ describe("PracticePage passage loading", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getAllByRole("dialog", { name: /Time up/i })).toHaveLength(1);
+    expectResultNavigation("time_up");
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].typedCharacters).toBe(4);
     expect((input as HTMLTextAreaElement).value).toBe("Back");
   });
@@ -888,8 +918,7 @@ describe("PracticePage passage loading", () => {
     typeIncrementally(screen.getByLabelText("Typing input"), "Local");
     fireEvent.keyDown(window, { key: "Escape" });
 
-    expect(await screen.findByText("Manual result — not saved.")).toBeTruthy();
-    expect(screen.getByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expectResultNavigation("manual");
     expect(readPreviousResult("local", 60)).toBeNull();
     expect(readTypingAttemptDetails("user-1")).toEqual([]);
     expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
@@ -910,7 +939,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     fireEvent.keyDown(window, { key: "Escape" });
 
-    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expectResultNavigation();
     const layer = screen.getByTestId("typing-character-layer");
     expect(layer.querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
     expect(layer.querySelectorAll('[data-typing-caret-indicator="true"]')).toHaveLength(0);
@@ -942,12 +971,12 @@ describe("PracticePage passage loading", () => {
     );
     mockedGetSupabasePassageLibrary.mockResolvedValue([]);
     const originalSetItem = Storage.prototype.setItem;
-    const setItemSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation((key: string, value: string) => {
+    const setItemSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key: string, value: string) {
       if (key === "formaltype_previous_results" || key === "formaltype.typing_attempt_details.v1") {
         throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
       }
 
-      return originalSetItem.call(window.localStorage, key, value);
+      return originalSetItem.call(this, key, value);
     });
 
     try {
@@ -958,8 +987,7 @@ describe("PracticePage passage loading", () => {
       });
 
       await expect(finishTimedPractice("Local fallback")).resolves.toBeUndefined();
-      expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
-      expect(screen.getByText("Session review")).toBeTruthy();
+      expectResultNavigation();
     } finally {
       setItemSpy.mockRestore();
     }
@@ -991,8 +1019,8 @@ describe("PracticePage passage loading", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("5:00").length).toBeGreaterThan(0);
+    expectResultNavigation("time_up");
+    expect(getLatestResultSnapshot().result.modeDurationSeconds).toBe(300);
     expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
     expect(screen.queryByTestId("typing-timer")).toBeNull();
 
@@ -1002,8 +1030,8 @@ describe("PracticePage passage loading", () => {
     expect(input.value).toBe(valueAtFinish);
 
     fireEvent.keyDown(window, { key: "Enter" });
-    expect(screen.getByRole("dialog", { name: /Time up/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    expectResultNavigation("time_up");
+    expectResultNavigation();
   });
 
   it("finishes and saves Chinese 1m Practice as Chinese when the timer expires", async () => {
@@ -1039,7 +1067,7 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(60_250);
     });
 
-    expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
+    expectResultNavigation("time_up");
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
     const savedPayload = mockedSaveSupabaseTypingResult.mock.calls[0][0];
     expect(savedPayload.passage.language).toBe("chinese");
@@ -1092,7 +1120,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), text);
 
-    expect(await screen.findByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expectResultNavigation();
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.completionReason).toBe("text_completed");
   });
@@ -1125,7 +1153,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.change(input, { target: { value: text.slice(0, -1) } });
     fireEvent.change(input, { target: { value: text } });
 
-    expect(await screen.findAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expectResultNavigation();
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0]).toMatchObject({
       typedCharacters: text.length,
@@ -1139,7 +1167,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(input, { key: "Delete" });
     fireEvent.change(input, { target: { value: `${text}x` } });
 
-    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expectResultNavigation();
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("typing-character-layer").innerHTML).toBe(completedLayerHtml);
     expect(screen.getByTestId("typing-character-layer").querySelectorAll(".formaltype-typed-wrong")).toHaveLength(0);
@@ -1180,7 +1208,7 @@ describe("PracticePage passage loading", () => {
       });
     }
 
-    expect(await screen.findByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expectResultNavigation();
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].result.completionReason).toBe("text_completed");
     expect(mockedSaveSupabaseTypingResult.mock.calls[0][0].passage.language).toBe("chinese");
@@ -1214,8 +1242,8 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     fireEvent.keyDown(window, { key: "Escape" });
 
-    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
-    expect(screen.getByText("Manual result — not saved.")).toBeTruthy();
+    expectResultNavigation();
+    expectResultNavigation("manual");
     expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
   });
 
@@ -1276,7 +1304,7 @@ describe("PracticePage passage loading", () => {
     });
     enterPracticeText(input, infiniteTarget, language, infiniteTarget.slice(0, midpoint));
 
-    expect(screen.getByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expectResultNavigation();
     const storedInfiniteResult = Object.values(readPreviousResults()).find(
       (result) => result.targetSnapshot === infiniteTarget
     ) ?? null;
@@ -1293,7 +1321,7 @@ describe("PracticePage passage loading", () => {
         modeDurationSeconds: null
       });
     }
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     expect(screen.getByTestId("typing-character-layer").textContent).toBe(completedTargetSnapshot);
     expect(screen.queryByTestId("previous-pace-marker")).toBeNull();
 
@@ -1338,7 +1366,7 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(8_000);
     });
     enterPracticeText(input, first.content, "english", first.content.slice(0, midpoint));
-    fireEvent.click(screen.getAllByRole("button", { name: "Next passage" }).at(-1)!);
+    await returnFromResult("next");
 
     expect(screen.getByTestId("typing-character-layer").textContent).toBe(second.content);
     fireEvent.keyDown(window, { key: "Tab" });
@@ -1364,9 +1392,9 @@ describe("PracticePage passage loading", () => {
     });
     enterPracticeText(screen.getByLabelText("Typing input"), "Manual", "english");
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.getByText("Manual result — not saved.")).toBeTruthy();
+    expectResultNavigation("manual");
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     fireEvent.keyDown(window, { key: "Tab" });
     enterPracticeText(screen.getByLabelText("Typing input"), "M", "english");
     expect(screen.queryByTestId("previous-pace-marker")).toBeNull();
@@ -1589,7 +1617,7 @@ describe("PracticePage passage loading", () => {
 
     fireEvent.keyDown(window, { key: "Tab" });
     fireEvent.input(input, { target: { value: "客戶測試" }, nativeEvent: { isComposing: false, data: "客戶測試" } });
-    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expectResultNavigation();
 
     await waitFor(() => {
       expect(mockedSaveSupabaseTypingResult).toHaveBeenCalled();
@@ -1638,8 +1666,7 @@ describe("PracticePage passage loading", () => {
       nativeEvent: { isComposing: false, data: targetText }
     });
 
-    const resultDialog = await screen.findByRole("dialog");
-    expect(resultDialog.textContent).toContain("Session ended");
+    expectResultNavigation("text_completed");
   });
 
   it("completes multiline Chinese poetry on the final comparable Chinese character", async () => {
@@ -1648,7 +1675,7 @@ describe("PracticePage passage loading", () => {
 
     enterPracticeText(input, target.replace(/\n/g, ""), "chinese");
 
-    expect(await screen.findByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expectResultNavigation();
     expect(screen.getByTestId("typing-character-layer").querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
     expect(screen.queryByLabelText("Terminal typing caret")).toBeNull();
   });
@@ -1672,14 +1699,14 @@ describe("PracticePage passage loading", () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0));
     });
 
-    expect(await screen.findByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expectResultNavigation();
     expect((input as HTMLTextAreaElement).value).toBe(typed);
     const finalEntry = Array.from(
       screen.getByTestId("typing-character-layer").querySelectorAll<HTMLElement>("[data-target-index]")
     ).at(-1);
     expect(finalEntry?.textContent).toBe("。");
     expect(screen.getByTestId("typing-character-layer").querySelector("[data-active-target='true']")).toBeNull();
-    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expectResultNavigation();
   });
 
   it.each(REAL_POETRY_PASSAGES)(
@@ -1712,7 +1739,7 @@ describe("PracticePage passage loading", () => {
       });
 
       expect((input as HTMLTextAreaElement).value).toBe(text);
-      expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+      expectResultNavigation();
       expect(screen.getByTestId("typing-character-layer").querySelector("[data-active-target='true']")).toBeNull();
     }
   );
@@ -1734,7 +1761,7 @@ describe("PracticePage passage loading", () => {
       });
 
       expect((input as HTMLTextAreaElement).value).toBe(text);
-      expect(await screen.findAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+      expectResultNavigation();
       const finalEntry = screen
         .getByTestId("typing-character-layer")
         .querySelector<HTMLElement>(`[data-target-index="${text.length - 1}"]`);
@@ -1754,7 +1781,7 @@ describe("PracticePage passage loading", () => {
 
       enterPracticeText(input, text, "chinese");
 
-      expect(await screen.findAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+      expectResultNavigation();
       expect(screen.getByTestId("typing-character-layer").querySelector("[data-active-target='true']")).toBeNull();
     }
   );
@@ -1771,7 +1798,7 @@ describe("PracticePage passage loading", () => {
 
       enterPracticeText(input, text, "chinese");
 
-      expect(await screen.findAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+      expectResultNavigation();
       const finalEntry = screen
         .getByTestId("typing-character-layer")
         .querySelector<HTMLElement>(`[data-target-index="${text.length - 1}"]`);
@@ -1801,9 +1828,9 @@ describe("PracticePage passage loading", () => {
         await vi.advanceTimersByTimeAsync(30_000);
       });
       enterPracticeText(input, text, "chinese", text.slice(0, 1));
-      expect(screen.getByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+      expectResultNavigation();
 
-      fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+      await returnFromResult();
       expect(screen.getByTestId("typing-character-layer").textContent).toBe(text);
       fireEvent.keyDown(window, { key: "Tab" });
       enterPracticeText(screen.getByLabelText("Typing input"), text.slice(0, 1), "chinese");
@@ -1833,7 +1860,7 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(60_500);
     });
 
-    expect(screen.getAllByRole("dialog", { name: /Time up/i })).toHaveLength(1);
+    expectResultNavigation("time_up");
     expect(screen.getByTestId("typing-character-layer").querySelectorAll("[data-typing-caret='true']")).toHaveLength(0);
     expect(screen.queryByLabelText("Terminal typing caret")).toBeNull();
   }, 10_000);
@@ -1876,7 +1903,7 @@ describe("PracticePage passage loading", () => {
     });
 
     expect((input as HTMLTextAreaElement).value).toBe(target);
-    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expectResultNavigation();
     expect(screen.getByTestId("typing-character-layer").querySelectorAll('[data-typing-caret="true"]')).toHaveLength(0);
   });
 
@@ -1886,7 +1913,7 @@ describe("PracticePage passage loading", () => {
 
     enterPracticeText(input, target.trimEnd().replace(/\n/g, ""), "chinese");
 
-    expect(await screen.findByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expectResultNavigation();
   });
 
   it("opens exactly one Result for a completed multiline Chinese target", async () => {
@@ -1900,7 +1927,7 @@ describe("PracticePage passage loading", () => {
       nativeEvent: { isComposing: false, data: typed.at(-1) }
     });
 
-    expect(await screen.findAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expectResultNavigation();
   });
 
   it("processes compositionend containing the final Chinese character before completing once", async () => {
@@ -1918,7 +1945,7 @@ describe("PracticePage passage loading", () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0));
     });
 
-    expect(await screen.findAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expectResultNavigation();
   });
 
   it("restores Previous Pace after eligible multiline Chinese poetry completion", async () => {
@@ -1934,9 +1961,9 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(16_000);
     });
     enterPracticeText(input, typed, "chinese", typed.slice(0, 1));
-    expect(screen.getByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expectResultNavigation();
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     fireEvent.keyDown(window, { key: "Tab" });
     enterPracticeText(screen.getByLabelText("Typing input"), typed.slice(0, 1), "chinese");
 
@@ -1978,9 +2005,9 @@ describe("PracticePage passage loading", () => {
 
     await finishTimedPractice("L");
 
-    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    expectResultNavigation();
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     const justFinishedResult = readPreviousResult("local", 60);
 
     expect(justFinishedResult).toBeTruthy();
@@ -2005,9 +2032,9 @@ describe("PracticePage passage loading", () => {
 
     await finishTimedPractice("Local fallback body text");
 
-    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    expectResultNavigation();
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     const justFinishedResult = readPreviousResult("local", 60);
 
     expect(justFinishedResult).toBeTruthy();
@@ -2041,10 +2068,10 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(60_250);
     });
 
-    expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    expectResultNavigation("time_up");
+    expectResultNavigation();
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     const justFinishedResult = readPreviousResult("local", 60);
 
     expect(justFinishedResult).toBeTruthy();
@@ -2078,7 +2105,7 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(60_250);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     const justFinishedResult = readPreviousResult("local", 60);
 
     expect(justFinishedResult).toBeTruthy();
@@ -2150,7 +2177,7 @@ describe("PracticePage passage loading", () => {
       });
       enterPracticeText(input, target, "english", target.slice(0, 1));
 
-      fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+      await returnFromResult();
       fireEvent.keyDown(window, { key: "Tab" });
       typeIncrementally(screen.getByLabelText("Typing input"), target.slice(0, 1));
 
@@ -2164,10 +2191,7 @@ describe("PracticePage passage loading", () => {
     10_000
   );
 
-  it.each([
-    { nextMode: "5m", label: "duration change" },
-    { nextMode: "Infinite", label: "timed to Infinite change" }
-  ])("restores Previous Pace from the exact completed snapshot after a $label", async ({ nextMode }) => {
+  it("restores Previous Pace from the exact completed snapshot after returning from the result page", async () => {
     const target = "Repeat this exact completed target snapshot.";
     window.localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify({ requireTabToStart: true }));
     window.localStorage.setItem(
@@ -2188,11 +2212,9 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(16_000);
     });
     enterPracticeText(input, target, "english", target.slice(0, 1));
-    expect(screen.getByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expectResultNavigation();
 
-    fireEvent.click(screen.getByRole("button", { name: nextMode }));
-    expect(readPreviousResult("repeat-snapshot", nextMode === "5m" ? 300 : "infinite")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     expect(screen.getByTestId("typing-character-layer").textContent).toBe(target);
 
     fireEvent.keyDown(window, { key: "Tab" });
@@ -2226,11 +2248,9 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(16_000);
     });
     enterPracticeText(input, target, "chinese", target.slice(0, 1));
-    expect(screen.getByRole("dialog", { name: /Session ended/i })).toBeTruthy();
+    expectResultNavigation();
 
-    fireEvent.click(screen.getByRole("button", { name: "5m" }));
-    expect(readPreviousResult("repeat-chinese-tab", 300)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     fireEvent.keyDown(window, { key: "Tab" });
     enterPracticeText(screen.getByLabelText("Typing input"), target.slice(0, 1), "chinese");
 
@@ -2260,7 +2280,7 @@ describe("PracticePage passage loading", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_250);
     });
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "P");
     await act(async () => {
@@ -2300,7 +2320,7 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(60_250);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
@@ -2339,7 +2359,7 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(60_250);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     fireEvent.keyDown(window, { key: "Tab" });
     typeIncrementally(screen.getByLabelText("Typing input"), "L");
 
@@ -2387,9 +2407,9 @@ describe("PracticePage passage loading", () => {
 
     await finishTimedPractice("L", 300);
 
-    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    expectResultNavigation();
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     const justFinishedResult = readPreviousResult("local", 300);
 
     expect(justFinishedResult).toBeTruthy();
@@ -2400,7 +2420,7 @@ describe("PracticePage passage loading", () => {
     expect((screen.getByLabelText("Typing input") as HTMLTextAreaElement).value).toBe("");
   });
 
-  it("keeps previous comparison after closing the result modal and restarting", async () => {
+  it("keeps previous comparison after returning from the result page and restarting", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,
       JSON.stringify([makePassage("local", "Local active", "Local fallback body text for typing.")])
@@ -2415,12 +2435,8 @@ describe("PracticePage passage loading", () => {
 
     await finishTimedPractice("Local fallback body text");
 
-    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
-
     vi.useRealTimers();
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Restart" })));
-    fireEvent.click(screen.getByRole("button", { name: "Restart" }));
+    await returnFromResult();
     const justFinishedResult = readPreviousResult("local", 60);
 
     expect(justFinishedResult).toBeTruthy();
@@ -2446,9 +2462,9 @@ describe("PracticePage passage loading", () => {
 
     await finishTimedPractice("Local fallback body text");
 
-    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    expectResultNavigation();
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     const firstResult = readPreviousResult("local", 60);
 
     expect(firstResult).toBeTruthy();
@@ -2460,8 +2476,7 @@ describe("PracticePage passage loading", () => {
     fireEvent.keyDown(window, { key: "Escape" });
 
     await waitFor(() => {
-      expect(screen.getByText("Previous Attempt")).toBeTruthy();
-      expect(screen.getAllByText(`previous ${firstResult?.wpm.toFixed(1)}`).length).toBeGreaterThan(0);
+      expect(expectResultNavigation("manual").previousResult?.wpm).toBe(firstResult?.wpm);
     });
   });
 
@@ -2485,9 +2500,9 @@ describe("PracticePage passage loading", () => {
 
     await finishTimedPractice("Local fallback body text");
 
-    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    expectResultNavigation();
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     const localResult = readPreviousResult("local", 60);
 
     expect(localResult).toBeTruthy();
@@ -2847,19 +2862,9 @@ describe("PracticePage passage loading", () => {
     typeIncrementally(screen.getByLabelText("Typing input"), "Aocal fallback body text");
     fireEvent.keyDown(window, { key: "Escape" });
 
-    await waitFor(() => {
-      expect(screen.getByText("Session review")).toBeTruthy();
-    });
-
-    expect(screen.getByText("Expected finger")).toBeTruthy();
-    expect(screen.getByText("Typed finger")).toBeTruthy();
-    expect(screen.getByText("Classification")).toBeTruthy();
-    expect(screen.getByText("Right Ring")).toBeTruthy();
-    expect(screen.getAllByText("Left Pinky").length).toBeGreaterThan(0);
-    expect(screen.getByText("Wrong hand")).toBeTruthy();
-    const errorMarker = screen.getByRole("img", { name: "WPM over time" }).querySelector('[data-testid="attempt-error-marker"]');
-    expect(errorMarker).toBeTruthy();
-    expect(errorMarker?.querySelector("line")?.getAttribute("stroke")).toBe("rgb(var(--chart-danger))");
+    const snapshot = expectResultNavigation("manual");
+    expect(snapshot.result.characterStatuses.some((character) => character.status === "wrong")).toBe(true);
+    expect(snapshot.errorEvents.length).toBeGreaterThan(0);
   });
 
   it("keeps a corrected typo visible as an X on the result graph", async () => {
@@ -2884,16 +2889,8 @@ describe("PracticePage passage loading", () => {
     fireEvent.change(input, { target: { value: "L" } });
     fireEvent.keyDown(window, { key: "Escape" });
 
-    await waitFor(() => {
-      expect(screen.getByText("Errors encountered")).toBeTruthy();
-    });
-    const chart = screen.getByRole("img", { name: "WPM over time" });
-    const marker = chart.querySelector('[data-testid="attempt-error-marker"]');
-    expect(marker).toBeTruthy();
-    expect(marker?.getAttribute("data-error-count")).toBe("2");
-    expect(marker?.querySelector("line")?.getAttribute("stroke")).toBe("rgb(var(--chart-danger))");
-    expect(screen.getByText("Errors encountered").parentElement?.textContent).toContain("2");
-    expect(screen.queryByText("Corrected errors")).toBeNull();
+    const snapshot = expectResultNavigation("manual");
+    expect(snapshot.errorEvents).toHaveLength(2);
   });
 
   it("plays keyboard sound only for valid typing changes during a running session", async () => {
@@ -3045,7 +3042,7 @@ describe("PracticePage passage loading", () => {
 
     await finishTimedPractice("Local fallback body text");
 
-    expect(screen.getByRole("button", { name: "Restart same passage" })).toBeTruthy();
+    expectResultNavigation();
 
     const details = readTypingAttemptDetails("user-1");
     expect(details).toHaveLength(1);
@@ -3067,12 +3064,12 @@ describe("PracticePage passage loading", () => {
     await waitFor(() => expect(container.textContent).toContain("Local fallback body text for typing"));
 
     await finishTimedPractice("L");
+    vi.useRealTimers();
     await act(async () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("alert").textContent).toContain("Cloud save failed");
-    expect(screen.getByText("This Result")).toBeTruthy();
+    await waitFor(() => expect(getLatestResultSnapshot().cloudSaveState).toBe("failed"));
     expect(warnSpy).toHaveBeenCalledWith("Supabase typing result save failed", expect.any(Error));
     warnSpy.mockRestore();
   });
@@ -3094,25 +3091,25 @@ describe("PracticePage passage loading", () => {
     await waitFor(() => expect(container.textContent).toContain("Local fallback body text for typing"));
 
     await finishTimedPractice("L");
-    expect(screen.getByText("Saving result…")).toBeTruthy();
+    expect(getLatestResultSnapshot().cloudSaveState).toBe("saving");
 
-    fireEvent.click(screen.getByRole("button", { name: "Restart same passage" }));
+    await returnFromResult();
     await finishTimedPractice("L");
-    expect(screen.getByText("Saving result…")).toBeTruthy();
+    expect(getLatestResultSnapshot().cloudSaveState).toBe("saving");
+    vi.useRealTimers();
 
     await act(async () => {
       resolveFirstSave({ id: "first-result", created_at: "2026-07-14T01:00:00.000Z" });
       await Promise.resolve();
     });
 
-    expect(screen.getByText("Saving result…")).toBeTruthy();
-    expect(screen.queryByText("Result saved to your account.")).toBeNull();
+    expect(getLatestResultSnapshot().cloudSaveState).toBe("saving");
 
     await act(async () => {
       resolveSecondSave({ id: "second-result", created_at: "2026-07-14T01:01:00.000Z" });
       await Promise.resolve();
     });
-    expect(screen.getByText("Result saved to your account.")).toBeTruthy();
+    await waitFor(() => expect(getLatestResultSnapshot().cloudSaveState).toBe("saved"));
   });
 
   it("flags suspicious bursts and does not save or update previous pace", async () => {
@@ -3135,9 +3132,7 @@ describe("PracticePage passage loading", () => {
     });
     fireEvent.keyDown(window, { key: "Escape" });
 
-    await waitFor(() => {
-      expect(screen.getByText("This result was not saved because suspicious input was detected.")).toBeTruthy();
-    });
+    await waitFor(() => expect(expectResultNavigation("manual").isSuspicious).toBe(true));
 
     expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
     expect(readPreviousResult("local", 60)).toBeNull();
@@ -3176,7 +3171,7 @@ describe("PracticePage passage loading", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expectResultNavigation();
     expect(screen.queryByText(/suspicious input was detected/i)).toBeNull();
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
   });
@@ -3207,7 +3202,7 @@ describe("PracticePage passage loading", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getAllByRole("dialog", { name: /Session ended/i })).toHaveLength(1);
+    expectResultNavigation();
     expect(screen.queryByText(/suspicious input was detected/i)).toBeNull();
     expect(mockedSaveSupabaseTypingResult).toHaveBeenCalledTimes(1);
   });
@@ -3237,7 +3232,7 @@ describe("PracticePage passage loading", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/suspicious input was detected/i)).toBeTruthy();
+    expect(expectResultNavigation("text_completed").isSuspicious).toBe(true);
     expect(mockedSaveSupabaseTypingResult).not.toHaveBeenCalled();
   });
 
@@ -3454,6 +3449,41 @@ async function finishTimedPractice(value: string, durationSeconds = 60) {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(durationSeconds * 1_000 + 250);
   });
+}
+
+function getLatestResultSnapshot() {
+  const resultNavigation = [...mockRouter.push.mock.calls]
+    .reverse()
+    .map(([href]) => href)
+    .find((href): href is string => typeof href === "string" && href.startsWith("/result/"));
+  expect(resultNavigation).toBeTruthy();
+  const attemptId = decodeURIComponent(resultNavigation!.slice("/result/".length));
+  const snapshot = readResultPageSnapshot(attemptId);
+  expect(snapshot).toBeTruthy();
+  return snapshot!;
+}
+
+function expectResultNavigation(completionReason?: "time_up" | "text_completed" | "manual") {
+  const snapshot = getLatestResultSnapshot();
+  if (completionReason) {
+    expect(snapshot.result.completionReason).toBe(completionReason);
+  }
+  return snapshot;
+}
+
+async function returnFromResult(action: "restart" | "next" = "restart") {
+  const snapshot = getLatestResultSnapshot();
+  writeResultReturnAction({ attemptId: snapshot.attemptId, action });
+  mockRouter.query = { resultAction: action, attempt: snapshot.attemptId };
+  mockRouter.asPath = appendResultReturnQuery(snapshot.originHref, snapshot.attemptId, action);
+
+  await act(async () => {
+    mockRouterStore.version += 1;
+    mockRouterStore.listeners.forEach((listener) => listener());
+    await Promise.resolve();
+  });
+
+  expect(mockRouter.replace).toHaveBeenCalledWith(snapshot.originHref, undefined, { shallow: true });
 }
 
 function makeRecentResult(id: string, passage_title: string, duration_seconds: number, wpm: number, passage_category = "Business email") {

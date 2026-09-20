@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpenText, Clock3, ImageIcon, KeyboardIcon, Languages, RefreshCw, RotateCcw, Shuffle, SlidersHorizontal, X } from "lucide-react";
+import { ArrowRight, BookOpenText, Clock3, ImageIcon, KeyboardIcon, Languages, RotateCcw, Shuffle, SlidersHorizontal, X } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -113,11 +113,19 @@ import { SessionReview } from "@/components/practice/SessionReview";
 import { PassagePicker } from "@/components/PassagePicker";
 import { Button, IconButton } from "@/components/Controls";
 import { parsePracticeRoutePreset } from "@/lib/routePresets";
+import {
+  clearResultReturnAction,
+  readResultPageSnapshot,
+  readResultReturnAction,
+  updateResultPageSnapshot,
+  writeResultPageSnapshot
+} from "@/lib/resultPageStorage";
 
 export type PracticeTrainingMode = {
   pageTitle: string;
   passageId: string;
   configKey?: string;
+  resultReturnHref?: string;
   controls?: ReactNode;
   session:
     | { kind: "time"; seconds: number }
@@ -234,6 +242,7 @@ function PracticeRoute() {
 }
 
 function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { routeState: PracticeRouteState }) {
+  const router = useRouter();
   const routeLanguageQuery = routeState.language;
   const routeModeQuery = routeState.mode;
   const { user } = useAuth();
@@ -247,16 +256,7 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
   const [remainingSeconds, setRemainingSeconds] = useState(60);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
-  const [lastResult, setLastResult] = useState<TypingResult | null>(null);
-  const [lastResultPassage, setLastResultPassage] = useState<StoredPassage | null>(null);
-  const [attemptTimeline, setAttemptTimeline] = useState<AttemptTimelinePoint[]>([]);
-  const [attemptErrorEvents, setAttemptErrorEvents] = useState<AttemptErrorEvent[]>([]);
-  const [recentResults, setRecentResults] = useState<SupabaseOwnTypingResultRow[]>([]);
-  const [progressMilestones, setProgressMilestones] = useState<CelebrationMilestone[]>([]);
-  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
-  const [cloudSaveState, setCloudSaveState] = useState<CloudSaveState>("idle");
   const [passageNotice, setPassageNotice] = useState("");
-  const [isAttemptSuspicious, setIsAttemptSuspicious] = useState(false);
   const [isInputActivated, setIsInputActivated] = useState(false);
   const [previousResult, setPreviousResult] = useState<PreviousTypingResult | null>(null);
   const [repeatedTargetIdentity, setRepeatedTargetIdentity] = useState<string | null>(null);
@@ -272,7 +272,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
   const chineseImeInputRef = useRef<HTMLTextAreaElement | null>(null);
   const typingWindowRef = useRef<HTMLDivElement>(null);
   const typingTextRef = useRef<HTMLDivElement>(null);
-  const resultPanelRestartButtonRef = useRef<HTMLButtonElement>(null);
   const passagePickerButtonRef = useRef<HTMLButtonElement>(null);
   const practiceSettingsButtonRef = useRef<HTMLButtonElement>(null);
   const practiceSettingsPanelRef = useRef<HTMLDivElement>(null);
@@ -300,9 +299,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
   const libraryLoadPromiseRef = useRef<Promise<LibraryPassage[]> | null>(null);
   const isTabPressedRef = useRef(false);
   const isInputActivatedRef = useRef(false);
-  // Keep modal visibility synchronous with session refs so a timer completion
-  // cannot race a pending keyboard shortcut before React commits the render.
-  const isResultModalOpenRef = useRef(false);
   const isComposingRef = useRef(false);
   const explicitCompositionActiveRef = useRef(false);
   const awaitingChineseFinalCommitRef = useRef(false);
@@ -327,6 +323,8 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
   const completedAttemptSnapshotRef = useRef<CompletedAttemptSnapshot | null>(null);
   const repeatedAttemptSnapshotRef = useRef<CompletedAttemptSnapshot | null>(null);
   const initializedPracticeRouteRef = useRef<string | null>(null);
+  const resultReturnActionHandledRef = useRef<string | null>(null);
+  const loadNextPassageRef = useRef<(basePassage?: StoredPassage) => void>(() => {});
 
   useEffect(() => {
     document.documentElement.classList.add("formaltype-typing-page");
@@ -455,7 +453,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
     themeSettings.previousPaceEnabled === "on" &&
       previousComparisonMatches &&
       isRunning &&
-      !isResultModalOpen &&
       previousResult?.previousPaceTimeline?.length
   );
   const setCharacterRef = useCallback(
@@ -602,20 +599,11 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
       if (chineseImeInputRef.current) {
         chineseImeInputRef.current.value = "";
       }
-      setAttemptTimeline([]);
-      setAttemptErrorEvents([]);
-      setIsAttemptSuspicious(false);
       setElapsedSeconds(0);
       elapsedSecondsRef.current = 0;
       setRemainingSeconds(resetIsTimedMode ? resetDurationSeconds : 0);
       setStartedAt(null);
       setFinishedAt(null);
-      setLastResult(null);
-      setLastResultPassage(null);
-      setProgressMilestones([]);
-      setCloudSaveState("idle");
-      isResultModalOpenRef.current = false;
-      setIsResultModalOpen(false);
       setPreviousResult(
         previousResultOverride !== undefined
           ? previousResultOverride
@@ -831,12 +819,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
     resetActiveSessionState();
   }, [resetActiveSessionState]);
 
-  const closeResultModal = useCallback(() => {
-    isResultModalOpenRef.current = false;
-    setIsResultModalOpen(false);
-    window.requestAnimationFrame(() => resultPanelRestartButtonRef.current?.focus());
-  }, []);
-
   const beginSessionTransaction = useCallback((sessionStartedAt: number, sessionId: string) => {
     if (!passage) return null;
     const modeKind = isTimedMode
@@ -929,8 +911,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
           : 0
       );
       setStatus("finished");
-      isResultModalOpenRef.current = true;
-      setIsResultModalOpen(true);
       cancelPendingChineseImeFallback();
       isComposingRef.current = false;
       explicitCompositionActiveRef.current = false;
@@ -958,8 +938,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
       pendingSoundKeyTypeRef.current = null;
       inputRef.current?.blur();
       chineseImeInputRef.current?.blur();
-      setRecentResults([]);
-      setProgressMilestones([]);
       const finalResult = calculateResult({
         target: completedSession.target.comparableText,
         typed: completedSession.input,
@@ -1019,14 +997,31 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
         }
       }
       setPreviousResult(comparisonPreviousResult);
-      setLastResult(finalResult);
-      setLastResultPassage(sessionPassage);
-      setAttemptTimeline(completedTimeline);
-      setAttemptErrorEvents([...completedSession.errorEvents]);
-      setIsAttemptSuspicious(isSuspicious);
 
       const completedSessionGeneration = activeSessionGenerationRef.current;
       const completedAttemptId = activeAttemptIdRef.current;
+      const originHref = trainingMode?.resultReturnHref ??
+        `/practice?language=${practiceLanguage}&mode=${practiceModeId}`;
+      const initialCloudSaveState: CloudSaveState =
+        user && shouldPersistResult && !isSuspicious ? "saving" : "idle";
+      writeResultPageSnapshot({
+        version: 1,
+        attemptId: completedAttemptId,
+        result: finalResult,
+        passage: sessionPassage,
+        previousResult: comparisonPreviousResult,
+        restartPreviousResult: completedAttemptSnapshotRef.current?.previousResult ?? comparisonPreviousResult,
+        restartTargetIdentity: completedAttemptSnapshotRef.current?.targetIdentity ?? null,
+        recentResults: user ? [] : null,
+        progressMilestones: [],
+        attemptTimeline: completedTimeline,
+        errorEvents: [...completedSession.errorEvents],
+        modeLabel,
+        isSuspicious,
+        cloudSaveState: initialCloudSaveState,
+        originHref
+      });
+      void router.push(`/result/${encodeURIComponent(completedAttemptId)}`);
       const isCurrentCompletedSession = () =>
         activeSessionGenerationRef.current === completedSessionGeneration &&
         activeAttemptIdRef.current === completedAttemptId &&
@@ -1036,7 +1031,8 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
         void getSupabaseOwnTypingResults(user.id, 50)
           .then((typingResults) => {
             if (isCurrentCompletedSession()) {
-              setRecentResults(filterComparableRecentResults(typingResults, sessionPassage, finalResult));
+              const comparableResults = filterComparableRecentResults(typingResults, sessionPassage, finalResult);
+              updateResultPageSnapshot(completedAttemptId, { recentResults: comparableResults });
             }
           })
           .catch((error) => {
@@ -1044,7 +1040,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
           });
 
         if (shouldPersistResult && !isSuspicious) {
-          setCloudSaveState("saving");
           void saveSupabaseTypingResult({
             userId: user.id,
             attemptId: completedAttemptId,
@@ -1055,7 +1050,7 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
           })
             .then((savedResult) => {
               if (isCurrentCompletedSession()) {
-                setCloudSaveState("saved");
+                updateResultPageSnapshot(completedAttemptId, { cloudSaveState: "saved" });
               }
               if (attemptDetail && isProgressionEligible) {
                 void saveSupabaseTypingAttemptDetail(attemptDetail, savedResult.id).catch((error) => {
@@ -1068,13 +1063,12 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
               void getSupabaseAnalyticsTypingResults(user.id)
                 .then((typingResults) => {
                   if (isCurrentCompletedSession()) {
-                    setProgressMilestones(
-                      buildProgressCelebrationMilestones(
-                        typingResults.filter((typingResult) => typingResult.id !== savedResult.id),
-                        sessionPassage,
-                        { ...finalResult, completedAt: savedResult.created_at }
-                      )
+                    const nextMilestones = buildProgressCelebrationMilestones(
+                      typingResults.filter((typingResult) => typingResult.id !== savedResult.id),
+                      sessionPassage,
+                      { ...finalResult, completedAt: savedResult.created_at }
                     );
+                    updateResultPageSnapshot(completedAttemptId, { progressMilestones: nextMilestones });
                   }
                 })
                 .catch((error) => {
@@ -1083,14 +1077,14 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
             })
             .catch((error) => {
               if (isCurrentCompletedSession()) {
-                setCloudSaveState("failed");
+                updateResultPageSnapshot(completedAttemptId, { cloudSaveState: "failed" });
               }
               console.warn("Supabase typing result save failed", error);
             });
         }
       }
     },
-    [cancelPendingChineseImeFallback, previousResultScope, rules, user]
+    [cancelPendingChineseImeFallback, modeLabel, practiceLanguage, practiceModeId, previousResultScope, router, rules, trainingMode?.resultReturnHref, user]
   );
 
   const beginAttempt = useCallback(() => {
@@ -1115,18 +1109,11 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
     typedCharacterDelaysRef.current = [];
     lastTypedCharacterAtRef.current = null;
     setTypedText("");
-    setAttemptTimeline([]);
-    setAttemptErrorEvents([]);
-    setIsAttemptSuspicious(false);
     setElapsedSeconds(0);
     elapsedSecondsRef.current = 0;
     setRemainingSeconds(isTimedMode ? durationSeconds : 0);
     setStartedAt(now);
     setFinishedAt(null);
-    setLastResult(null);
-    setLastResultPassage(null);
-    isResultModalOpenRef.current = false;
-    setProgressMilestones([]);
     const completedAttempt = repeatedAttemptSnapshotRef.current;
     const repeatedPreviousResult =
       completedAttempt &&
@@ -1211,7 +1198,7 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
       }
 
       if (
-        !isResultModalOpenRef.current &&
+        statusRef.current !== "finished" &&
         !event.repeat &&
         isRestartShortcut({ key: event.key, tabKey: isTabPressedRef.current })
       ) {
@@ -1275,7 +1262,7 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
       const container = typingTextRef.current;
       const startedAtMs = startedAtRef.current;
 
-      if (!marker || !container || !startedAtMs || statusRef.current !== "running" || isResultModalOpen) {
+      if (!marker || !container || !startedAtMs || statusRef.current !== "running") {
         if (marker) {
           marker.style.opacity = "0";
         }
@@ -1331,7 +1318,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
     };
   }, [
     comparison.characters.length,
-    isResultModalOpen,
     previousResult?.previousPaceTimeline,
     shouldShowPreviousPaceMarker,
     typedText
@@ -1494,7 +1480,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
       rules: session?.rules ?? rules
     });
     const nextActiveErrors = new Set<number>();
-    let didAddError = false;
 
     nextComparison.characters.forEach((character) => {
       if ((character.status !== "wrong" && character.status !== "extra") || !character.actual) return;
@@ -1505,11 +1490,9 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
         timeSeconds: Math.max(0.1, elapsedMs / 1_000),
         characterIndex: character.index
       });
-      didAddError = true;
     });
 
     activeErrorIndexesRef.current = nextActiveErrors;
-    if (didAddError) setAttemptErrorEvents([...attemptErrorEventsRef.current]);
   }
 
   function syncChineseTextareaValue(
@@ -1786,7 +1769,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
 
   function markAttemptSuspicious() {
     suspiciousAttemptRef.current = true;
-    setIsAttemptSuspicious(true);
   }
 
   async function handlePracticeMode(modeId: PracticeModeId) {
@@ -1890,8 +1872,8 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
     window.requestAnimationFrame(() => passagePickerButtonRef.current?.focus());
   }
 
-  function loadNextPassage() {
-    if (!passage) {
+  function loadNextPassage(basePassage = passage) {
+    if (!basePassage) {
       return;
     }
 
@@ -1908,8 +1890,8 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
     if (library.length > 0) {
       const isRandomMode = getPassageSelectionMode() === "random";
       const nextLibraryPassage = isRandomMode
-        ? selectRandomLibraryPassage(passage.id, library)
-        : selectDifferentLibraryPassage(passage.id, library);
+        ? selectRandomLibraryPassage(basePassage.id, library)
+        : selectDifferentLibraryPassage(basePassage.id, library);
       if (!nextLibraryPassage) {
         return;
       }
@@ -1932,12 +1914,12 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
 
     const nextPassage: StoredPassage = {
       id: `generated-${Date.now()}`,
-      title: `${passage.category} generated practice`,
-      category: passage.category,
-      style: passage.style,
-      language: passage.language ?? practiceLanguage,
+      title: `${basePassage.category} generated practice`,
+      category: basePassage.category,
+      style: basePassage.style,
+      language: basePassage.language ?? practiceLanguage,
       source: "generated",
-      text: buildPracticePassage(passage.category, durationSeconds),
+      text: buildPracticePassage(basePassage.category, durationSeconds),
       updatedAt: new Date().toISOString()
     };
     setPassageNotice("No active saved passages found. Using a sample passage.");
@@ -1946,6 +1928,36 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
     setPreviousResult(readPreviousResult(nextPassage.id, previousResultScope));
     writeStoredPassage(nextPassage);
   }
+
+  loadNextPassageRef.current = loadNextPassage;
+
+  useEffect(() => {
+    if (!router.isReady || !passage) return;
+    const attemptId = typeof router.query.attempt === "string" ? router.query.attempt : "";
+    const requestedAction = typeof router.query.resultAction === "string" ? router.query.resultAction : "";
+    if (!attemptId || resultReturnActionHandledRef.current === attemptId) return;
+    const action = readResultReturnAction(attemptId);
+    const snapshot = readResultPageSnapshot(attemptId);
+    if (!action || !snapshot || action.action !== requestedAction) return;
+
+    resultReturnActionHandledRef.current = attemptId;
+    clearResultReturnAction(attemptId);
+
+    if (action.action === "restart") {
+      const restartedPassage = { ...snapshot.passage };
+      resetActiveSessionState({
+        nextPassage: restartedPassage,
+        previousResultOverride: snapshot.restartPreviousResult
+      });
+      setPassage(restartedPassage);
+      repeatedTargetIdentityRef.current = snapshot.restartTargetIdentity ?? null;
+      setRepeatedTargetIdentity(snapshot.restartTargetIdentity ?? null);
+    } else {
+      loadNextPassageRef.current(snapshot.passage);
+    }
+
+    void router.replace(snapshot.originHref, undefined, { shallow: true });
+  }, [passage, resetActiveSessionState, router, router.isReady, router.query.attempt, router.query.resultAction]);
 
   function loadRandomPassage() {
     if (!passage) {
@@ -2412,33 +2424,6 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
           <AdPlaceholder variant="banner" />
         </div>
 
-        {lastResult && lastResultPassage && (
-          <ResultsPanel
-            result={lastResult}
-            metricLabel={getMetricLabel(lastResultPassage)}
-            onRestart={resetSession}
-            onNextPassage={loadNextPassage}
-            restartButtonRef={resultPanelRestartButtonRef}
-            compact={isCompactPractice}
-          />
-        )}
-        {lastResult && lastResultPassage && isResultModalOpen && (
-          <ResultModal
-            result={lastResult}
-            passage={lastResultPassage}
-            onRestart={resetSession}
-            onNextPassage={loadNextPassage}
-            previousResult={previousResult}
-            recentResults={user ? recentResults : null}
-            progressMilestones={progressMilestones}
-            attemptTimeline={attemptTimeline}
-            errorEvents={attemptErrorEvents}
-            modeLabel={modeLabel}
-            isSuspicious={isAttemptSuspicious}
-            cloudSaveState={cloudSaveState}
-            onClose={closeResultModal}
-          />
-        )}
       </section>
       {!trainingMode && (
         <PassagePicker
@@ -2668,15 +2653,6 @@ const PreviousPaceMarker = React.forwardRef<HTMLSpanElement>(
   }
 );
 
-function Metric({ label, value, flat = false }: { label: string; value: string | number; flat?: boolean }) {
-  return (
-    <div className={flat ? "border-t border-paper/10 px-1 py-2" : "rounded-md bg-paper/[0.035] px-4 py-3"}>
-      <div className={clsx("font-mono uppercase text-paper/40", flat ? "text-secondary" : "text-secondary")}>{label}</div>
-      <div className={clsx("font-mono font-semibold text-paper", flat ? "mt-0.5 text-xl md:text-2xl" : "mt-1 text-2xl md:text-3xl")}>{value}</div>
-    </div>
-  );
-}
-
 function getCategoryOptions(library: LibraryPassage[], language: PassageLanguage): PracticeCategory[] {
   const languageLibrary = filterLibraryPassagesByLanguage(library, language);
   return Array.from(new Set(languageLibrary.map((libraryPassage) => libraryPassage.category))).sort();
@@ -2711,58 +2687,6 @@ function buildTrainingModePassage(trainingMode: PracticeTrainingMode, durationSe
   });
 }
 
-function ResultsPanel({
-  result,
-  metricLabel,
-  onRestart,
-  onNextPassage,
-  restartButtonRef,
-  compact = false
-}: {
-  result: TypingResult;
-  metricLabel: string;
-  onRestart: () => void;
-  onNextPassage: () => void;
-  restartButtonRef: React.RefObject<HTMLButtonElement>;
-  compact?: boolean;
-}) {
-  return (
-    <section className={compact ? "mt-4 border-t border-paper/[0.08] pt-3" : "mt-6 rounded-lg bg-paper/[0.025] p-4 md:p-5"}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className={clsx("font-mono uppercase text-brass", compact ? "text-secondary" : "text-utility")}>Result</p>
-          <h2 className={clsx("font-semibold text-paper", compact ? "mt-0.5 text-section" : "mt-1 text-page")}>{getCompletionLabel(result.completionReason)}</h2>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            ref={restartButtonRef}
-            type="button"
-            onClick={onRestart}
-            className={clsx("inline-flex items-center rounded-md font-mono text-control text-paper/65 transition hover:bg-paper/[0.06] hover:text-paper", compact ? "min-h-8 gap-1.5 px-2.5" : "gap-2 bg-paper/[0.045] px-3 py-2")}
-          >
-            <RotateCcw className="icon-control" aria-hidden="true" />
-            Restart
-          </button>
-          <button
-            type="button"
-            onClick={onNextPassage}
-            className={clsx("inline-flex items-center rounded-md bg-brass/10 font-mono text-control text-brass transition hover:bg-brass/15", compact ? "min-h-8 gap-1.5 px-2.5" : "gap-2 px-3 py-2")}
-          >
-            <RefreshCw className="icon-control" aria-hidden="true" />
-            Next passage
-          </button>
-        </div>
-      </div>
-      <div className={clsx("grid grid-cols-2 md:grid-cols-4", compact ? "mt-3 gap-x-3" : "mt-4 gap-2")}>
-        <Metric label={metricLabel} value={result.wpm.toFixed(1)} flat={compact} />
-        <Metric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} flat={compact} />
-        <Metric label="Time" value={formatTime(result.elapsedSeconds)} flat={compact} />
-        <Metric label="Mistakes" value={result.incorrectCharacters} flat={compact} />
-      </div>
-    </section>
-  );
-}
-
 function getMetricLabel(passage: StoredPassage | null | undefined) {
   return "WPM";
 }
@@ -2771,7 +2695,7 @@ function getChineseComparableInput(value: string) {
   return value.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
-export function ResultModal({
+export function ResultDashboard({
   result,
   passage,
   onRestart,
@@ -2784,8 +2708,7 @@ export function ResultModal({
   modeLabel,
   isSuspicious = false,
   cloudSaveState = "idle",
-  onGenerateImageCard = generateResultImageCard,
-  onClose
+  onGenerateImageCard = generateResultImageCard
 }: {
   result: TypingResult;
   passage: StoredPassage;
@@ -2800,55 +2723,12 @@ export function ResultModal({
   isSuspicious?: boolean;
   cloudSaveState?: CloudSaveState;
   onGenerateImageCard?: (input: ResultImageCardInput) => Promise<void> | void;
-  onClose: () => void;
 }) {
   const completionLabel = getCompletionLabel(result.completionReason);
   const hasSavedHistory = recentResults !== null;
   const [imageCardError, setImageCardError] = useState("");
   const [isGeneratingImageCard, setIsGeneratingImageCard] = useState(false);
-  const dialogRef = useRef<HTMLElement>(null);
-  const onCloseRef = useRef(onClose);
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    dialogRef.current?.focus({ preventScroll: true });
-
-    function handleDialogKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-      if (event.key !== "Tab") return;
-
-      const focusable = Array.from(
-        dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])') ?? []
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-
-    document.addEventListener("keydown", handleDialogKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleDialogKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previouslyFocused?.focus();
-    };
-  }, []);
+  const [isMistakeReviewOpen, setIsMistakeReviewOpen] = useState(false);
   const historySeries = hasSavedHistory
     ? buildResultHistorySeries({
         recentResults,
@@ -2863,33 +2743,26 @@ export function ResultModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/90 px-2 py-2 sm:px-3 sm:py-3 md:px-4">
+    <>
       <CelebrationToast milestones={milestones} />
-      <section
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="result-dialog-title"
-        aria-describedby="result-dialog-description"
-        tabIndex={-1}
-        className="flex max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[var(--ui-radius-overlay)] border border-[color:var(--ui-border-strong)] bg-[var(--ui-surface-overlay)] shadow-[var(--ui-shadow-overlay)] sm:max-h-[96vh]"
-      >
-        <div className="sticky top-0 z-10 border-b border-[color:var(--ui-border-subtle)] bg-[var(--ui-surface-overlay)] px-4 py-3 md:px-5">
+      <article aria-labelledby="result-page-title" aria-describedby="result-page-description" className="mx-auto w-full max-w-6xl">
+        <header className="border-b border-[color:var(--ui-border-subtle)] pb-3">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="font-mono text-utility uppercase text-brass">Result</p>
-              <h2 id="result-dialog-title" className="mt-0.5 text-page font-semibold leading-tight text-paper">{completionLabel}</h2>
-              <div id="result-dialog-description" className="mt-1.5 truncate font-mono text-utility text-paper/45 md:text-body">
+              <h1 id="result-page-title" className="text-page font-semibold leading-tight text-paper">Result</h1>
+              <div id="result-page-description" className="mt-1 break-words [overflow-wrap:anywhere] font-mono text-utility text-paper/45">
+                <span className="text-paper/60">{completionLabel}</span>
+                <span className="mx-2 text-paper/20">·</span>
                 {formatPassageResultMetadata(passage)}
               </div>
               {result.completionReason === "manual" && (
-                <p className="mt-1 font-mono text-secondary text-paper/45">Manual result — not saved.</p>
+                <p className="mt-0.5 font-mono text-secondary text-paper/45">Not saved.</p>
               )}
               {cloudSaveState !== "idle" && (
                 <p
                   role={cloudSaveState === "failed" ? "alert" : "status"}
                   aria-live="polite"
-                  className={`mt-2 font-mono text-utility ${cloudSaveState === "failed" ? "text-ember" : cloudSaveState === "saved" ? "text-mint" : "text-paper/45"}`}
+                  className={`mt-1 font-mono text-utility ${cloudSaveState === "failed" ? "text-ember" : cloudSaveState === "saved" ? "text-mint" : "text-paper/45"}`}
                 >
                   {cloudSaveState === "saving"
                     ? "Saving result…"
@@ -2899,26 +2772,50 @@ export function ResultModal({
                 </p>
               )}
             </div>
-            <IconButton
-              icon={X}
-              label="Close result"
-              variant="secondary"
-              onClick={onClose}
-            />
           </div>
-        </div>
+        </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
-          <div className="grid gap-6 lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] lg:gap-7">
-            <ThisResultColumn
+        <div data-testid="result-dashboard" className="py-3">
+          <div data-testid="primary-result-composition" className="grid gap-3 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-4 lg:grid-cols-[15rem_minmax(0,1fr)]">
+            <PrimaryResultSummary
               result={result}
               timeline={attemptTimeline}
               metricLabel={getMetricLabel(passage)}
-              historicalErrorCount={errorEvents.length}
-              imageAction={
+              errorCount={errorEvents.length}
+              isMistakeReviewOpen={isMistakeReviewOpen}
+              onToggleMistakeReview={() => setIsMistakeReviewOpen((isOpen) => !isOpen)}
+            />
+
+            <section className="min-w-0 border-t border-[color:var(--ui-border-subtle)] pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+              <AttemptWpmGraph result={result} timeline={attemptTimeline} errorEvents={errorEvents} metricLabel={getMetricLabel(passage)} />
+            </section>
+          </div>
+
+          {isSuspicious && (
+            <div className="mt-4 rounded-md bg-brass/10 px-3 py-2 font-mono text-utility text-brass/80">
+              {SUSPICIOUS_RESULT_NOTE}
+            </div>
+          )}
+
+          {!recentResults && <SignInResultCta />}
+          <section className="mt-2 grid items-start gap-3 border-t border-[color:var(--ui-border-subtle)] pt-2 md:grid-cols-[minmax(0,1fr)_auto] md:gap-5">
+            {(hasSavedHistory || previousResult) ? (
+              <section aria-label="Performance context" className="grid gap-2 sm:grid-cols-2 sm:gap-5">
+                {previousResult && (
+                  <PreviousAttemptComparison
+                    result={result}
+                    passage={passage}
+                    previousResult={previousResult}
+                    metricLabel={getMetricLabel(passage)}
+                  />
+                )}
+                {hasSavedHistory && <HistoryStats points={historySeries} />}
+              </section>
+            ) : <div />}
+            <div>
+              <div role="group" aria-label="Result actions" className="grid gap-1 sm:grid-cols-3 md:grid-cols-1">
                 <ResultImageCardAction
                   disabled={isGeneratingImageCard}
-                  error={imageCardError}
                   onGenerate={() => {
                     setImageCardError("");
                     setIsGeneratingImageCard(true);
@@ -2931,48 +2828,25 @@ export function ResultModal({
                       });
                   }}
                 />
-              }
-            />
-
-            <section className="min-w-0 border-t border-[color:var(--ui-border-subtle)] pt-5 lg:border-l lg:border-t-0 lg:pl-7 lg:pt-0">
-              <AttemptWpmGraph result={result} timeline={attemptTimeline} errorEvents={errorEvents} metricLabel={getMetricLabel(passage)} />
-
-              <div className="mt-4 grid gap-4 border-t border-paper/10 pt-4 md:grid-cols-[0.7fr_1.3fr]">
-                {hasSavedHistory && <HistoryStats points={historySeries} />}
-                {previousResult && <PreviousAttemptComparison result={result} previousResult={previousResult} metricLabel={getMetricLabel(passage)} />}
+                <Button className="w-full justify-start" size="compact" icon={RotateCcw} onClick={onRestart}>
+                  Restart same passage
+                </Button>
+                <Button className="w-full justify-start" size="compact" variant="primary" icon={ArrowRight} onClick={onNextPassage}>
+                  Next passage
+                </Button>
               </div>
-            </section>
-          </div>
-
-          {isSuspicious && (
-            <div className="mt-4 rounded-md bg-brass/10 px-3 py-2 font-mono text-utility text-brass/80">
-              {SUSPICIOUS_RESULT_NOTE}
+              {imageCardError && <p role="alert" className="mt-1 font-mono text-utility text-ember">{imageCardError}</p>}
             </div>
+          </section>
+
+          {isMistakeReviewOpen && result.incorrectCharacters > 0 && (
+            <section id="result-mistake-review" className="mt-2 border-t border-[color:var(--ui-border-subtle)] pt-2">
+              <SessionReview result={result} />
+            </section>
           )}
-
-          {!recentResults && <SignInResultCta />}
-          <details className="mt-5 border-t border-[color:var(--ui-border-subtle)] pt-1">
-            <summary className="ui-focus-ring min-h-11 cursor-pointer rounded-[var(--ui-radius-control)] px-1 py-3 font-mono text-control text-[color:var(--ui-text-secondary)] hover:text-[color:var(--ui-text-primary)]">
-              <span>Review mistakes</span>
-              <span className="ml-3 text-[color:var(--ui-text-muted)]">{result.incorrectCharacters} final</span>
-            </summary>
-            <SessionReview result={result} />
-          </details>
         </div>
-
-        <div role="group" aria-label="Result actions" className="sticky bottom-0 z-10 flex flex-col gap-2 border-t border-[color:var(--ui-border-subtle)] bg-[var(--ui-surface-overlay)] px-4 py-3 sm:flex-row sm:flex-wrap sm:justify-end md:px-5">
-          <Button variant="ghost" onClick={onClose}>
-            Close
-          </Button>
-          <Button onClick={onRestart}>
-            Restart same passage
-          </Button>
-          <Button variant="primary" onClick={onNextPassage}>
-            Next passage
-          </Button>
-        </div>
-      </section>
-    </div>
+      </article>
+    </>
   );
 }
 
@@ -3286,83 +3160,88 @@ function isSuspiciousInputChange(
   return currentWpm > SUSPICIOUS_WPM_THRESHOLD;
 }
 
-function ThisResultColumn({
+function PrimaryResultSummary({
   result,
   timeline,
   metricLabel,
-  historicalErrorCount,
-  imageAction
+  errorCount,
+  isMistakeReviewOpen,
+  onToggleMistakeReview
 }: {
   result: TypingResult;
   timeline: AttemptTimelinePoint[];
   metricLabel: string;
-  historicalErrorCount: number;
-  imageAction: React.ReactNode;
+  errorCount: number;
+  isMistakeReviewOpen: boolean;
+  onToggleMistakeReview: () => void;
 }) {
   const consistency = getResultConsistency(timeline);
 
   return (
-    <section aria-label="Result summary">
-      <p className="font-mono text-body uppercase text-brass">This Result</p>
-      <div className="mt-3">
+    <section
+      aria-label="Result summary"
+      data-testid="primary-result-summary"
+      className="grid grid-cols-2 content-start gap-x-3 gap-y-2.5"
+    >
+      <div data-metric-priority="hero" className="col-span-2">
         <p className="font-mono text-utility uppercase text-paper/45">{metricLabel}</p>
-        <div className="mt-0.5 font-mono text-5xl font-semibold leading-none text-paper md:text-6xl">
+        <div className="mt-0.5 font-mono text-5xl font-semibold leading-none text-paper">
           {result.rawWpm.toFixed(1)}
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2 border-y border-[color:var(--ui-border-subtle)] py-3">
-        <PrimaryResultMetric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
-        <PrimaryResultMetric
-          label="Consistency"
-          value={consistency === null ? "N/A" : `${consistency.toFixed(1)}%`}
-          helpText={CONSISTENCY_HELP_TEXT}
-        />
-        <PrimaryResultMetric label="Duration" value={formatTime(result.elapsedSeconds)} />
-      </div>
-      <div className="mt-2 space-y-0">
-        <ResultMetricRow label={`Net ${metricLabel}`} value={result.wpm.toFixed(1)} tone="text-mint" />
-        <ResultMetricRow label="Final mistakes" value={result.incorrectCharacters} />
-        <ResultMetricRow label="Errors encountered" value={historicalErrorCount} tone={historicalErrorCount > 0 ? "text-ember" : "text-paper"} />
-      </div>
-      {imageAction}
+      <PrimaryResultMetric label="Accuracy" value={`${result.accuracy.toFixed(2)}%`} />
+      <PrimaryResultMetric
+        label="Consistency"
+        value={consistency === null ? "N/A" : `${consistency.toFixed(1)}%`}
+        helpText={CONSISTENCY_HELP_TEXT}
+      />
+      <PrimaryResultMetric label="Duration" value={formatTime(result.elapsedSeconds)} />
+      <PrimaryResultMetric label={`Net ${metricLabel}`} value={result.wpm.toFixed(1)} priority="secondary" />
+      <PrimaryResultMetric label="Errors" accessibleLabel="Errors encountered" value={String(errorCount)} priority="secondary" />
+      <PrimaryResultMetric
+        label="Remaining"
+        accessibleLabel="Final mistakes remaining"
+        value={String(result.incorrectCharacters)}
+        priority="secondary"
+        action={result.incorrectCharacters > 0 ? (
+          <button
+            type="button"
+            className="ui-focus-ring mt-0.5 rounded-sm font-mono text-secondary text-brass hover:text-paper"
+            aria-controls="result-mistake-review"
+            aria-expanded={isMistakeReviewOpen}
+            onClick={onToggleMistakeReview}
+          >
+            Review mistakes
+          </button>
+        ) : undefined}
+      />
     </section>
   );
 }
 
-function PrimaryResultMetric({ label, value, helpText }: { label: string; value: string; helpText?: string }) {
-  return (
-    <div className="min-w-0 font-mono">
-      <p className="whitespace-nowrap text-[0.65rem] uppercase leading-4 text-paper/40 sm:text-secondary">
-        {label}
-        {helpText && <span className="ml-1 cursor-help text-paper/30" title={helpText} aria-label={helpText}>ⓘ</span>}
-      </p>
-      <p className="mt-1 truncate text-body font-semibold text-paper/85">{value}</p>
-    </div>
-  );
-}
-
-function ResultMetricRow({
+function PrimaryResultMetric({
   label,
+  accessibleLabel,
   value,
-  tone = "text-paper",
-  helpText
+  helpText,
+  priority = "primary",
+  action
 }: {
   label: string;
-  value: string | number;
-  tone?: string;
+  accessibleLabel?: string;
+  value: string;
   helpText?: string;
+  priority?: "primary" | "secondary";
+  action?: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(5rem,1fr)_auto] items-baseline gap-3 border-b border-paper/10 py-2 font-mono last:border-b-0">
-      <span className="text-utility text-paper/50">
-        {label}
-        {helpText && (
-          <span className="ml-1 cursor-help text-paper/30" title={helpText} aria-label={helpText}>
-            ⓘ
-          </span>
-        )}
-      </span>
-      <span className={clsx("text-base font-semibold", tone)}>{value}</span>
+    <div className="min-w-0 font-mono" data-metric-priority={priority}>
+      <p className="text-utility leading-4 text-paper/50" aria-label={accessibleLabel}>
+        <span aria-hidden={accessibleLabel ? "true" : undefined}>{label}</span>
+        {helpText && <span className="ml-1 cursor-help text-paper/30" title={helpText} aria-label={helpText}>ⓘ</span>}
+      </p>
+      <p className={`mt-0.5 text-body font-semibold ${priority === "secondary" ? "text-paper/70" : "text-paper/85"}`}>{value}</p>
+      {action}
     </div>
   );
 }
@@ -3372,11 +3251,10 @@ function HistoryStats({ points }: { points: Array<{ wpm: number }> }) {
 
   return (
     <section>
-      <p className="font-mono text-body uppercase text-brass">History</p>
-      <div className="mt-3 space-y-2 font-mono">
-        <HistoryRow label="Avg (last 10)" value={summary.averageWpm.toFixed(1)} />
-        <HistoryRow label="Best (last 10)" value={summary.bestWpm.toFixed(1)} />
-        <HistoryRow label="Attempts" value={points.length} />
+      <p className="font-mono text-utility uppercase text-brass">Last 10 <span className="normal-case text-paper/45">· Net WPM</span></p>
+      <div className="mt-1 grid grid-cols-[4.5rem_auto] gap-x-3 gap-y-0.5 font-mono">
+        <HistoryRow label="Avg" value={summary.averageWpm.toFixed(1)} />
+        <HistoryRow label="Best" value={summary.bestWpm.toFixed(1)} />
       </div>
     </section>
   );
@@ -3384,52 +3262,54 @@ function HistoryStats({ points }: { points: Array<{ wpm: number }> }) {
 
 function HistoryRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 text-paper/65">
-      <span className="text-utility">{label}</span>
-      <span className="text-lg text-paper">{value}</span>
+    <div className="contents">
+      <span className="text-utility text-paper/65">{label}</span>
+      <span className="text-body text-paper">{value}</span>
     </div>
   );
 }
 
 function PreviousAttemptComparison({
   result,
+  passage,
   previousResult,
   metricLabel
 }: {
   result: TypingResult;
+  passage: StoredPassage;
   previousResult: PreviousTypingResult;
   metricLabel: string;
 }) {
   const rawWpmDifference = result.rawWpm - previousResult.rawWpm;
-  const netWpmDifference = result.wpm - previousResult.wpm;
-  const accuracyDifference = result.accuracy - previousResult.accuracy;
+  const isStrictlyComparable = previousResult.passageId === passage.id &&
+    getPreviousModeDuration(previousResult) === result.modeDurationSeconds &&
+    previousResult.targetSnapshot === createCanonicalTypingTarget({
+      storedText: passage.text,
+      comparableText: passage.comparableText,
+      language: passage.language ?? (passage.category === "training_chinese" ? "chinese" : "english")
+    }).comparableText;
 
   return (
     <section>
-      <p className="font-mono text-body uppercase text-brass">Previous Attempt</p>
-      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 font-mono md:grid-cols-4">
+      <p className="font-mono text-utility uppercase text-brass">Previous Attempt</p>
+      <div className="mt-1 grid gap-y-0.5 font-mono">
         <PreviousComparisonStat
           label={metricLabel}
           delta={rawWpmDifference}
           previousValue={previousResult.rawWpm.toFixed(1)}
-        />
-        <PreviousComparisonStat
-          label={`Net ${metricLabel}`}
-          delta={netWpmDifference}
-          previousValue={previousResult.wpm.toFixed(1)}
+          currentValue={result.rawWpm.toFixed(1)}
         />
         <PreviousComparisonStat
           label="Accuracy"
-          delta={accuracyDifference}
-          suffix="%"
+          delta={result.accuracy - previousResult.accuracy}
           previousValue={formatPercent(previousResult.accuracy)}
+          currentValue={formatPercent(result.accuracy)}
+          suffix="%"
         />
-        <div>
-          <p className="text-utility uppercase text-paper/40">Time</p>
-          <p className="mt-2 text-body text-paper/45">-</p>
-          <p className="mt-1.5 text-utility text-paper/55">previous {formatTime(previousResult.elapsedSeconds)}</p>
-        </div>
       </div>
+      <p className="mt-1 font-mono text-secondary text-paper/40">
+        {isStrictlyComparable ? "Same passage and mode" : "Session content or settings may differ"}
+      </p>
     </section>
   );
 }
@@ -3438,27 +3318,29 @@ function PreviousComparisonStat({
   label,
   delta,
   previousValue,
+  currentValue,
   suffix = ""
 }: {
   label: string;
   delta: number;
   previousValue: string;
+  currentValue: string;
   suffix?: string;
 }) {
   const tone = delta > 0 ? "text-mint" : delta < 0 ? "text-ember" : "text-paper/80";
 
   return (
-    <div>
-      <p className="text-utility uppercase text-paper/40">{label}</p>
-      <p className={clsx("mt-2 text-body", tone)}>{formatSigned(delta, suffix)}</p>
-      <p className="mt-1.5 text-utility text-paper/55">previous {previousValue}</p>
-    </div>
+    <p className="grid grid-cols-[4.5rem_auto_auto] items-baseline justify-start gap-x-2 text-utility">
+      <span className="text-paper/50">{label}</span>
+      <span className="text-paper/80">{previousValue} → {currentValue}</span>
+      <span className={tone}>({formatSigned(delta, suffix)})</span>
+    </p>
   );
 }
 
 function SignInResultCta() {
   return (
-    <div data-testid="result-sign-in-cta" className="mt-5 text-center font-mono text-body text-paper/35">
+    <div data-testid="result-sign-in-cta" className="mt-3 font-mono text-utility text-paper/50">
       <Link href="/login" className="transition hover:text-brass">
         Sign in to save your result and see long-term progress.
       </Link>
@@ -3468,35 +3350,24 @@ function SignInResultCta() {
 
 function ResultImageCardAction({
   disabled,
-  error,
   onGenerate
 }: {
   disabled: boolean;
-  error: string;
   onGenerate: () => void;
 }) {
   return (
-    <div className="mt-4 flex items-center justify-between gap-2 border-t border-paper/10 pt-3 font-mono">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-brass/10 text-brass">
-          <ImageIcon className="icon-control" />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-utility text-paper/85">Generate image card</p>
-          <p className="truncate text-secondary text-paper/40">Create a shareable result image.</p>
-          {error && <p className="mt-2 text-utility text-ember">{error}</p>}
-        </div>
-      </div>
-      <Button
-        size="compact"
-        variant="ghost"
-        aria-label="Generate image card"
-        onClick={onGenerate}
-        disabled={disabled}
-      >
-        {disabled ? "Generating..." : "Generate"}
-      </Button>
-    </div>
+    <Button
+      className="w-full justify-start"
+      size="compact"
+      variant="ghost"
+      icon={ImageIcon}
+      aria-label="Generate image card"
+      title="Generate a shareable result image"
+      onClick={onGenerate}
+      disabled={disabled}
+    >
+      {disabled ? "Generating..." : "Generate image"}
+    </Button>
   );
 }
 
@@ -3520,24 +3391,24 @@ function AttemptWpmGraph({
 
   return (
     <section>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3">
         <p className="font-mono text-body uppercase text-brass">{metricLabel} Over Time</p>
-        <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 font-mono text-secondary uppercase text-paper/45">
-          <span className="inline-flex items-center gap-2">
-            <span className="w-8 border-t-2 border-dotted opacity-70" style={{ borderColor: "rgb(var(--chart-line-secondary))" }} />
+        <div aria-label="Chart legend" className="flex flex-wrap justify-end gap-x-3 gap-y-1 font-mono text-secondary uppercase text-paper/45">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-5 border-t-2 border-dotted opacity-70" style={{ borderColor: "rgb(var(--chart-line-secondary))" }} />
             Burst
           </span>
-          <span className="inline-flex items-center gap-2">
-            <span className="h-[3px] w-8 rounded-full" style={{ backgroundColor: "rgb(var(--chart-line))" }} />
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-0.5 w-5 rounded-full" style={{ backgroundColor: "rgb(var(--chart-line))" }} />
             {metricLabel}
           </span>
-          <span className="inline-flex items-center gap-2">
-            <span className="h-px w-8 border-t border-dashed" style={{ borderColor: "rgb(var(--chart-line-secondary))" }} />
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-5 border-t-2 border-dashed" style={{ borderColor: "rgb(var(--chart-line-secondary))" }} />
             Avg {result.wpm.toFixed(1)}
           </span>
         </div>
       </div>
-      <div className="mt-3 min-w-0">
+      <div className="mt-2 min-w-0">
         <svg
           viewBox={`0 0 ${graph.width} ${graph.height}`}
           role="img"
@@ -3559,7 +3430,13 @@ function AttemptWpmGraph({
                   stroke="rgb(var(--chart-grid))"
                   strokeDasharray="4 6"
                 />
-                <text x={graph.left - 12} y={y + 4} textAnchor="end" className="formaltype-chart-muted-fill font-mono text-utility">
+                <text
+                  data-testid="attempt-chart-wpm-tick"
+                  x={graph.left - 12}
+                  y={y + 3}
+                  textAnchor="end"
+                  className="formaltype-chart-muted-fill font-mono text-[10px] opacity-60"
+                >
                   {formatGraphTick(tick)}
                 </text>
               </g>
@@ -3596,38 +3473,55 @@ function AttemptWpmGraph({
             y1={getGraphY(result.wpm, graph)}
             y2={getGraphY(result.wpm, graph)}
             stroke="rgb(var(--chart-line-secondary))"
+            strokeWidth="2"
             strokeDasharray="8 8"
           />
           {graph.xTicks.map((tick, index) => (
             <text
+              data-testid="attempt-chart-time-tick"
               key={`time-${index}`}
               x={getGraphX(tick, graph)}
-              y={graph.bottom + 24}
+              y={graph.bottom + 22}
               textAnchor="middle"
-              className="formaltype-chart-muted-fill font-mono text-utility"
+              className="formaltype-chart-muted-fill font-mono text-[10px] opacity-60"
             >
               {formatGraphTick(tick)}
             </text>
           ))}
-          <text x={graph.left - 30} y={graph.top - 14} className="formaltype-chart-muted-fill font-mono text-utility uppercase">
+          <text
+            data-testid="attempt-chart-axis-title-wpm"
+            x="12"
+            y={(graph.top + graph.bottom) / 2}
+            textAnchor="middle"
+            transform={`rotate(-90 12 ${(graph.top + graph.bottom) / 2})`}
+            className="formaltype-chart-muted-fill font-mono text-[9px] uppercase tracking-wide opacity-55"
+          >
             {metricLabel}
           </text>
-          <text x={graph.right + 4} y={graph.top - 14} className="formaltype-chart-muted-fill font-mono text-secondary uppercase">
+          <text
+            data-testid="attempt-chart-axis-title-errors"
+            x={graph.width - 10}
+            y={(graph.top + graph.bottom) / 2}
+            textAnchor="middle"
+            transform={`rotate(90 ${graph.width - 10} ${(graph.top + graph.bottom) / 2})`}
+            className="formaltype-chart-muted-fill font-mono text-[9px] uppercase tracking-wide opacity-55"
+          >
             Errors
           </text>
           {errorTicks.map((tick) => {
             const y = getErrorGraphY(tick, maxErrorsPerSecond, graph);
             return (
-              <text key={tick} x={graph.right + 10} y={y + 4} className="formaltype-chart-muted-fill font-mono text-secondary">
+              <text key={tick} x={graph.right + 10} y={y + 3} className="formaltype-chart-muted-fill font-mono text-[10px] opacity-60">
                 {tick}
               </text>
             );
           })}
           <text
+            data-testid="attempt-chart-axis-title-time"
             x={(graph.left + graph.right) / 2}
             y={graph.height - 8}
             textAnchor="middle"
-            className="formaltype-chart-muted-fill font-mono text-utility uppercase"
+            className="formaltype-chart-muted-fill font-mono text-[9px] uppercase tracking-wide opacity-55"
           >
             Time (seconds)
           </text>
@@ -3649,15 +3543,15 @@ function AttemptWpmGraph({
             stroke="rgb(var(--chart-line))"
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth="3"
+            strokeWidth="2"
           />
           {errorBuckets.map((error) => {
             const x = Math.min(graph.right - 7, Math.max(graph.left + 7, getGraphX(error.second, graph)));
             const y = getErrorGraphY(error.count, maxErrorsPerSecond, graph);
             return (
               <g key={error.second} data-testid="attempt-error-marker" data-error-count={error.count}>
-                <line x1={x - 3.5} x2={x + 3.5} y1={y - 3.5} y2={y + 3.5} stroke="rgb(var(--chart-danger))" strokeWidth="2" />
-                <line x1={x + 3.5} x2={x - 3.5} y1={y - 3.5} y2={y + 3.5} stroke="rgb(var(--chart-danger))" strokeWidth="2" />
+                <line x1={x - 2.75} x2={x + 2.75} y1={y - 2.75} y2={y + 2.75} stroke="rgb(var(--chart-danger))" strokeWidth="1.75" />
+                <line x1={x + 2.75} x2={x - 2.75} y1={y - 2.75} y2={y + 2.75} stroke="rgb(var(--chart-danger))" strokeWidth="1.75" />
                 {error.count > 1 && (
                   <text x={x + 5} y={y - 5} className="font-mono text-secondary" fill="rgb(var(--chart-danger))">
                     {error.count}
@@ -3668,7 +3562,7 @@ function AttemptWpmGraph({
           })}
           {graph.positionedPoints.map((point) => (
             <g key={`${point.timeSeconds}-${point.x}`}>
-              <circle cx={point.x} cy={point.y} r="3.5" fill="rgb(var(--chart-line))" />
+              <circle data-testid="attempt-chart-point-marker" cx={point.x} cy={point.y} r="2.25" fill="rgb(var(--chart-line))" />
               <circle
                 data-testid={`attempt-graph-point-${point.timeSeconds}`}
                 aria-label={`${point.timeSeconds} seconds, ${metricLabel} ${point.wpm.toFixed(1)}, burst ${typeof point.burstWpm === "number" ? point.burstWpm.toFixed(1) : "unavailable"}, errors ${getAttemptErrorCountAtSecond(errorEvents, point.timeSeconds)}`}
@@ -3965,12 +3859,19 @@ function getWpmTicks(maxWpm: number) {
 }
 
 function getTimeTicks(maxTime: number) {
-  const divisions = maxTime < 15 ? Math.max(1, Math.round(maxTime)) : 10;
-  return getEvenGraphTicks(maxTime, divisions);
-}
+  const integerMax = Math.max(1, Math.round(maxTime));
+  const roughStep = integerMax / 10;
+  const magnitude = 10 ** Math.floor(Math.log10(Math.max(roughStep, 1)));
+  const normalizedStep = roughStep / magnitude;
+  const niceMultiplier = normalizedStep <= 1 ? 1 : normalizedStep <= 2 ? 2 : normalizedStep <= 5 ? 5 : 10;
+  const step = Math.max(1, niceMultiplier * magnitude);
+  const ticks = Array.from({ length: Math.floor(integerMax / step) + 1 }, (_, index) => index * step);
 
-function getEvenGraphTicks(maxValue: number, divisions: number) {
-  return Array.from({ length: divisions + 1 }, (_, index) => roundOne((maxValue * index) / divisions));
+  if (ticks[ticks.length - 1] !== integerMax) {
+    ticks.push(integerMax);
+  }
+
+  return ticks;
 }
 
 function formatGraphTick(value: number) {
@@ -4008,7 +3909,11 @@ function getCompletionLabel(completionReason: CompletionReason) {
     return "Time up";
   }
 
-  return "Session ended";
+  if (completionReason === "text_completed") {
+    return "Text completed";
+  }
+
+  return "Manual result";
 }
 
 function isPersistableCompletion(completionReason: CompletionReason) {

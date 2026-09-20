@@ -5,7 +5,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
-  ResultModal,
+  ResultDashboard,
   addAttemptTimelinePoint,
   buildSmoothPath,
   getAttemptGraphLayout,
@@ -20,11 +20,10 @@ vi.mock("@/components/AppShell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }));
 
-describe("ResultModal", () => {
-  it("exposes dialog semantics, focuses the inert dialog surface, and supports Escape", () => {
-    const onClose = vi.fn();
+describe("ResultDashboard", () => {
+  it("renders page semantics without a dialog, focus trap, or body scroll lock", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -33,20 +32,58 @@ describe("ResultModal", () => {
         recentResults={[]}
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
-        onClose={onClose}
       />
     );
 
-    const dialog = screen.getByRole("dialog", { name: "Time up" });
-    expect(dialog.getAttribute("aria-modal")).toBe("true");
-    expect(document.activeElement).toBe(screen.getByRole("dialog", { name: /Time up/i }));
+    expect(screen.getByRole("heading", { level: 1, name: "Result" })).toBeTruthy();
+    expect(screen.getByText("Time up")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.body.style.overflow).toBe("");
     fireEvent.keyDown(document, { key: "Escape" });
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Result" })).toBeTruthy();
+  });
+
+  it("omits empty mistake review while preserving encountered errors and the final count", () => {
+    render(<ResultDashboard result={makeResult()} passage={makePassage()} onRestart={vi.fn()}
+      onNextPassage={vi.fn()} previousResult={null} recentResults={[]} attemptTimeline={makeTimeline()}
+      errorEvents={[{ timeSeconds: 5, characterIndex: 3 }]} modeLabel="1m" />);
+
+    expect(screen.queryByText("Review mistakes")).toBeNull();
+    expect(screen.queryByText("0 final")).toBeNull();
+    expect(screen.getByLabelText("Errors encountered").parentElement?.textContent).toContain("1");
+    expect(screen.getByLabelText("Final mistakes remaining").parentElement?.textContent).toContain("0");
+  });
+
+  it.each([48, 50])("keeps Net WPM secondary and explicit when it is %s", (wpm) => {
+    render(<ResultDashboard result={{ ...makeResult(), wpm }} passage={makePassage()} onRestart={vi.fn()}
+      onNextPassage={vi.fn()} previousResult={null} recentResults={[]} attemptTimeline={makeTimeline()}
+      modeLabel="1m" />);
+
+    const summary = screen.getByRole("region", { name: "Result summary" });
+    const netWpmMetric = within(summary).getByText("Net WPM").closest('[data-metric-priority="secondary"]');
+    expect(netWpmMetric).toBeTruthy();
+    expect(netWpmMetric?.textContent).toContain(wpm.toFixed(1));
+    expect(within(summary).getAllByText("50.0").length).toBeGreaterThan(0);
+  });
+
+  it("keeps nonzero mistake review keyboard reachable without trapping page focus", () => {
+    render(<ResultDashboard result={{ ...makeResult(), incorrectCharacters: 2 }} passage={makePassage()}
+      onRestart={vi.fn()} onNextPassage={vi.fn()} previousResult={null} recentResults={[]}
+      attemptTimeline={makeTimeline()} modeLabel="1m" />);
+
+    const review = screen.getByRole("button", { name: "Review mistakes" });
+    expect(review.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Session review")).toBeNull();
+    fireEvent.click(review);
+    expect(review.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText("Session review")).toBeTruthy();
+    review.focus();
+    expect(document.activeElement).toBe(review);
   });
 
   it("shows distinct burst pace and error markers directly on the graph", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -60,18 +97,21 @@ describe("ResultModal", () => {
         }))}
         errorEvents={[{ timeSeconds: 5, characterIndex: 3 }]}
         modeLabel="1m"
-        onClose={vi.fn()}
       />
     );
 
-    expect(screen.getByText("Errors encountered")).toBeTruthy();
+    expect(screen.getByLabelText("Errors encountered").parentElement?.textContent).toContain("1");
+    expect(screen.getByLabelText("Final mistakes remaining").parentElement?.textContent).toContain("0");
     expect(screen.queryByText("Corrected errors")).toBeNull();
     const chart = screen.getByRole("img", { name: "WPM over time" });
     expect(chart.querySelector('[data-testid="attempt-chart-burst-line"]')?.getAttribute("stroke-dasharray")).toBe("2 6");
     const errorMarker = chart.querySelector('[data-testid="attempt-error-marker"]');
     expect(errorMarker).toBeTruthy();
-    expect(errorMarker?.querySelector("line")?.getAttribute("stroke")).toBe("rgb(var(--chart-danger))");
-    expect(Number(errorMarker?.querySelector("line")?.getAttribute("y1"))).toBeGreaterThan(20);
+    const markerLine = errorMarker?.querySelector("line");
+    expect(markerLine?.getAttribute("stroke")).toBe("rgb(var(--chart-danger))");
+    expect(markerLine?.getAttribute("stroke-width")).toBe("1.75");
+    expect(Number(markerLine?.getAttribute("x2")) - Number(markerLine?.getAttribute("x1"))).toBe(5.5);
+    expect(Number(markerLine?.getAttribute("y1"))).toBeGreaterThan(20);
   });
 
   it("builds a smooth cubic path between timeline points", () => {
@@ -80,7 +120,7 @@ describe("ResultModal", () => {
 
   it("hides saved-result history for logged-out users and shows the sign-in CTA at the bottom", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -89,12 +129,11 @@ describe("ResultModal", () => {
         recentResults={null}
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
-        onClose={vi.fn()}
       />
     );
 
-    expect(screen.queryByText("History")).toBeNull();
-    expect(screen.queryByText("Avg (last 10)")).toBeNull();
+    expect(screen.queryByText("Last 10")).toBeNull();
+    expect(screen.queryByText("Avg")).toBeNull();
     expect(screen.getByTestId("result-sign-in-cta").textContent).toContain(
       "Sign in to save your result and see long-term progress."
     );
@@ -102,7 +141,7 @@ describe("ResultModal", () => {
 
   it("announces a failed cloud save without hiding the local result", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -112,14 +151,14 @@ describe("ResultModal", () => {
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
         cloudSaveState="failed"
-        onClose={vi.fn()}
       />
     );
 
     expect(screen.getByRole("alert").textContent).toContain(
       "Cloud save failed. Your current result is still visible here."
     );
-    expect(screen.getByText("This Result")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Result summary" })).toBeTruthy();
+    expect(screen.getByTestId("primary-result-summary").querySelector('[data-metric-priority="hero"]')?.textContent).toContain("50.0");
     const resultSummary = screen.getByRole("region", { name: "Result summary" });
     expect(within(resultSummary).getByText("Accuracy")).toBeTruthy();
     expect(within(resultSummary).getByText("Consistency")).toBeTruthy();
@@ -128,7 +167,7 @@ describe("ResultModal", () => {
 
   it("shows the authenticated result layout without duplicated summary sections", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -152,30 +191,37 @@ describe("ResultModal", () => {
         ]}
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
-        onClose={vi.fn()}
       />
     );
 
-    expect(screen.getByText("This Result")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Result summary" })).toBeTruthy();
     expect(screen.getByText("WPM Over Time")).toBeTruthy();
     expect(screen.getByText("Time (seconds)")).toBeTruthy();
     expect(screen.getAllByText("WPM").length).toBeGreaterThan(0);
-    expect(screen.getByText("History")).toBeTruthy();
-    expect(screen.getByText("Avg (last 10)")).toBeTruthy();
-    expect(screen.getByText("Best (last 10)")).toBeTruthy();
-    expect(screen.getByText("Attempts")).toBeTruthy();
+    expect(screen.getByText("Last 10")).toBeTruthy();
+    expect(screen.getByText("Avg")).toBeTruthy();
+    expect(screen.getByText("Best")).toBeTruthy();
+    expect(screen.queryByText("Attempts")).toBeNull();
     expect(screen.getByText("Previous Attempt")).toBeTruthy();
-    expect(screen.getAllByText("Net WPM").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("previous 36.2")).toBeTruthy();
+    expect(screen.getAllByText(/Net WPM/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("36.2 → 50.0")).toBeTruthy();
     expect(screen.queryByText("36.2 → 48.0")).toBeNull();
-    expect(screen.queryByText("36.2 → 50.0")).toBeNull();
-    expect(screen.getByText("Session review")).toBeTruthy();
-    expect(screen.getByText("Review mistakes")).toBeTruthy();
+    expect(screen.getByText("98.9% → 100%")).toBeTruthy();
+    expect(screen.getByText("Session content or settings may differ")).toBeTruthy();
+    expect(screen.queryByText("Session review")).toBeNull();
+    expect(screen.queryByText("Review mistakes")).toBeNull();
     expect(screen.queryByText("Highest")).toBeNull();
     expect(screen.queryByText("Lowest")).toBeNull();
     expect(screen.queryByTestId("result-sign-in-cta")).toBeNull();
     expect(screen.getByRole("group", { name: "Result actions" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Next passage" }).getAttribute("data-touch-target")).toBe("44");
+    expect(screen.getByRole("button", { name: "Generate image card" }).querySelector(".lucide-image")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Restart same passage" }).querySelector(".lucide-rotate-ccw")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Next passage" }).querySelector(".lucide-arrow-right")).toBeTruthy();
+    const actions = within(screen.getByRole("group", { name: "Result actions" })).getAllByRole("button");
+    expect(actions).toHaveLength(3);
+    expect(actions.every((action) => action.className.includes("w-full justify-start"))).toBe(true);
+    expect(actions.every((action) => action.querySelector("svg")?.classList.contains("icon-control"))).toBe(true);
 
     const chart = screen.getByRole("img", { name: "WPM over time" });
     expect(chart.querySelector('[data-testid="attempt-chart-line"]')?.getAttribute("stroke")).toBe(
@@ -184,6 +230,15 @@ describe("ResultModal", () => {
     expect(chart.querySelector('[data-testid="attempt-chart-average-line"]')?.getAttribute("stroke")).toBe(
       "rgb(var(--chart-line-secondary))"
     );
+    expect(chart.querySelector('[data-testid="attempt-chart-line"]')?.getAttribute("stroke-width")).toBe("2");
+    expect(chart.querySelector('[data-testid="attempt-chart-burst-line"]')?.getAttribute("stroke-width")).toBe("2");
+    expect(chart.querySelector('[data-testid="attempt-chart-average-line"]')?.getAttribute("stroke-width")).toBe("2");
+    expect(chart.querySelector('[data-testid="attempt-chart-point-marker"]')?.getAttribute("r")).toBe("2.25");
+    expect(chart.querySelector('[data-testid="attempt-chart-axis-title-wpm"]')?.getAttribute("transform")).toContain("rotate(-90");
+    expect(chart.querySelector('[data-testid="attempt-chart-axis-title-errors"]')?.getAttribute("transform")).toContain("rotate(90");
+    expect(chart.querySelector('[data-testid="attempt-chart-axis-title-time"]')?.getAttribute("class")).toContain("text-[9px]");
+    expect(chart.querySelector('[data-testid="attempt-chart-wpm-tick"]')?.getAttribute("class")).toContain("text-[10px]");
+    expect(Array.from(chart.querySelectorAll('[data-testid="attempt-chart-time-tick"]')).every((tick) => /^\d+$/.test(tick.textContent ?? ""))).toBe(true);
     expect(chart.querySelector('[data-testid="attempt-chart-axis-x"]')?.getAttribute("stroke")).toBe(
       "rgb(var(--chart-axis))"
     );
@@ -192,9 +247,42 @@ describe("ResultModal", () => {
     );
   });
 
+  it("labels a previous attempt as directly comparable only when target and mode match", () => {
+    const passage = makePassage();
+    render(
+      <ResultDashboard
+        result={makeResult()}
+        passage={passage}
+        onRestart={vi.fn()}
+        onNextPassage={vi.fn()}
+        previousResult={{
+          passageId: passage.id ?? "passage-1",
+          passageTitle: passage.title ?? "Untitled passage",
+          wpm: 47,
+          rawWpm: 49,
+          accuracy: 99,
+          errors: 1,
+          correctCharacters: 235,
+          typedCharacters: 238,
+          elapsedSeconds: 60,
+          modeDurationSeconds: 60,
+          targetSnapshot: passage.text,
+          completedAt: "2026-06-18T00:00:00.000Z",
+          completionReason: "time_up"
+        }}
+        recentResults={[]}
+        attemptTimeline={makeTimeline()}
+        modeLabel="1m"
+      />
+    );
+
+    expect(screen.getByText("Same passage and mode")).toBeTruthy();
+    expect(screen.queryByText("Session content or settings may differ")).toBeNull();
+  });
+
   it("displays readable Training labels instead of internal category slugs", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={{ ...makeResult(), category: "training_code" }}
         passage={{
           ...makePassage(),
@@ -209,7 +297,6 @@ describe("ResultModal", () => {
         recentResults={[]}
         attemptTimeline={makeTimeline()}
         modeLabel="60s"
-        onClose={vi.fn()}
       />
     );
 
@@ -219,7 +306,7 @@ describe("ResultModal", () => {
 
   it("displays Chinese Training word-count labels without internal slugs", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={{ ...makeResult(), category: "training_chinese" }}
         passage={{
           ...makePassage(),
@@ -234,7 +321,6 @@ describe("ResultModal", () => {
         recentResults={[]}
         attemptTimeline={makeTimeline()}
         modeLabel="10 words"
-        onClose={vi.fn()}
       />
     );
 
@@ -244,7 +330,7 @@ describe("ResultModal", () => {
 
   it("labels Chinese Training speed as WPM while keeping character-based values", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={{ ...makeResult(), category: "training_chinese", wpm: 50, rawWpm: 50 }}
         passage={{
           ...makePassage(),
@@ -259,7 +345,6 @@ describe("ResultModal", () => {
         recentResults={[]}
         attemptTimeline={makeTimeline()}
         modeLabel="60s"
-        onClose={vi.fn()}
       />
     );
 
@@ -270,7 +355,7 @@ describe("ResultModal", () => {
 
   it("counts the current result as the first comparable history attempt", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={{ ...makeResult(), wpm: 28.2 }}
         passage={{ ...makePassage(), id: "training-code", title: "Training Code", category: "training_code", style: "60s" }}
         onRestart={vi.fn()}
@@ -279,21 +364,19 @@ describe("ResultModal", () => {
         recentResults={[]}
         attemptTimeline={makeTimeline()}
         modeLabel="60s"
-        onClose={vi.fn()}
       />
     );
 
-    expect(screen.getByText("Avg (last 10)")).toBeTruthy();
-    expect(screen.getByText("Best (last 10)")).toBeTruthy();
-    expect(screen.getByText("Attempts")).toBeTruthy();
+    expect(screen.getByText("Avg")).toBeTruthy();
+    expect(screen.getByText("Best")).toBeTruthy();
+    expect(screen.queryByText("Attempts")).toBeNull();
     expect(screen.getAllByText("28.2").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
     expect(screen.queryByText("Previous Attempt")).toBeNull();
   });
 
   it("includes the immediately previous comparable attempt in history when recent rows omit it", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={{ ...makeResult(), wpm: 28.2, rawWpm: 30, category: "training_code" }}
         passage={{ ...makePassage(), id: "training-code", title: "Training Code", category: "training_code", style: "60s" }}
         onRestart={vi.fn()}
@@ -315,20 +398,19 @@ describe("ResultModal", () => {
         recentResults={[]}
         attemptTimeline={makeTimeline()}
         modeLabel="60s"
-        onClose={vi.fn()}
       />
     );
 
     expect(screen.getByText("24.2")).toBeTruthy();
     expect(screen.getAllByText("28.2").length).toBeGreaterThan(0);
-    expect(screen.getByText("2")).toBeTruthy();
+    expect(screen.queryByText("Attempts")).toBeNull();
     expect(screen.getByText("Previous Attempt")).toBeTruthy();
-    expect(screen.getByText("previous 20.2")).toBeTruthy();
+    expect(screen.getByText("22.0 → 30.0")).toBeTruthy();
   });
 
   it("shows a personal-best celebration when net WPM improves over the previous result", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -349,7 +431,6 @@ describe("ResultModal", () => {
         recentResults={[]}
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
-        onClose={vi.fn()}
       />
     );
 
@@ -359,7 +440,7 @@ describe("ResultModal", () => {
 
   it("keeps an Escape/manual result display-only without PB, accuracy, or supplied progression unlocks", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={{ ...makeResult(), completionReason: "manual", wpm: 200, rawWpm: 250, accuracy: 100, isRankable: false }}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -381,11 +462,11 @@ describe("ResultModal", () => {
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
         progressMilestones={[{ id: "achievement", title: "Achievement Unlocked", value: "Speed 50", effect: "quiet" }]}
-        onClose={vi.fn()}
       />
     );
 
-    expect(screen.getByText("Manual result — not saved.")).toBeTruthy();
+    expect(screen.getByText("Manual result")).toBeTruthy();
+    expect(screen.getByText("Not saved.")).toBeTruthy();
     expect(screen.queryByText("New Personal Best")).toBeNull();
     expect(screen.queryByText("New Best Accuracy")).toBeNull();
     expect(screen.queryByText("Achievement Unlocked")).toBeNull();
@@ -396,7 +477,7 @@ describe("ResultModal", () => {
 
     try {
       render(
-        <ResultModal
+        <ResultDashboard
           result={makeResult()}
           passage={makePassage()}
           onRestart={vi.fn()}
@@ -417,7 +498,6 @@ describe("ResultModal", () => {
           recentResults={[]}
           attemptTimeline={makeTimeline()}
           modeLabel="1m"
-          onClose={vi.fn()}
         />
       );
 
@@ -441,7 +521,7 @@ describe("ResultModal", () => {
 
   it("shows a level-up celebration when level-up data is available", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -459,7 +539,6 @@ describe("ResultModal", () => {
             effect: "ribbons"
           }
         ]}
-        onClose={vi.fn()}
       />
     );
 
@@ -470,7 +549,7 @@ describe("ResultModal", () => {
 
   it("shows an achievement-unlocked celebration when unlock data is available", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -488,7 +567,6 @@ describe("ResultModal", () => {
             effect: "quiet"
           }
         ]}
-        onClose={vi.fn()}
       />
     );
 
@@ -502,7 +580,7 @@ describe("ResultModal", () => {
 
     try {
       render(
-        <ResultModal
+        <ResultDashboard
           result={makeResult()}
           passage={makePassage()}
           onRestart={vi.fn()}
@@ -538,7 +616,6 @@ describe("ResultModal", () => {
               effect: "quiet"
             }
           ]}
-          onClose={vi.fn()}
         />
       );
 
@@ -567,7 +644,7 @@ describe("ResultModal", () => {
 
   it("shows a best-accuracy celebration when accuracy improves over the previous result", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -588,7 +665,6 @@ describe("ResultModal", () => {
         recentResults={[]}
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
-        onClose={vi.fn()}
       />
     );
 
@@ -598,7 +674,7 @@ describe("ResultModal", () => {
 
   it("does not show a personal-best celebration for an ordinary result", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -619,7 +695,6 @@ describe("ResultModal", () => {
         recentResults={[]}
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
-        onClose={vi.fn()}
       />
     );
 
@@ -628,7 +703,7 @@ describe("ResultModal", () => {
 
   it("shows WPM, burst, and per-second errors in the graph tooltip", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -645,7 +720,6 @@ describe("ResultModal", () => {
           { timeSeconds: 9.8, characterIndex: 7 }
         ]}
         modeLabel="1m"
-        onClose={vi.fn()}
       />
     );
 
@@ -689,25 +763,25 @@ describe("ResultModal", () => {
     expect(layout.maxTime).toBe(300);
     expect(layout.xTicks).toContain(0);
     expect(layout.xTicks).toContain(300);
-    expect(layout.xTicks).toHaveLength(11);
+    expect(layout.xTicks.length).toBeLessThanOrEqual(11);
+    expect(layout.xTicks.every(Number.isInteger)).toBe(true);
     expect(layout.yTicks.every((tick) => tick % 15 === 0)).toBe(true);
     expect(layout.positionedPoints[0].timeSeconds).toBe(0);
     expect(layout.positionedPoints[layout.positionedPoints.length - 1].timeSeconds).toBe(300);
     expect(layout.positionedPoints[0].x).toBeLessThan(layout.positionedPoints[layout.positionedPoints.length - 1].x);
   });
 
-  it("caps longer attempt axes at 10 divisions so labels remain readable", () => {
+  it("uses readable whole-second ticks while preserving the true end point", () => {
     const layoutFor = (seconds: number) =>
       getAttemptGraphLayout([], { ...makeResult(), elapsedSeconds: seconds, modeDurationSeconds: seconds });
 
-    expect(layoutFor(15).xTicks).toHaveLength(11);
-    expect(layoutFor(15).xTicks[1]).toBe(1.5);
-    expect(layoutFor(30).xTicks).toHaveLength(11);
-    expect(layoutFor(30).xTicks[1]).toBe(3);
-    expect(layoutFor(60).xTicks).toHaveLength(11);
-    expect(layoutFor(60).xTicks[1]).toBe(6);
-    expect(layoutFor(300).xTicks).toHaveLength(11);
-    expect(layoutFor(300).xTicks[1]).toBe(30);
+    for (const seconds of [15, 30, 43, 60, 300]) {
+      const ticks = layoutFor(seconds).xTicks;
+      expect(ticks.every(Number.isInteger)).toBe(true);
+      expect(ticks.length).toBeLessThanOrEqual(11);
+      expect(ticks.at(-1)).toBe(seconds);
+    }
+    expect(layoutFor(43).xTicks).toEqual([0, 5, 10, 15, 20, 25, 30, 35, 40, 43]);
   });
 
   it("uses actual Training time instead of the normalized comparison duration", () => {
@@ -719,8 +793,7 @@ describe("ResultModal", () => {
     });
 
     expect(layout.maxTime).toBe(15);
-    expect(layout.xTicks).toHaveLength(11);
-    expect(layout.xTicks[1]).toBe(1.5);
+    expect(layout.xTicks.every(Number.isInteger)).toBe(true);
     expect(layout.xTicks.at(-1)).toBe(15);
   });
 
@@ -785,7 +858,7 @@ describe("ResultModal", () => {
     const generateImageCard = vi.fn(() => new Promise<void>(() => {}));
 
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -795,12 +868,10 @@ describe("ResultModal", () => {
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
         onGenerateImageCard={generateImageCard}
-        onClose={vi.fn()}
       />
     );
 
-    expect(screen.getByText("Generate image card")).toBeTruthy();
-    expect(screen.getByText("Create a shareable result image.")).toBeTruthy();
+    expect(screen.getByText("Generate image")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /generate image card/i }));
 
@@ -813,7 +884,7 @@ describe("ResultModal", () => {
 
   it("shows a suspicious-result note and keeps it out of saved history", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -823,16 +894,15 @@ describe("ResultModal", () => {
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
         isSuspicious
-        onClose={vi.fn()}
       />
     );
 
     expect(screen.getByText("This result was not saved because suspicious input was detected.")).toBeTruthy();
-    const historySection = screen.getByText("History").closest("section");
+    const historySection = screen.getByText("Last 10").closest("section");
 
     expect(historySection).toBeTruthy();
-    expect(within(historySection as HTMLElement).getByText("Attempts")).toBeTruthy();
-    expect(within(historySection as HTMLElement).getByText("1")).toBeTruthy();
+    expect(within(historySection as HTMLElement).queryByText("Attempts")).toBeNull();
+    expect(within(historySection as HTMLElement).getAllByText("41.0")).toHaveLength(2);
   });
 
   it("calculates consistency from coefficient of variation", () => {
@@ -882,7 +952,7 @@ describe("ResultModal", () => {
 
   it("explains consistency as WPM coefficient of variation", () => {
     render(
-      <ResultModal
+      <ResultDashboard
         result={makeResult()}
         passage={makePassage()}
         onRestart={vi.fn()}
@@ -891,7 +961,6 @@ describe("ResultModal", () => {
         recentResults={[]}
         attemptTimeline={makeTimeline()}
         modeLabel="1m"
-        onClose={vi.fn()}
       />
     );
 

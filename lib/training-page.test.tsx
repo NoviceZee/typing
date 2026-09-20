@@ -5,11 +5,15 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PREVIOUS_RESULTS_STORAGE_KEY, PreviousTypingResult } from "@/lib/app-storage";
+import { readResultPageSnapshot } from "@/lib/resultPageStorage";
 import TrainingPage from "../pages/training";
 
 const mockRouter = vi.hoisted(() => ({
   isReady: true,
-  query: {} as Record<string, string | string[] | undefined>
+  query: {} as Record<string, string | string[] | undefined>,
+  asPath: "/training",
+  push: vi.fn().mockResolvedValue(true),
+  replace: vi.fn().mockResolvedValue(true)
 }));
 
 vi.mock("next/router", () => ({
@@ -53,9 +57,12 @@ vi.mock("@/lib/typingResultStorage", async () => {
 describe("TrainingPage", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.sessionStorage.clear();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
     mockRouter.isReady = true;
     mockRouter.query = {};
+    mockRouter.push.mockClear();
+    mockRouter.replace.mockClear();
   });
 
   afterEach(() => {
@@ -480,7 +487,7 @@ describe("TrainingPage", () => {
     typeIncrementally(screen.getByLabelText("Typing input"), targetText);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Session ended").length).toBeGreaterThan(0);
+      expectResultNavigation("text_completed");
     });
   });
 
@@ -675,7 +682,7 @@ describe("TrainingPage", () => {
       await vi.advanceTimersByTimeAsync(15_250);
     });
 
-    expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
+    expectResultNavigation("time_up");
   });
 
   it("does not compare unfinished Chinese IME composition and commits once on compositionend", async () => {
@@ -1120,7 +1127,7 @@ describe("TrainingPage", () => {
     fireEvent.input(input, { target: { value: targetText }, data: targetText, inputType: "insertText" });
 
     await waitFor(() => {
-      expect(screen.getAllByText("Session ended").length).toBeGreaterThan(0);
+      expectResultNavigation("text_completed");
     });
   });
 
@@ -1142,7 +1149,7 @@ describe("TrainingPage", () => {
       await vi.advanceTimersByTimeAsync(15_250);
     });
 
-    expect(screen.getAllByText("Time up").length).toBeGreaterThan(0);
+    expectResultNavigation("time_up");
   });
 
   it("renders word difficulty options", () => {
@@ -1380,6 +1387,16 @@ describe("TrainingPage", () => {
     });
   });
 });
+
+function expectResultNavigation(completionReason: "time_up" | "text_completed") {
+  const resultNavigation = [...mockRouter.push.mock.calls]
+    .reverse()
+    .map(([href]) => href)
+    .find((href): href is string => typeof href === "string" && href.startsWith("/result/"));
+  expect(resultNavigation).toBeTruthy();
+  const attemptId = decodeURIComponent(resultNavigation!.slice("/result/".length));
+  expect(readResultPageSnapshot(attemptId)?.result.completionReason).toBe(completionReason);
+}
 
 function typeIncrementally(input: HTMLElement, value: string) {
   let currentValue = "";

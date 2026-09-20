@@ -6,6 +6,7 @@ const SYMBOLS_TRAINING_MODE: PracticeTrainingMode = {
   pageTitle: "Symbols Training",
   passageId: "training-symbols",
   configKey: "symbols-time-60",
+  resultReturnHref: "/training/symbols",
   session: { kind: "time", seconds: 60 },
   buildPassage: ({ durationSeconds, mode }) => ({
     ...buildTrainingPassage({ contentTypes: ["symbols"], mode, durationSeconds }),

@@ -6,6 +6,7 @@ const NUMBERS_TRAINING_MODE: PracticeTrainingMode = {
   pageTitle: "Numbers Training",
   passageId: "training-numbers",
   configKey: "numbers-time-60",
+  resultReturnHref: "/training/numbers",
   session: { kind: "time", seconds: 60 },
   buildPassage: ({ durationSeconds, mode }) => ({
     ...buildTrainingPassage({ contentTypes: ["numbers"], mode, durationSeconds }),

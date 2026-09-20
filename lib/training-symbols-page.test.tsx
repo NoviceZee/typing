@@ -7,6 +7,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import TrainingSymbolsPage from "../pages/training/symbols";
 import { saveSupabaseTypingResult } from "@/lib/typingResultStorage";
 
+vi.mock("next/router", () => ({
+  useRouter: () => ({
+    isReady: true,
+    query: {},
+    asPath: "/training/symbols",
+    push: vi.fn().mockResolvedValue(true),
+    replace: vi.fn().mockResolvedValue(true)
+  })
+}));
+
 vi.mock("@/components/AppShell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   AdPlaceholder: () => <div>Ad space</div>

@@ -40,15 +40,23 @@ export default function TrainingPage() {
   const activeMode: TrainingMode = isCodeActive ? "time" : mode;
 
   useEffect(() => {
-    if (!router.isReady || parseTrainingRoutePreset({ content: routeContentQuery }) !== "chinese") {
+    if (!router.isReady) return;
+    const routePreset = parseTrainingResultReturnPreset(router.query);
+    if (routePreset) {
+      setContentTypes(routePreset.contentTypes);
+      setMode(routePreset.mode);
+      setDurationSeconds(routePreset.durationSeconds);
+      setWordCount(routePreset.wordCount);
+      setWordDifficulty(routePreset.wordDifficulty);
       return;
     }
-
-    setContentTypes(["chinese"]);
-    setMode("time");
-    setDurationSeconds(60);
-    setWordDifficulty("intermediate");
-  }, [routeContentQuery, router.isReady]);
+    if (parseTrainingRoutePreset({ content: routeContentQuery }) === "chinese") {
+      setContentTypes(["chinese"]);
+      setMode("time");
+      setDurationSeconds(60);
+      setWordDifficulty("intermediate");
+    }
+  }, [routeContentQuery, router.isReady, router.query]);
 
   const toggleContentType = useCallback((contentType: TrainingContentType) => {
     if (contentType === "code" || contentType === "chinese") {
@@ -144,6 +152,13 @@ export default function TrainingPage() {
       pageTitle: "Focused typing training",
       passageId: `training-${contentTypes.join("-")}`,
       configKey: `${contentTypes.join("-")}-${activeMode}-${durationSeconds}-${wordCount}-${wordDifficulty}`,
+      resultReturnHref: buildTrainingResultReturnHref({
+        contentTypes,
+        mode: activeMode,
+        durationSeconds,
+        wordCount,
+        wordDifficulty
+      }),
       controls,
       session:
         activeMode === "time"
@@ -165,4 +180,50 @@ export default function TrainingPage() {
   );
 
   return <PracticePage trainingMode={trainingMode} />;
+}
+
+function buildTrainingResultReturnHref({
+  contentTypes,
+  mode,
+  durationSeconds,
+  wordCount,
+  wordDifficulty
+}: {
+  contentTypes: TrainingContentType[];
+  mode: TrainingMode;
+  durationSeconds: number;
+  wordCount: number;
+  wordDifficulty: TrainingWordDifficulty;
+}) {
+  const params = new URLSearchParams({
+    content: contentTypes.join(","),
+    trainingMode: mode,
+    duration: String(durationSeconds),
+    words: String(wordCount),
+    difficulty: wordDifficulty
+  });
+  return `/training?${params.toString()}`;
+}
+
+function parseTrainingResultReturnPreset(query: Record<string, string | string[] | undefined>) {
+  if (typeof query.trainingMode !== "string") return null;
+  const allowedContent = new Set<TrainingContentType>(["words", "numbers", "symbols", "code", "chinese"]);
+  const contentTypes = typeof query.content === "string"
+    ? query.content.split(",").filter((value): value is TrainingContentType => allowedContent.has(value as TrainingContentType))
+    : [];
+  const mode: TrainingMode = query.trainingMode === "words" ? "words" : "time";
+  const durationSeconds = Number(query.duration);
+  const wordCount = Number(query.words);
+  const allowedDifficulty = new Set<TrainingWordDifficulty>(["basic", "intermediate", "advanced", "mixed"]);
+  const wordDifficulty = allowedDifficulty.has(query.difficulty as TrainingWordDifficulty)
+    ? query.difficulty as TrainingWordDifficulty
+    : "intermediate";
+  if (contentTypes.length === 0) return null;
+  return {
+    contentTypes,
+    mode: contentTypes.includes("code") || contentTypes.includes("chinese") ? "time" as const : mode,
+    durationSeconds: TIME_OPTIONS.includes(durationSeconds) ? durationSeconds : 60,
+    wordCount: WORD_COUNT_OPTIONS.includes(wordCount) ? wordCount : 25,
+    wordDifficulty
+  };
 }
