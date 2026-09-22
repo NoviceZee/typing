@@ -1597,6 +1597,104 @@ describe("PracticePage passage loading", () => {
     expect(input.value).toContain("\n");
   });
 
+  it.each([
+    { mode: "timed" as const, commitBeforeEnd: true },
+    { mode: "timed" as const, commitBeforeEnd: false },
+    { mode: "infinite" as const, commitBeforeEnd: true },
+    { mode: "infinite" as const, commitBeforeEnd: false }
+  ])("preserves first Chinese composition across start and timer renders ($mode, commitBeforeEnd=$commitBeforeEnd)", async ({ mode, commitBeforeEnd }) => {
+    const target = "國破山河在，城春草木深。";
+    const input = await renderChinesePracticeFixture(target, "first-ime-composition", { mode, start: false }) as HTMLTextAreaElement;
+    vi.useFakeTimers();
+
+    // Start composition before React flushes the Tab/start state update.
+    act(() => {
+      fireEvent.keyDown(window, { key: "Tab" });
+      fireEvent.keyUp(window, { key: "Tab" });
+      fireEvent.compositionStart(input, { data: "" });
+      fireEvent.compositionUpdate(input, { data: "abc" });
+      fireEvent.input(input, {
+        target: { value: "abc" }, data: "abc", isComposing: true, inputType: "insertCompositionText"
+      });
+    });
+    act(() => { vi.advanceTimersByTime(1_250); });
+
+    expect(screen.getByLabelText("Typing input")).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe("abc");
+    const activeIndex = () => screen.getByTestId("typing-character-layer")
+      .querySelector('[data-active-target="true"]')?.getAttribute("data-target-index");
+    expect(activeIndex()).toBe("0");
+
+    const committed = target.slice(0, 2);
+    if (commitBeforeEnd) {
+      fireEvent.input(input, {
+        target: { value: committed }, data: committed, isComposing: true, inputType: "insertCompositionText"
+      });
+      expect(activeIndex()).toBe("0");
+      fireEvent.compositionEnd(input, { data: committed });
+    } else {
+      fireEvent.compositionEnd(input, { data: committed });
+      fireEvent.input(input, {
+        target: { value: committed }, data: committed, isComposing: false, inputType: "insertText"
+      });
+    }
+    act(() => { vi.advanceTimersByTime(0); });
+    expect(input.value).toBe(committed);
+    expect(activeIndex()).toBe("2");
+    act(() => { vi.advanceTimersByTime(1_000); });
+    expect(input.value).toBe(committed);
+
+    // Literal Latin input remains legitimate; only the IME replaces its buffer.
+    fireEvent.input(input, {
+      target: { value: `${committed}abc` }, data: "abc", isComposing: false, inputType: "insertText"
+    });
+    expect(input.value).toBe(`${committed}abc`);
+    expect(screen.getByTestId("typing-character-layer").textContent).toContain("abc");
+  });
+
+  it("does not refocus the Chinese textarea after Tab starts the session", async () => {
+    const input = await renderChinesePracticeFixture(
+      "國破山河在，城春草木深。",
+      "first-safari-input-focus",
+      { mode: "timed", start: false }
+    ) as HTMLTextAreaElement;
+    const focusSpy = vi.spyOn(input, "focus");
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyUp(window, { key: "Tab" });
+
+    expect(document.activeElement).toBe(input);
+    expect(focusSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not refocus or lose the first plain English input after Tab starts the session", async () => {
+    window.localStorage.setItem(
+      PASSAGE_LIBRARY_STORAGE_KEY,
+      JSON.stringify([makePassage("safari-english-focus", "Safari English focus", "First English input stays synchronized.")])
+    );
+    mockedGetSupabasePassageLibrary.mockResolvedValue([]);
+    render(<PracticePage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("typing-character-layer").textContent).toContain("First English input");
+    });
+    const input = screen.getByLabelText("Typing input") as HTMLTextAreaElement;
+    const focusSpy = vi.spyOn(input, "focus");
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    fireEvent.keyUp(window, { key: "Tab" });
+    typeIncrementally(input, "First");
+
+    expect(document.activeElement).toBe(input);
+    expect(focusSpy).toHaveBeenCalledTimes(1);
+    expect(input.value).toBe("First");
+    expect(
+      screen.getByTestId("typing-character-layer")
+        .querySelector('[data-active-target="true"]')
+        ?.getAttribute("data-target-index")
+    ).toBe("5");
+  });
+
   it("maps Chinese Practice results to Chinese analytics with Chinese WPM", async () => {
     window.localStorage.setItem(
       PASSAGE_LIBRARY_STORAGE_KEY,

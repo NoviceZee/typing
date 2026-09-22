@@ -23,6 +23,7 @@ import {
   validateTypedText
 } from "@/lib/typing-engine";
 import { calculateTypingViewportScrollTop } from "@/lib/typingViewport";
+import { installTypingInputDebug } from "@/lib/typingInputDebug";
 import { isProgressionEligibleResult } from "@/lib/resultEligibility";
 import { resolveResultDuration } from "@/lib/resultDuration";
 import {
@@ -325,6 +326,29 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
   const initializedPracticeRouteRef = useRef<string | null>(null);
   const resultReturnActionHandledRef = useRef<string | null>(null);
   const loadNextPassageRef = useRef<(basePassage?: StoredPassage) => void>(() => {});
+  const inputDebugRef = useRef<ReturnType<typeof installTypingInputDebug> | null>(null);
+  const renderedInputValueRef = useRef(typedText);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" || new URLSearchParams(window.location.search).get("inputDebug") !== "1") return;
+    const debug = installTypingInputDebug(() => ({
+      input: inputRef.current,
+      committedValue: typedTextRef.current,
+      renderedValue: renderedInputValueRef.current,
+      status: statusRef.current,
+      activated: isInputActivatedRef.current,
+      composing: explicitCompositionActiveRef.current || isComposingRef.current,
+      awaitingCommit: awaitingChineseFinalCommitRef.current,
+      generation: activeSessionGenerationRef.current
+    }));
+    inputDebugRef.current = debug;
+    return () => { debug.stop(); inputDebugRef.current = null; };
+  }, []);
+
+  useEffect(() => {
+    renderedInputValueRef.current = typedText;
+    inputDebugRef.current?.record("react-commit");
+  });
 
   useEffect(() => {
     document.documentElement.classList.add("formaltype-typing-page");
@@ -1234,8 +1258,9 @@ function PracticeExperience({ trainingMode, routeState }: PracticePageProps & { 
   }, [beginAttempt, finishSession, isRunning, resetSession, shouldUseChineseImeSink, status]);
 
   useEffect(() => {
-    if (isRunning) {
-      inputRef.current?.focus({ preventScroll: true });
+    const input = inputRef.current;
+    if (isRunning && input && document.activeElement !== input) {
+      input.focus({ preventScroll: true });
     }
   }, [isRunning]);
 
