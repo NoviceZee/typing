@@ -4,6 +4,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PassagesPage from "../pages/passages";
 import type { LibraryPassage } from "@/lib/app-storage";
@@ -87,6 +88,20 @@ describe("PassagesPage", () => {
       makePassage("news", "News clip", "News", "General", "english"),
       makePassage("chinese", "忙碌生活中的休息", "生活", "一般", "chinese", "現代城市生活節奏急速，休息能夠整理思緒。")
     ]);
+  });
+
+  it("server-renders useful supporting copy and practice links before the library loads", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToStaticMarkup(<PassagesPage />);
+    const support = container.querySelector('[aria-label="About the passage library"]')!;
+    const text = support.textContent || "";
+    expect(text).toContain("English and Chinese typing passages");
+    expect(text).toContain("timed or untimed");
+    expect(text).toContain("choose a passage before");
+    expect(text.trim().split(/\s+/).length).toBeGreaterThanOrEqual(80);
+    expect(text.trim().split(/\s+/).length).toBeLessThanOrEqual(150);
+    expect(support.querySelector('a[href="/practice"]')).toBeTruthy();
+    expect(support.querySelector('a[href="/chinese-typing"]')).toBeTruthy();
   });
 
   it("renders a descriptive heading and concise introduction before library effects resolve", () => {

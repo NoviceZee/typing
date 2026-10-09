@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { Check, Languages, Search, Tags } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -261,6 +262,16 @@ export default function PassagesPage() {
                 </div>
               )}
             </DataSurface>
+          </PageSection>
+          <PageSection aria-label="About the passage library">
+            <div className="max-w-3xl space-y-3 text-body leading-7 text-paper/58">
+              <p>
+                Explore English and Chinese typing passages for everyday practice. Browse by language and category, or search for a title that interests you, then choose a passage before you begin. Each card includes a preview and passage length to help you find something that suits your available time.
+              </p>
+              <p>
+                Open your selection in <Link href="/practice" className="text-brass underline">Practice</Link> for a timed or untimed session. Use a timed session to check your pace, or take your time with the full passage to work on accuracy and punctuation. For Chinese input, see our <Link href="/chinese-typing" className="text-brass underline">Chinese typing guide</Link> for practice options and advice on using your preferred input method.
+              </p>
+            </div>
           </PageSection>
         </SectionStack>
       </PageContainer>

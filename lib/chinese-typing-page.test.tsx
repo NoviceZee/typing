@@ -2,6 +2,7 @@
  * @vitest-environment jsdom
  */
 import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ChineseTypingPage from "@/pages/chinese-typing";
@@ -11,6 +12,15 @@ vi.mock("@/components/AppShell", () => ({
 }));
 
 describe("ChineseTypingPage", () => {
+  it("server-renders concise speed and typing-test guidance while preserving IME guidance", () => {
+    const html = renderToStaticMarkup(<ChineseTypingPage />);
+    expect(html).toContain("中文打字速度");
+    expect(html).toContain("WPM");
+    expect(html).toContain("中文打字測試（typing test）");
+    expect(html).toContain("組字和選字期間，Typing Station 會等待文字確認後才與目標內容比對");
+    expect(html).toContain('lang="zh-Hant"');
+  });
+
   it("renders one visible Traditional Chinese H1 and the approved compact content", () => {
     const { container } = render(<ChineseTypingPage />);
     const headings = screen.getAllByRole("heading", { level: 1 });

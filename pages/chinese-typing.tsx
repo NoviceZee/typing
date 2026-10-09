@@ -32,7 +32,7 @@ export default function ChineseTypingPage() {
               <h2 id="chinese-practice-modes" className="text-section font-semibold text-paper">選擇練習方式</h2>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 <InfoCard icon={Clock3} title="計時練習">
-                  可選一、五或十分鐘，在固定時段內輸入文字，完成後查看速度與準確度。
+                  可選一、五或十分鐘，在固定時段內輸入文字，完成後查看速度與準確度，亦可用作中文打字測試（typing test）。
                 </InfoCard>
                 <InfoCard icon={InfinityIcon} title="不限時練習">
                   按自己的節奏完成整篇文章，適合先熟習內容、標點和輸入節奏。
@@ -70,7 +70,7 @@ export default function ChineseTypingPage() {
                 <div>
                   <h2 id="chinese-results" className="text-section font-semibold text-paper">完成後可以看到甚麼</h2>
                   <p className="mt-2 max-w-3xl text-body leading-7 text-paper/58">
-                    每次完成練習後，可查看輸入速度、準確度、穩定度和錯誤；重複同一內容時，亦可比較上一次結果。
+                    每次完成練習後，可查看輸入速度、準確度、穩定度和錯誤；重複同一內容時，亦可比較上一次結果。中文打字速度以 WPM 顯示，在中文模式下按每分鐘正確輸入的字元數計算。
                   </p>
                 </div>
               </div>

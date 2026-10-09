@@ -24,7 +24,7 @@ function InitialBody({ pathname }: { pathname: string }) {
 }
 
 describe("public route initial rendering", () => {
-  it.each(INDEXABLE_SITE_ROUTES)("renders %s while auth and settings hydrate", (pathname) => {
+  it.each([...INDEXABLE_SITE_ROUTES, "/terms", "/privacy", "/security"])("renders %s while auth and settings hydrate", (pathname) => {
     render(<InitialBody pathname={pathname} />);
 
     expect(screen.getByRole("heading", { level: 1, name: pathname })).toBeTruthy();

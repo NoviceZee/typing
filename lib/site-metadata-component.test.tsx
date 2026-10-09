@@ -11,6 +11,13 @@ vi.mock("next/head", () => ({
 }));
 
 describe("SiteMetadata", () => {
+  it.each(["/", "/practice", "/training", "/passages", "/chinese-typing", "/leaderboard", "/faq", "/terms", "/privacy", "/security"])("preserves canonical and explicit robots policy for %s", (route) => {
+    const { container } = render(<SiteMetadata pathname={`${route}?source=test#content`} siteUrl="https://typing.example.com" />);
+    const legal = ["/terms", "/privacy", "/security"].includes(route);
+    expect(container.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe(legal ? "noindex, follow" : "index, follow");
+    expect(container.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe(`https://typing.example.com${route === "/" ? "" : route}`);
+  });
+
   it("renders route-specific canonical and social metadata for public pages", () => {
     const { container } = render(<SiteMetadata pathname="/practice?category=Articles" siteUrl="https://typing.example.com/" />);
 

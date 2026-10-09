@@ -106,6 +106,11 @@ describe("crawl discovery documents", () => {
       const expectedUrl = route === "/" ? "https://typing.example.com" : `https://typing.example.com${route}`;
       expect(xml).toContain(`<loc>${expectedUrl}</loc>`);
     }
+    expect(INDEXABLE_SITE_ROUTES).toEqual(["/", "/practice", "/training", "/passages", "/chinese-typing", "/leaderboard", "/faq"]);
+    for (const route of ["/terms", "/privacy", "/security"]) {
+      expect(getRouteSeoMetadata(route).indexable).toBe(false);
+      expect(xml).not.toContain(`<loc>https://typing.example.com${route}</loc>`);
+    }
     expect(xml).not.toContain("/login");
     expect(xml).not.toContain("/settings");
     expect(xml).not.toContain("/profile");

@@ -30,7 +30,7 @@ export function SiteMetadata({ pathname, siteUrl }: SiteMetadataProps) {
     <Head>
       <title>{metadata.title}</title>
       <meta name="description" content={metadata.description} />
-      <meta name="robots" content={metadata.indexable ? "index, follow" : "noindex, nofollow"} />
+      <meta name="robots" content={`${metadata.indexable ? "index" : "noindex"}, ${(metadata.followLinks ?? metadata.indexable) ? "follow" : "nofollow"}`} />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <meta name="theme-color" content="#070807" />
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}

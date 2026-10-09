@@ -4,6 +4,7 @@ export interface RouteSeoMetadata {
   title: string;
   description: string;
   indexable: boolean;
+  followLinks?: boolean;
   canonicalPath?: string;
 }
 
@@ -67,7 +68,11 @@ const PRIVATE_ROUTE_METADATA: Record<string, Omit<RouteSeoMetadata, "indexable">
   "/500": { title: "Server Error | Typing Station", description: "Typing Station could not load this page." }
 };
 
-export const INDEXABLE_SITE_ROUTES = Object.freeze(Object.keys(PUBLIC_ROUTE_METADATA));
+const NOINDEX_PUBLIC_ROUTES = new Set(["/terms", "/privacy", "/security"]);
+
+export const INDEXABLE_SITE_ROUTES = Object.freeze(
+  Object.keys(PUBLIC_ROUTE_METADATA).filter((route) => !NOINDEX_PUBLIC_ROUTES.has(route))
+);
 
 export function getSiteUrl(configuredUrl = process.env.NEXT_PUBLIC_SITE_URL): string {
   return (configuredUrl?.trim() || FALLBACK_SITE_URL).replace(/\/+$/, "");
@@ -86,7 +91,12 @@ export function getRouteSeoMetadata(pathname: string): RouteSeoMetadata {
   const route = normalizePath(pathname);
   const publicMetadata = PUBLIC_ROUTE_METADATA[route];
   if (publicMetadata) {
-    return { ...publicMetadata, indexable: true, canonicalPath: route };
+    return {
+      ...publicMetadata,
+      indexable: !NOINDEX_PUBLIC_ROUTES.has(route),
+      ...(NOINDEX_PUBLIC_ROUTES.has(route) ? { followLinks: true } : {}),
+      canonicalPath: route
+    };
   }
 
   if (route.startsWith("/u/")) {
@@ -109,7 +119,7 @@ export function getRouteSeoMetadata(pathname: string): RouteSeoMetadata {
 
 export function getCanonicalUrl(pathname: string, configuredUrl = process.env.NEXT_PUBLIC_SITE_URL): string | null {
   const metadata = getRouteSeoMetadata(pathname);
-  if (!metadata.indexable || !metadata.canonicalPath) return null;
+  if (!metadata.canonicalPath) return null;
   return metadata.canonicalPath === "/"
     ? getSiteUrl(configuredUrl)
     : `${getSiteUrl(configuredUrl)}${metadata.canonicalPath}`;
